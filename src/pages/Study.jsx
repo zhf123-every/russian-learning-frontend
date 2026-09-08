@@ -11,6 +11,8 @@ import { explainSentence, reciteCompare } from '../lib/ai'
 import { getVideoPlay, createPlayer } from '../lib/videoPlayer'
 import { toast } from '../lib/toast'
 import { mdToHtml } from '../lib/md'
+import AITutor from '../components/AITutor'
+import AIQuiz from '../components/AIQuiz'
 
 // 5 个阶段提示文案
 const STAGE_HINTS = {
@@ -79,6 +81,10 @@ export default function Study() {
   const [reciteAnalyzing, setReciteAnalyzing] = useState(false)
   const [showReciteCompare, setShowReciteCompare] = useState(false)
   const [reciteCompareIdx, setReciteCompareIdx] = useState(-1)
+  // AI 助教 & AI 测验
+  const [showTutor, setShowTutor] = useState(false)
+  const [showQuiz, setShowQuiz] = useState(false)
+  const [quizPrompt, setQuizPrompt] = useState(false)
 
   // 视频元素引用 + 播放器句柄
   const videoRef = useRef(null)
@@ -205,6 +211,13 @@ export default function Study() {
       if (reciteAudioUrl) URL.revokeObjectURL(reciteAudioUrl)
     }
   }, [reciteAudioUrl])
+
+  // 监听尚雯婕训练完成 → 弹出 AI 测验提示
+  useEffect(() => {
+    if (isShangFinished && shangMode) {
+      setQuizPrompt(true)
+    }
+  }, [isShangFinished, shangMode])
 
   if (!video) return null
   const sentences = (video.sentences || []).map((s, i) => ({
@@ -1082,6 +1095,99 @@ export default function Study() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* AI 助教浮动按钮（仅尚雯婕模式） */}
+      {shangMode && !showTutor && (
+        <button
+          onClick={() => setShowTutor(true)}
+          style={{
+            position: 'fixed',
+            right: 16,
+            bottom: 16,
+            zIndex: 998,
+            borderRadius: 24,
+            padding: '10px 18px',
+            background: 'var(--accent, #8B735F)',
+            color: '#fff',
+            border: 'none',
+            boxShadow: '0 4px 14px rgba(139,115,95,0.3)',
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 500,
+          }}
+        >
+          🤖 助教
+        </button>
+      )}
+
+      {/* AI 助教侧边栏（仅尚雯婕模式） */}
+      {shangMode && showTutor && (
+        <AITutor
+          stage={shangWenjieStage}
+          curSentence={cur}
+          sentences={sentences}
+          videoTitle={video?.title || ''}
+        />
+      )}
+
+      {/* 训练完成 → AI 测验提示弹窗 */}
+      {quizPrompt && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(60, 45, 30, 0.55)',
+            zIndex: 10001,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+          onClick={() => setQuizPrompt(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#FFFCF7',
+              borderRadius: 16,
+              boxShadow: '0 20px 60px rgba(60,45,30,0.35)',
+              padding: '28px 32px',
+              maxWidth: 420,
+              width: '100%',
+              textAlign: 'center',
+              border: '1px solid var(--border2, #E8E1D9)',
+            }}
+          >
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+            <div style={{ fontSize: 18, fontWeight: 600, color: '#3D332C', marginBottom: 8 }}>
+              训练完成！
+            </div>
+            <div style={{ fontSize: 14, color: 'var(--muted, #86796D)', marginBottom: 20, lineHeight: 1.6 }}>
+              是否开始 AI 测验检验学习成果？<br />
+              共 30 道题，涵盖词汇、语法、翻译等。
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button className="btn sm" onClick={() => setQuizPrompt(false)}>稍后再说</button>
+              <button
+                className="btn sm primary"
+                onClick={() => { setQuizPrompt(false); setShowQuiz(true) }}
+              >
+                🚀 开始测验
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI 测验模态框 */}
+      {showQuiz && (
+        <AIQuiz
+          sentences={sentences}
+          videoId={videoId}
+          videoTitle={video?.title || ''}
+          onClose={() => setShowQuiz(false)}
+        />
       )}
     </div>
   )
