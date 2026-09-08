@@ -8,6 +8,7 @@ import SquarePage from './pages/SquarePage'
 import Study from './pages/Study'
 import Vocab from './pages/Vocab'
 import Profile from './pages/Profile'
+import Dictionary from './pages/Dictionary'
 import SettingsModal from './components/SettingsModal'
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
         {loc.pathname !== '/' && <Link className="tbtn" to="/">🏠 首页</Link>}
         <div className="spacer"></div>
         <Link className="tbtn" to="/vocab">生词本</Link>
+        <Link className="tbtn" to="/dictionary">词典</Link>
         <Link className="tbtn" to="/profile">统计</Link>
         <button className="tbtn" onClick={() => setShowSettings(true)}>设置</button>
       </div>
@@ -33,6 +35,7 @@ export default function App() {
         <Route path="/square/:videoId" element={<Study />} />
         <Route path="/study/:videoId" element={<Study />} />
         <Route path="/vocab" element={<Vocab />} />
+        <Route path="/dictionary" element={<Dictionary />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}

@@ -7,7 +7,6 @@ import { useShangStore, STAGES } from '../store/shangStore'
 import SentenceList from '../components/SentenceList'
 import SentenceBox from '../components/SentenceBox'
 import FullTextPanel from '../components/FullTextPanel'
-import { speak, cancelSpeech, speakAll } from '../lib/tts'
 import { explainSentence, reciteCompare } from '../lib/ai'
 import { getVideoPlay, createPlayer } from '../lib/videoPlayer'
 import { toast } from '../lib/toast'
@@ -42,8 +41,6 @@ export default function Study() {
   const video = courseVideo || squareVideo
   // 提前声明：供下方 useEffect 依赖数组引用，避免 TDZ
   const play = getVideoPlay(video?.videoUrl)
-  // 是否有可精确控制的direct视频；无视频/iframe嵌入时用TTS兜底播放并跟踪高亮
-  const hasDirectVideo = play?.type === 'direct'
   const pushRecent = useCourseStore(s => s.pushRecent)
   const progress = useCourseStore(s => s.progress[videoId])
   const submitVideo = useCourseStore(s => s.submitVideo)
@@ -94,8 +91,6 @@ export default function Study() {
   const recordChunksRef = useRef([])
   const recordStreamRef = useRef(null)
   const reciteAudioRef = useRef(null)
-  // TTS循环播放控制（无精确视频时用TTS兜底，跟踪高亮）
-  const ttsLoopRef = useRef(false)
 
   // 直接访问 /square/:id（或刷新）时，先把服务端素材拉下来再判断是否存在
   useEffect(() => {
@@ -135,17 +130,11 @@ export default function Study() {
       setShangDictResult(null)
       setDictateVideoShown(false)
       useSessionStore.getState().setIdx(0)
-      ttsLoopRef.current = false
-      cancelSpeech()
       setPlayingIdx(-1)
       setActiveSentenceIdx(-1)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shangWenjieStage])
-
-  useEffect(() => {
-    return () => { cancelSpeech() }
-  }, [])
 
   // 建立播放器句柄（direct 用 <video> 精确控制；iframe 尽力控制）
   useEffect(() => {
@@ -252,9 +241,6 @@ export default function Study() {
     setAiHtml('')
     const n = curIdx + d
     if (n < 0 || n >= sentences.length) return
-    // 导航时停止TTS播放和高亮跟踪
-    ttsLoopRef.current = false
-    cancelSpeech()
     setActiveSentenceIdx(-1)
     setIdx(n)
     // 阶段2导航时隐藏视频
@@ -272,51 +258,22 @@ export default function Study() {
     ? (curStage === STAGES.DICTATE ? !dictateVideoShown : isHideMedia)
     : isHideMedia
 
-  // 视频控制函数（对齐句子时间点）；无精确视频时用TTS兜底并跟踪高亮
+  // 视频控制函数（对齐句子时间点）
   const playSeg = (loop = true) => {
     if (!cur) return
-    if (hasDirectVideo && pRef.current) {
+    if (pRef.current) {
       if (loop) pRef.current.playLoop(cur.start, cur.end)
       else pRef.current.playSegment(cur.start, cur.end, false)
-    } else {
-      // TTS兜底：取消当前播放，跟踪当前句高亮
-      cancelSpeech()
-      ttsLoopRef.current = loop
-      setActiveSentenceIdx(curIdx)
-      const doSpeak = () => {
-        speak(cur.russian, {
-          rate: speed,
-          onEnd: () => {
-            if (ttsLoopRef.current) doSpeak()
-            else setActiveSentenceIdx(-1)
-          }
-        })
-      }
-      doSpeak()
     }
     setPlayingIdx(curIdx)
-    // 阶段2播放时隐藏视频
     if (shangMode && shangWenjieStage === STAGES.DICTATE) setDictateVideoShown(false)
   }
   const playFull = () => {
-    if (hasDirectVideo && pRef.current) {
-      pRef.current.playFull()
-      setPlayingIdx(-1)
-    } else {
-      // TTS兜底：整篇连播，每句开始时更新高亮
-      cancelSpeech()
-      ttsLoopRef.current = false
-      speakAll(sentences, {
-        rate: speed,
-        onIndex: (i) => { setActiveSentenceIdx(i); setPlayingIdx(i) },
-        onDone: () => { setActiveSentenceIdx(-1); setPlayingIdx(-1) }
-      })
-    }
+    if (pRef.current) pRef.current.playFull()
+    setPlayingIdx(-1)
     if (shangMode && shangWenjieStage === STAGES.DICTATE) setDictateVideoShown(false)
   }
   const stopPlay = () => {
-    ttsLoopRef.current = false
-    cancelSpeech()
     if (pRef.current) { pRef.current.pause(); pRef.current.stopLoop() }
     setPlayingIdx(-1)
     setActiveSentenceIdx(-1)
@@ -330,8 +287,6 @@ export default function Study() {
       const next = !v
       if (next) playSeg(true)
       else {
-        ttsLoopRef.current = false
-        cancelSpeech()
         if (pRef.current) { pRef.current.pause(); pRef.current.stopLoop() }
       }
       return next
@@ -362,9 +317,6 @@ export default function Study() {
     shang.setDictation(videoId, cur.id, { text: shangUserInput, skipped: true, ok: false })
     setShangUserInput('')
     setShangDictResult(null)
-    // 跳过时停止TTS播放和高亮跟踪
-    ttsLoopRef.current = false
-    cancelSpeech()
     setActiveSentenceIdx(-1)
     if (shangMode && shangWenjieStage === STAGES.DICTATE) setDictateVideoShown(false)
     if (curIdx < sentences.length - 1) {
@@ -568,10 +520,12 @@ export default function Study() {
             )}
           </div>
         </div>
-        <div className="card">
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>台词列表 <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 13 }}>{sentences.length} 句</span></div>
-          <SentenceList sentences={sentences} curIdx={curIdx} playingIdx={playingIdx} onPick={setIdx} />
-        </div>
+        {!(shangMode && (curStage === STAGES.LISTEN || curStage === STAGES.DICTATE)) && (
+          <div className="card">
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>台词列表 <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 13 }}>{sentences.length} 句</span></div>
+            <SentenceList sentences={sentences} curIdx={curIdx} playingIdx={playingIdx} onPick={setIdx} />
+          </div>
+        )}
       </div>
 
       <div className="col">
@@ -701,7 +655,13 @@ export default function Study() {
                     <div style={{ marginTop: 8 }}>
                       <button className="btn primary" onClick={() => playSeg(true)}>🔊 循环本句</button>
                       <button className="btn" onClick={() => playSeg(false)} style={{ marginLeft: 6 }}>▶ 听一次</button>
-                      <button className="btn sm" onClick={() => openFullText('🎤 全文跟读 · 字幕跟随')} style={{ marginLeft: 6 }}>📄 全文跟读</button>
+                      <button className="btn sm" onClick={() => {
+                        openFullText('🎤 全文跟读 · 字幕跟随')
+                        if (pRef.current) {
+                          if (videoRef.current) { try { videoRef.current.currentTime = 0 } catch(e) {} }
+                          pRef.current.play()
+                        }
+                      }} style={{ marginLeft: 6 }}>📄 全文跟读</button>
                     </div>
                     <div className="row" style={{ marginTop: 10 }}>
                       <button className="btn sm" onClick={() => shang.setReciteOk(videoId, cur.id, true)}>✓ 本句跟读流畅</button>
@@ -754,7 +714,20 @@ export default function Study() {
                       )}
                       <button
                         className="btn sm"
-                        onClick={() => { if (reciteAudioUrl) { setShowReciteCompare(true) } else { toast('请先录音') } }}
+                        onClick={() => {
+                          if (reciteAudioUrl) {
+                            setShowReciteCompare(true)
+                            if (pRef.current) {
+                              const firstStart = sentences[0]?.start
+                              if (firstStart != null && videoRef.current) {
+                                try { videoRef.current.currentTime = firstStart } catch(e) {}
+                              } else if (videoRef.current) {
+                                try { videoRef.current.currentTime = 0 } catch(e) {}
+                              }
+                              pRef.current.play()
+                            }
+                          } else { toast('请先录音') }
+                        }}
                       >
                         🎧 录音原文比对
                       </button>
@@ -935,18 +908,8 @@ export default function Study() {
           highlightIdx={activeSentenceIdx >= 0 ? activeSentenceIdx : curIdx}
           onSentenceClick={(idx) => {
             setIdx(idx)
-            // 停止当前TTS播放
-            ttsLoopRef.current = false
-            cancelSpeech()
-            if (hasDirectVideo && pRef.current && sentences[idx]) {
+            if (pRef.current && sentences[idx]) {
               pRef.current.playSegment(sentences[idx].start, sentences[idx].end, false)
-            } else if (sentences[idx]) {
-              // 无精确视频：TTS播放该句并跟踪高亮
-              setActiveSentenceIdx(idx)
-              speak(sentences[idx].russian, {
-                rate: speed,
-                onEnd: () => setActiveSentenceIdx(-1)
-              })
             }
           }}
           title={fullTextTitle}
