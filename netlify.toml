@@ -1,0 +1,25 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA 路由重定向：所有路径回退到 index.html
+# 说明：Netlify 会优先返回真实存在的文件（JS/CSS/mp4 等），
+#       只有不存在的路径（如 /study/xxx 这种前端路由）才走这条回退。
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# HTML 永不缓存，静态资源长缓存
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
