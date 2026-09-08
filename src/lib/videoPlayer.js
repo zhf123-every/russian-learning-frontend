@@ -65,19 +65,47 @@ export function createPlayer(play, videoEl) {
   }
 
   // ---- iframe：尽力控制 ----
+  // YouTube IFrame API postMessage 格式：{ event: 'command', func: 'playVideo', args: [] }
+  // 必须等 iframe 加载完成（enablejsapi=1 生效）后才能响应 postMessage
+  h._iframeReady = false
+  h._pendingCmds = []
+
   function iframePost(msg) {
     if (!h._iframe) return
+    if (!h._iframeReady) {
+      // iframe 还没加载完成，缓存命令，等 ready 后重发
+      h._pendingCmds.push(msg)
+      return
+    }
     try { h._iframe.contentWindow.postMessage(JSON.stringify(msg), '*') } catch (e) {}
   }
+
+  function youtubeCmd(func, args = []) {
+    iframePost({ event: 'command', func, args, id: 'player' })
+  }
+
   function iframeSeek(t) {
-    iframePost({ method: 'seekTo', time: t })
+    if (h.type === 'youtube') {
+      youtubeCmd('seekTo', [t, true])  // true = allowSeekAhead
+    } else if (h.type === 'bilibili') {
+      // B站播放器 postMessage（尽力而为）
+      iframePost({ method: 'seek', time: t })
+    }
   }
   function iframePlay() {
-    iframePost({ method: 'playVideo' })
+    if (h.type === 'youtube') {
+      youtubeCmd('playVideo')
+    } else if (h.type === 'bilibili') {
+      iframePost({ method: 'play' })
+    }
     h.playing = true
   }
   function iframePause() {
-    iframePost({ method: 'pauseVideo' })
+    if (h.type === 'youtube') {
+      youtubeCmd('pauseVideo')
+    } else if (h.type === 'bilibili') {
+      iframePost({ method: 'pause' })
+    }
     h.playing = false
   }
   function iframeTick() {
@@ -109,7 +137,7 @@ export function createPlayer(play, videoEl) {
     if (h.type === 'direct' && h.videoEl) {
       try { h.videoEl.playbackRate = r } catch (e) {}
     } else if (h.type === 'youtube') {
-      iframePost({ method: 'setPlaybackRate', rate: r })
+      youtubeCmd('setPlaybackRate', [r])
     }
   }
   h.seek = (t) => { h._seek(t) }
@@ -152,7 +180,26 @@ export function createPlayer(play, videoEl) {
     h.seek(0)
     h.play()
   }
-  h.setIframe = (el) => { h._iframe = el }
+  h.setIframe = (el) => {
+    h._iframe = el
+    if (!el) return
+    // 监听 iframe 加载完成，YouTube enablejsapi 需要等 iframe ready 后才能响应 postMessage
+    const markReady = () => {
+      h._iframeReady = true
+      // 重发缓存的命令
+      const pending = h._pendingCmds.splice(0)
+      pending.forEach(cmd => {
+        try { h._iframe.contentWindow.postMessage(JSON.stringify(cmd), '*') } catch (e) {}
+      })
+    }
+    if (el.contentWindow && el.contentWindow.postMessage) {
+      // 已经加载过的 iframe，延迟标记 ready（给 enablejsapi 初始化时间）
+      setTimeout(markReady, 300)
+    }
+    el.addEventListener('load', () => {
+      setTimeout(markReady, 300)  // load 后再等 300ms 让 enablejsapi 初始化
+    })
+  }
 
   return h
 }
