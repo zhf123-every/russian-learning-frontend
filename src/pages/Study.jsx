@@ -149,6 +149,25 @@ export default function Study() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [play?.src, play?.type])
 
+  // 二级兜底：如果上面的 effect 因 videoRef 时序问题未创建播放器，延迟重试
+  useEffect(() => {
+    if (!play || pRef.current) return
+    const timer = setTimeout(() => {
+      if (pRef.current) return
+      if (play.type === 'direct' && videoRef.current) {
+        const p = createPlayer(play, videoRef.current)
+        pRef.current = p
+        setPlayerReady(true)
+      } else if (play.type !== 'direct' && iframeRef.current) {
+        const p = createPlayer(play, null)
+        p.setIframe(iframeRef.current)
+        pRef.current = p
+        setPlayerReady(true)
+      }
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [play, playerReady])
+
   // 监听视频 timeupdate，跟踪当前播放句子索引（用于全文对照面板高亮滚动）
   useEffect(() => {
     if (!playerReady || !play || play.type !== 'direct' || !videoRef.current || !video) return
@@ -258,29 +277,69 @@ export default function Study() {
     ? (curStage === STAGES.DICTATE ? !dictateVideoShown : isHideMedia)
     : isHideMedia
 
-  // 视频控制函数（对齐句子时间点）
+  // 确保播放器已创建（兜底：useEffect 可能因时序问题未创建成功）
+  const ensurePlayer = useCallback(() => {
+    if (pRef.current || !play) return false
+    if (play.type === 'direct' && videoRef.current) {
+      const p = createPlayer(play, videoRef.current)
+      pRef.current = p
+      setPlayerReady(true)
+      return true
+    }
+    if (play.type !== 'direct' && iframeRef.current) {
+      const p = createPlayer(play, null)
+      p.setIframe(iframeRef.current)
+      pRef.current = p
+      setPlayerReady(true)
+      return true
+    }
+    return false
+  }, [play])
+
+  // 视频控制函数（对齐句子时间点）— 三级兜底：pRef → videoRef直控 → 错误提示
   const playSeg = (loop = true) => {
     if (!cur) return
+    console.log('[Study] playSeg', { loop, curIdx: curIdx, curStart: cur.start, curEnd: cur.end, hasPlayer: !!pRef.current, hasVideoEl: !!videoRef.current, playType: play?.type, videoUrl: video?.videoUrl })
+    ensurePlayer()
+    const start = cur.start != null ? cur.start : 0
+    const end = cur.end != null ? cur.end : (videoRef.current?.duration || 0)
     if (pRef.current) {
-      if (loop) pRef.current.playLoop(cur.start, cur.end)
-      else pRef.current.playSegment(cur.start, cur.end, false)
+      if (loop) pRef.current.playLoop(start, end)
+      else pRef.current.playSegment(start, end, false)
+    } else if (videoRef.current) {
+      // 终极兜底：直接控制 video 元素
+      try { if (start > 0) videoRef.current.currentTime = start } catch (e) {}
+      videoRef.current.play().catch(() => { toast('视频播放被浏览器阻止，请点击视频画面播放') })
+    } else {
+      toast('视频未加载（该素材可能没有视频地址），无法播放')
     }
     setPlayingIdx(curIdx)
     if (shangMode && shangWenjieStage === STAGES.DICTATE) setDictateVideoShown(false)
   }
   const playFull = () => {
-    if (pRef.current) pRef.current.playFull()
+    ensurePlayer()
+    if (pRef.current) {
+      pRef.current.playFull()
+    } else if (videoRef.current) {
+      try { videoRef.current.currentTime = 0 } catch (e) {}
+      videoRef.current.play().catch(() => { toast('视频播放被浏览器阻止，请点击视频画面播放') })
+    } else {
+      toast('视频未加载（该素材可能没有视频地址），无法播放')
+    }
     setPlayingIdx(-1)
     if (shangMode && shangWenjieStage === STAGES.DICTATE) setDictateVideoShown(false)
   }
   const stopPlay = () => {
     if (pRef.current) { pRef.current.pause(); pRef.current.stopLoop() }
+    if (videoRef.current) { videoRef.current.pause() }
     setPlayingIdx(-1)
     setActiveSentenceIdx(-1)
   }
   const onSpeed = (r) => {
     setSpeed(r)
+    ensurePlayer()
     if (pRef.current) pRef.current.setRate(r)
+    else if (videoRef.current) { videoRef.current.playbackRate = r }
   }
   const toggleLoop = () => {
     setLoopMode(v => {
@@ -288,6 +347,7 @@ export default function Study() {
       if (next) playSeg(true)
       else {
         if (pRef.current) { pRef.current.pause(); pRef.current.stopLoop() }
+        if (videoRef.current) { videoRef.current.pause() }
       }
       return next
     })
@@ -520,6 +580,11 @@ export default function Study() {
             )}
           </div>
         </div>
+        {!play && (
+          <div className="card" style={{ padding: '10px 14px', background: '#FDF2E9', border: '1px solid #E8C9A0', color: '#A86454', fontSize: 13, lineHeight: 1.6 }}>
+            ⚠️ 该素材没有视频地址（videoUrl），按钮无法控制视频播放。请在「自定义素材」中填写 mp4 视频链接后重新学习。
+          </div>
+        )}
         {!(shangMode && (curStage === STAGES.LISTEN || curStage === STAGES.DICTATE)) && (
           <div className="card">
             <div style={{ fontWeight: 600, marginBottom: 6 }}>台词列表 <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 13 }}>{sentences.length} 句</span></div>
@@ -657,9 +722,13 @@ export default function Study() {
                       <button className="btn" onClick={() => playSeg(false)} style={{ marginLeft: 6 }}>▶ 听一次</button>
                       <button className="btn sm" onClick={() => {
                         openFullText('🎤 全文跟读 · 字幕跟随')
+                        ensurePlayer()
                         if (pRef.current) {
                           if (videoRef.current) { try { videoRef.current.currentTime = 0 } catch(e) {} }
                           pRef.current.play()
+                        } else if (videoRef.current) {
+                          try { videoRef.current.currentTime = 0 } catch(e) {}
+                          videoRef.current.play().catch(() => {})
                         }
                       }} style={{ marginLeft: 6 }}>📄 全文跟读</button>
                     </div>
@@ -717,14 +786,18 @@ export default function Study() {
                         onClick={() => {
                           if (reciteAudioUrl) {
                             setShowReciteCompare(true)
+                            ensurePlayer()
+                            const firstStart = sentences[0]?.start
                             if (pRef.current) {
-                              const firstStart = sentences[0]?.start
                               if (firstStart != null && videoRef.current) {
                                 try { videoRef.current.currentTime = firstStart } catch(e) {}
                               } else if (videoRef.current) {
                                 try { videoRef.current.currentTime = 0 } catch(e) {}
                               }
                               pRef.current.play()
+                            } else if (videoRef.current) {
+                              try { videoRef.current.currentTime = firstStart != null ? firstStart : 0 } catch(e) {}
+                              videoRef.current.play().catch(() => {})
                             }
                           } else { toast('请先录音') }
                         }}
