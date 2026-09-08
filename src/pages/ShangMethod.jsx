@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useVocabStore } from '../store/vocabStore'
 import { useShangStore, STAGES } from '../store/shangStore'
-import { explainSentence } from '../lib/ai'
+import { explainSentence, reciteCompare } from '../lib/ai'
 import { toast } from '../lib/toast'
 import { courseLibrary, LEVELS } from '../data/courseLibrary'
+import FullTextPanel from '../components/FullTextPanel'
 
 const LEVEL_COLORS = { A1: '#8B735F', A2: '#A8937F', B1: '#B08A5A', B2: '#A86454' }
 
@@ -44,6 +45,25 @@ export default function ShangMethod() {
     try { return JSON.parse(localStorage.getItem('shang_marks_' + (level || 'A1')) || '{}') } catch { return {} }
   })
 
+  // —— 新增状态 ——
+  const [showFullText, setShowFullText] = useState(false)
+  const [fullTextTitle, setFullTextTitle] = useState('📖 全文对照')
+  const [ttsActiveIdx, setTtsActiveIdx] = useState(-1)
+  // 阶段5 录音背诵
+  const [isRecording, setIsRecording] = useState(false)
+  const [reciteAudioUrl, setReciteAudioUrl] = useState(null)
+  const [reciteBlob, setReciteBlob] = useState(null)
+  const [reciteResult, setReciteResult] = useState(null)
+  const [reciteAnalyzing, setReciteAnalyzing] = useState(false)
+  const [showReciteCompare, setShowReciteCompare] = useState(false)
+  const [reciteCompareIdx, setReciteCompareIdx] = useState(-1)
+
+  // 录音相关 ref
+  const mediaRecorderRef = useRef(null)
+  const recordChunksRef = useRef([])
+  const recordStreamRef = useRef(null)
+  const reciteAudioRef = useRef(null)
+
   const shang = useShangStore()
   // 阶段 1..5，沿用 shangWenjieStage 字段
   const [shangWenjieStage, setShangWenjieStage] = useState(STAGES.LISTEN)
@@ -81,6 +101,13 @@ export default function ShangMethod() {
     return () => { if (window.speechSynthesis) window.speechSynthesis.cancel() }
   }, [])
 
+  // 卸载时清理录音 URL
+  useEffect(() => {
+    return () => {
+      if (reciteAudioUrl) URL.revokeObjectURL(reciteAudioUrl)
+    }
+  }, [reciteAudioUrl])
+
   // TTS 播放（支持变速 + 循环）
   const playTTS = (text, loopOnce = false) => {
     if (!text) return
@@ -98,14 +125,15 @@ export default function ShangMethod() {
     }
   }
 
-  // 阶段 1：整篇连播
+  // 阶段 1：整篇连播（跟踪当前播放句子索引，用于全文对照面板高亮）
   const playAll = () => {
     if (sentencesWithId.length === 0) return
     if (window.speechSynthesis) window.speechSynthesis.cancel()
     setIsPlaying(true)
     let i = 0
     const next = () => {
-      if (i >= sentencesWithId.length) { setIsPlaying(false); return }
+      if (i >= sentencesWithId.length) { setIsPlaying(false); setTtsActiveIdx(-1); return }
+      setTtsActiveIdx(i)
       const s = sentencesWithId[i]
       const utter = new SpeechSynthesisUtterance(s.russian)
       utter.lang = 'ru-RU'
@@ -119,6 +147,7 @@ export default function ShangMethod() {
   const stopPlay = () => {
     if (window.speechSynthesis) window.speechSynthesis.cancel()
     setIsPlaying(false)
+    setTtsActiveIdx(-1)
   }
 
   const pickCollection = (i) => {
@@ -166,6 +195,7 @@ export default function ShangMethod() {
     setDictationResult(null)
     if (window.speechSynthesis) window.speechSynthesis.cancel()
     setIsPlaying(false)
+    setTtsActiveIdx(-1)
   }
 
   // 阶段 2：检查听写
@@ -253,6 +283,97 @@ export default function ShangMethod() {
 
   const markSentence = (mark) => {
     setMarks(prev => ({ ...prev, [curIdx]: mark }))
+  }
+
+  // —— 阶段5 录音背诵功能 ——
+  const startRecording = useCallback(async () => {
+    // 录音前停止TTS播放，避免麦克风录入朗读原声
+    try { window.speechSynthesis.cancel() } catch (e) {}
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      recordStreamRef.current = stream
+      const recorder = new MediaRecorder(stream)
+      recordChunksRef.current = []
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data)
+      }
+      recorder.onstop = () => {
+        const blob = new Blob(recordChunksRef.current, { type: 'audio/webm' })
+        const url = URL.createObjectURL(blob)
+        setReciteBlob(blob)
+        setReciteAudioUrl(url)
+        setReciteResult(null)
+        if (recordStreamRef.current) {
+          recordStreamRef.current.getTracks().forEach(t => t.stop())
+          recordStreamRef.current = null
+        }
+        toast('录音完成，可回放或上传AI分析')
+      }
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setIsRecording(true)
+      setReciteResult(null)
+    } catch (e) {
+      toast('无法访问麦克风：' + e.message)
+    }
+  }, [])
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
+    setIsRecording(false)
+  }, [])
+
+  const runReciteCompare = useCallback(async () => {
+    if (!reciteBlob) { toast('请先录音'); return }
+    setReciteAnalyzing(true)
+    try {
+      const standard = sentencesWithId.map(s => s.russian).join(' ')
+      const result = await reciteCompare(reciteBlob, standard)
+      setReciteResult(result)
+      toast('AI比对完成')
+    } catch (e) {
+      toast(e.message)
+    } finally {
+      setReciteAnalyzing(false)
+    }
+  }, [reciteBlob, sentencesWithId])
+
+  // 打开全文对照面板
+  const openFullText = (title) => {
+    setFullTextTitle(title || '📖 全文对照')
+    setShowFullText(true)
+  }
+
+  // 录音比对面板：音频播放时按平均时长高亮句子
+  const onReciteAudioTimeUpdate = () => {
+    const audio = reciteAudioRef.current
+    if (!audio || !audio.duration || !isFinite(audio.duration)) return
+    const perSentence = audio.duration / sentencesWithId.length
+    if (perSentence <= 0) return
+    const idx = Math.min(sentencesWithId.length - 1, Math.floor(audio.currentTime / perSentence))
+    setReciteCompareIdx(idx)
+  }
+
+  // 错误类型颜色映射
+  const errorColor = (type) => {
+    switch (type) {
+      case 'misread': return '#C0392B'
+      case 'omitted': return '#E67E22'
+      case 'extra': return '#2980B9'
+      case 'word_order': return '#8E44AD'
+      default: return '#7F8C8D'
+    }
+  }
+  const errorLabel = (type) => {
+    switch (type) {
+      case 'misread': return '读错'
+      case 'omitted': return '漏读'
+      case 'extra': return '多读'
+      case 'word_order': return '语序错误'
+      default: return type
+    }
   }
 
   // 主题选择页
@@ -408,6 +529,9 @@ export default function ShangMethod() {
                 <button className="btn sm" onClick={explainGrammar}>🤖 AI 单词/语法解析</button>
               )}
             </div>
+            <div style={{ marginTop: 10 }}>
+              <button className="btn sm" onClick={() => openFullText('📖 全文对照 · 精读纠错')}>📄 全文对照</button>
+            </div>
           </>
         )}
 
@@ -420,6 +544,7 @@ export default function ShangMethod() {
               <div style={{ marginTop: 8 }}>
                 <button className="btn primary" onClick={() => playTTS(currentSentenceWithId.russian, true)}>🔊 循环本句</button>
                 <button className="btn" onClick={() => playTTS(currentSentenceWithId.russian)} style={{ marginLeft: 8 }}>▶ 听一次</button>
+                <button className="btn sm" onClick={() => { setTtsActiveIdx(curIdx); openFullText('🎤 全文跟读 · 字幕跟随') }} style={{ marginLeft: 8 }}>📄 全文跟读</button>
               </div>
               <div className="row" style={{ marginTop: 10 }}>
                 <button className="btn sm" onClick={() => markRecite(true)}>✓ 本句跟读流畅</button>
@@ -443,6 +568,136 @@ export default function ShangMethod() {
               <button className="btn sm" onClick={() => markReciteOut(true)}>✓ 已流利复述</button>
               <button className="btn sm" onClick={() => markReciteOut(false)}>↻ 还需再练</button>
             </div>
+
+            {/* 阶段5 新增：全文背诵 + 录音原文比对 */}
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border2, #E0D6C4)' }}>
+              <div className="hint" style={{ marginBottom: 8 }}>📝 整篇背诵训练</div>
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {!isRecording ? (
+                  <button
+                    className="btn sm primary"
+                    onClick={startRecording}
+                    style={{ background: '#C0392B', borderColor: '#C0392B' }}
+                  >
+                    🎙 全文背诵（开始录音）
+                  </button>
+                ) : (
+                  <button
+                    className="btn sm"
+                    onClick={stopRecording}
+                    style={{
+                      background: '#C0392B',
+                      color: '#fff',
+                      borderColor: '#C0392B',
+                    }}
+                  >
+                    ⏹ 停止录音
+                  </button>
+                )}
+                <button
+                  className="btn sm"
+                  onClick={() => { if (reciteAudioUrl) { setShowReciteCompare(true) } else { toast('请先录音') } }}
+                >
+                  🎧 录音原文比对
+                </button>
+              </div>
+
+              {/* 录音完成后显示回放 + AI分析 */}
+              {reciteAudioUrl && !isRecording && (
+                <div style={{ marginTop: 12, textAlign: 'left' }}>
+                  <div className="hint" style={{ marginBottom: 6 }}>✅ 已录制背诵音频</div>
+                  <audio
+                    ref={reciteAudioRef}
+                    src={reciteAudioUrl}
+                    controls
+                    style={{ width: '100%', marginBottom: 8 }}
+                    onTimeUpdate={onReciteAudioTimeUpdate}
+                  />
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button
+                      className="btn sm primary"
+                      onClick={runReciteCompare}
+                      disabled={reciteAnalyzing}
+                    >
+                      {reciteAnalyzing ? '🤖 AI分析中…' : '🤖 AI分析比对'}
+                    </button>
+                    <button className="btn sm" onClick={() => { setReciteAudioUrl(null); setReciteBlob(null); setReciteResult(null) }}>
+                      🗑 重新录音
+                    </button>
+                    <button className="btn sm" onClick={() => playAll()}>
+                      ▶ 播放原声（TTS）
+                    </button>
+                  </div>
+
+                  {/* AI比对结果 */}
+                  {reciteResult && (
+                    <div style={{ marginTop: 12, padding: 12, background: '#FBF6EC', border: '1px solid var(--border2)', borderRadius: 8, textAlign: 'left' }}>
+                      <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>📊 AI 比对结果</div>
+                      {reciteResult.user_text && (
+                        <div style={{ marginBottom: 10 }}>
+                          <div className="hint">识别到的背诵内容：</div>
+                          <div style={{ marginTop: 4, fontSize: 14, lineHeight: 1.6, color: '#3D2F22' }}>{reciteResult.user_text}</div>
+                        </div>
+                      )}
+                      {reciteResult.errors && reciteResult.errors.length > 0 ? (
+                        <div style={{ marginBottom: 10 }}>
+                          <div className="hint" style={{ marginBottom: 6 }}>发现 {reciteResult.errors.length} 处问题：</div>
+                          {reciteResult.errors.map((err, i) => (
+                            <div key={i} style={{
+                              padding: '8px 10px',
+                              marginBottom: 6,
+                              borderRadius: 6,
+                              background: '#fff',
+                              borderLeft: `3px solid ${errorColor(err.type)}`,
+                              fontSize: 13,
+                              lineHeight: 1.5,
+                            }}>
+                              <div>
+                                <span style={{
+                                  display: 'inline-block',
+                                  padding: '1px 6px',
+                                  borderRadius: 3,
+                                  background: errorColor(err.type),
+                                  color: '#fff',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  marginRight: 6,
+                                }}>{errorLabel(err.type)}</span>
+                                {err.type === 'omitted' ? (
+                                  <span style={{ textDecoration: 'line-through', color: errorColor(err.type) }}>{err.original}</span>
+                                ) : (
+                                  <span>原文：<strong>{err.original}</strong></span>
+                                )}
+                                {err.user && err.type !== 'omitted' && (
+                                  <span style={{ marginLeft: 8, color: errorColor(err.type) }}>你读的：{err.user}</span>
+                                )}
+                                {err.user && err.type === 'extra' && (
+                                  <span style={{ color: errorColor(err.type) }}>多读：{err.user}</span>
+                                )}
+                              </div>
+                              {err.suggestion && (
+                                <div style={{ marginTop: 4, color: '#5C8A6B' }}>💡 {err.suggestion}</div>
+                              )}
+                              {err.correct_reading && (
+                                <div style={{ marginTop: 2, color: 'var(--muted)', fontSize: 12 }}>正确读法：{err.correct_reading}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ marginBottom: 10, color: '#5C8A6B', fontWeight: 600 }}>✅ 未发现明显错误，背诵很棒！</div>
+                      )}
+                      {reciteResult.overall_tip && (
+                        <div style={{ padding: '8px 10px', background: 'var(--soft)', borderRadius: 6, fontSize: 13, lineHeight: 1.6 }}>
+                          <strong>学习提示：</strong>{reciteResult.overall_tip}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {isFinished && (
               <div style={{ marginTop: 16, color: '#5C8A6B', fontWeight: 600 }}>🎉 本素材尚雯婕训练已完成</div>
             )}
@@ -493,6 +748,115 @@ export default function ShangMethod() {
           <button className={'btn sm' + (marks[curIdx] === 'weak' ? ' danger' : '')} onClick={() => markSentence('weak')}>⚠ 薄弱</button>
         </div>
       </div>
+
+      {/* 全文对照面板（阶段3/阶段4复用） */}
+      {showFullText && (
+        <FullTextPanel
+          sentences={sentencesWithId}
+          onClose={() => setShowFullText(false)}
+          highlightIdx={ttsActiveIdx >= 0 ? ttsActiveIdx : curIdx}
+          onSentenceClick={(idx) => {
+            setCurIdx(idx)
+            playTTS(sentencesWithId[idx]?.russian, false)
+          }}
+          title={fullTextTitle}
+        />
+      )}
+
+      {/* 录音原文比对面板 */}
+      {showReciteCompare && reciteAudioUrl && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(60, 45, 30, 0.55)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+          onClick={() => setShowReciteCompare(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#FDF8F0',
+              borderRadius: 14,
+              boxShadow: '0 20px 60px rgba(60,45,30,0.35)',
+              width: '100%',
+              maxWidth: 820,
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              border: '1px solid var(--border2, #E0D6C4)',
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '14px 20px',
+              borderBottom: '1px solid var(--border2, #E0D6C4)',
+              background: 'var(--soft, #F5F0E8)',
+            }}>
+              <div style={{ fontWeight: 600, fontSize: 16, color: '#5C4A3A' }}>
+                🎧 录音原文比对
+                <span style={{ marginLeft: 10, fontSize: 13, color: 'var(--muted)', fontWeight: 400 }}>播放录音时自动高亮对应句子</span>
+              </div>
+              <button className="btn sm" onClick={() => setShowReciteCompare(false)} style={{ fontSize: 12 }}>✕ 关闭</button>
+            </div>
+
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border2)', background: '#FBF6EC' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <audio
+                  src={reciteAudioUrl}
+                  controls
+                  style={{ flex: 1, minWidth: 200 }}
+                  onTimeUpdate={onReciteAudioTimeUpdate}
+                />
+                <button className="btn sm" onClick={playAll}>▶ 播放原声（TTS）</button>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+              {sentencesWithId.map((s, idx) => {
+                const isActive = idx === reciteCompareIdx
+                return (
+                  <div
+                    key={s.id ?? idx}
+                    style={{
+                      padding: '8px 14px',
+                      marginBottom: 6,
+                      borderRadius: 8,
+                      background: isActive ? 'rgba(176, 138, 90, 0.18)' : 'transparent',
+                      borderLeft: isActive ? '3px solid var(--accent, #B08A5A)' : '3px solid transparent',
+                      transition: 'background 0.2s',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <span style={{
+                        flexShrink: 0,
+                        width: 24, height: 24, borderRadius: '50%',
+                        background: isActive ? 'var(--accent)' : 'var(--soft)',
+                        color: isActive ? '#fff' : 'var(--muted)',
+                        fontSize: 11, fontWeight: 600,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        marginTop: 2,
+                      }}>{idx + 1}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 16, lineHeight: 1.6, color: '#3D2F22' }}>{s.russian}</div>
+                        {s.chinese && <div style={{ marginTop: 2, fontSize: 13, color: 'var(--muted)' }}>{s.chinese}</div>}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

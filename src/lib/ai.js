@@ -46,7 +46,47 @@ export async function explainSentence(text) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sentence: text }),
   })
+  if (!r.ok) {
+    let errMsg = '语法解析失败（HTTP ' + r.status + '）'
+    try {
+      const j = await r.json()
+      if (j && j.error) errMsg = j.error
+    } catch (e) { /* body 非 JSON，忽略 */ }
+    throw new Error(errMsg)
+  }
   const j = await r.json()
   if (!j.ok) throw new Error(j.error || '语法解析失败')
   return j.content
+}
+
+// Blob 转 base64（用于上传录音）
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
+// 背诵录音与原文比对：调用后端 /api/recite-compare
+// 返回 { user_text, errors: [{type, original, user, suggestion, correct_reading}], overall_tip }
+export async function reciteCompare(audioBlob, standardText) {
+  const base64 = await blobToBase64(audioBlob)
+  const r = await apiFetch('/api/recite-compare', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ audio: base64, standard: standardText }),
+  })
+  if (!r.ok) {
+    let errMsg = 'AI比对失败（HTTP ' + r.status + '）'
+    try {
+      const j = await r.json()
+      if (j && j.error) errMsg = j.error
+    } catch (e) { /* body 非 JSON，忽略 */ }
+    throw new Error(errMsg)
+  }
+  const j = await r.json()
+  if (!j.ok) throw new Error(j.error || 'AI比对失败')
+  return j.result
 }
