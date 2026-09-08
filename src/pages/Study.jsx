@@ -508,6 +508,35 @@ export default function Study() {
     }
   }
 
+  // 普通模式阶段控制（修复遗留的未定义变量 stageEl 导致白屏）
+  const stageEl = shangMode ? null : (() => {
+    if (stage === 'listen') {
+      return (
+        <div className="row">
+          <button className="btn primary" onClick={() => playSeg(false)}>▶ 播放本句</button>
+          <button className="btn" onClick={playFull} style={{ marginLeft: 8 }}>▶▶ 全文连播</button>
+        </div>
+      )
+    }
+    if (stage === 'dictate') {
+      return (
+        <div className="row">
+          <button className="btn primary" onClick={() => playSeg(true)}>🔁 循环本句</button>
+          <button className="btn" onClick={() => playSeg(false)} style={{ marginLeft: 8 }}>▶ 听一次</button>
+        </div>
+      )
+    }
+    if (stage === 'recite') {
+      return (
+        <div className="row">
+          <button className="btn primary" onClick={() => playSeg(true)}>🔁 循环本句</button>
+          <button className="btn" onClick={() => playSeg(false)} style={{ marginLeft: 8 }}>▶ 听一次</button>
+        </div>
+      )
+    }
+    return null
+  })()
+
   // ========== 渲染 ==========
   return (
     <div className="main">
