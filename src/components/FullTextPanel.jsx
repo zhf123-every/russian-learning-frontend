@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { apiFetch } from '../lib/api'
+import { callAI, parseAIJSON } from '../lib/ai'
 
 /**
  * 全文对照面板
@@ -21,7 +22,7 @@ export default function FullTextPanel({
 }) {
   const [showZh, setShowZh] = useState(true)
   const [hoveredSentence, setHoveredSentence] = useState(-1)
-  const [wordTip, setWordTip] = useState(null) // { text, x, y }
+  const [wordTip, setWordTip] = useState(null) // { word, pos, meaning, synonym, example, x, y, above }
   const [loadingWord, setLoadingWord] = useState('')
   const wordCache = useRef({})
   const bodyRef = useRef(null)
@@ -36,43 +37,86 @@ export default function FullTextPanel({
     }
   }, [highlightIdx])
 
-  // 单词查询（带缓存）
+  // 计算 tooltip 位置，确保不超出视口
+  const computeTipPos = useCallback((rect) => {
+    const tipW = 280
+    const tipH = 130 // 估算高度
+    let x = rect.left + rect.width / 2
+    x = Math.max(tipW / 2 + 8, Math.min(x, window.innerWidth - tipW / 2 - 8))
+    let y = rect.bottom + 6
+    let above = false
+    // 下方空间不足且上方足够时，显示在单词上方
+    if (rect.bottom + tipH > window.innerHeight && rect.top > tipH + 12) {
+      y = rect.top - 6
+      above = true
+    }
+    return { x, y, above }
+  }, [])
+
+  // 单词查询（带缓存，优先 AI 丰富释义，失败降级到 /api/dict）
   const lookupWord = useCallback(async (word, e) => {
     const clean = word.toLowerCase().trim()
     if (!clean) return
     const rect = e.target.getBoundingClientRect()
-    setWordTip({ text: '查询中…', x: rect.left + rect.width / 2, y: rect.bottom + 6 })
+    const pos = computeTipPos(rect)
+
+    setWordTip({ word: clean, pos: '', meaning: '查询中…', synonym: '', example: '', x: pos.x, y: pos.y, above: pos.above })
 
     if (wordCache.current[clean]) {
-      setWordTip({ text: wordCache.current[clean], x: rect.left + rect.width / 2, y: rect.bottom + 6 })
+      const cached = wordCache.current[clean]
+      setWordTip({ ...cached, x: pos.x, y: pos.y, above: pos.above })
       return
     }
 
     setLoadingWord(clean)
     try {
-      const r = await apiFetch('/api/dict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: clean }),
-      })
-      if (r.ok) {
-        const j = await r.json()
-        const meaning = (j && (j.meaning || j.translation || j.result)) || '未找到释义'
-        wordCache.current[clean] = meaning
-        setWordTip(prev => prev ? { ...prev, text: meaning } : null)
+      // 优先调用 /api/ai 获取丰富结构化释义
+      const text = await callAI([
+        { role: 'system', content: '你是俄语词典。对用户输入的俄语单词，严格按以下JSON格式返回，不要输出其他文字：{"word":"原形(重音)","pos":"词性","meaning":"主要中文释义","synonym":"中文同义词，用/分隔，如：去/走/前往","example":"俄语例句 — 中文翻译"}' },
+        { role: 'user', content: clean }
+      ])
+      const parsed = parseAIJSON(text)
+      if (parsed && parsed.word) {
+        const rich = {
+          word: parsed.word || clean,
+          pos: parsed.pos || '',
+          meaning: parsed.meaning || '',
+          synonym: parsed.synonym || '',
+          example: parsed.example || '',
+        }
+        wordCache.current[clean] = rich
+        setWordTip(prev => prev ? { ...rich, x: prev.x, y: prev.y, above: prev.above } : null)
       } else {
-        const meaning = '查询失败'
-        wordCache.current[clean] = meaning
-        setWordTip(prev => prev ? { ...prev, text: meaning } : null)
+        throw new Error('AI 返回格式异常')
       }
     } catch (err) {
-      const meaning = '网络错误'
-      wordCache.current[clean] = meaning
-      setWordTip(prev => prev ? { ...prev, text: meaning } : null)
+      // 降级到 /api/dict 获取简单释义
+      try {
+        const r = await apiFetch('/api/dict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ word: clean }),
+        })
+        if (r.ok) {
+          const j = await r.json()
+          const meaning = (j && (j.meaning || j.translation || j.result)) || '未找到释义'
+          const simple = { word: clean, pos: '', meaning, synonym: '', example: '' }
+          wordCache.current[clean] = simple
+          setWordTip(prev => prev ? { ...simple, x: prev.x, y: prev.y, above: prev.above } : null)
+        } else {
+          const simple = { word: clean, pos: '', meaning: '查询失败', synonym: '', example: '' }
+          wordCache.current[clean] = simple
+          setWordTip(prev => prev ? { ...simple, x: prev.x, y: prev.y, above: prev.above } : null)
+        }
+      } catch (e2) {
+        const simple = { word: clean, pos: '', meaning: '网络错误', synonym: '', example: '' }
+        wordCache.current[clean] = simple
+        setWordTip(prev => prev ? { ...simple, x: prev.x, y: prev.y, above: prev.above } : null)
+      }
     } finally {
       setLoadingWord('')
     }
-  }, [])
+  }, [computeTipPos])
 
   const clearWordTip = useCallback(() => setWordTip(null), [])
 
@@ -258,29 +302,53 @@ export default function FullTextPanel({
         </div>
       </div>
 
-      {/* 单词释义 tooltip（固定定位，跟随单词位置） */}
+      {/* 单词释义 tooltip（固定定位，跟随单词位置，结构化分层展示） */}
       {wordTip && (
         <div
           style={{
             position: 'fixed',
             left: wordTip.x,
             top: wordTip.y,
-            transform: 'translateX(-50%)',
-            background: '#3D2F22',
-            color: '#FDF8F0',
-            padding: '6px 12px',
-            borderRadius: 6,
-            fontSize: 13,
+            transform: wordTip.above ? 'translate(-50%, -100%)' : 'translateX(-50%)',
+            background: '#FDF8F0',
+            border: '1px solid var(--border2, #E0D6C4)',
+            borderRadius: 8,
+            padding: '10px 12px',
             maxWidth: 280,
+            boxShadow: '0 4px 16px rgba(90,70,50,0.18)',
             zIndex: 10000,
+            fontSize: 13,
+            color: '#5C4A3A',
+            lineHeight: 1.5,
             pointerEvents: 'none',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-            lineHeight: 1.4,
-            whiteSpace: 'normal',
-            textAlign: 'center',
+            textAlign: 'left',
           }}
         >
-          {loadingWord ? '查询中…' : wordTip.text}
+          {/* 第一行：单词原形（加粗）+ 词性 */}
+          <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 14 }}>
+            {wordTip.word}
+            {wordTip.pos && (
+              <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--muted, #9A8B7A)', marginLeft: 6 }}>
+                {wordTip.pos}
+              </span>
+            )}
+          </div>
+          {/* 第二行：中文释义 */}
+          {wordTip.meaning && (
+            <div style={{ marginBottom: 4 }}>{wordTip.meaning}</div>
+          )}
+          {/* 第三行：中文同义解释 */}
+          {wordTip.synonym && (
+            <div style={{ color: 'var(--accent, #B08A5A)', fontSize: 12, marginBottom: 4 }}>
+              在中文中相当于：{wordTip.synonym}
+            </div>
+          )}
+          {/* 第四行：例句 */}
+          {wordTip.example && (
+            <div style={{ fontSize: 11, color: '#7A6B5A', fontStyle: 'italic' }}>
+              {wordTip.example}
+            </div>
+          )}
         </div>
       )}
     </div>

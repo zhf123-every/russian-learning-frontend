@@ -15,8 +15,8 @@ export const courseLibrary = {
             thumbnail: 'https://picsum.photos/seed/ru_greet_01/400/280',
             posterUrl: 'https://picsum.photos/seed/ru_greet_01/1280/720',
             level: 'A1',
-            duration: '4:30',
-            words: 120,
+            duration: '5:00',
+            words: 140,
             tags: ['慢速', '基础', '口语'],
             learners: 128,
             sentences: [
@@ -34,7 +34,12 @@ export const courseLibrary = {
               { id: 12, russian: 'Пока́!', chinese: '拜拜！（非正式）' },
               { id: 13, russian: 'Спаси́бо большо́е!', chinese: '非常感谢！' },
               { id: 14, russian: 'Пожа́луйста.', chinese: '不客气。／请。' },
-              { id: 15, russian: 'Извини́те, пожа́луйста.', chinese: '对不起，打扰一下。' }
+              { id: 15, russian: 'Извини́те, пожа́луйста.', chinese: '对不起，打扰一下。' },
+              { id: 16, russian: 'Спаси́бо за по́мощь.', chinese: '谢谢你的帮助。' },
+              { id: 17, russian: 'Не за что.', chinese: '不客气。' },
+              { id: 18, russian: 'Прости́те, пожа́луйста.', chinese: '请原谅。' },
+              { id: 19, russian: 'Ничего́, всё хорошо́.', chinese: '没关系，一切都好。' },
+              { id: 20, russian: 'Хороше́го дня!', chinese: '祝你今天愉快！' }
             ]
           }
         ]
@@ -51,8 +56,8 @@ export const courseLibrary = {
             thumbnail: 'https://picsum.photos/seed/ru_intro_01/400/280',
             posterUrl: 'https://picsum.photos/seed/ru_intro_01/1280/720',
             level: 'A1',
-            duration: '5:10',
-            words: 140,
+            duration: '5:40',
+            words: 150,
             tags: ['基础', '口语', '自我介绍'],
             learners: 96,
             sentences: [
@@ -70,7 +75,12 @@ export const courseLibrary = {
               { id: 12, russian: 'Я люблю́ чита́ть.', chinese: '我喜欢阅读。' },
               { id: 13, russian: 'Я учу́ ру́сский язы́к.', chinese: '我在学俄语。' },
               { id: 14, russian: 'Повтори́те, пожа́луйста.', chinese: '请再说一遍。' },
-              { id: 15, russian: 'Я не понима́ю.', chinese: '我不明白。' }
+              { id: 15, russian: 'Я не понима́ю.', chinese: '我不明白。' },
+              { id: 16, russian: 'Я живу́ в Москве́.', chinese: '我住在莫斯科。' },
+              { id: 17, russian: 'Мой друг — инжене́р.', chinese: '我的朋友是工程师。' },
+              { id: 18, russian: 'Я люблю́ му́зыку.', chinese: '我喜欢音乐。' },
+              { id: 19, russian: 'Где вы живёте?', chinese: '您住在哪里？' },
+              { id: 20, russian: 'Я рабо́таю в ба́нке.', chinese: '我在银行工作。' }
             ]
           }
         ]
@@ -87,8 +97,8 @@ export const courseLibrary = {
             thumbnail: 'https://picsum.photos/seed/ru_basics_01/400/280',
             posterUrl: 'https://picsum.photos/seed/ru_basics_01/1280/720',
             level: 'A1',
-            duration: '4:50',
-            words: 130,
+            duration: '5:20',
+            words: 145,
             tags: ['基础', '数字', '物品'],
             learners: 88,
             sentences: [
@@ -106,7 +116,380 @@ export const courseLibrary = {
               { id: 12, russian: 'Мне нра́вится зелёный цвет.', chinese: '我喜欢绿色。' },
               { id: 13, russian: 'У нас три́дцать уче́ников.', chinese: '我们有三十名学生。' },
               { id: 14, russian: 'Э́то о́чень до́рого.', chinese: '这太贵了。' },
-              { id: 15, russian: 'Я хочу́ купи́ть но́вый телефо́н.', chinese: '我想买一部新手机。' }
+              { id: 15, russian: 'Я хочу́ купи́ть но́вый телефо́н.', chinese: '我想买一部新手机。' },
+              { id: 16, russian: 'У меня́ есть два карандаша́.', chinese: '我有两支铅笔。' },
+              { id: 17, russian: 'Э́та кни́га интере́сная.', chinese: '这本书很有趣。' },
+              { id: 18, russian: 'Како́й ваш люби́мый цвет?', chinese: '你最喜欢什么颜色？' },
+              { id: 19, russian: 'Дайте мне, пожа́луйста, хлеб.', chinese: '请给我面包。' },
+              { id: 20, russian: 'У вас есть мело́чь?', chinese: '您有零钱吗？' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'a1_family',
+        name: '俄语入门：家庭与朋友',
+        description: '谈论家庭成员、亲属关系和朋友，学习描述家人职业与性格的基础表达。',
+        videos: [
+          {
+            id: 'a1_family_01',
+            title: '我的家庭和朋友',
+            description: '学习用俄语介绍家人、描述亲属关系和谈论朋友。',
+            thumbnail: 'https://picsum.photos/seed/ru_family_01/400/280',
+            posterUrl: 'https://picsum.photos/seed/ru_family_01/1280/720',
+            level: 'A1',
+            duration: '4:10',
+            words: 160,
+            tags: ['基础', '家庭', '口语'],
+            learners: 82,
+            sentences: [
+              { id: 1, russian: 'У меня́ большо́й семья́.', chinese: '我有一个大家庭。' },
+              { id: 2, russian: 'У меня́ есть отец и мать.', chinese: '我有父亲和母亲。' },
+              { id: 3, russian: 'Мой отец рабо́тает врачо́м.', chinese: '我父亲是医生。' },
+              { id: 4, russian: 'Моя́ мать — учи́тельница.', chinese: '我母亲是老师。' },
+              { id: 5, russian: 'У меня́ есть оди́н брат.', chinese: '我有一个兄弟。' },
+              { id: 6, russian: 'Мое́й сестре́ пятна́дцать лет.', chinese: '我妹妹十五岁。' },
+              { id: 7, russian: 'Мой деду́шка на пе́нсии.', chinese: '我祖父退休了。' },
+              { id: 8, russian: 'Бабу́шка гото́вит о́чень вку́сно.', chinese: '奶奶做饭很好吃。' },
+              { id: 9, russian: 'Мы живём вме́сте.', chinese: '我们住在一起。' },
+              { id: 10, russian: 'Я люблю́ свою́ семью́.', chinese: '我爱我的家人。' },
+              { id: 11, russian: 'У меня́ мно́го друзе́й.', chinese: '我有很多朋友。' },
+              { id: 12, russian: 'Мой лу́чший друг — Андре́й.', chinese: '我最好的朋友是安德烈。' },
+              { id: 13, russian: 'Мы у́чимся в одно́й гру́ппе.', chinese: '我们在同一个班学习。' },
+              { id: 14, russian: 'Он о́чень добрый.', chinese: '他很善良。' },
+              { id: 15, russian: 'Она́ помога́ет мне с ру́сским.', chinese: '她帮我学俄语。' },
+              { id: 16, russian: 'Мы ча́сто встреча́емся.', chinese: '我们经常见面。' },
+              { id: 17, russian: 'Вчера́ мы ходи́ли в кино́.', chinese: '昨天我们去看电影了。' },
+              { id: 18, russian: 'Мой друг лю́бит спорт.', chinese: '我的朋友喜欢运动。' },
+              { id: 19, russian: 'Мы игра́ем в футбо́л по выхо́дным.', chinese: '我们周末踢足球。' },
+              { id: 20, russian: 'Я рад, что у меня́ есть друзья́.', chinese: '我很高兴有朋友。' },
+              { id: 21, russian: 'У моего́ брата есть сын.', chinese: '我哥哥有一个儿子。' },
+              { id: 22, russian: 'Моя́ племя́нница о́чень ми́лая.', chinese: '我的侄女很可爱。' },
+              { id: 23, russian: 'Мы созвани́ваемся ка́ждый день.', chinese: '我们每天通电话。' },
+              { id: 24, russian: 'Семья́ — э́то са́мое ва́жное.', chinese: '家庭是最重要的。' },
+              { id: 25, russian: 'Я скуча́ю по свое́й семье́.', chinese: '我想念我的家人。' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'a1_daily_routine',
+        name: '俄语入门：日常活动',
+        description: '描述一天的作息安排，从起床到睡觉，学习常用的日常动词和时间表达。',
+        videos: [
+          {
+            id: 'a1_routine_01',
+            title: '我的一天：从起床到睡觉',
+            description: '学习用俄语描述日常作息、上下班和晚间活动。',
+            thumbnail: 'https://picsum.photos/seed/ru_routine_01/400/280',
+            posterUrl: 'https://picsum.photos/seed/ru_routine_01/1280/720',
+            level: 'A1',
+            duration: '4:10',
+            words: 165,
+            tags: ['基础', '日常', '动词'],
+            learners: 76,
+            sentences: [
+              { id: 1, russian: 'Я встаю́ в семь утра́.', chinese: '我早上七点起床。' },
+              { id: 2, russian: 'Снача́ла я умыва́юсь.', chinese: '我先洗脸。' },
+              { id: 3, russian: 'Потом я одева́юсь.', chinese: '然后我穿衣服。' },
+              { id: 4, russian: 'Я за́втракаю в семь три́дцать.', chinese: '我七点半吃早饭。' },
+              { id: 5, russian: 'На за́втрак я ем ка́шу.', chinese: '早饭我喝粥。' },
+              { id: 6, russian: 'Я пью чай с са́харом.', chinese: '我喝加糖的茶。' },
+              { id: 7, russian: 'В восемь я иду́ на рабо́ту.', chinese: '我八点去上班。' },
+              { id: 8, russian: 'Я е́ду на рабо́ту на метро́.', chinese: '我坐地铁去上班。' },
+              { id: 9, russian: 'Доро́га занима́ет со́рок мину́т.', chinese: '路上花四十分钟。' },
+              { id: 10, russian: 'Я начина́ю рабо́ту в девять.', chinese: '我九点开始工作。' },
+              { id: 11, russian: 'Я обе́даю в двена́дцать.', chinese: '我十二点吃午饭。' },
+              { id: 12, russian: 'Я обе́даю в столо́вой.', chinese: '我在食堂吃午饭。' },
+              { id: 13, russian: 'В пять я заканчива́ю рабо́ту.', chinese: '我五点下班。' },
+              { id: 14, russian: 'Я возвраща́юсь домо́й в шесть.', chinese: '我六点回家。' },
+              { id: 15, russian: 'Дома́ я отдыха́ю.', chinese: '在家我休息。' },
+              { id: 16, russian: 'В семь я у́жинаю.', chinese: '我七点吃晚饭。' },
+              { id: 17, russian: 'По́сле у́жина я чита́ю кни́гу.', chinese: '晚饭后我读书。' },
+              { id: 18, russian: 'Ино́гда я смотрю́ телеви́зор.', chinese: '有时我看电视。' },
+              { id: 19, russian: 'Я гуля́ю ве́чером.', chinese: '我晚上散步。' },
+              { id: 20, russian: 'В оди́ннадцать я ложу́сь спать.', chinese: '我十一点睡觉。' },
+              { id: 21, russian: 'Я хорошо́ высыпа́юсь.', chinese: '我睡得很好。' },
+              { id: 22, russian: 'Утром я дела́ю заря́дку.', chinese: '早上我做操。' },
+              { id: 23, russian: 'Я принима́ю душ.', chinese: '我洗澡。' },
+              { id: 24, russian: 'Мой день о́чень насы́щенный.', chinese: '我的一天很充实。' },
+              { id: 25, russian: 'Я люблю́ свой распоря́док.', chinese: '我喜欢我的作息。' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'a1_food',
+        name: '俄语入门：餐饮与点餐',
+        description: '在咖啡馆和餐厅点餐、询问菜品、结账，学习餐饮场景的核心表达。',
+        videos: [
+          {
+            id: 'a1_food_01',
+            title: '在餐厅：点餐与结账',
+            description: '学习用俄语在餐厅点餐、询问价格和结账。',
+            thumbnail: 'https://picsum.photos/seed/ru_food_01/400/280',
+            posterUrl: 'https://picsum.photos/seed/ru_food_01/1280/720',
+            level: 'A1',
+            duration: '4:10',
+            words: 155,
+            tags: ['基础', '餐饮', '口语'],
+            learners: 90,
+            sentences: [
+              { id: 1, russian: 'Я хочу́ поесть.', chinese: '我想吃东西。' },
+              { id: 2, russian: 'Я го́лоден.', chinese: '我饿了。' },
+              { id: 3, russian: 'Дава́йте пойдём в кафе́.', chinese: '我们去咖啡馆吧。' },
+              { id: 4, russian: 'Я хочу́ ча́шку ко́фе.', chinese: '我想要一杯咖啡。' },
+              { id: 5, russian: 'Мне ну́жен стака́н воды́.', chinese: '我需要一杯水。' },
+              { id: 6, russian: 'Я люблю́ ру́сскую кухню.', chinese: '我喜欢俄罗斯菜。' },
+              { id: 7, russian: 'Что вы сове́туете?', chinese: '您推荐什么？' },
+              { id: 8, russian: 'Я хочу́ борщ.', chinese: '我想要红菜汤。' },
+              { id: 9, russian: 'Это о́чень вку́сно.', chinese: '这很好吃。' },
+              { id: 10, russian: 'Ско́лько сто́ит э́тот обе́д?', chinese: '这顿午饭多少钱？' },
+              { id: 11, russian: 'Это сто́ит три́дцать рубле́й.', chinese: '这三十卢布。' },
+              { id: 12, russian: 'Это не до́рого.', chinese: '这不贵。' },
+              { id: 13, russian: 'У вас есть вегетариа́нское блю́до?', chinese: '你们有素食吗？' },
+              { id: 14, russian: 'Я не ем мя́со.', chinese: '我不吃肉。' },
+              { id: 15, russian: 'Принеси́те, пожа́луйста, меню́.', chinese: '请拿菜单来。' },
+              { id: 16, russian: 'Я бу́ду суп и сала́т.', chinese: '我要汤和沙拉。' },
+              { id: 17, russian: 'Как вам ко́фе — с молоко́м?', chinese: '您的咖啡要加奶吗？' },
+              { id: 18, russian: 'Да, пожа́луйста, с молоко́м.', chinese: '是的，请加奶。' },
+              { id: 19, russian: 'Счёт, пожа́луйста.', chinese: '请结账。' },
+              { id: 20, russian: 'Здесь мо́жно заплати́ть кар́той?', chinese: '这里可以刷卡吗？' },
+              { id: 21, russian: 'Я люблю́ чай с лимо́ном.', chinese: '我喜欢加柠檬的茶。' },
+              { id: 22, russian: 'На за́втрак я ем я́блоко.', chinese: '早饭我吃一个苹果。' },
+              { id: 23, russian: 'Я пью молоко́ ка́ждое у́тро.', chinese: '我每天早上喝牛奶。' },
+              { id: 24, russian: 'Э́тот хлеб све́жий.', chinese: '这面包很新鲜。' },
+              { id: 25, russian: 'Спаси́бо, я уже́ сыт.', chinese: '谢谢，我已经饱了。' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'a1_shopping',
+        name: '俄语入门：购物与价格',
+        description: '在商店和超市购物、询问价格、试穿衣服、付款结账，学习购物场景表达。',
+        videos: [
+          {
+            id: 'a1_shop_01',
+            title: '在商店：购物与付款',
+            description: '学习用俄语询问价格、挑选商品、试穿和付款。',
+            thumbnail: 'https://picsum.photos/seed/ru_shop_01/400/280',
+            posterUrl: 'https://picsum.photos/seed/ru_shop_01/1280/720',
+            level: 'A1',
+            duration: '4:10',
+            words: 160,
+            tags: ['基础', '购物', '口语'],
+            learners: 85,
+            sentences: [
+              { id: 1, russian: 'Я хочу́ купи́ть хлеб.', chinese: '我想买面包。' },
+              { id: 2, russian: 'Где находи́тся магази́н?', chinese: '商店在哪里？' },
+              { id: 3, russian: 'Я иду́ в суперма́ркет.', chinese: '我去超市。' },
+              { id: 4, russian: 'Ско́лько сто́ит молоко́?', chinese: '牛奶多少钱？' },
+              { id: 5, russian: 'Это сто́ит пятьдеся́т рубле́й.', chinese: '这五十卢布。' },
+              { id: 6, russian: 'Это о́чень до́рого.', chinese: '这太贵了。' },
+              { id: 7, russian: 'А э́то дёшево.', chinese: '这个便宜。' },
+              { id: 8, russian: 'У вас есть я́блоки?', chinese: '你们有苹果吗？' },
+              { id: 9, russian: 'Да, они́ там.', chinese: '有，在那边。' },
+              { id: 10, russian: 'Дайте мне два килогра́мма.', chinese: '给我两公斤。' },
+              { id: 11, russian: 'Како́й разме́р вам ну́жен?', chinese: '您需要多大码？' },
+              { id: 12, russian: 'Мне ну́жен разме́р M.', chinese: '我需要M码。' },
+              { id: 13, russian: 'Мо́жно приме́рить?', chinese: '可以试穿吗？' },
+              { id: 14, russian: 'Где приме́рочная?', chinese: '试衣间在哪里？' },
+              { id: 15, russian: 'Это мне подхо́дит.', chinese: '这个适合我。' },
+              { id: 16, russian: 'Я беру́ э́ту вещь.', chinese: '我买这件。' },
+              { id: 17, russian: 'Где касса́?', chinese: '收银台在哪里？' },
+              { id: 18, russian: 'Заплачу́ нали́чными.', chinese: '我付现金。' },
+              { id: 19, russian: 'У вас есть ски́дка?', chinese: '有折扣吗？' },
+              { id: 20, russian: 'Сейча́с распро́дажа.', chinese: '现在在打折。' },
+              { id: 21, russian: 'Это после́дний разме́р.', chinese: '这是最后一个码了。' },
+              { id: 22, russian: 'Мне ну́жен паке́т.', chinese: '我需要一个袋子。' },
+              { id: 23, russian: 'Спаси́бо за покупку!', chinese: '谢谢惠顾！' },
+              { id: 24, russian: 'До свида́ния, прихо́дите ещё.', chinese: '再见，欢迎再来。' },
+              { id: 25, russian: 'Я купи́л всё, что ну́жно.', chinese: '我买了所有需要的东西。' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'a1_transport',
+        name: '俄语入门：交通与出行',
+        description: '乘坐公共交通、问路、打车、前往机场火车站，学习出行场景的核心表达。',
+        videos: [
+          {
+            id: 'a1_transport_01',
+            title: '出行：坐地铁、公交和打车',
+            description: '学习用俄语问路、乘坐公共交通和叫出租车。',
+            thumbnail: 'https://picsum.photos/seed/ru_transport_01/400/280',
+            posterUrl: 'https://picsum.photos/seed/ru_transport_01/1280/720',
+            level: 'A1',
+            duration: '4:10',
+            words: 165,
+            tags: ['基础', '交通', '问路'],
+            learners: 78,
+            sentences: [
+              { id: 1, russian: 'Как пройти́ к метро́?', chinese: '怎么去地铁站？' },
+              { id: 2, russian: 'Иди́те прямо́.', chinese: '直走。' },
+              { id: 3, russian: 'Потом поверни́те нале́во.', chinese: '然后左转。' },
+              { id: 4, russian: 'Метро́ там, за угло́м.', chinese: '地铁在那边，拐角处。' },
+              { id: 5, russian: 'Я е́ду на авто́бусе.', chinese: '我坐公交车。' },
+              { id: 6, russian: 'Како́й авто́бус идёт к це́нтру?', chinese: '哪路公交车去市中心？' },
+              { id: 7, russian: 'Мне ну́жен трамва́й номер пять.', chinese: '我需要5路有轨电车。' },
+              { id: 8, russian: 'Где остано́вка?', chinese: '车站在哪里？' },
+              { id: 9, russian: 'Ско́лько сто́ит биле́т?', chinese: '车票多少钱？' },
+              { id: 10, russian: 'Биле́т сто́ит пятьдеся́т рубле́й.', chinese: '车票五十卢布。' },
+              { id: 11, russian: 'Где я могу́ купи́ть биле́т?', chinese: '我在哪里可以买票？' },
+              { id: 12, russian: 'В кассе́ или в автома́те.', chinese: '在售票窗口或自动售票机。' },
+              { id: 13, russian: 'Когда́ прихо́дит по́езд?', chinese: '火车什么时候到？' },
+              { id: 14, russian: 'По́езд прихо́дит в три часа́.', chinese: '火车三点到。' },
+              { id: 15, russian: 'Я опаз́дываю на рабо́ту.', chinese: '我上班要迟到了。' },
+              { id: 16, russian: 'В маши́не пробка́.', chinese: '路上堵车了。' },
+              { id: 17, russian: 'Я вы́зову такси́.', chinese: '我叫辆出租车。' },
+              { id: 18, russian: 'Такси́ прие́дет че́рез пять мину́т.', chinese: '出租车五分钟后到。' },
+              { id: 19, russian: 'Мне ну́жно в аэропо́рт.', chinese: '我要去机场。' },
+              { id: 20, russian: 'Ско́лько вре́мени е́хать?', chinese: '要走多长时间？' },
+              { id: 21, russian: 'Е́хать со́рок мину́т.', chinese: '要走四十分钟。' },
+              { id: 22, russian: 'Где вокза́л?', chinese: '火车站在哪里？' },
+              { id: 23, russian: 'Я лечу́ в Москву́.', chinese: '我飞往莫斯科。' },
+              { id: 24, russian: 'Мой рейс номер де́сять.', chinese: '我的航班是10号。' },
+              { id: 25, russian: 'Спаси́бо за по́мощь!', chinese: '谢谢你的帮助！' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'a1_time_date',
+        name: '俄语入门：时间与日期',
+        description: '询问时间、谈论星期、日期和月份，学习时间表达和约会安排。',
+        videos: [
+          {
+            id: 'a1_time_01',
+            title: '时间与日期：今天几号星期几',
+            description: '学习用俄语询问时间、谈论日期和安排约会。',
+            thumbnail: 'https://picsum.photos/seed/ru_time_01/400/280',
+            posterUrl: 'https://picsum.photos/seed/ru_time_01/1280/720',
+            level: 'A1',
+            duration: '4:10',
+            words: 150,
+            tags: ['基础', '时间', '日期'],
+            learners: 72,
+            sentences: [
+              { id: 1, russian: 'Кото́рый час?', chinese: '几点了？' },
+              { id: 2, russian: 'Сейчас три часа́.', chinese: '现在三点。' },
+              { id: 3, russian: 'Уже́ почти́ полдень.', chinese: '已经快中午了。' },
+              { id: 4, russian: 'Встре́тимся в пять часо́в.', chinese: '我们五点见面。' },
+              { id: 5, russian: 'Во ско́лько вы встаёте?', chinese: '您几点起床？' },
+              { id: 6, russian: 'Я встаю́ в семь утра́.', chinese: '我早上七点起床。' },
+              { id: 7, russian: 'Како́й сего́дня день?', chinese: '今天星期几？' },
+              { id: 8, russian: 'Сегодня́ понеде́льник.', chinese: '今天星期一。' },
+              { id: 9, russian: 'За́втра бу́дет вторни́к.', chinese: '明天是星期二。' },
+              { id: 10, russian: 'Вчера́ было воскресе́нье.', chinese: '昨天是星期日。' },
+              { id: 11, russian: 'Како́е сего́дня число́?', chinese: '今天几号？' },
+              { id: 12, russian: 'Сегодня́ перво́е сентябри́.', chinese: '今天九月一日。' },
+              { id: 13, russian: 'Мой день рожде́ния пятна́дцатого.', chinese: '我的生日是15号。' },
+              { id: 14, russian: 'В како́м ме́сяце вы родили́сь?', chinese: '您出生在哪个月？' },
+              { id: 15, russian: 'Я роди́лся в ма́рте.', chinese: '我出生在三月。' },
+              { id: 16, russian: 'Сейча́с о́сень.', chinese: '现在是秋天。' },
+              { id: 17, russian: 'Скоро́ зима́.', chinese: '冬天快到了。' },
+              { id: 18, russian: 'У нас бу́дут кани́кулы.', chinese: '我们要放假了。' },
+              { id: 19, russian: 'Кани́кулы начну́тся в декабре́.', chinese: '假期十二月开始。' },
+              { id: 20, russian: 'Я рабо́таю с понеде́льника по пятни́цу.', chinese: '我周一到周五工作。' },
+              { id: 21, russian: 'По выхо́дным я отдыха́ю.', chinese: '周末我休息。' },
+              { id: 22, russian: 'У нас уро́к в два часа́.', chinese: '我们两点上课。' },
+              { id: 23, russian: 'Уро́к дли́тся час.', chinese: '课上一个小时。' },
+              { id: 24, russian: 'Уже́ поздно, мне пора́.', chinese: '已经晚了，我该走了。' },
+              { id: 25, russian: 'До встре́чи в сле́дующий раз!', chinese: '下次见！' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'a1_weather',
+        name: '俄语入门：天气与季节',
+        description: '谈论天气状况、四季变化、穿着建议和天气预报，学习自然现象的基础表达。',
+        videos: [
+          {
+            id: 'a1_weather_01',
+            title: '天气与季节：今天冷还是热',
+            description: '学习用俄语谈论天气、四季和穿着建议。',
+            thumbnail: 'https://picsum.photos/seed/ru_weather_01/400/280',
+            posterUrl: 'https://picsum.photos/seed/ru_weather_01/1280/720',
+            level: 'A1',
+            duration: '4:10',
+            words: 155,
+            tags: ['基础', '天气', '季节'],
+            learners: 68,
+            sentences: [
+              { id: 1, russian: 'Кака́я сего́дня пого́да?', chinese: '今天天气怎么样？' },
+              { id: 2, russian: 'Сегодня́ холо́дно.', chinese: '今天很冷。' },
+              { id: 3, russian: 'На у́лице минус пять.', chinese: '外面零下五度。' },
+              { id: 4, russian: 'Идёт снег.', chinese: '在下雪。' },
+              { id: 5, russian: 'Не́бо серое, обла́чно.', chinese: '天空灰蒙蒙的，多云。' },
+              { id: 6, russian: 'А вчера́ бы́ло тепло́.', chinese: '昨天很暖和。' },
+              { id: 7, russian: 'Бы́ло со́лнечно и я́сно.', chinese: '阳光明媚，天气晴朗。' },
+              { id: 8, russian: 'Я люблю́ ле́то.', chinese: '我喜欢夏天。' },
+              { id: 9, russian: 'Летом жа́рко и светло́.', chinese: '夏天又热又亮。' },
+              { id: 10, russian: 'Мо́жно купа́ться в реке́.', chinese: '可以在河里游泳。' },
+              { id: 11, russian: 'Весна́ — моё люби́мое вре́мя го́да.', chinese: '春天是我最喜欢的季节。' },
+              { id: 12, russian: 'Весно́й цвету́т дере́вья.', chinese: '春天树木开花。' },
+              { id: 13, russian: 'Осенью ча́сто идёт дождь.', chinese: '秋天经常下雨。' },
+              { id: 14, russian: 'Мне нра́вится о́сень.', chinese: '我喜欢秋天。' },
+              { id: 15, russian: 'Зимо́й мы хо́дим на конька́х.', chinese: '冬天我们滑冰。' },
+              { id: 16, russian: 'Я одева́юсь теп́ло.', chinese: '我穿得很暖和。' },
+              { id: 17, russian: 'На́до надеть ша́пку.', chinese: '需要戴帽子。' },
+              { id: 18, russian: 'Ве́тер си́льный сего́дня.', chinese: '今天风很大。' },
+              { id: 19, russian: 'Будет ли за́втра дождь?', chinese: '明天会下雨吗？' },
+              { id: 20, russian: 'По прогно́зу, бу́дет со́лнечно.', chinese: '预报说会是晴天。' },
+              { id: 21, russian: 'Я беру́ с собо́й зонт.', chinese: '我带把伞。' },
+              { id: 22, russian: 'На у́лице сы́ро и холодно.', chinese: '外面又湿又冷。' },
+              { id: 23, russian: 'Я люблю́, когда́ светит со́лнце.', chinese: '我喜欢阳光照耀的时候。' },
+              { id: 24, russian: 'Пого́да испо́ртилась.', chinese: '天气变坏了。' },
+              { id: 25, russian: 'Завтра́ обеща́ют потепле́ние.', chinese: '预报说明天会回暖。' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'a1_health',
+        name: '俄语入门：身体与健康',
+        description: '描述身体不适、看医生、买药和表达健康状况，学习就医场景的基础表达。',
+        videos: [
+          {
+            id: 'a1_health_01',
+            title: '健康与就医：我不舒服',
+            description: '学习用俄语描述症状、看医生和买药。',
+            thumbnail: 'https://picsum.photos/seed/ru_health_01/400/280',
+            posterUrl: 'https://picsum.photos/seed/ru_health_01/1280/720',
+            level: 'A1',
+            duration: '4:10',
+            words: 155,
+            tags: ['基础', '健康', '就医'],
+            learners: 65,
+            sentences: [
+              { id: 1, russian: 'Как вы себя́ чу́вствуете?', chinese: '您感觉怎么样？' },
+              { id: 2, russian: 'Я чу́вствую себя́ хорошо́.', chinese: '我感觉很好。' },
+              { id: 3, russian: 'Я пло́хо себя́ чу́вствую.', chinese: '我感觉不舒服。' },
+              { id: 4, russian: 'У меня́ головна́я боль.', chinese: '我头疼。' },
+              { id: 5, russian: 'У меня́ температу́ра.', chinese: '我发烧了。' },
+              { id: 6, russian: 'Мне хо́лодно.', chinese: '我觉得冷。' },
+              { id: 7, russian: 'Я ка́шляю.', chinese: '我咳嗽。' },
+              { id: 8, russian: 'У меня́ болит горло́.', chinese: '我嗓子疼。' },
+              { id: 9, russian: 'У меня́ насмо́рк.', chinese: '我流鼻涕。' },
+              { id: 10, russian: 'Я заболе́л.', chinese: '我生病了。' },
+              { id: 11, russian: 'Мне ну́жно вызва́ть врача́.', chinese: '我需要叫医生。' },
+              { id: 12, russian: 'Вызови́те, пожа́луйста, ско́рую по́мощь.', chinese: '请叫救护车。' },
+              { id: 13, russian: 'Где больни́ца?', chinese: '医院在哪里？' },
+              { id: 14, russian: 'Я пойду́ к врачу́.', chinese: '我去看医生。' },
+              { id: 15, russian: 'Врач меня́ посмотри́т.', chinese: '医生会给我检查。' },
+              { id: 16, russian: 'Мне выпи́шут лека́рство.', chinese: '会给我开药。' },
+              { id: 17, russian: 'Где апте́ка?', chinese: '药店在哪里？' },
+              { id: 18, russian: 'Мне ну́жны табле́тки.', chinese: '我需要药片。' },
+              { id: 19, russian: 'Принима́йте лека́рство три ра́за в день.', chinese: '每天吃三次药。' },
+              { id: 20, russian: 'Вам ну́жен посте́льный режи́м.', chinese: '您需要卧床休息。' },
+              { id: 21, russian: 'Пейте бо́льше жидкости.', chinese: '多喝水。' },
+              { id: 22, russian: 'Выздоравли́вайте!', chinese: '祝您早日康复！' },
+              { id: 23, russian: 'Я уже́ лу́чше.', chinese: '我已经好多了。' },
+              { id: 24, russian: 'Я хочу́ быть здоро́вым.', chinese: '我想健康。' },
+              { id: 25, russian: 'Здоро́вье — са́мое гла́вное.', chinese: '健康是最重要的。' }
             ]
           }
         ]
