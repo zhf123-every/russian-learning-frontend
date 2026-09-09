@@ -39,26 +39,69 @@ export default function AddVocabModal({ onClose }) {
       })
       const j = await r.json()
       if (!j.ok) throw new Error(j.error || '获取失败')
-      // 解析 AI 返回的内容（可能是纯文本或JSON）
-      let content = j.content || j.result || ''
-      // 尝试提取JSON
+      // 解析 AI 返回的内容（可能是纯文本、markdown代码块或JSON）
+      let content = (j.content || j.result || '').trim()
+
+      // 1. 去除 markdown 代码块标记
+      content = content.replace(/^```(?:json|JSON)?\s*/i, '').replace(/\s*```$/, '').trim()
+
+      // 2. 尝试提取并解析 JSON
+      let parsed = null
       const jsonMatch = content.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         try {
-          const data = JSON.parse(jsonMatch[0])
-          if (data.chinese) setChinese(data.chinese)
-          if (data.reading) setReading(data.reading)
-          if (data.pos) setPos(data.pos)
-          toast('已自动填充释义，请确认后加入生词本')
+          parsed = JSON.parse(jsonMatch[0])
         } catch (e) {
-          // JSON解析失败，直接用内容作为中文释义
-          setChinese(content.replace(/^["']|["']$/g, '').trim())
-          toast('已获取释义（格式不完整，已填充中文）')
+          // JSON解析失败，尝试修复常见问题
+          try {
+            let fixed = jsonMatch[0]
+            // 去除尾随逗号
+            fixed = fixed.replace(/,\s*([}\]])/g, '$1')
+            // 单引号转双引号
+            fixed = fixed.replace(/'/g, '"')
+            parsed = JSON.parse(fixed)
+          } catch (e2) {
+            parsed = null
+          }
         }
+      }
+
+      // 3. 如果JSON解析成功，填充字段
+      if (parsed && typeof parsed === 'object') {
+        if (parsed.chinese) setChinese(String(parsed.chinese).trim())
+        if (parsed.reading) setReading(String(parsed.reading).trim())
+        if (parsed.pos) setPos(String(parsed.pos).trim())
+        if (!parsed.chinese && parsed.translation) setChinese(String(parsed.translation).trim())
+        if (!parsed.chinese && parsed.meaning) setChinese(String(parsed.meaning).trim())
+        toast('已自动填充释义，请确认后加入生词本')
       } else {
-        // 没有JSON，直接用内容作为中文释义
-        setChinese(content.replace(/^["']|["']$/g, '').trim())
-        toast('已获取释义')
+        // 4. JSON解析失败，尝试用正则提取各个字段
+        const chineseMatch = content.match(/"chinese"\s*:\s*"([^"]*)"/) || content.match(/中文[：:]\s*([^\n,，]+)/)
+        const readingMatch = content.match(/"reading"\s*:\s*"([^"]*)"/) || content.match(/读音[：:]\s*([^\n,，]+)/)
+        const posMatch = content.match(/"pos"\s*:\s*"([^"]*)"/) || content.match(/词性[：:]\s*([^\n,，]+)/)
+
+        if (chineseMatch) setChinese(chineseMatch[1].trim())
+        if (readingMatch) setReading(readingMatch[1].trim())
+        if (posMatch) setPos(posMatch[1].trim())
+
+        // 5. 如果还是提取不到，用清理后的内容作为中文释义
+        if (!chineseMatch && content) {
+          // 去除JSON结构，只保留文本
+          const cleanText = content
+            .replace(/\{[\s\S]*\}/g, '')
+            .replace(/["']/g, '')
+            .replace(/^[\s,，。.]+|[\s,，。.]+$/g, '')
+            .trim()
+          if (cleanText) setChinese(cleanText)
+        }
+
+        if (chineseMatch || readingMatch || posMatch) {
+          toast('已自动填充释义（格式已修复），请确认后加入生词本')
+        } else if (content) {
+          toast('已获取释义')
+        } else {
+          toast('AI返回内容为空，请手动填写')
+        }
       }
     } catch (e) {
       toast('自动获取失败：' + (e.message || '请手动填写'))
