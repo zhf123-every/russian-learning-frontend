@@ -533,7 +533,7 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 .landing-card.primary p{color:rgba(255,255,255,0.75)}
 .landing-card.primary .go{color:#fff}
 .landing-card.primary:hover{box-shadow:0 12px 32px rgba(155,123,94,0.35)}
-@media(max-width:720px){.landing-cards{grid-template-columns:1fr;gap:16px}.landing-head h1{font-size:28px}.landing-logo{width:110px;height:110px}}
+@media(max-width:720px){.landing-cards{grid-template-columns:1fr;gap:16px}.landing-head h1{font-size:28px}.landing-logo{font-size:56px}}
 
 /* ---------- 尚雯婕学习法（纯文字专注训练） ---------- */
 .method-wrap{max-width:860px;margin:0 auto;padding:28px 24px 60px;display:flex;flex-direction:column;gap:18px}
@@ -636,11 +636,11 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 
 /* ---------- 移动端顶栏适配 ---------- */
 @media(max-width:640px){
-  .topbar{gap:6px;padding:10px 14px;flex-wrap:wrap;min-height:auto}
+  .topbar{gap:8px;padding:10px 14px;flex-wrap:wrap;min-height:auto;align-items:center}
   .topbar .spacer{display:none}
-  .brand{font-size:15px}
+  .brand{font-size:16px;width:100%;justify-content:center;margin-bottom:4px}
   .brand .logo{width:28px;height:28px;font-size:14px}
-  .tbtn{padding:7px 10px;font-size:13px}
+  .tbtn{padding:8px 12px;font-size:13px;flex:1;text-align:center;min-width:0}
   .main{padding:14px}
   .card{padding:16px}
   .ru-large{font-size:24px}
