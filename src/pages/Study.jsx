@@ -174,13 +174,21 @@ export default function Study() {
     return () => clearTimeout(timer)
   }, [play, playerReady])
 
-  // 监听视频 timeupdate，跟踪当前播放句子索引（用于全文对照面板高亮滚动）
+  // 监听视频播放进度，跟踪当前播放句子索引（用于全文对照面板高亮滚动）
   useEffect(() => {
-    if (!playerReady || !play || play.type !== 'direct' || !videoRef.current || !video) return
+    if (!playerReady || !play || !video) return
     const sents = video.sentences || []
-    const handler = () => {
-      const ct = videoRef.current.currentTime
-      const dur = videoRef.current.duration || 0
+
+    const updateIdx = () => {
+      let ct = 0
+      let dur = 0
+      if (pRef.current) {
+        ct = pRef.current.getCurrentTime() || 0
+        dur = pRef.current.getDuration() || 0
+      } else if (videoRef.current) {
+        ct = videoRef.current.currentTime
+        dur = videoRef.current.duration || 0
+      }
       let found = -1
       // 1. 精确时间戳匹配
       for (let i = 0; i < sents.length; i++) {
@@ -199,10 +207,18 @@ export default function Study() {
       if (found === -1) found = curIdx
       setActiveSentenceIdx(found)
     }
-    videoRef.current.addEventListener('timeupdate', handler)
-    return () => {
-      if (videoRef.current) videoRef.current.removeEventListener('timeupdate', handler)
+
+    // direct 类型：用 timeupdate 事件（更精确）
+    if (play.type === 'direct' && videoRef.current) {
+      videoRef.current.addEventListener('timeupdate', updateIdx)
+      return () => {
+        if (videoRef.current) videoRef.current.removeEventListener('timeupdate', updateIdx)
+      }
     }
+
+    // iframe 类型（YouTube/B站）：用 setInterval 轮询当前播放时间
+    const timer = setInterval(updateIdx, 500)
+    return () => clearInterval(timer)
   }, [playerReady, play, video, curIdx])
 
   // 卸载时清理录音 URL

@@ -33,6 +33,10 @@ export function createPlayer(play, videoEl) {
     rate: 1.0,
     playing: false,
     _timer: null,
+    _currentTime: 0,
+    _duration: 0,
+    onTimeUpdate: null,
+    _messageHandler: null,
   }
 
   // ---- direct：精确控制 ----
@@ -128,7 +132,12 @@ export function createPlayer(play, videoEl) {
 
   // 绑定 <video> 的 timeupdate（仅 direct）
   if (h.type === 'direct' && h.videoEl) {
-    h.videoEl.addEventListener('timeupdate', () => h._tick())
+    h.videoEl.addEventListener('timeupdate', () => {
+      h._currentTime = h.videoEl.currentTime
+      h._duration = h.videoEl.duration || 0
+      h._tick()
+      if (h.onTimeUpdate) h.onTimeUpdate(h.videoEl.currentTime, h.videoEl.duration || 0)
+    })
     h.videoEl.addEventListener('ended', () => { h.playing = false })
   }
 
@@ -169,9 +178,15 @@ export function createPlayer(play, videoEl) {
   }
   h.getCurrentTime = () => {
     if (h.type === 'direct' && h.videoEl) {
-      try { return h.videoEl.currentTime } catch (e) { return 0 }
+      try { return h.videoEl.currentTime } catch (e) { return h._currentTime }
     }
-    return 0
+    return h._currentTime
+  }
+  h.getDuration = () => {
+    if (h.type === 'direct' && h.videoEl) {
+      try { return h.videoEl.duration || h._duration } catch (e) { return h._duration }
+    }
+    return h._duration
   }
   h.playFull = () => {
     h.loop = false
@@ -191,6 +206,31 @@ export function createPlayer(play, videoEl) {
       pending.forEach(cmd => {
         try { h._iframe.contentWindow.postMessage(JSON.stringify(cmd), '*') } catch (e) {}
       })
+      // YouTube：订阅 IFrame API 事件，获取当前播放时间
+      if (h.type === 'youtube') {
+        try {
+          h._iframe.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 'player' }), '*')
+        } catch (e) {}
+      }
+    }
+    // YouTube：监听 window message 事件，解析 IFrame API 发送的 infoDelivery 事件
+    if (h.type === 'youtube' && typeof window !== 'undefined' && !h._messageHandler) {
+      h._messageHandler = (event) => {
+        if (!event.data || typeof event.data !== 'string') return
+        try {
+          const data = JSON.parse(event.data)
+          if (data.event === 'infoDelivery' && data.info) {
+            if (data.info.currentTime != null) {
+              h._currentTime = data.info.currentTime
+              if (h.onTimeUpdate) h.onTimeUpdate(data.info.currentTime, data.info.duration || h._duration)
+            }
+            if (data.info.duration != null) {
+              h._duration = data.info.duration
+            }
+          }
+        } catch (e) {}
+      }
+      window.addEventListener('message', h._messageHandler)
     }
     if (el.contentWindow && el.contentWindow.postMessage) {
       // 已经加载过的 iframe，延迟标记 ready（给 enablejsapi 初始化时间）
