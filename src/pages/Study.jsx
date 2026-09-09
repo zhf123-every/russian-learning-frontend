@@ -835,6 +835,23 @@ export default function Study() {
                       </button>
                     </div>
 
+                    {/* 阶段5 新增：AI测验入口 */}
+                    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border2, #E0D6C4)' }}>
+                      <div className="hint" style={{ marginBottom: 8 }}>📊 掌握程度检验</div>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          className="btn sm primary"
+                          onClick={() => setShowQuiz(true)}
+                          style={{ background: '#6B8E6B', borderColor: '#6B8E6B' }}
+                        >
+                          🚀 开始AI测验（30题）
+                        </button>
+                      </div>
+                      <div className="hint" style={{ marginTop: 8, fontSize: 12 }}>
+                        检验对本篇文章的掌握程度，涵盖语法、翻译、造句等题型
+                      </div>
+                    </div>
+
                     {/* 录音完成后显示回放 + AI分析 */}
                     {reciteAudioUrl && !isRecording && (
                       <div style={{ marginTop: 12, textAlign: 'left' }}>
