@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useVocabStore } from '../store/vocabStore'
 import { RATING } from '../lib/fsrs'
+import { speak } from '../lib/tts'
 import AddVocabModal from '../components/AddVocabModal'
 
 const GRADES = [
@@ -62,8 +63,18 @@ export default function Vocab() {
           <div className="modal" style={{ maxWidth: 460, margin: '0 auto' }}>
             <h3>生词复习</h3>
             <div className="srs-card">
-              <div className="q"><span className="w ru">{card.word}</span></div>
-              {card.reading && <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>{card.reading}</div>}
+              <div className="q" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                <span className="w ru">{card.word}</span>
+                <button
+                  className="btn sm"
+                  style={{ padding: '2px 8px', fontSize: 16 }}
+                  onClick={(e) => { e.stopPropagation(); speak(card.word, { rate: 0.8 }) }}
+                  title="读音"
+                >
+                  🔊
+                </button>
+              </div>
+              {card.reading && <div style={{ fontSize: 15, color: '#B87333', marginTop: 6, fontWeight: 500 }}>{card.reading}</div>}
               {show && <div className="a">{card.chinese}</div>}
               {!show && <button className="btn primary" onClick={() => setShow(true)}>显示答案</button>}
               {show && (
@@ -106,8 +117,18 @@ export default function Vocab() {
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 16 }} className="ru">{c.word}</div>
-                  {c.reading && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.reading}</div>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 600, fontSize: 16 }} className="ru">{c.word}</span>
+                    <button
+                      className="btn sm"
+                      style={{ padding: '1px 6px', fontSize: 14 }}
+                      onClick={() => speak(c.word, { rate: 0.8 })}
+                      title="读音"
+                    >
+                      🔊
+                    </button>
+                  </div>
+                  {c.reading && <div style={{ fontSize: 13, color: '#B87333', marginTop: 2, fontWeight: 500 }}>{c.reading}</div>}
                   <div style={{ fontSize: 14, color: 'var(--muted, #86796D)', marginTop: 2 }}>{c.chinese}</div>
                 </div>
                 {c.pos && <span style={{ fontSize: 12, padding: '2px 8px', background: 'var(--soft, #F5EDE0)', borderRadius: 4, marginRight: 8 }}>{c.pos}</span>}
