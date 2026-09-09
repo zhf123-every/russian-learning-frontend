@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useVocabStore } from '../store/vocabStore'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../lib/api'
+import { toast } from '../lib/toast'
 
 export default function AddVocabModal({ onClose }) {
   const navigate = useNavigate()
