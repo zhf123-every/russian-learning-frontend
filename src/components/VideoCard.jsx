@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+﻿import { Link } from 'react-router-dom'
 import { useCourseStore } from '../store/courseStore'
 import { useShangStore } from '../store/shangStore'
 
@@ -15,7 +15,7 @@ export default function VideoCard({ video, level, idx }) {
     <div className="video-card">
       <div className="thumb" style={{ backgroundImage: `url(${video.thumbnail || 'https://picsum.photos/seed/placeholder/400/280'})` }}>
         {pct != null && <span className="thumb-score">{pct}分</span>}
-        {shangFinished && <span className="thumb-score" style={{ background: '#5C8A6B' }}>✓ 尚雯</span>}
+        {shangFinished && <span className="thumb-score" style={{ background: '#5C8A6B' }}>尚雯</span>}
         {!unlocked && <span className="thumb-lock">🔒</span>}
       </div>
       <div className="vc-body">

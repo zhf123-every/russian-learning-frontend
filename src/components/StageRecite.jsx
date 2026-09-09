@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+﻿import { useRef, useState } from 'react'
 import { dictation, selfRate } from '../lib/scoring'
 import { loopSentence } from '../lib/tts'
 import { toast } from '../lib/toast'
@@ -44,8 +44,8 @@ export default function StageRecite({ sentence, onScore }) {
   return (
     <div>
       <div className="row">
-        <button className="btn primary" onClick={listening ? stopMic : startMic}>{listening ? '⏹ 停止' : '🎤 开始跟读'}</button>
-        <button className="btn" onClick={startShang}>🦜 尚雯婕模式</button>
+        <button className="btn primary" onClick={listening ? stopMic : startMic}>{listening ? '停止' : '开始跟读'}</button>
+        <button className="btn" onClick={startShang}>尚雯婕模式</button>
       </div>
       {shang && <div className="hint" style={{ marginTop: 8 }}>循环听 {settings.loopTimes} 遍后，跟读并自评</div>}
       {recogText && <div className="hint" style={{ marginTop: 8 }}>识别结果：{recogText}</div>}

@@ -14,11 +14,15 @@ import SettingsModal from './components/SettingsModal'
 export default function App() {
   const loc = useLocation()
   const [showSettings, setShowSettings] = useState(false)
+
   return (
     <>
       <div className="topbar">
-        <div className="brand"><span className="logo">🎬</span><span>看视频学俄语</span></div>
-        {loc.pathname !== '/' && <Link className="tbtn" to="/">🏠 首页</Link>}
+        <div className="brand">
+          <span className="logo">📖</span>
+          <span>Russian learning</span>
+        </div>
+        {loc.pathname !== '/' && <Link className="tbtn" to="/">首页</Link>}
         <div className="spacer"></div>
         <Link className="tbtn" to="/vocab">生词本</Link>
         <Link className="tbtn" to="/dictionary">词典</Link>

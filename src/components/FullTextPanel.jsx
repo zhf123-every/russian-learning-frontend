@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+﻿import { useState, useRef, useEffect, useCallback } from 'react'
 import { apiFetch } from '../lib/api'
 import { callAI, parseAIJSON } from '../lib/ai'
 
@@ -18,7 +18,7 @@ export default function FullTextPanel({
   onClose,
   highlightIdx = -1,
   onSentenceClick,
-  title = '📖 全文对照',
+  title = '全文对照',
 }) {
   const [showZh, setShowZh] = useState(true)
   const [hoveredSentence, setHoveredSentence] = useState(-1)
@@ -206,7 +206,7 @@ export default function FullTextPanel({
               onClick={onClose}
               style={{ fontSize: 12 }}
             >
-              ✕ 关闭
+              关闭
             </button>
           </div>
         </div>

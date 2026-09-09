@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { callAI } from '../lib/ai'
 import { toast } from '../lib/toast'
 import { mdToHtml } from '../lib/md'
@@ -13,8 +13,8 @@ const HISTORY_KEYS = {
 }
 
 const TAB_META = {
-  dict: { title: '📖 俄语词典', placeholder: '输入单个俄语单词，如：говорить', system: DICT_SYSTEM },
-  grammar: { title: '📚 语法词典', placeholder: '输入语法点，如：名词第二格', system: GRAMMAR_SYSTEM },
+  dict: { title: '俄语词典', placeholder: '输入单个俄语单词，如：говорить', system: DICT_SYSTEM },
+  grammar: { title: '语法词典', placeholder: '输入语法点，如：名词第二格', system: GRAMMAR_SYSTEM },
 }
 
 // 常用语法点预设（A1-A2 级别核心语法，按分类组织）
@@ -198,13 +198,13 @@ export default function Dictionary() {
             className={'btn sm' + (activeTab === 'dict' ? ' primary' : '')}
             onClick={() => switchTab('dict')}
           >
-            📖 俄语词典
+            俄语词典
           </button>
           <button
             className={'btn sm' + (activeTab === 'grammar' ? ' primary' : '')}
             onClick={() => switchTab('grammar')}
           >
-            📚 语法词典
+            语法词典
           </button>
         </div>
 
@@ -243,8 +243,8 @@ export default function Dictionary() {
         {/* 输入提示 */}
         <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
           {activeTab === 'dict'
-            ? '💡 提示：请输入单个俄语单词，如：говорить、студент、большой。完整句子解析请前往学习页面使用AI解析。'
-            : '💡 提示：输入语法点名称，如：名词第二格、动词过去时、形容词短尾。也可点击下方常用语法点直接查看。'}
+            ? '提示：请输入单个俄语单词，如：говорить、студент、большой。完整句子解析请前往学习页面使用AI解析。'
+            : '提示：输入语法点名称，如：名词第二格、动词过去时、形容词短尾。也可点击下方常用语法点直接查看。'}
         </div>
 
         {/* 历史记录 */}
@@ -276,7 +276,7 @@ export default function Dictionary() {
       {activeTab === 'grammar' && !loading && !resultHtml && (
         <div style={{ marginTop: 16 }}>
           <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 12, color: '#5C4A3A' }}>
-            📚 常用语法点（点击直接查询）
+            常用语法点（点击直接查询）
           </div>
           {GRAMMAR_PRESETS.map(group => (
             <div key={group.category} className="card" style={{ marginBottom: 12 }}>

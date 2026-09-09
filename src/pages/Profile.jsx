@@ -1,4 +1,4 @@
-import { LEVELS } from '../data/courseLibrary'
+﻿import { LEVELS } from '../data/courseLibrary'
 import { useCourseStore } from '../store/courseStore'
 import { useVocabStore } from '../store/vocabStore'
 
@@ -24,7 +24,7 @@ export default function Profile() {
 
   return (
     <div className="course">
-      <h2>📊 学习统计</h2>
+      <h2>学习统计</h2>
       <div className="videos-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', marginBottom: 20 }}>
         <div className="card"><div className="score-big">{days.size}</div><div className="hint">学习天数</div></div>
         <div className="card"><div className="score-big">{streak}</div><div className="hint">连续打卡</div></div>

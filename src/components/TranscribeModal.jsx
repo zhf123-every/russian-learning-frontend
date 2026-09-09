@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useCourseStore } from '../store/courseStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { useNavigate } from 'react-router-dom'
@@ -31,7 +31,7 @@ export default function TranscribeModal({ onClose }) {
       if (!j.ok) { alert('识别失败：\n\n' + (j.error || '')); return }
       if (!j.segments || !j.segments.length) { alert('没有识别出任何句子。'); return }
       setSegs(j.segments)
-      setStatus('✅ 识别完成，共 ' + j.segments.length + ' 句')
+      setStatus('识别完成，共 ' + j.segments.length + ' 句')
       setShowPreview(true)
     } catch (e) {
       alert('请求失败：' + e.message)
@@ -63,7 +63,7 @@ export default function TranscribeModal({ onClose }) {
   return (
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <h2>🎙 音频识别</h2>
+        <h2>音频识别</h2>
         <p className="hint">
           粘贴视频链接（YouTube/B站），后端用 faster-whisper 将音频转写为带时间戳的俄语句子。
           模型：{settings.whisperModel || 'tiny'}
@@ -106,7 +106,7 @@ export default function TranscribeModal({ onClose }) {
           <button className="btn" onClick={onClose}>关闭</button>
           <button className="btn" disabled={busy} onClick={() => { setUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'); setTitle('示例：俄语自我介绍'); toast('已填入示例链接') }}>用示例试试</button>
           <button className="btn primary" disabled={busy} onClick={busy ? undefined : start}>
-            {busy ? '🎙 转写中…' : '🎙 开始识别'}
+            {busy ? '转写中…' : '开始识别'}
           </button>
           {showPreview && (
             <button className="btn primary" onClick={save}>保存并开始学习</button>

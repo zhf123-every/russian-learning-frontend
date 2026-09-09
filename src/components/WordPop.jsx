@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { useVocabStore } from '../store/vocabStore'
 
 export default function WordPop({ word, x, y, onClose }) {
@@ -29,7 +29,7 @@ export default function WordPop({ word, x, y, onClose }) {
         />
       </div>
       <div className="row" style={{ marginTop: 10 }}>
-        <button className="btn sm primary" onClick={add}>＋ 加入生词</button>
+        <button className="btn sm primary" onClick={add}>加入生词</button>
       </div>
     </div>
   )

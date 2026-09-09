@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useVocabStore } from '../store/vocabStore'
 import { RATING } from '../lib/fsrs'
 import { speak } from '../lib/tts'
@@ -27,12 +27,12 @@ export default function Vocab() {
       {/* 顶部标题和操作 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h2 style={{ margin: 0 }}>📚 生词本</h2>
+          <h2 style={{ margin: 0 }}>生词本</h2>
           <p style={{ margin: '4px 0 0', color: 'var(--muted, #86796D)', fontSize: 14 }}>
             共 {cards.length} 个生词 · 今日待复习 {due.length} 个
           </p>
         </div>
-        <button className="btn primary" onClick={() => setShowAdd(true)}>＋ 添加生词</button>
+        <button className="btn primary" onClick={() => setShowAdd(true)}>添加生词</button>
       </div>
 
       {/* Tab 切换 */}
@@ -55,7 +55,7 @@ export default function Vocab() {
       {tab === 'review' && (
         due.length === 0 ? (
           <div className="empty" style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+            <div style={{ fontSize: 48, marginBottom: 12 }}></div>
             <h3>今天没有待复习的生词</h3>
             <p style={{ color: 'var(--muted, #86796D)' }}>可以去学习页面点击单词添加新生词，或手动添加。</p>
           </div>
@@ -71,7 +71,7 @@ export default function Vocab() {
                   onClick={(e) => { e.stopPropagation(); speak(card.word, { rate: 0.8 }) }}
                   title="读音"
                 >
-                  🔊
+                  
                 </button>
               </div>
               {card.reading && <div style={{ fontSize: 15, color: '#B87333', marginTop: 6, fontWeight: 500 }}>{card.reading}</div>}
@@ -86,8 +86,8 @@ export default function Vocab() {
             <div className="srs-stats">今日待复习 {due.length} 个 · 第 {Math.min(i + 1, due.length)} / {due.length} 个</div>
             {due.length > 1 && (
               <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center' }}>
-                <button className="btn sm" onClick={() => setI(Math.max(0, i - 1))} disabled={i === 0}>← 上一个</button>
-                <button className="btn sm" onClick={() => setI(Math.min(due.length - 1, i + 1))} disabled={i >= due.length - 1}>下一个 →</button>
+                <button className="btn sm" onClick={() => setI(Math.max(0, i - 1))} disabled={i === 0}>上一个</button>
+                <button className="btn sm" onClick={() => setI(Math.min(due.length - 1, i + 1))} disabled={i >= due.length - 1}>下一个</button>
               </div>
             )}
           </div>
@@ -98,7 +98,7 @@ export default function Vocab() {
       {tab === 'all' && (
         cards.length === 0 ? (
           <div className="empty" style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📝</div>
+            <div style={{ fontSize: 48, marginBottom: 12 }}></div>
             <h3>还没有生词</h3>
             <p style={{ color: 'var(--muted, #86796D)' }}>点击右上角"添加生词"手动添加，或在学习页面点击单词添加。</p>
           </div>
@@ -125,7 +125,7 @@ export default function Vocab() {
                       onClick={() => speak(c.word, { rate: 0.8 })}
                       title="读音"
                     >
-                      🔊
+                      
                     </button>
                   </div>
                   {c.reading && <div style={{ fontSize: 13, color: '#B87333', marginTop: 2, fontWeight: 500 }}>{c.reading}</div>}

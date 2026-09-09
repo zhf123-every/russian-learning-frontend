@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 
 export default function CoursePage() {
   const navigate = useNavigate()
@@ -23,7 +23,7 @@ export default function CoursePage() {
   return (
     <div className="course">
       <div className="row" style={{ marginBottom: 16 }}>
-        <button className="btn sm" onClick={() => navigate('/')}>← 返回首页</button>
+        <button className="btn sm" onClick={() => navigate('/')}>返回首页</button>
       </div>
       <h2>分级课程</h2>
       <p className="hint">选择一种训练方式</p>

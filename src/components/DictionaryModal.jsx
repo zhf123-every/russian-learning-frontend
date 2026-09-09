@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useCourseStore } from '../store/courseStore'
 import { useNavigate } from 'react-router-dom'
 import { normWord, findLemma, getZh, getPos, getEntry } from '../lib/lemma'
@@ -76,8 +76,8 @@ export default function DictionaryModal({ onClose }) {
   return (
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 720 }}>
-        <h2>📖 俄语词典</h2>
-        <p className="hint">内置高频词库（俄→中），可识别常见变格/变位形式；未收录的词自动联网查询。</p>
+        <h2>俄语词典</h2>
+        <p className="hint">内置高频词库（俄中），可识别常见变格/变位形式；未收录的词自动联网查询。</p>
         <div className="row" style={{ marginBottom: 12 }}>
           <input
             className="qfill"
@@ -122,7 +122,7 @@ export default function DictionaryModal({ onClose }) {
               {(result.source === 'full' || result.source === 'basic') && (
                 <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
                   <button className="btn sm primary" onClick={() => setShowAI(!showAI)}>
-                    🤖 AI 助教：这是几格？为什么用这个语法？
+                    AI 助教：这是几格？为什么用这个语法？
                   </button>
                   {showAI && (
                     <div style={{ marginTop: 12, padding: 10, background: 'var(--bg)', borderRadius: 8 }}>

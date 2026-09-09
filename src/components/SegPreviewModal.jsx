@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { aiSegmentFromCues, aiSegmentFromPlain } from '../lib/segmenter'
 import { toast } from '../lib/toast'
 
@@ -52,20 +52,20 @@ export default function SegPreviewModal({ sentences, cues, settings, onAccept, o
   return (
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 760 }}>
-        <h2>🤖 AI 智能断句预览</h2>
+        <h2>AI 智能断句预览</h2>
         <p className="hint">
           AI 已根据你的输入完成断句 + 逐句翻译。你可以点击「重新生成」让 AI 按你的意见修改；满意后点「接受并保存」。
         </p>
 
         {understanding && (
           <div style={{ marginBottom: 12, padding: 10, background: 'var(--bg2)', borderRadius: 8 }}>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>📖 AI 对全文的理解</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>AI 对全文的理解</div>
             <div style={{ fontSize: 14 }}>{understanding}</div>
           </div>
         )}
 
         <div style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 12 }}>
-          {busy && <div className="ai-loading">🤖 AI 正在断句…</div>}
+          {busy && <div className="ai-loading">AI 正在断句…</div>}
           {!busy && currentSentences.map((s, i) => (
             <div key={i} style={{ marginBottom: 8, padding: 10, border: '1px solid var(--border)', borderRadius: 8 }}>
               <div style={{ fontSize: 11, color: 'var(--text2)' }}>第 {i + 1} 句</div>
@@ -98,7 +98,7 @@ export default function SegPreviewModal({ sentences, cues, settings, onAccept, o
             {busy ? '重新生成中…' : '🔄 重新生成'}
           </button>
           <button className="btn primary" disabled={busy} onClick={accept}>
-            ✓ 接受并保存
+            接受并保存
           </button>
         </div>
       </div>

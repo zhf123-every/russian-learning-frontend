@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { apiFetch } from '../lib/api'
 import { toast } from '../lib/toast'
 
@@ -178,8 +178,8 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
 
   // 通过状态
   const getPassInfo = (res) => {
-    if (res.score >= 80) return { label: '✅ 通过', color: '#6E8F7E' }
-    if (res.score >= 60) return { label: '⚠️ 勉强通过', color: '#B08A5A' }
+    if (res.score >= 80) return { label: '通过', color: '#6E8F7E' }
+    if (res.score >= 60) return { label: '勉强通过', color: '#B08A5A' }
     return { label: '❌ 未通过', color: '#A86454' }
   }
 
@@ -234,10 +234,10 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
           }}
         >
           <div style={{ fontWeight: 600, fontSize: 16, color: '#3D332C' }}>
-            📝 AI 测验
+            AI 测验
             {videoTitle && <span style={{ marginLeft: 8, fontSize: 13, color: 'var(--muted, #86796D)', fontWeight: 400 }}>— {videoTitle}</span>}
           </div>
-          <button className="btn sm" onClick={onClose} style={{ fontSize: 12 }}>✕ 关闭</button>
+          <button className="btn sm" onClick={onClose} style={{ fontSize: 12 }}>关闭</button>
         </div>
 
         {/* 内容区 */}
@@ -245,7 +245,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
           {/* 生成中 */}
           {phase === 'generating' && (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
+              <div style={{ fontSize: 48, marginBottom: 16 }}></div>
               <div style={{ fontSize: 16, color: '#3D332C', fontWeight: 500, marginBottom: 8 }}>
                 正在生成测验题目…
               </div>
@@ -270,14 +270,14 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
           {/* 生成错误 */}
           {phase === 'error' && (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+              <div style={{ fontSize: 48, marginBottom: 16 }}></div>
               <div style={{ fontSize: 16, color: '#A86454', fontWeight: 500, marginBottom: 8 }}>
                 题目生成失败
               </div>
               <div style={{ fontSize: 13, color: 'var(--muted, #86796D)', marginBottom: 20 }}>
                 {genError || '未知错误'}
               </div>
-              <button className="btn sm primary" onClick={generateQuiz}>🔄 重新生成</button>
+              <button className="btn sm primary" onClick={generateQuiz}>重新生成</button>
             </div>
           )}
 
@@ -360,7 +360,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                   onClick={() => setCurrentIdx(i => Math.max(0, i - 1))}
                   disabled={currentIdx === 0}
                 >
-                  ← 上一题
+                  上一题
                 </button>
                 <span style={{ fontSize: 12, color: 'var(--muted, #86796D)', alignSelf: 'center' }}>
                   已答 {answeredCount}/{quiz.length}
@@ -370,7 +370,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                     className="btn sm primary"
                     onClick={() => setCurrentIdx(i => Math.min(quiz.length - 1, i + 1))}
                   >
-                    下一题 →
+                    下一题
                   </button>
                 ) : (
                   <button className="btn sm primary" onClick={submitQuiz}>
@@ -384,7 +384,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
           {/* 评分中 */}
           {phase === 'grading' && (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
+              <div style={{ fontSize: 48, marginBottom: 16 }}></div>
               <div style={{ fontSize: 16, color: '#3D332C', fontWeight: 500, marginBottom: 8 }}>
                 正在评分…
               </div>
@@ -434,7 +434,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
               {/* 各题型得分 */}
               {result.breakdown && Object.keys(result.breakdown).length > 0 && (
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: '#3D332C' }}>📊 各题型得分</div>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: '#3D332C' }}>各题型得分</div>
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
@@ -471,7 +471,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                   lineHeight: 1.7,
                   color: '#3D332C',
                 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>💡 针对性复习建议</div>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>针对性复习建议</div>
                   {result.suggestion}
                 </div>
               )}
@@ -549,7 +549,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                                     fontWeight: oi === q.answer ? 600 : 400,
                                   }}>
                                     {String.fromCharCode(65 + oi)}. {opt}
-                                    {oi === q.answer && ' ✓'}
+                                    {oi === q.answer && ' '}
                                   </div>
                                 ))}
                               </div>
@@ -586,7 +586,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
               {/* 底部按钮 */}
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', paddingTop: 16, borderTop: '1px solid var(--border2, #E8E1D9)' }}>
                 <button className="btn sm" onClick={onClose}>关闭</button>
-                <button className="btn sm primary" onClick={generateQuiz}>🔄 重新测验</button>
+                <button className="btn sm primary" onClick={generateQuiz}>重新测验</button>
               </div>
             </div>
           )}

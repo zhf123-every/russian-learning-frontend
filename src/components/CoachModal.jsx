@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useSettingsStore } from '../store/settingsStore'
 import { parseAIJSON, chat } from '../lib/ai'
 import { toast } from '../lib/toast'
@@ -8,8 +8,8 @@ const SYSTEM_GENERATE = '你是俄语学习教练。根据课文和学生的生�
 const SYSTEM_GRADE = '你是俄语学习教练。批改学生的作答，给出科学评估报告。严格只输出 JSON，不要任何解释。JSON 格式：{"assessment_level":"pass 或 review 或 fail","score":0到100的整数,"must_master":["必须掌握的生词/短语"],"weak_grammar":["薄弱语法点"],"suggestions":["具体的俄语学习建议"]}。assessment_level 判断标准（务必非常严格，宁严勿松，不要轻易给 pass）：正确率>=90% 且无任何语法/变格/变位错误=pass；60%-89% 或有一处以上错误=review；<60% 或存在严重错误=fail。'
 
 const LEVEL_MAP = {
-  pass: { label: '✅ 通过', color: '#16a34a' },
-  review: { label: '⚠️ 需复习', color: '#d97706' },
+  pass: { label: '通过', color: '#16a34a' },
+  review: { label: '需复习', color: '#d97706' },
   fail: { label: '❌ 未通过', color: '#e11d48' },
 }
 
@@ -62,7 +62,7 @@ function ReportView({ result, onReset, onNext }) {
       </div>
 
       <div className="rep-sec">
-        <b>⚠️ 薄弱语法点：</b>
+        <b>薄弱语法点：</b>
         <ul className="rep-ul">
           {(result.weak_grammar && result.weak_grammar.length)
             ? result.weak_grammar.map((x, i) => <li key={i}>{x}</li>)
@@ -71,7 +71,7 @@ function ReportView({ result, onReset, onNext }) {
       </div>
 
       <div className="rep-sec">
-        <b>📚 俄语学习建议：</b>
+        <b>俄语学习建议：</b>
         <ul className="rep-ul">
           {(result.suggestions && result.suggestions.length)
             ? result.suggestions.map((x, i) => <li key={i}>{x}</li>)
@@ -80,9 +80,9 @@ function ReportView({ result, onReset, onNext }) {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <button className="btn" onClick={onReset}>🔄 重新检测</button>
+        <button className="btn" onClick={onReset}>重新检测</button>
         {result.assessment_level === 'pass'
-          ? <button className="btn primary" onClick={onNext}>进入下一篇 →</button>
+          ? <button className="btn primary" onClick={onNext}>进入下一篇</button>
           : <span className="hint" style={{ alignSelf: 'center' }}>⛔ 未通过检测，请复习本篇并重新检测后再进入下一篇</span>}
       </div>
     </>
@@ -141,8 +141,8 @@ export default function CoachModal({ sentences, onClose, onNext }) {
     if (phase === 'idle') {
       return (
         <>
-          <p className="hint" style={{ margin: '0 0 10px' }}>完成本篇「听→听写→跟读」后做一次检测，检验是否真正掌握。</p>
-          <button className="btn primary" onClick={start}>🚀 开始本篇学习检测</button>
+          <p className="hint" style={{ margin: '0 0 10px' }}>完成本篇「听听写跟读」后做一次检测，检验是否真正掌握。</p>
+          <button className="btn primary" onClick={start}>开始本篇学习检测</button>
         </>
       )
     }
@@ -159,7 +159,7 @@ export default function CoachModal({ sentences, onClose, onNext }) {
             <QuizCard key={i} q={q} i={i} value={answers[i]} onChange={val => updateAnswer(i, val)} />
           ))}
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button className="btn primary" onClick={submit}>📝 提交作答</button>
+            <button className="btn primary" onClick={submit}>提交作答</button>
             <button className="btn" onClick={reset}>重新检测</button>
           </div>
         </>
@@ -180,7 +180,7 @@ export default function CoachModal({ sentences, onClose, onNext }) {
   return (
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 680 }}>
-        <h2>🤖 AI 学习教练</h2>
+        <h2>AI 学习教练</h2>
         {renderBody()}
         <div className="mfoot">
           <button className="btn" onClick={onClose}>关闭</button>

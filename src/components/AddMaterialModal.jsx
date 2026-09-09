@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCourseStore } from '../store/courseStore'
 import { useSettingsStore } from '../store/settingsStore'
@@ -75,7 +75,7 @@ export default function AddMaterialModal({ onClose }) {
     const { parseTextToSentences } = await import('../lib/srt')
     const { sentences, hasTimestamps } = parseTextToSentences(subs.trim())
 
-    // 有 API Key 且无时间戳且确实有句子 → 走 AI 断句预览
+    // 有 API Key 且无时间戳且确实有句子 走 AI 断句预览
     if (settings.apiKey && !hasTimestamps && sentences.length > 0) {
       setBusy(false)
       setPreview({ sentences, cues: null, hasTimestamps })
@@ -120,7 +120,7 @@ export default function AddMaterialModal({ onClose }) {
     <>
       <div className="modal-mask" onClick={onClose}>
         <div className="modal" onClick={e => e.stopPropagation()}>
-          <h2>＋ 导入材料</h2>
+          <h2>导入材料</h2>
           <p className="hint">
             一个「材料」= 视频 + 字幕。填 YouTube/B站 链接或 mp4 地址即可播放（不经过后端）；字幕手动粘贴（可选），没有也能先看纯视频。<br />
             📌 有 API Key 且字幕无时间戳时，会用 AI 智能断句并弹出预览；否则用规则断句后直接保存。
@@ -148,7 +148,7 @@ export default function AddMaterialModal({ onClose }) {
             />
             <div className="row" style={{ marginTop: 6 }}>
               <button className="btn sm" disabled={recognizing} onClick={autoTranscribe}>
-                {recognizing ? '🎙 识别中…' : '🎙 自动识别字幕'}
+                {recognizing ? '识别中…' : '自动识别字幕'}
               </button>
               <button className="btn sm" onClick={loadDemo}>用示例数据试试</button>
             </div>

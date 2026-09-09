@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useVocabStore } from '../store/vocabStore'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../lib/api'
@@ -152,7 +152,7 @@ export default function AddVocabModal({ onClose }) {
   return (
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <h2>＋ 加入生词</h2>
+        <h2>加入生词</h2>
         <p className="hint">输入俄语单词后点击「自动获取释义」，AI 自动填充中文翻译、词性、读音，确认后加入生词本。</p>
 
         <div className="field">
@@ -171,7 +171,7 @@ export default function AddVocabModal({ onClose }) {
               disabled={autoLoading || !word.trim()}
               style={{ whiteSpace: 'nowrap' }}
             >
-              {autoLoading ? '获取中...' : '🤖 自动获取释义'}
+              {autoLoading ? '获取中...' : '自动获取释义'}
             </button>
           </div>
         </div>

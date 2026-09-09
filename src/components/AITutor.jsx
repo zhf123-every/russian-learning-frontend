@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+﻿import { useState, useEffect, useRef, useCallback } from 'react'
 import { callAI } from '../lib/ai'
 import { toast } from '../lib/toast'
 import { mdToHtml } from '../lib/md'
@@ -121,7 +121,7 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
           fontWeight: 500,
         }}
       >
-        🤖 助教
+        助教
       </button>
     )
   }
@@ -168,7 +168,7 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
             flexShrink: 0,
           }}
         >
-          🤖
+          
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 14, color: '#3D332C' }}>俄语助教</div>
@@ -182,7 +182,7 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
           style={{ fontSize: 11, padding: '4px 8px' }}
           title="清空对话"
         >
-          🗑
+          
         </button>
         <button
           className="btn sm"
@@ -190,7 +190,7 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
           style={{ fontSize: 11, padding: '4px 8px' }}
           title="收起"
         >
-          ✕
+          
         </button>
       </div>
 

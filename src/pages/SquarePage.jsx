@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSquareStore } from '../store/squareStore'
 import { useShangStore } from '../store/shangStore'
@@ -63,15 +63,15 @@ export default function SquarePage() {
   return (
     <div className="course">
       <div className="square-head">
-        <button className="btn sm" onClick={() => navigate('/course')}>← 返回分级课程</button>
+        <button className="btn sm" onClick={() => navigate('/course')}>返回分级课程</button>
         <h2>学习广场</h2>
         {isAdmin ? (
           <>
             <button className="btn sm" onClick={() => { adminLogout(); toast('已退出管理模式') }}>退出管理</button>
-            <button className="btn primary" onClick={() => setShowContribute(true)}>＋ 上传素材</button>
+            <button className="btn primary" onClick={() => setShowContribute(true)}>上传素材</button>
           </>
         ) : (
-          <button className="btn sm" onClick={() => setShowAdmin(true)}>🔐 管理</button>
+          <button className="btn sm" onClick={() => setShowAdmin(true)}>管理</button>
         )}
       </div>
 
@@ -98,7 +98,7 @@ export default function SquarePage() {
           <p>{isAdmin ? '点右上角上传第一个素材吧！' : '管理员还没有上传素材，敬请期待。'}</p>
           {isAdmin && (
             <div className="cta">
-              <button className="btn primary" onClick={() => setShowContribute(true)}>＋ 上传素材</button>
+              <button className="btn primary" onClick={() => setShowContribute(true)}>上传素材</button>
             </div>
           )}
         </div>
@@ -111,24 +111,24 @@ export default function SquarePage() {
               <div key={item.id} className="video-card" style={{ cursor: 'pointer' }} onClick={() => navigate(`/square/${item.id}`)}>
                 <div className="thumb" style={{ backgroundImage: `url(${item.thumbnail})` }}>
                   <span className="thumb-score">{item.level}</span>
-                  {finished && <span className="thumb-score" style={{ background: '#5C8A6B' }}>✓ 尚雯</span>}
+                  {finished && <span className="thumb-score" style={{ background: '#5C8A6B' }}>尚雯</span>}
                 </div>
                 <div className="vc-body">
                   <div className="vc-title">{item.title}</div>
                   <div className="vc-meta">👁 {item.views} · 👤 {item.author}</div>
                   <div className="vc-tags">{(item.tags || []).map(t => <span key={t} className="chip">{t}</span>)}</div>
                   <div className="vc-meta" style={{ marginTop: 4, color: hasSubs ? 'var(--accent, #A86454)' : 'var(--muted)' }}>
-                    {hasSubs ? `✓ 有分句字幕 ${item.sentences.length} 句` : '✗ 无分句字幕'}
+                    {hasSubs ? `有分句字幕 ${item.sentences.length} 句` : '✗ 无分句字幕'}
                   </div>
                   <div className="row" style={{ marginTop: 8, gap: 6 }}>
-                    <button className="btn sm" onClick={(e) => { e.stopPropagation(); navigate(`/square/${item.id}`) }}>📖 普通学习</button>
+                    <button className="btn sm" onClick={(e) => { e.stopPropagation(); navigate(`/square/${item.id}`) }}>普通学习</button>
                     <button
                       className="btn sm primary"
                       onClick={(e) => { e.stopPropagation(); openShang(item) }}
                       disabled={!hasSubs}
-                    >🦜 尚雯婕学习法</button>
+                    >尚雯婕学习法</button>
                     {isAdmin && (
-                      <button className="btn sm" onClick={(e) => { e.stopPropagation(); doDelete(item) }}>🗑 删除</button>
+                      <button className="btn sm" onClick={(e) => { e.stopPropagation(); doDelete(item) }}>删除</button>
                     )}
                   </div>
                 </div>
@@ -149,7 +149,7 @@ export default function SquarePage() {
       {showAdmin && (
         <div className="modal-mask" onClick={() => setShowAdmin(false)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
-            <h2>🔐 管理登录</h2>
+            <h2>管理登录</h2>
             <p className="hint">输入管理员密钥以解锁上传 / 删除。</p>
             <div className="field">
               <label>管理员密钥</label>
@@ -174,7 +174,7 @@ export default function SquarePage() {
       {noSubsItem && (
         <div className="modal-mask" onClick={() => setNoSubsItem(null)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
-            <h2>⚠️ 无法使用尚雯婕学习法</h2>
+            <h2>无法使用尚雯婕学习法</h2>
             <p className="hint" style={{ margin: '12px 0' }}>
               该素材「{noSubsItem.title}」缺少分句字幕，无法使用尚雯婕学习法。
             </p>

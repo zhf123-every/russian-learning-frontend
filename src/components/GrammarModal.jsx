@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { mdToHtml } from '../lib/md'
 
 // 从全局变量加载语法数据
@@ -55,7 +55,7 @@ export default function GrammarModal({ onClose }) {
   return (
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 960 }}>
-        <h2>📚 俄语语法工具书</h2>
+        <h2>俄语语法工具书</h2>
         <div className="row" style={{ marginBottom: 12 }}>
           <input
             className="qfill"

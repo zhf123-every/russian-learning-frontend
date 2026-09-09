@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { LEVELS, getLevelVideos } from '../data/courseLibrary'
 import { useCourseStore } from '../store/courseStore'
 import VideoCard from '../components/VideoCard'
@@ -28,8 +28,8 @@ export default function Home() {
   return (
     <div className="course">
       <div className="row" style={{ marginBottom: 16, gap: 8 }}>
-        <button className="btn primary" onClick={() => setShowAdd(true)}>＋ 添加资料</button>
-        <button className="btn" onClick={() => setShowTranscribe(true)}>🎙 音频识别</button>
+        <button className="btn primary" onClick={() => setShowAdd(true)}>添加资料</button>
+        <button className="btn" onClick={() => setShowTranscribe(true)}>音频识别</button>
       </div>
 
       <div className="course-levels">

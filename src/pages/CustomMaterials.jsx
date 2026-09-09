@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCourseStore } from '../store/courseStore'
 import AddMaterialModal from '../components/AddMaterialModal'
@@ -13,10 +13,10 @@ export default function CustomMaterials() {
   return (
     <div className="course">
       <div className="row" style={{ marginBottom: 16, justifyContent: 'space-between' }}>
-        <button className="btn sm" onClick={() => navigate('/')}>← 返回首页</button>
+        <button className="btn sm" onClick={() => navigate('/')}>返回首页</button>
         <div className="row" style={{ gap: 8 }}>
-          <button className="btn sm" onClick={() => setShowTranscribe(true)}>🎙 音频识别</button>
-          <button className="btn primary" onClick={() => setShowAdd(true)}>＋ 添加素材</button>
+          <button className="btn sm" onClick={() => setShowTranscribe(true)}>音频识别</button>
+          <button className="btn primary" onClick={() => setShowAdd(true)}>添加素材</button>
         </div>
       </div>
       <h2>自定义素材</h2>
@@ -28,7 +28,7 @@ export default function CustomMaterials() {
           <h1>还没有素材</h1>
           <p>填 mp4 视频地址（直连播放，不经过后端），开始你的第一课。</p>
           <div className="cta">
-            <button className="btn primary" onClick={() => setShowAdd(true)}>＋ 添加素材</button>
+            <button className="btn primary" onClick={() => setShowAdd(true)}>添加素材</button>
           </div>
         </div>
       ) : (
