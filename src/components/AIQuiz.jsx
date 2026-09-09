@@ -38,7 +38,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
     setCurrentIdx(0)
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000)
+    const timeoutId = setTimeout(() => controller.abort(), 120000)
 
     try {
       const r = await apiFetch('/api/generate-quiz', {
@@ -58,7 +58,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
       setPhase('answering')
     } catch (e) {
       clearTimeout(timeoutId)
-      const msg = e.name === 'AbortError' ? '生成超时（30秒），请重试' : (e.message || '生成题目失败')
+      const msg = e.name === 'AbortError' ? '生成超时（2分钟），请重试' : (e.message || '生成题目失败')
       setGenError(msg)
       setPhase('error')
     }
@@ -250,7 +250,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                 正在生成测验题目…
               </div>
               <div style={{ fontSize: 13, color: 'var(--muted, #86796D)' }}>
-                AI 正在根据文章内容生成 30 道题，请稍候（约 10-30 秒）
+                AI 正在根据文章内容生成 30 道题，请稍候（约 30-90 秒，首次生成可能较慢）
               </div>
               <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 4 }}>
                 {[0, 1, 2].map(i => (
