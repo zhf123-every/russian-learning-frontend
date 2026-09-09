@@ -50,4 +50,10 @@ export const useVocabStore = create((set, get) => ({
     const now = Date.now()
     return get().cards.filter(c => isDue(c.fsrs, now))
   },
+
+  remove(cardId) {
+    const cards = get().cards.filter(c => c.id !== cardId)
+    saveLS(LS.vocab, cards.map(c => ({ ...c, fsrs: serializeCard(c.fsrs) })))
+    set({ cards })
+  },
 }))
