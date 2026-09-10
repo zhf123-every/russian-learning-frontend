@@ -615,16 +615,22 @@ export default function Study() {
  )}
  {!(shangMode && (curStage === STAGES.LISTEN || curStage === STAGES.DICTATE)) && (
 <div className="card" style={{ padding: '18px 20px', textAlign: 'center' }}>
-  <div key={curIdx} style={{ animation: 'sentenceFadeIn 0.3s ease' }}>
-    <div className="ru" style={{ fontSize: 19, fontWeight: 600, color: 'var(--text)', lineHeight: 1.6, marginBottom: 6 }}>
-      {cur?.text || '—'}
-    </div>
-    {cur?.tr && (
-      <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.5 }}>
-        {cur.tr}
+  {(() => {
+    const displayIdx = activeSentenceIdx >= 0 ? activeSentenceIdx : curIdx
+    const displaySentence = sentences[displayIdx]
+    return (
+      <div key={displayIdx} style={{ animation: 'sentenceFadeIn 0.3s ease' }}>
+        <div className="ru" style={{ fontSize: 19, fontWeight: 600, color: 'var(--text)', lineHeight: 1.6, marginBottom: 6 }}>
+          {displaySentence?.text || '—'}
+        </div>
+        {displaySentence?.tr && (
+          <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.5 }}>
+            {displaySentence.tr}
+          </div>
+        )}
       </div>
-    )}
-  </div>
+    )
+  })()}
 </div>
  )}
 </div>
