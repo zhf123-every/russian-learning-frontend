@@ -670,3 +670,9 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 .translation code{background:var(--accent-soft);color:var(--accent-dark);padding:2px 6px;border-radius:4px;font-size:13px}
 .translation pre{background:#2D241C;color:#F5EFE7;padding:14px;border-radius:10px;overflow-x:auto;margin:12px 0}
 .translation pre code{background:transparent;color:inherit;padding:0}
+
+/* 句子切换淡入动画 */
+@keyframes sentenceFadeIn{
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:translateY(0)}
+}

@@ -4,7 +4,6 @@ import { useCourseStore } from '../store/courseStore'
 import { useSquareStore } from '../store/squareStore'
 import { useSessionStore } from '../store/sessionStore'
 import { useShangStore, STAGES } from '../store/shangStore'
-import SentenceList from '../components/SentenceList'
 import SentenceBox from '../components/SentenceBox'
 import FullTextPanel from '../components/FullTextPanel'
 import { explainSentence, reciteCompare } from '../lib/ai'
@@ -615,9 +614,24 @@ export default function Study() {
 </div>
  )}
  {!(shangMode && (curStage === STAGES.LISTEN || curStage === STAGES.DICTATE)) && (
-<div className="card">
-<div style={{ fontWeight: 600, marginBottom: 6 }}>台词列表<span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 13 }}>{sentences.length} 句</span></div>
-<SentenceList sentences={sentences} curIdx={curIdx} playingIdx={playingIdx} onPick={setIdx} />
+<div className="card" style={{ padding: '14px 18px' }}>
+  <div key={curIdx} style={{ animation: 'sentenceFadeIn 0.3s ease' }}>
+    <div className="ru" style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', lineHeight: 1.5, marginBottom: 6 }}>
+      {cur?.text || '—'}
+    </div>
+    {cur?.tr && (
+      <div style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.5 }}>
+        {cur.tr}
+      </div>
+    )}
+  </div>
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-light)' }}>
+    <span style={{ fontSize: 12, color: 'var(--faint)' }}>第 {curIdx + 1} / {sentences.length} 句</span>
+    <div style={{ display: 'flex', gap: 6 }}>
+      <button className="btn sm" onClick={() => go(-1)} disabled={curIdx === 0} style={{ padding: '4px 12px', fontSize: 12 }}>上一句</button>
+      <button className="btn sm" onClick={() => go(1)} disabled={curIdx === sentences.length - 1} style={{ padding: '4px 12px', fontSize: 12 }}>下一句</button>
+    </div>
+  </div>
 </div>
  )}
 </div>
