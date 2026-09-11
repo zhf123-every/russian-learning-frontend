@@ -25,18 +25,29 @@ export default function TutorChat() {
   const [messages, setMessages] = useState([])      // [{role:'user'|'ai', text, ruText, corrected, error_analysis, guidance, question}]
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const [recording, setRecording] = useState(false)
+  const [micActive, setMicActive] = useState(false)   // 麦克风持续监听中
+  const [speaking, setSpeaking] = useState(false)     // 用户正在说话（呼吸动画）
+  const [autoTTS, setAutoTTS] = useState(true)        // 自动朗读开关，默认开启
   const [ttsPlaying, setTtsPlaying] = useState(false)
   const [srSupported] = useState(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition))
   const listRef = useRef(null)
   const audioRef = useRef(null)
   const recRef = useRef(null)
   const ttsTokenRef = useRef(0)
+  const micActiveRef = useRef(false)
+  const speakingTimerRef = useRef(null)
+  const pausedByTtsRef = useRef(false)                // TTS 播放期间是否暂停了麦克风
+  const autoTTSRef = useRef(true)
+  const messagesRef = useRef([])
 
   // 自动滚动到底部
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
   }, [messages, sending])
+
+  // 同步最新值到 ref（异步回调中读取，避免闭包旧值）
+  autoTTSRef.current = autoTTS
+  messagesRef.current = messages
 
   // 选择难度：AI 主动开场
   const pickLevel = (lv) => {
@@ -52,42 +63,88 @@ export default function TutorChat() {
     return m ? m.join(' ').trim() : t
   }
 
-  // 语音识别（Web Speech API，ru-RU）
-  const startRecording = () => {
+  // ========== 持续语音识别（Web Speech API，ru-RU，continuous） ==========
+  // 点击【说话】一次持续收音，再次点击【停止】才停止；识别完成自动发送给AI。
+  const buildRec = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    const rec = new SR()
+    rec.lang = 'ru-RU'
+    rec.continuous = true          // 持续监听，无需反复点击
+    rec.interimResults = true      // 中间结果用于判断"正在说话"
+    rec.maxAlternatives = 1
+    rec.onstart = () => { /* 已在 micActive 中标记 */ }
+    rec.onresult = (e) => {
+      // 用户正在说话 → 呼吸动画；静默 2.5s 后动画停止、监听保持
+      setSpeaking(true)
+      if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current)
+      speakingTimerRef.current = setTimeout(() => setSpeaking(false), 2500)
+      // 只处理增量 final 结果（resultIndex 之后），避免重复发送旧内容
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i]
+        if (r.isFinal && r[0] && r[0].transcript.trim()) {
+          sendMessage(r[0].transcript.trim())
+        }
+      }
+    }
+    rec.onerror = (e) => {
+      if (e.error === 'not-allowed') {
+        // 权限被拒 → 停止监听，避免 onend 自动重启死循环
+        micActiveRef.current = false
+        setMicActive(false)
+        setSpeaking(false)
+        if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current)
+        toast('麦克风权限被拒绝，请在浏览器设置中允许')
+      }
+      else if (e.error === 'no-speech') { /* 持续模式下静默属正常，不打扰 */ }
+      else if (e.error === 'aborted') { /* 主动停止，不提示 */ }
+      else if (e.error !== 'network') toast('语音识别失败：' + e.error)
+    }
+    rec.onend = () => {
+      setSpeaking(false)
+      if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current)
+      if (micActiveRef.current) {
+        // 非主动停止（浏览器静默超时等）→ 自动重启，保持持续监听
+        const r = buildRec()
+        recRef.current = r
+        try { r.start() } catch (err) { micActiveRef.current = false; setMicActive(false) }
+      } else {
+        setMicActive(false)
+      }
+    }
+    return rec
+  }
+
+  const startMic = () => {
     if (!srSupported) {
       toast('当前浏览器不支持语音识别，请用Chrome浏览器或手动输入')
       return
     }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    const rec = new SR()
-    rec.lang = 'ru-RU'
-    rec.interimResults = false
-    rec.continuous = false
-    rec.maxAlternatives = 1
-    rec.onstart = () => setRecording(true)
-    rec.onresult = (e) => {
-      const transcript = e.results[0][0].transcript
-      setInput(transcript)
-      setRecording(false)
-      // 识别完成后自动发送
-      if (transcript.trim()) sendMessage(transcript)
-    }
-    rec.onerror = (e) => {
-      setRecording(false)
-      if (e.error === 'not-allowed') toast('麦克风权限被拒绝，请在浏览器设置中允许')
-      else if (e.error === 'no-speech') toast('没有听到声音，请再试一次')
-      else toast('语音识别失败：' + e.error)
-    }
-    rec.onend = () => setRecording(false)
+    if (micActiveRef.current) return
+    const rec = buildRec()
     recRef.current = rec
-    rec.start()
+    micActiveRef.current = true
+    setMicActive(true)
+    try { rec.start() } catch (e) {
+      micActiveRef.current = false
+      setMicActive(false)
+      toast('语音识别启动失败，请重试')
+    }
   }
 
-  const stopRecording = () => {
-    if (recRef.current) {
-      try { recRef.current.stop() } catch (e) {}
+  const stopMic = () => {
+    micActiveRef.current = false
+    setSpeaking(false)
+    if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current)
+    if (recRef.current) { try { recRef.current.stop() } catch (e) {} }
+    setMicActive(false)
+  }
+
+  // TTS 播放结束后恢复被暂停的麦克风
+  const resumeMicAfterTts = () => {
+    if (pausedByTtsRef.current) {
+      pausedByTtsRef.current = false
+      startMic()
     }
-    setRecording(false)
   }
 
   // 发送消息给 AI 老师
@@ -99,8 +156,8 @@ export default function TutorChat() {
     // 追加用户消息
     setMessages(prev => [...prev, { role: 'user', text: msg, corrected: '', error_analysis: '', guidance: '', question: '' }])
     try {
-      // 历史：从 messages 提取 role+text（不包含纠错字段）
-      const history = messages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }))
+      // 历史：从最新消息提取 role+text（不包含纠错字段）
+      const history = messagesRef.current.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }))
       const r = await apiFetch('/api/tutor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,8 +180,8 @@ export default function TutorChat() {
         aiMsg.ruText = extractRu(j.content)
       }
       setMessages(prev => [...prev, aiMsg])
-      // 自动朗读 AI 老师的回复（纯俄语部分）
-      if (aiMsg.ruText) playTTS(aiMsg.ruText)
+      // 自动朗读 AI 老师的回复（受顶部开关控制，默认开启）
+      if (aiMsg.ruText && autoTTSRef.current) playTTS(aiMsg.ruText)
     } catch (e) {
       toast(e.message || '发送失败，请检查网络')
     } finally {
@@ -135,19 +192,29 @@ export default function TutorChat() {
   // 播放 AI 老师语音（后端 Svetlana TTS）
   const playTTS = (text) => {
     if (!text) return
+    // AI 朗读时临时屏蔽麦克风收音，防止 AI 播放的语音被误捕获
+    if (micActiveRef.current) {
+      pausedByTtsRef.current = true
+      stopMic()
+    }
     if (!audioRef.current) audioRef.current = new Audio()
     const audio = audioRef.current
     const token = ++ttsTokenRef.current
     audio.pause()
-    audio.onended = () => { if (ttsTokenRef.current === token) setTtsPlaying(false) }
+    audio.onended = () => {
+      if (ttsTokenRef.current !== token) return
+      setTtsPlaying(false)
+      resumeMicAfterTts()
+    }
     audio.onerror = () => {
       if (ttsTokenRef.current !== token) return
       setTtsPlaying(false)
+      resumeMicAfterTts()
       toast('语音播放失败，请检查后端服务')
     }
     audio.oncanplay = () => {
       if (ttsTokenRef.current !== token) return
-      audio.play().catch(() => setTtsPlaying(false))
+      audio.play().catch(() => { setTtsPlaying(false); resumeMicAfterTts() })
     }
     audio.src = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now()
     audio.load()
@@ -158,6 +225,7 @@ export default function TutorChat() {
     ttsTokenRef.current++
     if (audioRef.current) audioRef.current.pause()
     setTtsPlaying(false)
+    resumeMicAfterTts()
   }
 
   // 重说当前正确句子（把 corrected 填入输入框）
@@ -172,6 +240,7 @@ export default function TutorChat() {
   // 组件卸载清理
   useEffect(() => {
     return () => {
+      if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current)
       if (recRef.current) { try { recRef.current.abort() } catch (e) {} }
       if (audioRef.current) audioRef.current.pause()
       ttsTokenRef.current++
@@ -232,7 +301,16 @@ export default function TutorChat() {
           <strong>俄语AI对话教练</strong>
           <span className="tutor-lv-tag" style={{ background: lv.tint, color: lv.color }}>{lv.title}</span>
         </div>
-        <span className="tutor-hint">直接说话或输入，AI老师会纠正你的语法</span>
+        <div className="tutor-header-right">
+          <button
+            className={'tbtn tutor-tts-toggle' + (autoTTS ? ' on' : '')}
+            onClick={() => setAutoTTS(v => !v)}
+            title="AI回复后是否自动朗读俄语"
+          >
+            自动朗读：{autoTTS ? '开' : '关'}
+          </button>
+          <span className="tutor-hint">直接说话或输入，AI老师会纠正你的语法</span>
+        </div>
       </div>
 
       <div className="tutor-chat" ref={listRef}>
@@ -291,12 +369,12 @@ export default function TutorChat() {
 
       <div className="tutor-inputbar">
         <button
-          className={'tbtn tutor-mic' + (recording ? ' recording' : '')}
-          onClick={recording ? stopRecording : startRecording}
+          className={'tbtn tutor-mic' + (micActive ? ' listening' : '') + (speaking ? ' speaking' : '')}
+          onClick={micActive ? stopMic : startMic}
           disabled={!srSupported}
-          title={srSupported ? '点击说话（俄语）' : '当前浏览器不支持语音识别'}
+          title={srSupported ? '点击开始持续收音，再点一次停止' : '当前浏览器不支持语音识别'}
         >
-          {recording ? '停止' : '说话'}
+          {micActive ? '停止' : '说话'}
         </button>
         <input
           className="tutor-input"
