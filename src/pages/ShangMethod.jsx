@@ -795,6 +795,18 @@ export default function ShangMethod() {
  if (serverAudioRef.current && ttsSource === 'server') {
  serverAudioRef.current.playbackRate = newSpeed
  }
+ // 浏览器语音模式：如果正在播放，用新速度重新播放当前句子（让变速立即生效）
+ else if (ttsSource === 'browser' && isPlaying && window.speechSynthesis) {
+ window.speechSynthesis.cancel()
+ const currentText = currentSentence?.russian || currentSentence?.text || ''
+ if (currentText) {
+ const utter = new SpeechSynthesisUtterance(currentText)
+ utter.lang = 'ru-RU'
+ utter.rate = newSpeed
+ utter.onend = () =>{ setIsPlaying(false) }
+ window.speechSynthesis.speak(utter)
+ }
+ }
  }}>
 <option value={0.5}>0.5x</option>
 <option value={0.75}>0.75x</option>
