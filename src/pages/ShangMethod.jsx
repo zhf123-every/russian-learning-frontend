@@ -545,14 +545,13 @@ export default function ShangMethod() {
 </div>
 
  {/* 阶段切换条（15 顺序不可逆，可回退上一阶段） */}
-<div className="shang-stages" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0 14px' }}>
+<div className="shang-stages stage-switch" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0 14px' }}>
  {[1, 2, 3, 4, 5].map(s =>(
 <button
  key={s}
- className={'btn sm' + (s === shangWenjieStage ? ' primary' : '')}
+ className={'btn sm stage-btn' + (s === shangWenjieStage ? ' primary' : '')}
  disabled={s >shangWenjieStage + 1}
  onClick={() =>goStage(s)}
- style={{ flex: '1 1 auto', minWidth: 110 }}
  >
  {STAGE_LABELS[s]}
 </button>

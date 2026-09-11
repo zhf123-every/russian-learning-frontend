@@ -734,14 +734,13 @@ export default function Study() {
 
  {/* 尚雯婕五阶段切换条（仅尚雯婕模式） */}
  {shangMode && (
-<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+<div className="stage-switch">
  {[1, 2, 3, 4, 5].map(s =>(
 <button
  key={s}
- className={'btn sm' + (curStage === s ? ' primary' : '')}
+ className={'btn sm stage-btn' + (curStage === s ? ' primary' : '')}
  disabled={s >shangWenjieStage + 1}
  onClick={() =>goShangStage(s)}
- style={{ flex: '1 1 auto', minWidth: 100 }}
  >
  {STAGE_LABELS[s]}
 </button>

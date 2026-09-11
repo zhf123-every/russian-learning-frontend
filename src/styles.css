@@ -1041,3 +1041,124 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 /* 循环开启：浅色底 + accent 高亮边框与文字（不再整块深色） */
 .btn.sm.loop-on{color:var(--accent-dark,#8A6A4B);background:var(--accent-soft,#F3E9DC);border-color:var(--accent,#B08A5A);font-weight:600}
 .btn.sm.loop-on:hover{background:var(--accent-light,#E8D9C3);color:var(--accent-darker,#6E5238);border-color:var(--accent-dark,#8A6A4B)}
+
+/* ===================== 移动端全面适配 ===================== */
+
+/* 尚雯婕五阶段切换条（桌面：一行5个；手机：3+2 整齐换行） */
+.stage-switch{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.stage-switch .stage-btn{flex:1 1 auto;min-width:100px}
+
+@media (max-width:640px){
+  /* 触控体验 */
+  html{-webkit-tap-highlight-color:transparent}
+  body{font-size:14px}
+  button{cursor:pointer}
+
+  /* 模态框贴近屏幕 */
+  .modal-mask{padding:14px 8px;align-items:center}
+  .modal{padding:18px 14px;max-height:92vh;overflow-y:auto}
+  .modal h2{font-size:18px}
+  .mfoot{flex-wrap:wrap}
+  .mfoot .btn{flex:1;justify-content:center}
+
+  /* 防 iOS 聚焦自动缩放：输入类字号不低于 16px */
+  input,textarea,select{font-size:16px!important}
+  .dict-area{font-size:16px!important}
+  .qfill{font-size:16px!important}
+  .tutor-input{font-size:16px!important}
+
+  /* 尚雯婕五阶段条：3列换行 */
+  .stage-switch{gap:4px}
+  .stage-switch .stage-btn{min-width:calc(33.333% - 6px);font-size:12px;padding:9px 2px;flex:1 1 auto}
+  .stage-switch .stage-btn:disabled{opacity:.35}
+
+  /* 普通学习阶段条 */
+  .stages{gap:3px;padding:3px;margin-bottom:12px}
+  .stage{padding:9px 3px;font-size:12px}
+  .stage-num{width:17px;height:17px;font-size:10px}
+
+  /* 视频区 */
+  .video-wrap{aspect-ratio:16/9;border-radius:14px}
+
+  /* 句子列表 */
+  .sent-list{max-height:260px}
+  .sent{padding:9px 10px;font-size:14px}
+
+  /* 学习面板 */
+  .ru-large{font-size:22px;line-height:1.55}
+  .zh-medium{font-size:15px}
+  .sentence-box{padding:20px 14px;min-height:110px}
+  .sentence-box .txt{font-size:19px}
+  .dict-area{min-height:100px;padding:12px}
+
+  /* 工具栏紧凑 */
+  .toolbar{gap:4px;padding:8px 4px}
+  .toolbar .btn{padding:7px 10px;font-size:12.5px}
+  .toolbar .pos{font-size:12px}
+  .speed-select{padding:7px 8px;font-size:13px;max-width:90px}
+
+  /* 阶段导航 */
+  .stage-nav .btn{padding:9px 8px;font-size:13px}
+
+  /* 按钮行（听写/训练操作） */
+  .row{gap:8px}
+  .row .btn{flex:1;justify-content:center;padding:10px 8px;font-size:13.5px}
+  .btn-row-main{gap:6px}
+  .btn-row-main .btn{min-width:calc(50% - 6px);padding:10px 6px;font-size:13px}
+
+  /* 首页 */
+  .home{padding:28px 16px}
+  .home-cards{gap:12px}
+  .home-card{min-width:100%;height:52px;padding:0 16px}
+  .home-card h2{font-size:14.5px}
+
+  /* 课程库 / 学习广场 */
+  .course{padding:24px 14px}
+  .square-head{margin-bottom:14px}
+  .square-head h2{font-size:19px}
+  .cat{padding:0 14px;height:34px;font-size:13.5px}
+  .course-level{padding:7px 12px;font-size:13px}
+  .course-item{padding:13px 12px;flex-direction:column;align-items:flex-start;gap:8px}
+  .course-item .meta{width:100%;justify-content:space-between}
+
+  /* 语法页 */
+  .grammar-layout{padding:14px}
+  #grammarNav{overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start;padding-bottom:6px}
+  .gnav-item{white-space:nowrap}
+
+  /* AI 对话教练 */
+  .tutor-page{height:calc(100dvh - 56px);padding:10px 12px}
+  .tutor-level-page{padding:32px 16px;gap:28px}
+  .tutor-level-title{font-size:30px}
+  .tutor-msg{max-width:94%}
+  .tutor-inputbar{padding:8px;gap:6px;border-radius:18px}
+  .tutor-mic{padding:10px 12px;font-size:13px}
+  .tutor-send{padding:10px 16px;font-size:13px}
+
+  /* AI 测验 */
+  .quiz-option{width:100%}
+
+  /* 生词本 */
+  .srs-card{padding:24px 14px}
+  .srs-card .q .w{font-size:28px}
+
+  /* 全文对照 / 录音比对面板（固定定位容器） */
+  div[style*="maxHeight: '80vh'"]{max-width:100%!important}
+}
+
+@media (max-width:480px){
+  /* 顶栏按钮两行紧凑 */
+  .topbar{padding:8px 8px}
+  .topbar .tbtn{flex:1 1 25%;padding:8px 2px;font-size:12px;gap:3px}
+  .brand{font-size:15px}
+
+  /* 五阶段条两列（2+2+1） */
+  .stage-switch .stage-btn{min-width:calc(50% - 4px);font-size:12.5px}
+
+  /* 主要容器 */
+  .main{padding:10px}
+  .card{padding:12px}
+
+  /* 录音原文比对音频行 */
+  audio{width:100%}
+}
