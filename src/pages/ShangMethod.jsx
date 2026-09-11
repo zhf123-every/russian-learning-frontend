@@ -148,7 +148,8 @@ export default function ShangMethod() {
  }
  const audio = serverAudioRef.current
  audio.pause()
- audio.src = '/api/tts?text=' + encodeURIComponent(text)
+ // 加时间戳参数绕过浏览器旧音频缓存（_= 每次变化强制重新请求）
+ audio.src = '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now()
  audio.playbackRate = speed  // 后端TTS也支持变速（0.5x-2.0x）
  audio.onended = () =>{ if (onEnd) onEnd() }
  audio.onerror = () =>{
