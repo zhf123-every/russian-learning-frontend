@@ -794,14 +794,24 @@ export default function Study() {
 
  {shangWenjieStage === STAGES.RECITE && (
 <>
-<div className="ru-large">{cur.russian}</div>
- {showZh &&<div className="zh-medium" style={{ marginTop: 6 }}>{cur.chinese}</div>}
-<div className="mode-hint" style={{ marginTop: 10 }}>
-<div className="hint">影子跟读：听 跟读 模仿重音、语速、语调</div>
-<div style={{ marginTop: 8 }}>
+ {/* 当前句卡片 */}
+<div className="sentence-card">
+<span className="sc-seq">第 {curIdx + 1} 句 / 共 {sentences.length} 句</span>
+<div className="sc-ru">{cur.russian}</div>
+ {showZh &&<div className="sc-zh">{cur.chinese}</div>}
+<div className="sc-divider" />
+</div>
+
+ {/* 训练操作区 */}
+<div className="train-card" style={{ marginTop: 12 }}>
+<div className="tc-title">影子跟读训练</div>
+<div style={{ textAlign: 'center', marginBottom: 12 }}>
+<span className="act-hint">听 → 跟读 → 模仿重音、语速、语调</span>
+</div>
+<div className="btn-row-main">
 <button className="btn primary" onClick={() =>playSeg(true)}>循环本句</button>
-<button className="btn" onClick={() =>playSeg(false)} style={{ marginLeft: 6 }}>听一次</button>
-<button className="btn sm" onClick={() =>{
+<button className="btn" onClick={() =>playSeg(false)}>听一次</button>
+<button className="btn" onClick={() =>{
  openFullText('全文跟读 · 字幕跟随')
  ensurePlayer()
  if (pRef.current) {
@@ -811,13 +821,16 @@ export default function Study() {
  try { videoRef.current.currentTime = 0 } catch(e) {}
  videoRef.current.play().catch(() =>{})
  }
- }} style={{ marginLeft: 6 }}>全文跟读</button>
+ }}>全文跟读</button>
 </div>
-<div className="row" style={{ marginTop: 10 }}>
-<button className="btn sm" onClick={() =>shang.setReciteOk(videoId, cur.id, true)}>本句跟读流畅</button>
+<div className="prog-wrap">
+<div className="prog-bar"><div className="prog-fill" style={{ width: `${reciteProgress.total ? (reciteProgress.done / reciteProgress.total * 100) : 0}%` }} /></div>
+<div className="prog-meta"><span>跟读进度</span><span>{reciteProgress.done} / {reciteProgress.total} 句</span></div>
+</div>
+<div className="btn-row-self">
+<button className="btn sm success" onClick={() =>shang.setReciteOk(videoId, cur.id, true)}>本句跟读流畅</button>
 <button className="btn sm" onClick={() =>shang.setReciteOk(videoId, cur.id, false)}>还需要再练</button>
 </div>
-<div className="hint" style={{ marginTop: 6 }}>跟读完成：{reciteProgress.done}/{reciteProgress.total}</div>
 </div>
 </>
  )}
@@ -1002,8 +1015,9 @@ export default function Study() {
  )}
 
  {/* 通用控件：变速、循环、播放、导航 */}
-<div className="ctrl-row" style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+<div className="toolbar" style={{ marginTop: 12 }}>
 <button className="btn sm" onClick={() =>go(-1)} disabled={curIdx === 0}>上一句</button>
+<span className="tb-sep" />
 <button className="btn sm primary" onClick={() =>playSeg(loopMode)}>播放本句</button>
 <button className={'btn sm' + (loopMode ? ' primary' : '')} onClick={toggleLoop}>循环</button>
 <select className="speed-select" value={speed} onChange={e =>setSpeed(parseFloat(e.target.value))}>
@@ -1013,12 +1027,14 @@ export default function Study() {
 <option value={1.25}>1.25x</option>
 <option value={1.5}>1.5x</option>
 </select>
+<span className="tb-sep" />
 <span className="pos">{curIdx + 1} / {sentences.length}</span>
+<span className="tb-sep" />
 <button className="btn sm" onClick={() =>go(1)} disabled={curIdx === sentences.length - 1}>下一句</button>
 </div>
 
  {/* 阶段切换：上一阶段 / 下一阶段 */}
-<div className="ctrl-row" style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+<div className="stage-nav">
  {curStage >STAGES.LISTEN && (
 <button className="btn sm" onClick={() =>goShangStage(curStage - 1)}>上一阶段</button>
  )}

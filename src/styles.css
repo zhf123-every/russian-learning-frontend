@@ -989,3 +989,50 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 /* ===================== 学习广场卡片 v2：操作按钮行 ===================== */
 .videos-grid.v2 .vc-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:0 16px 14px}
 .videos-grid.v2 .vc-actions .btn{flex:1;justify-content:center;min-width:90px}
+
+/* ===================== 尚雯婕学习页 UI 质感升级 ===================== */
+
+/* 当前句卡片 */
+.sentence-card{background:linear-gradient(160deg,#FCF8F1 0%,#F7F0E4 100%);border:1px solid var(--border2,#E8DFD2);border-radius:18px;padding:26px 22px;text-align:center;box-shadow:0 6px 24px rgba(120,96,72,0.07);position:relative}
+.sentence-card .sc-seq{position:absolute;top:12px;left:14px;font-size:11px;font-weight:600;color:var(--accent-dark,#8A6A4B);background:rgba(155,123,94,0.12);border:1px solid rgba(155,123,94,0.22);padding:3px 10px;border-radius:999px;letter-spacing:.3px}
+.sentence-card .sc-ru{font-family:"PT Serif",Georgia,"Segoe UI",serif;font-size:30px;font-weight:600;line-height:1.65;color:var(--text,#3D332C);word-break:break-word;margin-top:8px}
+.sentence-card .sc-zh{font-size:14.5px;color:var(--muted,#86796D);line-height:1.6;margin-top:8px;max-width:520px;margin-left:auto;margin-right:auto}
+.sentence-card .sc-divider{width:44px;height:2px;background:linear-gradient(90deg,transparent,var(--accent,#B08A5A),transparent);margin:14px auto 0;border-radius:2px}
+
+/* 操作提示胶囊 */
+.act-hint{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--accent-dark,#8A6A4B);background:rgba(155,123,94,0.10);border:1px solid rgba(155,123,94,0.18);padding:6px 14px;border-radius:999px;margin:0 auto}
+
+/* 训练操作区卡片 */
+.train-card{background:var(--card,#fff);border:1px solid var(--border2,#E8DFD2);border-radius:16px;padding:16px 14px;box-shadow:0 4px 18px rgba(120,96,72,0.05)}
+.train-card .tc-title{font-size:13px;font-weight:600;color:var(--text-soft,#5C4A3A);margin-bottom:10px;text-align:left;padding-left:2px}
+
+/* 主操作按钮组 */
+.btn-row-main{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn-row-main .btn{min-width:110px;justify-content:center;padding:10px 18px;font-size:14px;border-radius:12px}
+.btn-row-main .btn.primary{box-shadow:0 6px 16px rgba(155,123,94,0.25)}
+
+/* 进度条 */
+.prog-wrap{margin-top:14px}
+.prog-bar{height:6px;background:var(--border-light,#EDE4D8);border-radius:999px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent,#B08A5A),var(--accent-dark,#8A6A4B));border-radius:999px;transition:width .4s ease}
+.prog-meta{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:12px;color:var(--muted,#86796D)}
+
+/* 自评按钮组 */
+.btn-row-self{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+
+/* 底部控制工具栏 */
+.toolbar{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;background:var(--card,#fff);border:1px solid var(--border2,#E8DFD2);border-radius:16px;padding:10px 8px;box-shadow:0 4px 18px rgba(120,96,72,0.05)}
+.toolbar .tb-sep{width:1px;height:22px;background:var(--border-light,#EDE4D8);margin:0 4px}
+.toolbar .btn{border-radius:10px}
+.toolbar .pos{font-size:12.5px;color:var(--muted,#86796D);font-weight:600;padding:0 4px}
+
+/* 阶段导航 */
+.stage-nav{display:flex;gap:8px;margin-top:10px}
+.stage-nav .btn{flex:1;justify-content:center;border-radius:12px;padding:10px 12px}
+
+/* 移动端适配 */
+@media (max-width:640px){
+  .sentence-card{padding:22px 16px}
+  .sentence-card .sc-ru{font-size:24px}
+  .btn-row-main .btn{min-width:44%;flex:1}
+}
