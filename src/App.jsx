@@ -9,6 +9,7 @@ import Study from './pages/Study'
 import Vocab from './pages/Vocab'
 import Profile from './pages/Profile'
 import Dictionary from './pages/Dictionary'
+import TutorChat from './pages/TutorChat'
 import SettingsModal from './components/SettingsModal'
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/study/:videoId" element={<Study />} />
         <Route path="/vocab" element={<Vocab />} />
         <Route path="/dictionary" element={<Dictionary />} />
+        <Route path="/tutor" element={<TutorChat />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}

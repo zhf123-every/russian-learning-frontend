@@ -18,6 +18,13 @@ export default function HomePage() {
       route: '/course',
       primary: false,
     },
+    {
+      title: '俄语AI对话教练',
+      sub: '开口说 · 实时纠错 · 语音陪练',
+      desc: '和AI老师自由聊天，分A1-B2四个等级，说错就纠正语法并引导你重说。',
+      route: '/tutor',
+      primary: false,
+    },
   ]
 
   return (
