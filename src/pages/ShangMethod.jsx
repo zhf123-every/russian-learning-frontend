@@ -68,6 +68,8 @@ export default function ShangMethod() {
  const recordChunksRef = useRef([])
  const recordStreamRef = useRef(null)
  const reciteAudioRef = useRef(null)
+ // 后端TTS播放令牌：防止旧播放请求的异步回调覆盖新播放
+ const ttsTokenRef = useRef(0)
 
  const shang = useShangStore()
  // 阶段 1..5，沿用 shangWenjieStage 字段
@@ -154,13 +156,12 @@ export default function ShangMethod() {
  serverAudioRef.current.preload = 'auto'
  }
  const audio = serverAudioRef.current
+ const token = ++ttsTokenRef.current  // 本次播放令牌
  audio.pause()
- // 加时间戳参数绕过浏览器旧音频缓存（_= 每次变化强制重新请求）
- audio.src = '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now()
- audio.playbackRate = speed  // 后端TTS也支持变速（0.5x-2.0x）
- audio.onended = () =>{ if (onEnd) onEnd() }
+ audio.onended = () =>{ if (ttsTokenRef.current === token && onEnd) onEnd() }
  audio.onerror = () =>{
- // 后端TTS失败：若有浏览器俄语语音包则降级使用，否则提示错误
+ // 只有音频真正加载失败（网络错误/后端不可用）才降级浏览器语音
+ if (ttsTokenRef.current !== token) return
  if (voiceChecked) {
  playBrowserFallback(text, onEnd)
  } else {
@@ -169,15 +170,19 @@ export default function ShangMethod() {
  if (onEnd) onEnd()
  }
  }
+ // 等音频加载完成后再播放：edge-tts后端生成需1-2秒，
+ // 立即play()会因资源未就绪被拒（AbortError），被误判为失败而降级到浏览器语音
+ audio.oncanplay = () =>{
+ if (ttsTokenRef.current !== token) return
  audio.play().catch(() =>{
- // 自动播放被阻止：若有浏览器俄语语音包则降级使用（speechSynthesis同样受限，但仍尝试）
- if (voiceChecked) {
- playBrowserFallback(text, onEnd)
- } else {
- toast('浏览器阻止了自动播放，请点击页面后重试')
- setIsPlaying(false)
- }
+ // 自动播放策略限制：音频本身正常，提示用户点击后重试，不降级
+ toast('请点击播放按钮后再试')
  })
+ }
+ // 加时间戳参数绕过浏览器旧音频缓存（_= 每次变化强制重新请求）
+ audio.src = '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now()
+ audio.playbackRate = speed  // 后端TTS也支持变速（0.5x-2.0x）
+ audio.load()
  }
 
  // TTS 播放（支持变速 + 循环，自动选择浏览器/后端TTS）
@@ -233,6 +238,7 @@ export default function ShangMethod() {
  }
 
  const stopPlay = () =>{
+ ttsTokenRef.current++  // 使所有pending的播放回调失效
  if (window.speechSynthesis) window.speechSynthesis.cancel()
  if (serverAudioRef.current) serverAudioRef.current.pause()
  setIsPlaying(false)
