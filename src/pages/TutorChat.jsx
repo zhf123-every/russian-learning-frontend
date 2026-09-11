@@ -5,10 +5,10 @@ import { parseAIJSON } from '../lib/ai'
 import { toast } from '../lib/toast'
 
 const LEVELS = [
-  { key: 'A1', title: 'A1 · 零基础', desc: '问候、自我介绍、日常短句', color: '#8B735F' },
-  { key: 'A2', title: 'A2 · 初级', desc: '日常生活、购物、兴趣交流', color: '#A8937F' },
-  { key: 'B1', title: 'B1 · 中级', desc: '表达观点、讲述经历、深度对话', color: '#B08A5A' },
-  { key: 'B2', title: 'B2 · 中高级', desc: '抽象话题、复杂句式、流利表达', color: '#A86454' },
+  { key: 'A1', title: 'A1 · 零基础', name: '零基础', desc: '问候、自我介绍、日常短句', color: '#B08A5A', tint: '#F5EBDD' },
+  { key: 'A2', title: 'A2 · 初级', name: '初级', desc: '日常生活、购物、兴趣交流', color: '#A8937F', tint: '#F0E9E0' },
+  { key: 'B1', title: 'B1 · 中级', name: '中级', desc: '表达观点、讲述经历、深度对话', color: '#8B735F', tint: '#EAE2D8' },
+  { key: 'B2', title: 'B2 · 中高级', name: '中高级', desc: '抽象话题、复杂句式、流利表达', color: '#A86454', tint: '#F3E5DF' },
 ]
 
 // AI 老师开场白（按等级）
@@ -181,19 +181,38 @@ export default function TutorChat() {
   // ========== 难度选择页 ==========
   if (!level) {
     return (
-      <div className="landing">
-        <div className="landing-head">
-          <div className="landing-logo">🗣️</div>
-          <h1>俄语AI对话教练</h1>
-          <p>直接开口说俄语，AI老师陪你聊天、纠正语法、引导你越说越好</p>
+      <div className="tutor-level-page">
+        <div className="tutor-level-hero">
+          <div className="tutor-level-badge">
+            <span className="tutor-badge-dot"></span>
+            Русский AI-учитель
+          </div>
+          <h1 className="tutor-level-title">
+            俄语AI<span className="tutor-title-accent">对话教练</span>
+          </h1>
+          <p className="tutor-level-sub">直接开口说俄语，AI老师陪你聊天、纠正语法、引导你越说越好</p>
+          <div className="tutor-hero-deco" aria-hidden="true">
+            <span>А</span><span>Б</span><span>В</span><span>Г</span><span>Д</span>
+          </div>
         </div>
         <div className="tutor-level-grid">
           {LEVELS.map(lv => (
-            <div key={lv.key} className="landing-card tutor-level-card" onClick={() => pickLevel(lv)}>
-              <h2 style={{ color: lv.color }}>{lv.title}</h2>
-              <div className="sub">{lv.desc}</div>
-              <p>自由对话 · 实时纠错 · 语音朗读</p>
-              <div className="go">开始对话</div>
+            <div key={lv.key} className="tutor-level-card" style={{ '--lv': lv.color, '--lv-tint': lv.tint }} onClick={() => pickLevel(lv)}>
+              <div className="tutor-lv-watermark" aria-hidden="true">{lv.key}</div>
+              <div className="tutor-lv-top">
+                <span className="tutor-lv-mark" style={{ background: lv.tint, color: lv.color }}>{lv.key}</span>
+                <span className="tutor-lv-level">{lv.title}</span>
+              </div>
+              <p className="tutor-lv-desc">{lv.desc}</p>
+              <div className="tutor-lv-feats">
+                <span>自由对话</span>
+                <span>实时纠错</span>
+                <span>语音朗读</span>
+              </div>
+              <div className="tutor-lv-btn">
+                开始对话
+                <span className="tutor-lv-arrow">→</span>
+              </div>
             </div>
           ))}
         </div>

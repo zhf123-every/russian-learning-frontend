@@ -764,3 +764,56 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
   .hero-title{font-size:40px}
   .hero-deco{opacity:.035}
 }
+
+/* ===================== AI对话教练 · 难度选择页（高级版） ===================== */
+.tutor-level-page{min-height:calc(100vh - 56px);display:flex;flex-direction:column;align-items:center;gap:42px;padding:56px 24px 48px;max-width:860px;margin:0 auto;position:relative}
+
+/* 顶部 */
+.tutor-level-hero{text-align:center;position:relative;padding:8px 0 10px}
+.tutor-level-badge{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--accent-dark);background:var(--accent-soft);border:1px solid var(--accent-light);padding:6px 16px;border-radius:999px;letter-spacing:.5px;margin-bottom:22px;font-weight:500}
+.tutor-badge-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:dotPulse 2.2s ease-in-out infinite}
+.tutor-level-title{font-size:46px;font-weight:800;color:var(--text);margin:0 0 14px;letter-spacing:-1px;line-height:1.2;font-family:'Georgia','Times New Roman',serif}
+.tutor-title-accent{color:var(--accent);font-weight:400;margin-left:8px}
+.tutor-level-sub{color:var(--muted);font-size:16px;margin:0;line-height:1.8;position:relative;z-index:1}
+.tutor-hero-deco{position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:100%;max-width:560px;height:100%;display:flex;justify-content:space-around;align-items:center;pointer-events:none;z-index:0;opacity:.045}
+.tutor-hero-deco span{font-size:64px;font-weight:900;font-family:'Georgia',serif;color:var(--accent);user-select:none}
+
+/* 等级卡片 2x2 */
+.tutor-level-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;width:100%;max-width:780px;position:relative;z-index:1}
+.tutor-level-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:26px 26px 24px;cursor:pointer;transition:var(--transition-slow);position:relative;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.tutor-level-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--lv),var(--accent));opacity:0;transition:var(--transition)}
+.tutor-level-card::after{content:'';position:absolute;right:-40px;bottom:-40px;width:160px;height:160px;border-radius:50%;background:var(--lv-tint);opacity:.55;transition:var(--transition-slow)}
+.tutor-level-card:hover{transform:translateY(-5px);box-shadow:var(--shadow-lg);border-color:var(--accent-light)}
+.tutor-level-card:hover::before{opacity:1}
+.tutor-level-card:active{transform:translateY(-2px)}
+
+/* 超大等级水印 */
+.tutor-lv-watermark{position:absolute;right:14px;top:6px;font-size:96px;font-weight:900;line-height:1;font-family:'Georgia',serif;color:var(--lv);opacity:.07;user-select:none;pointer-events:none;transition:var(--transition-slow)}
+.tutor-level-card:hover .tutor-lv-watermark{opacity:.14;transform:rotate(-4deg) scale(1.05)}
+
+/* 卡片头部：等级徽章 + 等级名 */
+.tutor-lv-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;position:relative;z-index:1}
+.tutor-lv-mark{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;letter-spacing:.5px;font-family:'Georgia',serif;box-shadow:inset 0 1px 2px rgba(255,255,255,.7);transition:var(--transition)}
+.tutor-level-card:hover .tutor-lv-mark{transform:scale(1.05) rotate(-3deg)}
+.tutor-lv-level{font-size:19px;font-weight:700;color:var(--text);letter-spacing:.3px}
+
+/* 描述 */
+.tutor-lv-desc{font-size:14.5px;color:var(--muted);margin:0 0 16px;line-height:1.7;position:relative;z-index:1}
+
+/* 功能标签 */
+.tutor-lv-feats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;position:relative;z-index:1}
+.tutor-lv-feats span{font-size:12px;color:var(--accent-dark);background:var(--accent-soft);border:1px solid var(--accent-light);padding:4px 11px;border-radius:999px;font-weight:500}
+
+/* 开始对话按钮 */
+.tutor-lv-btn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--accent-dark);background:var(--accent-soft);border:1px solid var(--accent-light);padding:10px 20px;border-radius:999px;align-self:flex-start;transition:var(--transition);position:relative;z-index:1}
+.tutor-level-card:hover .tutor-lv-btn{background:var(--lv);color:#FFF8F0;border-color:var(--lv)}
+.tutor-lv-arrow{transition:transform var(--transition);font-size:15px}
+.tutor-level-card:hover .tutor-lv-arrow{transform:translateX(4px)}
+.tutor-back{margin-top:4px}
+
+/* 响应式 */
+@media (max-width:720px){
+  .tutor-level-grid{grid-template-columns:1fr;max-width:420px}
+  .tutor-level-title{font-size:34px}
+  .tutor-hero-deco{opacity:.03}
+}
