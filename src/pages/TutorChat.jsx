@@ -265,13 +265,13 @@ export default function TutorChat() {
                     </div>
                   )}
                   {m.corrected && (
-                    <button className="tbtn corr-btn" onClick={retryCorrected}>🔁 重说正确句子</button>
+                    <button className="tbtn corr-btn" onClick={retryCorrected}>重说正确句子</button>
                   )}
                 </div>
               )}
               {m.role === 'ai' && m.ruText && (
                 <div className="tutor-actions">
-                  <button className="tbtn corr-btn" onClick={() => playTTS(m.ruText)}>🔊 听发音</button>
+                  <button className="tbtn corr-btn" title="听发音" onClick={() => playTTS(m.ruText)}>听发音</button>
                 </div>
               )}
             </div>
@@ -296,7 +296,7 @@ export default function TutorChat() {
           disabled={!srSupported}
           title={srSupported ? '点击说话（俄语）' : '当前浏览器不支持语音识别'}
         >
-          {recording ? '⏹ 停止' : '🎤 说话'}
+          {recording ? '停止' : '说话'}
         </button>
         <input
           className="tutor-input"
@@ -305,11 +305,11 @@ export default function TutorChat() {
           onKeyDown={e => { if (e.key === 'Enter') sendMessage() }}
           placeholder="说或输入俄语…（例：Привет, как дела?）"
         />
-        <button className="tbtn tutor-send" onClick={() => sendMessage()} disabled={sending || !input.trim()}>
+        <button className="tutor-send" onClick={() => sendMessage()} disabled={sending || !input.trim()}>
           发送
         </button>
         {ttsPlaying && (
-          <button className="tbtn tutor-stop" onClick={stopTTS}>⏹ 停止朗读</button>
+          <button className="tbtn tutor-stop" onClick={stopTTS} title="停止朗读">停止朗读</button>
         )}
       </div>
 
