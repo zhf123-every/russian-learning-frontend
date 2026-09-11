@@ -723,16 +723,16 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 .corr-btn{margin-top:6px;align-self:flex-start;font-size:12.5px;padding:4px 12px}
 
 .tutor-inputbar{display:flex;gap:10px;padding:12px 0 6px;align-items:center;position:sticky;bottom:0;background:var(--bg-soft)}
-.tutor-mic{border-radius:999px;padding:8px 16px;font-weight:600;background:var(--accent-soft);color:var(--accent-dark)}
+.tutor-mic{border-radius:999px;padding:8px 16px;font-weight:600;background:var(--accent-soft);color:var(--accent-dark);flex:0 0 auto;white-space:nowrap}
 .tutor-mic:hover{background:var(--accent-light)}
 .tutor-mic.recording{background:var(--danger);color:#FFF;animation:pulseRed 1.2s infinite}
 @keyframes pulseRed{0%,100%{box-shadow:0 0 0 0 rgba(168,100,84,.4)}50%{box-shadow:0 0 0 8px rgba(168,100,84,0)}}
-.tutor-input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--text);font-size:14.5px;outline:none;transition:var(--transition)}
+.tutor-input{flex:1;min-width:0;padding:10px 14px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--text);font-size:14.5px;outline:none;transition:var(--transition)}
 .tutor-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.tutor-send{border-radius:999px;padding:8px 20px;font-weight:600;background:var(--accent);color:#FFF8F0}
+.tutor-send{border-radius:999px;padding:8px 20px;font-weight:600;background:var(--accent);color:#FFF8F0;flex:0 0 auto;white-space:nowrap}
 .tutor-send:hover{background:var(--accent-dark);color:#FFF8F0}
 .tutor-send:disabled{opacity:.5;cursor:not-allowed}
-.tutor-stop{border-radius:999px;font-size:12.5px}
+.tutor-stop{border-radius:999px;font-size:12.5px;flex:0 0 auto;white-space:nowrap}
 .tutor-tip{font-size:12.5px;color:var(--muted);text-align:center;padding-top:6px;line-height:1.7}
 
 /* ===================== 新版首页 ===================== */

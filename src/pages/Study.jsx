@@ -782,10 +782,10 @@ export default function Study() {
  onChange={e =>setShangUserInput(e.target.value)}
  placeholder="在这里输入你听到的俄语..."
  />
-<div style={{ marginTop: 8 }}>
+<div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 8 }}>
 <button className="btn primary" onClick={shangCheckDict}>检查本句</button>
-<button className="btn primary" onClick={() =>playSeg(true)} style={{ marginLeft: 8 }}>再听本句</button>
-<button className="btn primary" onClick={shangSkipSentence} style={{ marginLeft: 8 }}>跳过本句</button>
+<button className="btn primary" onClick={() =>playSeg(true)}>再听本句</button>
+<button className="btn primary" onClick={shangSkipSentence}>跳过本句</button>
 </div>
  {shangDictResult && (
 <div className={'result ' + (shangDictResult.correct ? 'ok' : 'err')} style={{ marginTop: 8 }}>
@@ -814,10 +814,10 @@ export default function Study() {
  )
  })()}
  {aiHtml &&<div className="translation" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: aiHtml }} />}
-<div style={{ marginTop: 8 }}>
+<div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 6 }}>
 <button className="btn sm" onClick={runAI}>AI 解析</button>
-<button className="btn sm" onClick={() =>setShowZh(v =>!v)} style={{ marginLeft: 6 }}>{showZh ? '隐藏中译' : '显示中译'}</button>
-<button className="btn sm" onClick={() =>openFullText('全文对照 · 精读纠错')} style={{ marginLeft: 6 }}>全文对照</button>
+<button className="btn sm" onClick={() =>setShowZh(v =>!v)}>{showZh ? '隐藏中译' : '显示中译'}</button>
+<button className="btn sm" onClick={() =>openFullText('全文对照 · 精读纠错')}>全文对照</button>
 </div>
 </>
  )}
