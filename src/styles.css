@@ -1169,3 +1169,21 @@ html,body{overflow-x:hidden;max-width:100vw}
 @media (max-width:640px){
   #root{overflow-x:hidden}
 }
+
+/* ---------- 模式条：统一行高 + 尚雯婕模式突出（电脑/手机同步） ---------- */
+.mode-row{align-items:stretch}
+.mode-row .stages{margin-bottom:0;height:auto}
+.mode-row .stages .stage{display:flex;align-items:center;justify-content:center}
+.mode-row .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+/* 尚雯婕模式激活标签：深色奶咖渐变突出，明确当前所处模式 */
+.stage.shang-active{
+  background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+  color:#fff;font-weight:600;
+  box-shadow:0 3px 10px rgba(155,123,94,0.25),inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.stage.shang-active:hover{color:#fff;background:linear-gradient(135deg,var(--accent-dark),var(--accent-darker));transform:none}
+@media (max-width:640px){
+  .mode-row .stages{flex:1;min-width:0}
+  .mode-row .stages .stage{font-size:12.5px;padding:9px 4px}
+  .mode-row .btn{min-height:38px;padding:6px 10px;font-size:12.5px}
+}

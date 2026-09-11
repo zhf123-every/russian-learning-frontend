@@ -702,10 +702,10 @@ export default function Study() {
 <div className="col">
 <div className="card">
  {/* 顶部模式条：普通 / 尚雯婕 */}
-<div className="row" style={{ marginBottom: 10, justifyContent: 'space-between' }}>
+<div className="row mode-row" style={{ marginBottom: 10, justifyContent: 'space-between' }}>
 <div className="stages">
  {shangMode ? (
-<span className="stage active">尚雯婕学习法</span>
+<span className="stage active shang-active">尚雯婕学习法</span>
  ) : (
 <>
 <span className="stage" style={{ opacity: 0.65, cursor: 'default', fontWeight: 400 }}>普通学习</span>
@@ -719,7 +719,7 @@ export default function Study() {
 <button className="btn sm" onClick={shangExit}>切回普通模式</button>
  ) : (
 <button
- className="btn sm"
+ className="btn sm primary"
  onClick={() =>{
  if (!sentences || sentences.length === 0) {
  toast('该素材缺少分句字幕，无法使用尚雯婕学习法')
