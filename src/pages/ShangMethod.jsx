@@ -49,6 +49,11 @@ export default function ShangMethod() {
  const [showFullText, setShowFullText] = useState(false)
  const [fullTextTitle, setFullTextTitle] = useState('全文对照')
  const [ttsActiveIdx, setTtsActiveIdx] = useState(-1)
+ // TTS语音来源：browser=浏览器内置语音包，server=后端TTS接口
+ const [ttsSource, setTtsSource] = useState('browser')
+ const [voiceChecked, setVoiceChecked] = useState(false)
+ // 后端TTS音频元素（用于播放后端返回的音频）
+ const serverAudioRef = useRef(null)
  // 阶段5 录音背诵
  const [isRecording, setIsRecording] = useState(false)
  const [reciteAudioUrl, setReciteAudioUrl] = useState(null)
@@ -93,12 +98,38 @@ export default function ShangMethod() {
  setDictationResult(null)
  setGrammar(null)
  if (window.speechSynthesis) window.speechSynthesis.cancel()
+ if (serverAudioRef.current) serverAudioRef.current.pause()
  setIsPlaying(false)
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [materialId])
 
  useEffect(() =>{
- return () =>{ if (window.speechSynthesis) window.speechSynthesis.cancel() }
+ return () =>{
+ if (window.speechSynthesis) window.speechSynthesis.cancel()
+ if (serverAudioRef.current) serverAudioRef.current.pause()
+ }
+ }, [])
+
+ // 检测浏览器是否有俄语语音包，决定TTS来源
+ useEffect(() =>{
+ if (!window.speechSynthesis) {
+ setTtsSource('server')
+ setVoiceChecked(true)
+ return
+ }
+ const checkVoices = () =>{
+ const voices = window.speechSynthesis.getVoices()
+ const hasRu = voices.some(v => v.lang && v.lang.toLowerCase().startsWith('ru'))
+ if (hasRu) {
+ setTtsSource('browser')
+ } else {
+ setTtsSource('server')
+ }
+ setVoiceChecked(true)
+ }
+ checkVoices()
+ window.speechSynthesis.onvoiceschanged = checkVoices
+ return () =>{ window.speechSynthesis.onvoiceschanged = null }
  }, [])
 
  // 卸载时清理录音 URL
@@ -108,11 +139,44 @@ export default function ShangMethod() {
  }
  }, [reciteAudioUrl])
 
- // TTS 播放（支持变速 + 循环）
+ // 后端TTS播放（浏览器无俄语语音包时的降级方案）
+ const playServerTTS = (text, onEnd) =>{
+ if (!text) { if (onEnd) onEnd(); return }
+ if (!serverAudioRef.current) {
+ serverAudioRef.current = new Audio()
+ serverAudioRef.current.preload = 'auto'
+ }
+ const audio = serverAudioRef.current
+ audio.pause()
+ audio.src = '/api/tts?text=' + encodeURIComponent(text)
+ audio.onended = () =>{ if (onEnd) onEnd() }
+ audio.onerror = () =>{
+ toast('语音播放失败，请检查网络或后端服务')
+ setIsPlaying(false)
+ if (onEnd) onEnd()
+ }
+ audio.play().catch(() =>{
+ toast('浏览器阻止了自动播放，请点击页面后重试')
+ setIsPlaying(false)
+ })
+ }
+
+ // TTS 播放（支持变速 + 循环，自动选择浏览器/后端TTS）
  const playTTS = (text, loopOnce = false) =>{
  if (!text) return
- if (window.speechSynthesis) {
- window.speechSynthesis.cancel()
+ // 停止之前的播放
+ if (window.speechSynthesis) window.speechSynthesis.cancel()
+ if (serverAudioRef.current) serverAudioRef.current.pause()
+
+ if (ttsSource === 'server') {
+ // 后端TTS：不支持变速，但保证有声音
+ setIsPlaying(true)
+ playServerTTS(text, () =>{
+ setIsPlaying(false)
+ if (loopMode || loopOnce) playTTS(text, loopOnce)
+ })
+ } else if (window.speechSynthesis) {
+ // 浏览器内置TTS：支持变速
  const utter = new SpeechSynthesisUtterance(text)
  utter.lang = 'ru-RU'
  utter.rate = speed
@@ -129,23 +193,29 @@ export default function ShangMethod() {
  const playAll = () =>{
  if (sentencesWithId.length === 0) return
  if (window.speechSynthesis) window.speechSynthesis.cancel()
+ if (serverAudioRef.current) serverAudioRef.current.pause()
  setIsPlaying(true)
  let i = 0
  const next = () =>{
  if (i >= sentencesWithId.length) { setIsPlaying(false); setTtsActiveIdx(-1); return }
  setTtsActiveIdx(i)
  const s = sentencesWithId[i]
+ if (ttsSource === 'server') {
+ playServerTTS(s.russian, () =>{ i++; next() })
+ } else if (window.speechSynthesis) {
  const utter = new SpeechSynthesisUtterance(s.russian)
  utter.lang = 'ru-RU'
  utter.rate = speed
  utter.onend = () =>{ i++; next() }
  window.speechSynthesis.speak(utter)
  }
+ }
  next()
  }
 
  const stopPlay = () =>{
  if (window.speechSynthesis) window.speechSynthesis.cancel()
+ if (serverAudioRef.current) serverAudioRef.current.pause()
  setIsPlaying(false)
  setTtsActiveIdx(-1)
  }
@@ -194,6 +264,7 @@ export default function ShangMethod() {
  setUserInput('')
  setDictationResult(null)
  if (window.speechSynthesis) window.speechSynthesis.cancel()
+ if (serverAudioRef.current) serverAudioRef.current.pause()
  setIsPlaying(false)
  setTtsActiveIdx(-1)
  }
@@ -289,6 +360,7 @@ export default function ShangMethod() {
  const startRecording = useCallback(async () =>{
  // 录音前停止TTS播放，避免麦克风录入朗读原声
  try { window.speechSynthesis.cancel() } catch (e) {}
+ if (serverAudioRef.current) serverAudioRef.current.pause()
  try {
  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
  recordStreamRef.current = stream
