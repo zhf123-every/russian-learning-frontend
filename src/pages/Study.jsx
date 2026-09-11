@@ -754,8 +754,8 @@ export default function Study() {
  />
 <div style={{ marginTop: 8 }}>
 <button className="btn primary" onClick={shangCheckDict}>检查本句</button>
-<button className="btn" onClick={() =>playSeg(true)} style={{ marginLeft: 8 }}>再听本句</button>
-<button className="btn" onClick={shangSkipSentence} style={{ marginLeft: 8 }}>跳过本句</button>
+<button className="btn primary" onClick={() =>playSeg(true)} style={{ marginLeft: 8 }}>再听本句</button>
+<button className="btn primary" onClick={shangSkipSentence} style={{ marginLeft: 8 }}>跳过本句</button>
 </div>
  {shangDictResult && (
 <div className={'result ' + (shangDictResult.correct ? 'ok' : 'err')} style={{ marginTop: 8 }}>
@@ -810,8 +810,8 @@ export default function Study() {
 </div>
 <div className="btn-row-main">
 <button className="btn primary" onClick={() =>playSeg(true)}>循环本句</button>
-<button className="btn" onClick={() =>playSeg(false)}>听一次</button>
-<button className="btn" onClick={() =>{
+<button className="btn primary" onClick={() =>playSeg(false)}>听一次</button>
+<button className="btn primary" onClick={() =>{
  openFullText('全文跟读 · 字幕跟随')
  ensurePlayer()
  if (pRef.current) {
@@ -842,7 +842,7 @@ export default function Study() {
 <div className="hint" style={{ marginBottom: 8 }}>第 {curIdx + 1} 句 / 共 {sentences.length} 句 — 复述完成 {reciteProgress.done}/{reciteProgress.total}</div>
 <div>
 <button className="btn primary" onClick={() =>playSeg(false)}>听一句</button>
-<button className="btn" onClick={() =>playSeg(true)} style={{ marginLeft: 6 }}>循环一句</button>
+<button className="btn primary" onClick={() =>playSeg(true)} style={{ marginLeft: 6 }}>循环一句</button>
 </div>
 <div className="row" style={{ marginTop: 12, justifyContent: 'center' }}>
 <button className="btn sm" onClick={() =>shang.setReciteOk(videoId, cur.id, true)}>已流利复述</button>
@@ -1018,8 +1018,8 @@ export default function Study() {
 <div className="toolbar" style={{ marginTop: 12 }}>
 <button className="btn sm" onClick={() =>go(-1)} disabled={curIdx === 0}>上一句</button>
 <span className="tb-sep" />
-<button className="btn sm primary" onClick={() =>playSeg(loopMode)}>播放本句</button>
-<button className={'btn sm' + (loopMode ? ' primary' : '')} onClick={toggleLoop}>循环</button>
+<button className="btn sm" onClick={() =>playSeg(loopMode)}>播放本句</button>
+<button className={'btn sm' + (loopMode ? ' loop-on' : '')} onClick={toggleLoop}>循环</button>
 <select className="speed-select" value={speed} onChange={e =>setSpeed(parseFloat(e.target.value))}>
 <option value={0.5}>0.5x</option>
 <option value={0.75}>0.75x</option>
@@ -1036,7 +1036,7 @@ export default function Study() {
  {/* 阶段切换：上一阶段 / 下一阶段 */}
 <div className="stage-nav">
  {curStage >STAGES.LISTEN && (
-<button className="btn sm" onClick={() =>goShangStage(curStage - 1)}>上一阶段</button>
+<button className="btn sm primary" onClick={() =>goShangStage(curStage - 1)}>上一阶段</button>
  )}
  {curStage< STAGES.RECITE_OUT && (
 <button

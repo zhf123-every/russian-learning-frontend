@@ -1036,3 +1036,8 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
   .sentence-card .sc-ru{font-size:24px}
   .btn-row-main .btn{min-width:44%;flex:1}
 }
+
+/* ===================== 按钮配色统一 ===================== */
+/* 循环开启：浅色底 + accent 高亮边框与文字（不再整块深色） */
+.btn.sm.loop-on{color:var(--accent-dark,#8A6A4B);background:var(--accent-soft,#F3E9DC);border-color:var(--accent,#B08A5A);font-weight:600}
+.btn.sm.loop-on:hover{background:var(--accent-light,#E8D9C3);color:var(--accent-darker,#6E5238);border-color:var(--accent-dark,#8A6A4B)}
