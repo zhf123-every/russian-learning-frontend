@@ -229,7 +229,8 @@ export default function TutorChat() {
         <button className="tbtn" onClick={() => setLevel(null)}>← 换难度</button>
         <div className="tutor-title">
           <span className="tutor-dot" style={{ background: lv.color }}></span>
-          <strong>俄语AI对话教练 · {lv.title}</strong>
+          <strong>俄语AI对话教练</strong>
+          <span className="tutor-lv-tag" style={{ background: lv.tint, color: lv.color }}>{lv.title}</span>
         </div>
         <span className="tutor-hint">直接说话或输入，AI老师会纠正你的语法</span>
       </div>
@@ -237,6 +238,9 @@ export default function TutorChat() {
       <div className="tutor-chat" ref={listRef}>
         {messages.map((m, i) => (
           <div key={i} className={'tutor-msg ' + (m.role === 'user' ? 'user' : 'ai')}>
+            {m.role === 'ai' && (
+              <div className="tutor-avatar" style={{ background: lv.tint, color: lv.color }}>А</div>
+            )}
             <div className="tutor-bubble">
               <div className="tutor-bubble-text">{m.text}</div>
               {/* 纠错区块 */}
@@ -266,15 +270,20 @@ export default function TutorChat() {
                 </div>
               )}
               {m.role === 'ai' && m.ruText && (
-                <button className="tbtn corr-btn" onClick={() => playTTS(m.ruText)}>🔊 听发音</button>
+                <div className="tutor-actions">
+                  <button className="tbtn corr-btn" onClick={() => playTTS(m.ruText)}>🔊 听发音</button>
+                </div>
               )}
             </div>
           </div>
         ))}
         {sending && (
           <div className="tutor-msg ai">
+            <div className="tutor-avatar" style={{ background: lv.tint, color: lv.color }}>А</div>
             <div className="tutor-bubble">
-              <div className="tutor-bubble-text tutor-typing">老师正在思考…</div>
+              <div className="tutor-bubble-text tutor-typing">
+                <span className="ty-dot"></span><span className="ty-dot"></span><span className="ty-dot"></span>
+              </div>
             </div>
           </div>
         )}
