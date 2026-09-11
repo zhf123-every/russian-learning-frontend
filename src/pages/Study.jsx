@@ -4,8 +4,10 @@ import { useCourseStore } from '../store/courseStore'
 import { useSquareStore } from '../store/squareStore'
 import { useSessionStore } from '../store/sessionStore'
 import { useShangStore, STAGES } from '../store/shangStore'
+import { useVocabStore } from '../store/vocabStore'
 import SentenceBox from '../components/SentenceBox'
 import FullTextPanel from '../components/FullTextPanel'
+import WordPop from '../components/WordPop'
 import { explainSentence, reciteCompare } from '../lib/ai'
 import { getVideoPlay, createPlayer } from '../lib/videoPlayer'
 import { toast } from '../lib/toast'
@@ -29,6 +31,25 @@ const STAGE_LABELS = {
  [STAGES.RECITE_OUT]: '阶段5 脱稿背诵输出',
 }
 const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+
+// 普通学习 · 传统三阶段（与尚雯婕五阶段区分）
+const TRAD_STAGES = [
+  {
+    key: 'vocab',
+    label: '积累词汇',
+    hint: '阶段1 · 积累词汇 + 基础语法：背单词（俄↔中释义、拼写、词性），学习基础语法（时态、变格、句型、单复数），做练习巩固。目标：看得懂简单短句，能拼凑简单句子。',
+  },
+  {
+    key: 'input',
+    label: '输入训练',
+    hint: '阶段2 · 输入训练 — 阅读 + 听力：阅读全文、逐句翻译、查生词、分析句子语法；听素材录音，反复听、逐句回放、听写句子。习惯：遇到不懂就查词典、标记生词。',
+  },
+  {
+    key: 'output',
+    label: '输出训练',
+    hint: '阶段3 · 输出训练 — 写作 + 口语：用本篇词汇造句、写短文，写完对照参考答案改错；口语朗读课文、背诵对话、模仿跟读。条件有限就以朗读背诵为主。',
+  },
+]
 
 export default function Study() {
  const { videoId } = useParams()
@@ -84,6 +105,11 @@ export default function Study() {
  const [showTutor, setShowTutor] = useState(false)
  const [showQuiz, setShowQuiz] = useState(false)
  const [quizPrompt, setQuizPrompt] = useState(false)
+ // 普通模式 · 阶段3 写作批改 + 生词弹窗
+ const [writeText, setWriteText] = useState('')
+ const [writeResult, setWriteResult] = useState('')
+ const [writeChecking, setWriteChecking] = useState(false)
+ const [popWord, setPopWord] = useState(null)
 
  // 视频元素引用 + 播放器句柄
  const videoRef = useRef(null)
@@ -296,9 +322,10 @@ export default function Study() {
 
  // 当前阶段
  const curStage = shangMode ? shangWenjieStage : null
+ // 尚雯婕模式：盲听/听写/背诵阶段隐藏视频；普通模式：传统学习法，画面始终可见
  const isHideMedia = shangMode
  ? ([STAGES.LISTEN, STAGES.DICTATE, STAGES.RECITE_OUT].includes(curStage))
- : (stage === 'listen')
+ : false
 
  // 细粒度视频隐藏：阶段2点击检查本句时强制显示视频
  const shouldHideVideo = shangMode
@@ -518,6 +545,41 @@ export default function Study() {
  setShowFullText(true)
  }
 
+ // —— 普通模式 · 阶段1 生词提取（去重、去标点、忽略单字母）——
+ const vocabWords = (() =>{
+ const seen = {}
+ for (const s of sentences) {
+ const ws = (s.russian || '').toLowerCase().match(/[а-яё]+/gi) || []
+ for (const w of ws) {
+ const clean = w.replace(/[́̀̈̆]/g, '')
+ if (clean.length < 2) continue
+ seen[clean] = (seen[clean] || 0) + 1
+ }
+ }
+ return Object.entries(seen).sort((a, b) =>b[1] - a[1]).map(([w, c]) =>({ w, c }))
+ })()
+
+ const addAllVocab = () =>{
+ const cards = useVocabStore.getState().cards
+ let n = 0
+ for (const { w } of vocabWords) {
+ const exists = cards.some(c =>(c.lemma || c.word || '').toLowerCase() === w)
+ if (exists) continue
+ useVocabStore.getState().add({ word: w, chinese: '', source: '素材:' + (video?.title || videoId) })
+ n++
+ }
+ toast(n ? `已加入 ${n} 个生词到生词本` : '这些生词已全部在生词本中')
+ }
+
+ // —— 普通模式 · 阶段3 写作批改（复用 AI 语法解析接口）——
+ const runWriteCheck = async () =>{
+ if (!writeText.trim()) { toast('先写一句俄语再批改'); return }
+ setWriteChecking(true)
+ try { setWriteResult(mdToHtml(await explainSentence(writeText.trim()))) }
+ catch (e) { setWriteResult(''); toast(e.message) }
+ finally { setWriteChecking(false) }
+ }
+
  // 录音比对面板：音频播放时按平均时长高亮句子
  const onReciteAudioTimeUpdate = () =>{
  const audio = reciteAudioRef.current
@@ -547,35 +609,6 @@ export default function Study() {
  default: return type
  }
  }
-
- // 普通模式阶段控制（修复遗留的未定义变量 stageEl 导致白屏）
- const stageEl = shangMode ? null : (() =>{
- if (stage === 'listen') {
- return (
-<div className="row">
-<button className="btn primary" onClick={() =>playSeg(false)}>播放本句</button>
-<button className="btn" onClick={playFull} style={{ marginLeft: 8 }}>全文连播</button>
-</div>
- )
- }
- if (stage === 'dictate') {
- return (
-<div className="row">
-<button className="btn primary" onClick={() =>playSeg(true)}>循环本句</button>
-<button className="btn" onClick={() =>playSeg(false)} style={{ marginLeft: 8 }}>听一次</button>
-</div>
- )
- }
- if (stage === 'recite') {
- return (
-<div className="row">
-<button className="btn primary" onClick={() =>playSeg(true)}>循环本句</button>
-<button className="btn" onClick={() =>playSeg(false)} style={{ marginLeft: 8 }}>听一次</button>
-</div>
- )
- }
- return null
- })()
 
  // ========== 渲染 ==========
  return (
@@ -643,9 +676,12 @@ export default function Study() {
  {shangMode ? (
 <span className="stage active">尚雯婕学习法</span>
  ) : (
- [['listen', '听'], ['dictate', '听写'], ['recite', '跟读']].map(([k, label]) =>(
-<span key={k} className={'stage' + (stage === k ? ' active' : '')} onClick={() =>setStage(k)}>{label}</span>
- ))
+<>
+<span className="stage" style={{ opacity: 0.65, cursor: 'default', fontWeight: 400 }}>普通学习</span>
+ {TRAD_STAGES.map(t =>(
+<span key={t.key} className={'stage' + (stage === t.key ? ' active' : '')} onClick={() =>setStage(t.key)}>{t.label}</span>
+ ))}
+</>
  )}
 </div>
  {shangMode ? (
@@ -665,13 +701,14 @@ export default function Study() {
  )}
 </div>
 
- {/* 5 阶段切换条（尚雯婕模式 + 普通模式统一） */}
+ {/* 尚雯婕五阶段切换条（仅尚雯婕模式） */}
+ {shangMode && (
 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
  {[1, 2, 3, 4, 5].map(s =>(
 <button
  key={s}
  className={'btn sm' + (curStage === s ? ' primary' : '')}
- disabled={shangMode ? s >shangWenjieStage + 1 : s >1}
+ disabled={s >shangWenjieStage + 1}
  onClick={() =>goShangStage(s)}
  style={{ flex: '1 1 auto', minWidth: 100 }}
  >
@@ -679,9 +716,11 @@ export default function Study() {
 </button>
  ))}
 </div>
+ )}
 <div className="shang-hint" style={{ padding: '8px 10px', background: 'var(--soft, #F5F0E8)', border: '1px solid var(--border2, #E0D6C4)', borderRadius: 6, fontSize: 12, lineHeight: 1.55, marginBottom: 10 }}>
- {STAGE_HINTS[curStage]}
- {isShangFinished &&<span style={{ marginLeft: 8, color: '#5C8A6B', fontWeight: 600 }}>训练完成</span>}
+ {shangMode
+ ? (<>{STAGE_HINTS[curStage]}{isShangFinished &&<span style={{ marginLeft: 8, color: '#5C8A6B', fontWeight: 600 }}>训练完成</span>}</>)
+ : (TRAD_STAGES.find(t =>t.key === stage)?.hint)}
 </div>
 
  {/* 句子展示：按阶段决定是否显示俄文 */}
@@ -1000,19 +1039,114 @@ export default function Study() {
 </>
  ) : (
 <>
-<div style={{ marginTop: 12 }}><SentenceBox sentence={cur} revealed={revealed} /></div>
+ {/* 普通学习 · 传统三阶段 */}
+ {stage === 'vocab' && (
+<div style={{ marginTop: 12 }}>
+ {/* 当前句 + AI 解析 */}
+<SentenceBox sentence={cur} revealed={revealed} />
  {showZh &&<div className="translation"><div className="zh-label">中文翻译</div><div>{cur.chinese}</div></div>}
  {aiHtml &&<div className="translation" dangerouslySetInnerHTML={{ __html: aiHtml }} />}
 
-<div style={{ marginTop: 12 }}>{stageEl}</div>
+ {/* 本篇生词表 */}
+<div className="hint" style={{ margin: '14px 0 6px' }}>
+ 本篇生词 <b>{vocabWords.length}</b> 个（点击查释义，可加入生词本）
+</div>
+<div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+ {vocabWords.slice(0, 80).map(({ w, c }) =>(
+<span key={w} className="chip" style={{ cursor: 'pointer' }} onClick={(e) =>setPopWord({ word: w, x: e.clientX, y: e.clientY })}>
+ {w}<span style={{ opacity: 0.55, marginLeft: 4 }}>{c}</span>
+</span>
+ ))}
+ {vocabWords.length > 80 &&<span className="hint" style={{ alignSelf: 'center' }}>… 等 {vocabWords.length - 80} 个</span>}
+</div>
+<div className="row" style={{ marginTop: 10, gap: 6 }}>
+<button className="btn sm primary" onClick={addAllVocab}>一键加入生词本</button>
+<button className="btn sm" onClick={runAI}>AI 语法解析</button>
+<button className="btn sm" onClick={() =>openFullText('全文对照 · 阅读精读')}>打开全文</button>
+</div>
+</div>
+ )}
 
-<div className="row" style={{ marginTop: 14 }}>
+ {stage === 'input' && (
+<div style={{ marginTop: 12 }}>
+<SentenceBox sentence={cur} revealed={revealed} />
+ {showZh &&<div className="translation"><div className="zh-label">中文翻译</div><div>{cur.chinese}</div></div>}
+ {aiHtml &&<div className="translation" dangerouslySetInnerHTML={{ __html: aiHtml }} />}
+<div className="row" style={{ marginTop: 10, gap: 6 }}>
+<button className="btn sm primary" onClick={() =>openFullText('全文对照 · 阅读精读')}>打开全文（逐句查词翻译）</button>
+<button className="btn sm" onClick={() =>playSeg(true)}>循环本句</button>
 <button className="btn sm" onClick={toggleRevealed}>{revealed ? '隐藏原文' : '显示原文'}</button>
 <button className="btn sm" onClick={() =>setShowZh(v =>!v)}>{showZh ? '隐藏中译' : '中译'}</button>
-<button className="btn sm" onClick={runAI}>AI 解析</button>
+<button className="btn sm" onClick={runAI}>AI 语法解析</button>
+</div>
+</div>
+ )}
+
+ {stage === 'output' && (
+<div style={{ marginTop: 12 }}>
+ {/* 口语 · 朗读录音 */}
+<div style={{ padding: 12, background: 'var(--soft)', borderRadius: 8, marginBottom: 10 }}>
+<div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>口语 · 朗读背诵</div>
+<div className="hint" style={{ margin: '0 0 8px' }}>朗读本篇素材并录音，与原声比对，检查发音与背诵准确度。</div>
+<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+ {!isRecording ? (
+<button className="btn sm primary" onClick={startRecording} style={{ background: '#C0392B', borderColor: '#C0392B' }}>开始录音</button>
+ ) : (
+<button className="btn sm" onClick={stopRecording} style={{ background: '#C0392B', color: '#fff', borderColor: '#C0392B' }}>停止录音</button>
+ )}
+<button className="btn sm" onClick={() =>{ if (reciteAudioUrl) setShowReciteCompare(true); else toast('请先录音') }}>原文比对</button>
+ {reciteAudioUrl && !isRecording && (
+<>
+<audio src={reciteAudioUrl} controls style={{ height: 32, flex: 1, minWidth: 160 }} />
+<button className="btn sm primary" onClick={runReciteCompare} disabled={reciteAnalyzing}>
+ {reciteAnalyzing ? 'AI分析中…' : 'AI分析比对'}
+</button>
+</>
+ )}
+</div>
+ {reciteResult && (
+<div style={{ marginTop: 8, padding: 10, background: '#fff', border: '1px solid var(--border2)', borderRadius: 6, fontSize: 13, lineHeight: 1.6 }}>
+ {reciteResult.user_text &&<div><span className="hint">识别内容：</span>{reciteResult.user_text}</div>}
+ {reciteResult.errors && reciteResult.errors.length >0 ? (
+<div style={{ marginTop: 6, color: '#C0392B' }}>发现 {reciteResult.errors.length} 处问题：读错/漏读/多读等，见比对面板</div>
+ ) : (
+<div style={{ marginTop: 6, color: '#5C8A6B', fontWeight: 600 }}>未发现明显错误，朗读很棒！</div>
+ )}
+ {reciteResult.overall_tip &&<div style={{ marginTop: 6 }}>💡 {reciteResult.overall_tip}</div>}
+</div>
+ )}
 </div>
 
-<div className="nav-arrows">
+ {/* 写作 · 造句批改 */}
+<div style={{ padding: 12, background: 'var(--soft)', borderRadius: 8, marginBottom: 10 }}>
+<div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>写作 · 造句练习</div>
+<div className="hint" style={{ margin: '0 0 8px' }}>用本篇词汇写一句俄语（造句或短文），AI 批改语法、变格错误，写完对照参考。</div>
+<textarea
+ className="qfill"
+ rows={3}
+ value={writeText}
+ onChange={e =>setWriteText(e.target.value)}
+ placeholder="例如：Я люблю читать книги каждый день."
+ style={{ width: '100%' }}
+ />
+<div style={{ marginTop: 6 }}>
+<button className="btn sm primary" onClick={runWriteCheck} disabled={writeChecking}>
+ {writeChecking ? '批改中…' : 'AI 批改'}
+</button>
+</div>
+ {writeResult &&<div className="translation" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: writeResult }} />}
+</div>
+
+ {/* 掌握程度检验 */}
+<div style={{ padding: 12, background: 'var(--soft)', borderRadius: 8 }}>
+<div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>掌握程度检验</div>
+<div className="hint" style={{ margin: '0 0 8px' }}>完成本篇学习后，开始 AI 测验（语法、翻译、造句等题型）。</div>
+<button className="btn sm primary" onClick={() =>setShowQuiz(true)} style={{ background: '#6B8E6B', borderColor: '#6B8E6B' }}>开始AI测验</button>
+</div>
+</div>
+ )}
+
+<div className="nav-arrows" style={{ marginTop: 12 }}>
 <button className="btn sm" onClick={() =>go(-1)}>上一句</button>
 <span className="pos">{curIdx + 1} / {sentences.length}</span>
 <button className="btn sm" onClick={() =>go(1)}>下一句</button>
@@ -1233,6 +1367,16 @@ export default function Study() {
  videoId={videoId}
  videoTitle={video?.title || ''}
  onClose={() =>setShowQuiz(false)}
+ />
+ )}
+
+ {/* 普通模式 · 生词查义弹窗 */}
+ {popWord && (
+<WordPop
+ word={popWord.word}
+ x={popWord.x}
+ y={popWord.y}
+ onClose={() =>setPopWord(null)}
  />
  )}
 </div>

@@ -3,11 +3,11 @@ import { create } from 'zustand'
 export const useSessionStore = create((set) => ({
   videoId: null,
   curIdx: 0,
-  stage: 'listen',
-  revealed: false,
+  stage: 'vocab',
+  revealed: true,
   sentenceScores: {},
   open(videoId) {
-    set({ videoId, curIdx: 0, stage: 'listen', revealed: false, sentenceScores: {} })
+    set({ videoId, curIdx: 0, stage: 'vocab', revealed: true, sentenceScores: {} })
   },
   setIdx(curIdx) { set({ curIdx }) },
   setStage(stage) { set({ stage }) },
