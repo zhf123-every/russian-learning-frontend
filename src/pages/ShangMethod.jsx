@@ -148,7 +148,7 @@ export default function ShangMethod() {
  setIsPlaying(true)
  }
 
- // 后端TTS播放（Svetlana神经语音，默认优先）
+ // 后端TTS播放（Svetlana神经语音，默认优先；失败自动重试等待Render唤醒，不降级浏览器语音）
  const playServerTTS = (text, onEnd) =>{
  if (!text) { if (onEnd) onEnd(); return }
  if (!serverAudioRef.current) {
@@ -157,32 +157,39 @@ export default function ShangMethod() {
  }
  const audio = serverAudioRef.current
  const token = ++ttsTokenRef.current  // 本次播放令牌
+
+ const attempt = (retry) =>{
+ if (ttsTokenRef.current !== token) return  // 已被停止/切换
  audio.pause()
  audio.onended = () =>{ if (ttsTokenRef.current === token && onEnd) onEnd() }
  audio.onerror = () =>{
- // 只有音频真正加载失败（网络错误/后端不可用）才降级浏览器语音
+ // Render免费实例可能休眠，等待唤醒后自动重试（最多3次）
  if (ttsTokenRef.current !== token) return
- if (voiceChecked) {
- playBrowserFallback(text, onEnd)
+ if (retry < 2) {
+ toast('语音生成中，请稍候…')
+ setTimeout(() => attempt(retry + 1), 3000)
  } else {
- toast('语音播放失败，请检查网络或后端服务')
+ toast('语音服务暂时不可用，请稍后重试')
  setIsPlaying(false)
  if (onEnd) onEnd()
  }
  }
  // 等音频加载完成后再播放：edge-tts后端生成需1-2秒，
- // 立即play()会因资源未就绪被拒（AbortError），被误判为失败而降级到浏览器语音
+ // 立即play()会因资源未就绪被拒（AbortError），被误判为失败
  audio.oncanplay = () =>{
  if (ttsTokenRef.current !== token) return
  audio.play().catch(() =>{
- // 自动播放策略限制：音频本身正常，提示用户点击后重试，不降级
+ // 自动播放策略限制：音频本身正常，提示用户点击后重试
  toast('请点击播放按钮后再试')
  })
  }
- // 加时间戳参数绕过浏览器旧音频缓存（_= 每次变化强制重新请求）
- audio.src = '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now()
+ // 加时间戳+重试序号参数绕过浏览器旧音频缓存
+ audio.src = '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now() + '_' + retry
  audio.playbackRate = speed  // 后端TTS也支持变速（0.5x-2.0x）
  audio.load()
+ }
+
+ attempt(0)
  }
 
  // TTS 播放（支持变速 + 循环，自动选择浏览器/后端TTS）
