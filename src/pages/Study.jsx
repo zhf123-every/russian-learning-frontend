@@ -678,7 +678,7 @@ export default function Study() {
 </div>
  )}
  {!(shangMode && (curStage === STAGES.LISTEN || curStage === STAGES.DICTATE)) && (
-<div className="card" style={{ padding: '18px 20px', textAlign: 'center' }}>
+<div className="card cur-sent-card" style={{ textAlign: 'center' }}>
   {(() => {
     const displayIdx = activeSentenceIdx >= 0 ? activeSentenceIdx : curIdx
     const displaySentence = sentences[displayIdx]
@@ -735,16 +735,22 @@ export default function Study() {
  {/* 尚雯婕五阶段切换条（仅尚雯婕模式） */}
  {shangMode && (
 <div className="stage-switch">
- {[1, 2, 3, 4, 5].map(s =>(
+ {[1, 2, 3, 4, 5].map(s =>{
+   const label = STAGE_LABELS[s] || ''
+   const num = label.match(/^阶段\s*\d+/)?.[0] || label
+   const name = label.replace(/^阶段\s*\d+\s*/, '') || ''
+   return (
 <button
  key={s}
  className={'btn sm stage-btn' + (curStage === s ? ' primary' : '')}
  disabled={s >shangWenjieStage + 1}
  onClick={() =>goShangStage(s)}
  >
- {STAGE_LABELS[s]}
+<span className="sb-num">{num}</span>
+ {name &&<span className="sb-name">{name}</span>}
 </button>
- ))}
+   )
+ })}
 </div>
  )}
 <div className="shang-hint" style={{ padding: '8px 10px', background: 'var(--soft, #F5F0E8)', border: '1px solid var(--border2, #E0D6C4)', borderRadius: 6, fontSize: 12, lineHeight: 1.55, marginBottom: 10 }}>

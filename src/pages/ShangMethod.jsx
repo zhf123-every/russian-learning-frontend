@@ -545,17 +545,23 @@ export default function ShangMethod() {
 </div>
 
  {/* 阶段切换条（15 顺序不可逆，可回退上一阶段） */}
-<div className="shang-stages stage-switch" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0 14px' }}>
- {[1, 2, 3, 4, 5].map(s =>(
+<div className="shang-stages stage-switch" style={{ display: 'flex', gap: 6, margin: '10px 0 14px' }}>
+ {[1, 2, 3, 4, 5].map(s =>{
+   const label = STAGE_LABELS[s] || ''
+   const num = label.match(/^阶段\s*\d+/)?.[0] || label
+   const name = label.replace(/^阶段\s*\d+\s*/, '') || ''
+   return (
 <button
  key={s}
  className={'btn sm stage-btn' + (s === shangWenjieStage ? ' primary' : '')}
  disabled={s >shangWenjieStage + 1}
  onClick={() =>goStage(s)}
  >
- {STAGE_LABELS[s]}
+<span className="sb-num">{num}</span>
+ {name &&<span className="sb-name">{name}</span>}
 </button>
- ))}
+   )
+ })}
 </div>
 
  {/* 当前阶段提示文案（核心方法论） */}
