@@ -649,9 +649,9 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 
 /* ---------- 移动端顶栏适配 ---------- */
 @media(max-width:640px){
-  .topbar{gap:8px;padding:10px 14px;flex-wrap:wrap;min-height:auto;align-items:center}
+  .topbar{gap:6px;padding:8px 12px;flex-wrap:wrap;min-height:auto;align-items:center}
   .topbar .spacer{display:none}
-  .brand{font-size:16px;width:100%;justify-content:center;margin-bottom:4px}
+  .brand{font-size:16px;width:100%;justify-content:center;margin-bottom:2px}
   .brand .logo{width:28px;height:28px;font-size:14px}
   .tbtn{padding:8px 12px;font-size:13px;flex:1;text-align:center;min-width:0}
   .main{padding:14px}
@@ -1149,9 +1149,9 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 
 @media (max-width:480px){
   /* 顶栏按钮两行紧凑 */
-  .topbar{padding:8px 8px}
-  .topbar .tbtn{flex:1 1 20%;padding:7px 1px;font-size:10.5px;gap:2px;white-space:nowrap}
-  .brand{font-size:15px}
+  .topbar{padding:6px 8px;gap:4px}
+  .topbar .tbtn{flex:1 1 0;min-width:0;padding:6px 2px;font-size:12px;gap:2px;white-space:nowrap;justify-content:center;text-align:center}
+  .brand{font-size:15px;margin-bottom:2px}
 
   /* 五阶段条两列（2+2+1） */
   .stage-switch .stage-btn{min-width:calc(50% - 4px);font-size:12.5px}
