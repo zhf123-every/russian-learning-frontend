@@ -915,3 +915,55 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 .tutor-send:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(155,123,94,.32);color:#FFF8F0}
 .tutor-send:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
 .tutor-stop{border-radius:999px;font-size:12.5px;padding:8px 14px;background:var(--danger-soft);color:var(--danger);border:1px solid var(--danger-light);flex-shrink:0}
+
+/* ===================== 首页卡片 v2（文字居中） ===================== */
+.home-card{align-items:center;text-align:center}
+.home-card-top{justify-content:center;position:relative}
+.home-card-tag{position:absolute;top:0;right:0}
+.home-card-btn{align-self:center}
+
+/* ===================== 首页卡片 v3：净化历史遗留旧样式污染 + 完整居中 ===================== */
+.home-card{
+  height:auto; min-height:0; flex:none;
+  padding:26px 24px 22px;
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  justify-content:flex-start;
+  border-radius:22px; background:var(--card);
+  color:var(--text);
+}
+.home-card .icon,.home-card .sub,.home-card p{display:block}
+.home-card h2{color:var(--text);font-size:21px;font-weight:700;letter-spacing:.3px;margin:0 0 6px}
+.home-card-top{display:flex;align-items:center;justify-content:center;position:relative;width:100%;margin-bottom:18px}
+.home-card-tag{position:absolute;top:0;right:0}
+.home-card-sub{font-size:13px;color:var(--accent);font-weight:600;margin:0 0 10px}
+.home-card p{font-size:13.5px;color:var(--muted);margin:0 0 20px;line-height:1.75;flex:1}
+.home-card-btn{align-self:center}
+.home-card:hover{transform:translateY(-5px);box-shadow:var(--shadow-lg);border-color:var(--accent-light)}
+
+/* ===================== 首页卡片 v4：横条样式 + 文字完全居中 ===================== */
+.home-cards{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+.home-card{
+  height:56px;
+  min-height:0;
+  flex:1;
+  min-width:240px;
+  max-width:460px;
+  padding:0 24px;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  text-align:center;
+  border-radius:999px;
+  background:var(--card);
+  border:1px solid var(--border);
+  box-shadow:var(--shadow);
+  color:var(--text);
+  cursor:pointer;
+  transition:transform var(--transition),box-shadow var(--transition),background var(--transition);
+}
+.home-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--accent-light);background:var(--accent-soft)}
+.home-card:active{transform:translateY(0)}
+.home-card h2{color:var(--text);font-size:15px;font-weight:600;letter-spacing:.5px;margin:0;line-height:1}
+.home-card .icon,.home-card .sub,.home-card p,.home-card-top,.home-card-tag,.home-card-btn,.home-card-sub,.home-card-icon,.btn-arrow{display:none}
