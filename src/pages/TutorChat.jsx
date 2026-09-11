@@ -203,7 +203,7 @@ export default function TutorChat() {
   }
 
   // ========== 对话页 ==========
-  const lv = LEVELS.find(l => l.key === level)
+  const lv = LEVELS.find(l => l.key === (level && level.key))
   return (
     <div className="tutor-page">
       <div className="tutor-header" style={{ borderColor: lv.color }}>
