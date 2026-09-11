@@ -103,7 +103,7 @@ export default function SquarePage() {
           )}
         </div>
       ) : (
-        <div className="videos-grid">
+        <div className="videos-grid v2">
           {filtered.map(item => {
             const hasSubs = Array.isArray(item.sentences) && item.sentences.length > 0
             const finished = shang.isFinished(item.id)
@@ -115,22 +115,23 @@ export default function SquarePage() {
                 </div>
                 <div className="vc-body">
                   <div className="vc-title">{item.title}</div>
-                  <div className="vc-meta">👁 {item.views} · 👤 {item.author}</div>
-                  <div className="vc-tags">{(item.tags || []).map(t => <span key={t} className="chip">{t}</span>)}</div>
-                  <div className="vc-meta" style={{ marginTop: 4, color: hasSubs ? 'var(--accent, #A86454)' : 'var(--muted)' }}>
-                    {hasSubs ? `有分句字幕 ${item.sentences.length} 句` : '✗ 无分句字幕'}
+                  <div className="vc-meta">👁 {item.views} · 👤 {item.author} · {hasSubs ? `有分句字幕 ${item.sentences.length} 句` : '✗ 无分句字幕'}</div>
+                  <div className="vc-info">
+                    <span className="vc-info-tag">{item.level}</span>
+                    {(item.tags || []).filter(t => t !== item.level).slice(0, 3).map(t => <span key={t}>{t}</span>)}
+                    <span>{hasSubs ? `${item.sentences.length}句` : '无字幕'}</span>
                   </div>
-                  <div className="row" style={{ marginTop: 8, gap: 6 }}>
-                    <button className="btn sm" onClick={(e) => { e.stopPropagation(); navigate(`/square/${item.id}`) }}>普通学习</button>
-                    <button
-                      className="btn sm primary"
-                      onClick={(e) => { e.stopPropagation(); openShang(item) }}
-                      disabled={!hasSubs}
-                    >尚雯婕学习法</button>
-                    {isAdmin && (
-                      <button className="btn sm" onClick={(e) => { e.stopPropagation(); doDelete(item) }}>删除</button>
-                    )}
-                  </div>
+                </div>
+                <div className="vc-actions">
+                  <button className="btn sm" onClick={(e) => { e.stopPropagation(); navigate(`/square/${item.id}`) }}>普通学习</button>
+                  <button
+                    className="btn sm primary"
+                    onClick={(e) => { e.stopPropagation(); openShang(item) }}
+                    disabled={!hasSubs}
+                  >尚雯婕学习法</button>
+                  {isAdmin && (
+                    <button className="btn sm" onClick={(e) => { e.stopPropagation(); doDelete(item) }}>删除</button>
+                  )}
                 </div>
               </div>
             )
