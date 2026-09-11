@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useVocabStore } from '../store/vocabStore'
 import { useShangStore, STAGES } from '../store/shangStore'
 import { explainSentence, reciteCompare } from '../lib/ai'
+import { API_BASE } from '../lib/api'
 import { toast } from '../lib/toast'
 import { courseLibrary, LEVELS } from '../data/courseLibrary'
 import FullTextPanel from '../components/FullTextPanel'
@@ -183,8 +184,8 @@ export default function ShangMethod() {
  toast('请点击播放按钮后再试')
  })
  }
- // 加时间戳+重试序号参数绕过浏览器旧音频缓存
- audio.src = '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now() + '_' + retry
+ // 加时间戳+重试序号参数绕过浏览器旧音频缓存；用API_BASE前缀指向Render后端（前端部署在Pages，相对路径会404）
+ audio.src = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now() + '_' + retry
  audio.playbackRate = speed  // 后端TTS也支持变速（0.5x-2.0x）
  audio.load()
  }
