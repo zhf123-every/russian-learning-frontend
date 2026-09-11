@@ -70,6 +70,14 @@ export const useCourseStore = create((set, get) => ({
     set({ materials })
   },
 
+  updateMaterial(id, patch) {
+    set(s => {
+      const materials = s.materials.map(m => (m.id === id ? { ...m, ...patch } : m))
+      saveLS(LS.materials, materials)
+      return { materials }
+    })
+  },
+
   levelIds() { return levelIds() },
   levelMastery(level) { return levelMastery(levelIds()[level], get().progress) },
   isLevelUnlocked(level) { return _unlock(level, get().progress, levelIds()) },

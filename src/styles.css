@@ -967,3 +967,21 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 .home-card:active{transform:translateY(0)}
 .home-card h2{color:var(--text);font-size:15px;font-weight:600;letter-spacing:.5px;margin:0;line-height:1}
 .home-card .icon,.home-card .sub,.home-card p,.home-card-top,.home-card-tag,.home-card-btn,.home-card-sub,.home-card-icon,.btn-arrow{display:none}
+
+/* ===================== 自定义素材卡片 v2（课程卡片风格） ===================== */
+.videos-grid.v2{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.videos-grid.v2 .video-card{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;cursor:pointer;transition:var(--transition-slow);box-shadow:var(--shadow);display:flex;flex-direction:column}
+.videos-grid.v2 .video-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:var(--accent-light)}
+.videos-grid.v2 .thumb{position:relative;height:158px;background-size:cover;background-position:center;background-color:var(--accent-soft)}
+.videos-grid.v2 .thumb-score{position:absolute;top:10px;left:10px;font-size:11px;font-weight:600;color:#fff;background:rgba(61,51,44,.62);backdrop-filter:blur(4px);padding:3px 10px;border-radius:999px;letter-spacing:.3px}
+.videos-grid.v2 .vc-body{padding:14px 16px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.videos-grid.v2 .vc-title{font-size:15.5px;font-weight:700;color:var(--text);line-height:1.4;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.videos-grid.v2 .vc-meta{font-size:12.5px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.videos-grid.v2 .vc-info{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px;border-top:1px solid var(--border-light);padding-top:10px}
+.videos-grid.v2 .vc-info span{font-size:11.5px;color:var(--text-soft);background:var(--bg-soft);border:1px solid var(--border-light);padding:3px 9px;border-radius:999px;font-weight:500}
+.videos-grid.v2 .vc-info .vc-info-tag{background:var(--accent-soft);border-color:var(--accent-light);color:var(--accent-dark);font-weight:600}
+
+/* 响应式 */
+@media (max-width:720px){
+  .videos-grid.v2{grid-template-columns:1fr;max-width:440px;margin:0 auto}
+}

@@ -4,6 +4,7 @@ import { useCourseStore } from '../store/courseStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { toast } from '../lib/toast'
 import { apiFetch } from '../lib/api'
+import { generateVideoThumbnail } from '../lib/thumbnail'
 import SegPreviewModal from './SegPreviewModal'
 
 const DEMO_TEXT = `Привет, меня зовут Иван. Я живу в Москве.
@@ -85,7 +86,7 @@ export default function AddMaterialModal({ onClose }) {
     finishImport(sentences, [])
   }
 
-  const finishImport = (sentences, translations) => {
+  const finishImport = async (sentences, translations) => {
     const hasVideo = videoUrl.trim()
     if (!sentences.length && !hasVideo) {
       setBusy(false)
@@ -99,13 +100,19 @@ export default function AddMaterialModal({ onClose }) {
       id: i + 1,
       tr: translations[i] || ''
     }))
+    // 生成真实视频缩略图（YouTube 官方图 / mp4 截帧），失败则退回占位图
+    let thumb = 'https://picsum.photos/seed/' + id + '/480/270'
+    if (hasVideo) {
+      const t = await generateVideoThumbnail(videoUrl.trim())
+      if (t) thumb = t
+    }
     addMaterial({
       id,
       title: title.trim() || (hasVideo ? '视频素材' : '自定义文本'),
       sentences: enriched,
       createdAt: Date.now(),
-      thumbnail: 'https://picsum.photos/seed/' + id + '/400/280',
-      posterUrl: 'https://picsum.photos/seed/' + id + '/1280/720',
+      thumbnail: thumb,
+      posterUrl: thumb,
       tags: ['mp4'],
       duration: '—',
       words: wordCount,
