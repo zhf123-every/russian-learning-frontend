@@ -149,6 +149,7 @@ export default function ShangMethod() {
  const audio = serverAudioRef.current
  audio.pause()
  audio.src = '/api/tts?text=' + encodeURIComponent(text)
+ audio.playbackRate = speed  // 后端TTS也支持变速（0.5x-2.0x）
  audio.onended = () =>{ if (onEnd) onEnd() }
  audio.onerror = () =>{
  toast('语音播放失败，请检查网络或后端服务')
@@ -169,7 +170,7 @@ export default function ShangMethod() {
  if (serverAudioRef.current) serverAudioRef.current.pause()
 
  if (ttsSource === 'server') {
- // 后端TTS：不支持变速，但保证有声音
+ // 后端TTS：通过playbackRate支持变速，保证有声音
  setIsPlaying(true)
  playServerTTS(text, () =>{
  setIsPlaying(false)
@@ -787,7 +788,14 @@ export default function ShangMethod() {
 <button className={'btn' + (loopMode ? ' primary' : '')} onClick={() =>setLoopMode(!loopMode)}>
  循环播放
 </button>
-<select className="speed-select" value={speed} onChange={e =>setSpeed(parseFloat(e.target.value))}>
+<select className="speed-select" value={speed} onChange={e =>{
+ const newSpeed = parseFloat(e.target.value)
+ setSpeed(newSpeed)
+ // 后端TTS模式：实时更新播放速度
+ if (serverAudioRef.current && ttsSource === 'server') {
+ serverAudioRef.current.playbackRate = newSpeed
+ }
+ }}>
 <option value={0.5}>0.5x</option>
 <option value={0.75}>0.75x</option>
 <option value={1.0}>1.0x</option>
