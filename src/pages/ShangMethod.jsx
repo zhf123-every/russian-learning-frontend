@@ -49,8 +49,8 @@ export default function ShangMethod() {
  const [showFullText, setShowFullText] = useState(false)
  const [fullTextTitle, setFullTextTitle] = useState('全文对照')
  const [ttsActiveIdx, setTtsActiveIdx] = useState(-1)
- // TTS语音来源：browser=浏览器内置语音包，server=后端TTS接口
- const [ttsSource, setTtsSource] = useState('browser')
+ // TTS语音来源：server=后端TTS接口（Svetlana神经语音，默认优先），browser=浏览器内置语音包（兜底）
+ const [ttsSource, setTtsSource] = useState('server')
  const [voiceChecked, setVoiceChecked] = useState(false)
  // 后端TTS音频元素（用于播放后端返回的音频）
  const serverAudioRef = useRef(null)
@@ -110,26 +110,16 @@ export default function ShangMethod() {
  }
  }, [])
 
- // 检测浏览器是否有俄语语音包，决定TTS来源
+ // 检测浏览器是否有俄语语音包（仅用于后端TTS失败时的兜底判断）
  useEffect(() =>{
- if (!window.speechSynthesis) {
- setTtsSource('server')
- setVoiceChecked(true)
- return
- }
  const checkVoices = () =>{
- const voices = window.speechSynthesis.getVoices()
+ const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : []
  const hasRu = voices.some(v => v.lang && v.lang.toLowerCase().startsWith('ru'))
- if (hasRu) {
- setTtsSource('browser')
- } else {
- setTtsSource('server')
- }
- setVoiceChecked(true)
+ setVoiceChecked(hasRu)
  }
  checkVoices()
- window.speechSynthesis.onvoiceschanged = checkVoices
- return () =>{ window.speechSynthesis.onvoiceschanged = null }
+ if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = checkVoices
+ return () =>{ if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null }
  }, [])
 
  // 卸载时清理录音 URL
@@ -139,7 +129,24 @@ export default function ShangMethod() {
  }
  }, [reciteAudioUrl])
 
- // 后端TTS播放（浏览器无俄语语音包时的降级方案）
+ // 浏览器语音包兜底播放（后端TTS失败时使用）
+ const playBrowserFallback = (text, onEnd) =>{
+ if (!window.speechSynthesis) {
+ toast('语音播放失败，请检查网络或后端服务')
+ setIsPlaying(false)
+ if (onEnd) onEnd()
+ return
+ }
+ window.speechSynthesis.cancel()
+ const utter = new SpeechSynthesisUtterance(text)
+ utter.lang = 'ru-RU'
+ utter.rate = speed
+ utter.onend = () =>{ if (onEnd) onEnd() }
+ window.speechSynthesis.speak(utter)
+ setIsPlaying(true)
+ }
+
+ // 后端TTS播放（Svetlana神经语音，默认优先）
  const playServerTTS = (text, onEnd) =>{
  if (!text) { if (onEnd) onEnd(); return }
  if (!serverAudioRef.current) {
@@ -153,13 +160,23 @@ export default function ShangMethod() {
  audio.playbackRate = speed  // 后端TTS也支持变速（0.5x-2.0x）
  audio.onended = () =>{ if (onEnd) onEnd() }
  audio.onerror = () =>{
+ // 后端TTS失败：若有浏览器俄语语音包则降级使用，否则提示错误
+ if (voiceChecked) {
+ playBrowserFallback(text, onEnd)
+ } else {
  toast('语音播放失败，请检查网络或后端服务')
  setIsPlaying(false)
  if (onEnd) onEnd()
  }
+ }
  audio.play().catch(() =>{
+ // 自动播放被阻止：若有浏览器俄语语音包则降级使用（speechSynthesis同样受限，但仍尝试）
+ if (voiceChecked) {
+ playBrowserFallback(text, onEnd)
+ } else {
  toast('浏览器阻止了自动播放，请点击页面后重试')
  setIsPlaying(false)
+ }
  })
  }
 
