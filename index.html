@@ -74,6 +74,18 @@
   </noscript>
   <script type="module" src="/src/main.jsx"></script>
   <script>
+    // 阻止双指缩放/双击放大，保证移动端布局固定（iOS Safari 会忽略 user-scalable=no，需 JS 兜底）
+    (function() {
+      var lastTouchEnd = 0;
+      document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+      document.addEventListener('touchmove', function(e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+      document.addEventListener('touchend', function(e) {
+        var now = Date.now();
+        if (now - lastTouchEnd <= 320) e.preventDefault();
+        lastTouchEnd = now;
+      }, { passive: false });
+    })();
+
     // React挂载后移除加载动画
     window.addEventListener('load', function() {
       setTimeout(function() {

@@ -28,6 +28,7 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
   color:var(--text); font-size:15px; line-height:1.6;
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  touch-action:manipulation; -webkit-text-size-adjust:100%; text-size-adjust:100%;
   /* 背景高级感：暖金光晕 + 细腻网格（全部取自现有奶咖色系，仅用透明度） */
   background-color:var(--bg);
   background-image:
@@ -1044,10 +1045,9 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 
 /* ===================== 移动端全面适配 ===================== */
 
-/* 尚雯婕五阶段切换条（桌面：一行5个；手机：一行5个，按钮内文字分行） */
+/* 尚雯婕五阶段切换条（桌面：一行5个；手机：3+2 整齐换行） */
 .stage-switch{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .stage-switch .stage-btn{flex:1 1 auto;min-width:100px}
-.stage-btn .sb-num,.stage-btn .sb-name{display:inline;line-height:1.2}
 
 @media (max-width:640px){
   /* 触控体验 */
@@ -1068,11 +1068,9 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
   .qfill{font-size:16px!important}
   .tutor-input{font-size:16px!important}
 
-  /* 尚雯婕五阶段条：一行5个，按钮内"阶段N"与名称分行 */
-  .stage-switch{gap:2px;flex-wrap:nowrap!important}
-  .stage-switch .stage-btn{flex:1 1 0;min-width:0;font-size:10px;padding:6px 1px;flex-direction:column;gap:0;white-space:normal;line-height:1.25}
-  .stage-switch .stage-btn .sb-num{font-size:10.5px;font-weight:600;display:block}
-  .stage-switch .stage-btn .sb-name{font-size:8.5px;opacity:.9;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  /* 尚雯婕五阶段条：3列换行 */
+  .stage-switch{gap:4px}
+  .stage-switch .stage-btn{min-width:calc(33.333% - 6px);font-size:12px;padding:9px 2px;flex:1 1 auto}
   .stage-switch .stage-btn:disabled{opacity:.35}
 
   /* 普通学习阶段条 */
@@ -1152,28 +1150,22 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 @media (max-width:480px){
   /* 顶栏按钮两行紧凑 */
   .topbar{padding:8px 8px}
-  .topbar .tbtn{flex:1 1 25%;padding:8px 2px;font-size:12px;gap:3px}
+  .topbar .tbtn{flex:1 1 20%;padding:7px 1px;font-size:10.5px;gap:2px;white-space:nowrap}
   .brand{font-size:15px}
 
-  /* 五阶段条保持一行（继承640px规则） */
-  .stage-switch .stage-btn{font-size:9.5px}
-  .stage-switch .stage-btn .sb-num{font-size:10px}
-  .stage-switch .stage-btn .sb-name{font-size:8px}
+  /* 五阶段条两列（2+2+1） */
+  .stage-switch .stage-btn{min-width:calc(50% - 4px);font-size:12.5px}
 
   /* 主要容器 */
-  .main{padding:10px;gap:10px}
-  .col{gap:10px}
+  .main{padding:10px}
   .card{padding:12px}
-
-  /* 压缩学习面板上方留白 */
-  .stages{margin-bottom:8px}
-  .shang-hint{margin-bottom:8px!important}
 
   /* 录音原文比对音频行 */
   audio{width:100%}
 }
 
-/* 当前句卡片（学习页字幕卡）手机端压缩 */
+/* ---------- 移动端防缩放与横向溢出保护 ---------- */
+html,body{overflow-x:hidden;max-width:100vw}
 @media (max-width:640px){
-  .cur-sent-card{padding:12px 14px!important}
+  #root{overflow-x:hidden}
 }
