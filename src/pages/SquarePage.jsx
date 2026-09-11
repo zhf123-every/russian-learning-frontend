@@ -5,7 +5,6 @@ import { useShangStore } from '../store/shangStore'
 import { useAdminStore } from '../store/adminStore'
 import { SQUARE_CATEGORIES } from '../data/squareLibrary'
 import ContributeModal from '../components/ContributeModal'
-import ImportModal from '../components/ImportModal'
 import { toast } from '../lib/toast'
 
 export default function SquarePage() {
@@ -21,7 +20,6 @@ export default function SquarePage() {
   const isAdmin = !!adminKey
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [showContribute, setShowContribute] = useState(false)
-  const [showImport, setShowImport] = useState(false)
   const [noSubsItem, setNoSubsItem] = useState(null)
   const [showAdmin, setShowAdmin] = useState(false)
   const [adminInput, setAdminInput] = useState('')
@@ -75,7 +73,6 @@ export default function SquarePage() {
         ) : (
           <button className="btn sm" onClick={() => setShowAdmin(true)}>管理</button>
         )}
-        <button className="btn sm" onClick={() => setShowImport(true)}>📥 链接导入</button>
       </div>
 
       <div className="square-cats">
@@ -147,10 +144,6 @@ export default function SquarePage() {
           onClose={() => setShowContribute(false)}
           onSubmit={(data) => submitItem(data, adminKey)}
         />
-      )}
-
-      {showImport && (
-        <ImportModal onClose={() => setShowImport(false)} />
       )}
 
       {/* 管理员登录弹窗 */}
