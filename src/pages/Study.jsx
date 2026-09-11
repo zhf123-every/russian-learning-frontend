@@ -63,6 +63,7 @@ export default function Study() {
  const video = courseVideo || squareVideo
  // 提前声明：供下方 useEffect 依赖数组引用，避免 TDZ
  const play = getVideoPlay(video?.videoUrl)
+ const [videoError, setVideoError] = useState(null)
  const pushRecent = useCourseStore(s =>s.pushRecent)
  const progress = useCourseStore(s =>s.progress[videoId])
  const submitVideo = useCourseStore(s =>s.submitVideo)
@@ -172,6 +173,7 @@ export default function Study() {
  if (!play) { setPlayerReady(true); return }
  const p = createPlayer(play, videoRef.current)
  if (p.type !== 'direct') p.setIframe(iframeRef.current)
+ p.onError = (code, msg) =>setVideoError(msg)
  pRef.current = p
  setPlayerReady(true)
  return () =>{
@@ -180,6 +182,11 @@ export default function Study() {
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [play?.src, play?.type])
 
+ // 切换素材/视频时清空播放错误
+ useEffect(() =>{
+ setVideoError(null)
+ }, [play?.src])
+
  // 二级兜底：如果上面的 effect 因 videoRef 时序问题未创建播放器，延迟重试
  useEffect(() =>{
  if (!play || pRef.current) return
@@ -187,10 +194,12 @@ export default function Study() {
  if (pRef.current) return
  if (play.type === 'direct' && videoRef.current) {
  const p = createPlayer(play, videoRef.current)
+ p.onError = (code, msg) =>setVideoError(msg)
  pRef.current = p
  setPlayerReady(true)
  } else if (play.type !== 'direct' && iframeRef.current) {
  const p = createPlayer(play, null)
+ p.onError = (code, msg) =>setVideoError(msg)
  p.setIframe(iframeRef.current)
  pRef.current = p
  setPlayerReady(true)
@@ -295,6 +304,17 @@ export default function Study() {
  )
  ) : (
 <img src={video.posterUrl || video.thumbnail} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+ )}
+ {videoError && (
+<div style={{ position: 'absolute', inset: 0, background: 'rgba(38,30,22,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#fff', zIndex: 5, textAlign: 'center', padding: 16 }}>
+<div style={{ fontSize: 15, fontWeight: 700 }}>⚠️ 视频无法播放</div>
+<div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.6 }}>{videoError}</div>
+<div style={{ fontSize: 12, opacity: 0.65, lineHeight: 1.5 }}>可能原因：视频被删除、设为私享、禁止嵌入或地区限制。<br />建议更换一个可播放的视频链接（mp4 直链最佳）。</div>
+ {video?.videoUrl && (
+<a href={video.videoUrl} target="_blank" rel="noreferrer" style={{ marginTop: 8, padding: '9px 20px', background: '#fff', color: '#6E5238', borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>在 YouTube 打开查看 →</a>
+ )}
+<button onClick={() =>setVideoError(null)} style={{ marginTop: 6, background: 'transparent', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', padding: '6px 14px', borderRadius: 999, fontSize: 12, cursor: 'pointer' }}>关闭提示</button>
+</div>
  )}
 </div>
 </div>
@@ -638,6 +658,17 @@ export default function Study() {
  )
  ) : (
 <img src={video.posterUrl || video.thumbnail} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+ )}
+ {videoError && (
+<div style={{ position: 'absolute', inset: 0, background: 'rgba(38,30,22,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#fff', zIndex: 5, textAlign: 'center', padding: 16 }}>
+<div style={{ fontSize: 15, fontWeight: 700 }}>⚠️ 视频无法播放</div>
+<div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.6 }}>{videoError}</div>
+<div style={{ fontSize: 12, opacity: 0.65, lineHeight: 1.5 }}>可能原因：视频被删除、设为私享、禁止嵌入或地区限制。<br />建议更换一个可播放的视频链接（mp4 直链最佳）。</div>
+ {video?.videoUrl && (
+<a href={video.videoUrl} target="_blank" rel="noreferrer" style={{ marginTop: 8, padding: '9px 20px', background: '#fff', color: '#6E5238', borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>在 YouTube 打开查看 →</a>
+ )}
+<button onClick={() =>setVideoError(null)} style={{ marginTop: 6, background: 'transparent', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', padding: '6px 14px', borderRadius: 999, fontSize: 12, cursor: 'pointer' }}>关闭提示</button>
+</div>
  )}
 </div>
 </div>

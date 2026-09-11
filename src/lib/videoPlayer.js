@@ -227,6 +227,15 @@ export function createPlayer(play, videoEl) {
             if (data.info.duration != null) {
               h._duration = data.info.duration
             }
+          } else if (data.event === 'onError') {
+            // YouTube IFrame API 错误：2=无效请求 5=HTML5错误 100=视频不存在/已删除 101=嵌入被禁止 150=嵌入被禁止
+            const code = data.error
+            let msg = '视频加载失败（YouTube 错误 ' + code + '）'
+            if (code === 100) msg = '视频不存在或已被删除'
+            else if (code === 101 || code === 150) msg = '视频作者禁止了在第三方网站嵌入播放'
+            else if (code === 2) msg = '播放请求无效'
+            else if (code === 5) msg = 'HTML5 播放器加载失败'
+            if (h.onError) h.onError(code, msg)
           }
         } catch (e) {}
       }
