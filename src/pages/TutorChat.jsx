@@ -28,6 +28,7 @@ export default function TutorChat() {
   const [micActive, setMicActive] = useState(false)   // 麦克风持续监听中
   const [speaking, setSpeaking] = useState(false)     // 用户正在说话（呼吸动画）
   const [autoTTS, setAutoTTS] = useState(true)        // 自动朗读开关，默认开启
+  const [cloudAsr, setCloudAsr] = useState(false)     // 云端俄语转写开关（后端 Vosk，默认关）
   const [ttsPlaying, setTtsPlaying] = useState(false)
   const [srSupported] = useState(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition))
   const listRef = useRef(null)
@@ -38,6 +39,11 @@ export default function TutorChat() {
   const speakingTimerRef = useRef(null)
   const pausedByTtsRef = useRef(false)                // TTS 播放期间是否暂停了麦克风
   const autoTTSRef = useRef(true)
+  const cloudAsrRef = useRef(false)
+  const mediaRecRef = useRef(null)                    // 云端模式 MediaRecorder
+  const chunksRef = useRef([])                        // 云端模式录音分片
+  const streamRef = useRef(null)                      // 云端模式录音流
+  const lastWarnRef = useRef(0)                       // 非俄语提示节流
   const messagesRef = useRef([])
 
   // 自动滚动到底部
@@ -47,7 +53,22 @@ export default function TutorChat() {
 
   // 同步最新值到 ref（异步回调中读取，避免闭包旧值）
   autoTTSRef.current = autoTTS
+  cloudAsrRef.current = cloudAsr
   messagesRef.current = messages
+
+  // 判断文本是否包含俄语（西里尔字母）；浏览器识别经常把中文/英语误当结果，校验后丢弃
+  function isRussianText(t) {
+    return /[\u0400-\u04FF]/.test(t || '')
+  }
+
+  // 非俄语提示（节流：4 秒内不重复弹）
+  const warnNoRussian = () => {
+    const now = Date.now()
+    if (now - lastWarnRef.current > 4000) {
+      lastWarnRef.current = now
+      toast('没有检测到俄语，请用俄语说（初学者可放慢语速、逐词说）')
+    }
+  }
 
   // 选择难度：AI 主动开场
   const pickLevel = (lv) => {
@@ -82,7 +103,10 @@ export default function TutorChat() {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i]
         if (r.isFinal && r[0] && r[0].transcript.trim()) {
-          sendMessage(r[0].transcript.trim())
+          const t = r[0].transcript.trim()
+          // 非俄语结果（浏览器经常回退成中文/英语）→ 丢弃并提示，不发给 AI
+          if (!isRussianText(t)) { warnNoRussian(); continue }
+          sendMessage(t)
         }
       }
     }
@@ -114,12 +138,69 @@ export default function TutorChat() {
     return rec
   }
 
+  // ========== 云端俄语转写（后端 Vosk，锁定俄语，不受浏览器语言影响） ==========
+  const transcribeCloud = async (blob) => {
+    try {
+      const dataUrl = await new Promise((res, rej) => {
+        const fr = new FileReader()
+        fr.onload = () => res(fr.result)
+        fr.onerror = rej
+        fr.readAsDataURL(blob)
+      })
+      const r = await apiFetch('/api/transcribe-audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio: dataUrl }),
+      })
+      const j = await r.json()
+      if (!j.ok) throw new Error(j.error || '俄语转写失败')
+      const t = (j.text || '').trim()
+      if (!t) { warnNoRussian(); return }
+      if (!isRussianText(t)) { warnNoRussian(); return }
+      sendMessage(t)
+    } catch (e) {
+      toast('俄语转写失败：' + (e.message || '请重试'))
+    }
+  }
+
+  // 云端模式：持续录音，点【停止】后上传转写
+  const startCloudRec = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      const rec = new MediaRecorder(stream)
+      chunksRef.current = []
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunksRef.current.push(e.data) }
+      rec.onstop = async () => {
+        if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        chunksRef.current = []
+        micActiveRef.current = false
+        setMicActive(false)
+        setSpeaking(false)
+        if (!blob.size) return
+        await transcribeCloud(blob)
+      }
+      mediaRecRef.current = rec
+      rec.start()
+      micActiveRef.current = true
+      setMicActive(true)
+    } catch (e) {
+      toast('无法打开麦克风：' + (e.message || '请允许麦克风权限'))
+    }
+  }
+
   const startMic = () => {
-    if (!srSupported) {
-      toast('当前浏览器不支持语音识别，请用Chrome浏览器或手动输入')
+    if (micActiveRef.current) return
+    // 云端模式：不依赖浏览器语音识别，直接用服务器端 Vosk
+    if (cloudAsrRef.current) {
+      startCloudRec()
       return
     }
-    if (micActiveRef.current) return
+    if (!srSupported) {
+      toast('当前浏览器不支持语音识别，请用Chrome浏览器，或打开顶部「云端俄语转写」开关')
+      return
+    }
     const rec = buildRec()
     recRef.current = rec
     micActiveRef.current = true
@@ -135,14 +216,28 @@ export default function TutorChat() {
     micActiveRef.current = false
     setSpeaking(false)
     if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current)
+    if (cloudAsrRef.current) {
+      // 云端模式：停止录音，onstop 里自动上传转写
+      const rec = mediaRecRef.current
+      if (rec && rec.state !== 'inactive') { try { rec.stop() } catch (e) {} }
+      else {
+        if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
+        setMicActive(false)
+      }
+      return
+    }
     if (recRef.current) { try { recRef.current.stop() } catch (e) {} }
     setMicActive(false)
   }
 
   // TTS 播放结束后恢复被暂停的麦克风
   const resumeMicAfterTts = () => {
-    if (pausedByTtsRef.current) {
-      pausedByTtsRef.current = false
+    if (!pausedByTtsRef.current) return
+    pausedByTtsRef.current = false
+    if (cloudAsrRef.current) {
+      // 云端模式：恢复录音（不触发上传）
+      try { if (mediaRecRef.current && mediaRecRef.current.state === 'paused') mediaRecRef.current.resume() } catch (e) {}
+    } else {
       startMic()
     }
   }
@@ -195,7 +290,12 @@ export default function TutorChat() {
     // AI 朗读时临时屏蔽麦克风收音，防止 AI 播放的语音被误捕获
     if (micActiveRef.current) {
       pausedByTtsRef.current = true
-      stopMic()
+      if (cloudAsrRef.current) {
+        // 云端模式：暂停录音即可（停止会触发上传转写）
+        try { if (mediaRecRef.current && mediaRecRef.current.state === 'recording') mediaRecRef.current.pause() } catch (e) {}
+      } else {
+        stopMic()
+      }
     }
     if (!audioRef.current) audioRef.current = new Audio()
     const audio = audioRef.current
@@ -242,6 +342,8 @@ export default function TutorChat() {
     return () => {
       if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current)
       if (recRef.current) { try { recRef.current.abort() } catch (e) {} }
+      if (mediaRecRef.current && mediaRecRef.current.state !== 'inactive') { try { mediaRecRef.current.stop() } catch (e) {} }
+      if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
       if (audioRef.current) audioRef.current.pause()
       ttsTokenRef.current++
     }
@@ -302,6 +404,16 @@ export default function TutorChat() {
           <span className="tutor-lv-tag" style={{ background: lv.tint, color: lv.color }}>{lv.title}</span>
         </div>
         <div className="tutor-header-right">
+          <button
+            className={'tbtn tutor-tts-toggle' + (cloudAsr ? ' on' : '')}
+            onClick={() => {
+              if (micActive) { toast('请先停止当前录音，再切换识别方式'); return }
+              setCloudAsr(v => !v)
+            }}
+            title="开启后使用服务器端俄语识别（Vosk），不受浏览器语言影响，识别更准"
+          >
+            云端俄语转写：{cloudAsr ? '开' : '关'}
+          </button>
           <button
             className={'tbtn tutor-tts-toggle' + (autoTTS ? ' on' : '')}
             onClick={() => setAutoTTS(v => !v)}
@@ -371,10 +483,12 @@ export default function TutorChat() {
         <button
           className={'tbtn tutor-mic' + (micActive ? ' listening' : '') + (speaking ? ' speaking' : '')}
           onClick={micActive ? stopMic : startMic}
-          disabled={!srSupported}
-          title={srSupported ? '点击开始持续收音，再点一次停止' : '当前浏览器不支持语音识别'}
+          disabled={!srSupported && !cloudAsr}
+          title={micActive
+            ? (cloudAsr ? '点击停止录音，自动识别并发送' : '点击停止持续收音')
+            : (cloudAsr ? '点击开始录音（云端俄语识别）' : (srSupported ? '点击开始持续收音，再点一次停止' : '当前浏览器不支持语音识别，请开云端转写或换Chrome'))}
         >
-          {micActive ? '停止' : '说话'}
+          {micActive ? '停止' : (cloudAsr ? '录音' : '说话')}
         </button>
         <input
           className="tutor-input"
@@ -393,6 +507,7 @@ export default function TutorChat() {
 
       <div className="tutor-tip">
         💡 提示：AI老师会主动提问引导你开口；说错了会告诉你正确说法和语法规则，跟着重说一遍就能进步。
+        {!cloudAsr && ' 如果浏览器识别不准（识别成中文/英语），请打开顶部「云端俄语转写」开关。'}
       </div>
     </div>
   )
