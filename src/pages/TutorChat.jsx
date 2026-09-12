@@ -28,7 +28,7 @@ export default function TutorChat() {
   const [micActive, setMicActive] = useState(false)   // 麦克风持续监听中
   const [speaking, setSpeaking] = useState(false)     // 用户正在说话（呼吸动画）
   const [autoTTS, setAutoTTS] = useState(true)        // 自动朗读开关，默认开启
-  const [cloudAsr, setCloudAsr] = useState(false)     // 云端俄语转写开关（后端 Vosk，默认关）
+  const [cloudAsr, setCloudAsr] = useState(true)     // 云端俄语转写开关（后端 Whisper，默认开启：所有手机浏览器都能用）
   const [ttsPlaying, setTtsPlaying] = useState(false)
   const [srSupported] = useState(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition))
   const listRef = useRef(null)
@@ -39,7 +39,7 @@ export default function TutorChat() {
   const speakingTimerRef = useRef(null)
   const pausedByTtsRef = useRef(false)                // TTS 播放期间是否暂停了麦克风
   const autoTTSRef = useRef(true)
-  const cloudAsrRef = useRef(false)
+  const cloudAsrRef = useRef(true)
   const mediaRecRef = useRef(null)                    // 云端模式 MediaRecorder
   const chunksRef = useRef([])                        // 云端模式录音分片
   const streamRef = useRef(null)                      // 云端模式录音流
