@@ -173,7 +173,8 @@ export default function TutorChat() {
       rec.ondataavailable = (e) => { if (e.data && e.data.size) chunksRef.current.push(e.data) }
       rec.onstop = async () => {
         if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        // iPhone Safari 录音实际是 audio/mp4，安卓是 audio/webm；用浏览器真实格式，不能写死 webm
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' })
         chunksRef.current = []
         micActiveRef.current = false
         setMicActive(false)
