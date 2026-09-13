@@ -628,8 +628,8 @@ export default function ShangMethod() {
  />
 <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
 <button className="btn primary" onClick={checkDictation}>检查本句</button>
-<button className="btn" onClick={() =>playTTS(currentSentenceWithId.russian, true)}>再听本句</button>
-<button className="btn" onClick={skipSentence}>跳过本句</button>
+<button className="btn primary" onClick={() =>playTTS(currentSentenceWithId.russian, true)}>再听本句</button>
+<button className="btn primary" onClick={skipSentence}>跳过本句</button>
 </div>
  {dictationResult && (
 <div className={'result ' + (dictationResult.correct ? 'ok' : 'err')} style={{ marginTop: 8 }}>
@@ -668,7 +668,7 @@ export default function ShangMethod() {
  )}
 </div>
 <div style={{ marginTop: 10 }}>
-<button className="btn sm" onClick={() =>openFullText('全文对照 · 精读纠错')}>全文对照</button>
+<button className="btn sm primary" onClick={() =>openFullText('全文对照 · 精读纠错')}>全文对照</button>
 </div>
 </>
  )}
@@ -681,8 +681,8 @@ export default function ShangMethod() {
 <div className="hint">影子跟读：听 跟读 模仿重音、语速、语调</div>
 <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
 <button className="btn primary" onClick={() =>playTTS(currentSentenceWithId.russian, true)}>循环本句</button>
-<button className="btn" onClick={() =>playTTS(currentSentenceWithId.russian)}>听一次</button>
-<button className="btn sm" onClick={() =>{ setTtsActiveIdx(curIdx); openFullText('全文跟读 · 字幕跟随') }}>全文跟读</button>
+<button className="btn primary" onClick={() =>playTTS(currentSentenceWithId.russian)}>听一次</button>
+<button className="btn sm primary" onClick={() =>{ setTtsActiveIdx(curIdx); openFullText('全文跟读 · 字幕跟随') }}>全文跟读</button>
 </div>
 <div className="row" style={{ marginTop: 10 }}>
 <button className="btn sm" onClick={() =>markRecite(true)}>本句跟读流畅</button>
@@ -700,7 +700,7 @@ export default function ShangMethod() {
 <div className="hint" style={{ marginBottom: 10 }}>第 {curIdx + 1} 句 / 共 {sentencesWithId.length} 句 — 复述完成 {reciteProgress.done}/{reciteProgress.total}</div>
 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
 <button className="btn primary" onClick={() =>playTTS(currentSentenceWithId.russian, false)}>听一句</button>
-<button className="btn" onClick={() =>playTTS(currentSentenceWithId.russian, true)}>循环一句</button>
+<button className="btn primary" onClick={() =>playTTS(currentSentenceWithId.russian, true)}>循环一句</button>
 </div>
 <div className="row" style={{ marginTop: 14, justifyContent: 'center' }}>
 <button className="btn sm" onClick={() =>markReciteOut(true)}>已流利复述</button>
@@ -753,7 +753,7 @@ export default function ShangMethod() {
  />
 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
 <button
- className="btn sm primary"
+ className="btn sm"
  onClick={runReciteCompare}
  disabled={reciteAnalyzing}
  >
@@ -847,14 +847,11 @@ export default function ShangMethod() {
 <div className="method-controls">
 <div className="ctrl-row">
 <button className="btn" onClick={goPrev} disabled={curIdx === 0}>上一句</button>
-{isPlaying && !paused ? (
-<button className="btn primary" onClick={pausePlay}>暂停</button>
-) : paused ? (
-<button className="btn primary" onClick={resumePlay}>继续</button>
-) : (
-<button className="btn primary" onClick={() =>playTTS(currentSentenceWithId.russian)}>播放</button>
-)}
+{isPlaying ? (
 <button className="btn" onClick={stopPlay}>停止</button>
+) : (
+<button className="btn" onClick={() =>playTTS(currentSentenceWithId.russian)}>播放</button>
+)}
 <button className={'btn' + (loopMode ? ' primary' : '')} onClick={() =>setLoopMode(!loopMode)}>
  循环
 </button>
@@ -884,6 +881,7 @@ export default function ShangMethod() {
 <option value={1.25}>1.25x</option>
 <option value={1.5}>1.5x</option>
 </select>
+<span className="pos">{curIdx + 1}/{sentences.length}</span>
 <button className="btn" onClick={goNext} disabled={curIdx === sentences.length - 1}>下一句</button>
 </div>
 
@@ -893,14 +891,14 @@ export default function ShangMethod() {
 <button className="btn sm" onClick={() =>goStage(shangWenjieStage - 1)}>上一阶段</button>
  )}
  {shangWenjieStage< STAGES.RECITE_OUT && (
-<button className="btn sm primary" onClick={() =>goStage(shangWenjieStage + 1)}>
+<button className="btn sm" onClick={() =>goStage(shangWenjieStage + 1)}>
  {shangWenjieStage === STAGES.DICTATE && dictationProgress.done< dictationProgress.total
  ? `下一阶段（先完成 ${dictationProgress.done}/${dictationProgress.total}）`
  : '进入下一阶段'}
 </button>
  )}
  {shangWenjieStage === STAGES.RECITE_OUT && reciteProgress.done >= reciteProgress.total && !isFinished && (
-<button className="btn sm primary" onClick={finishShang}>完成尚雯婕训练</button>
+<button className="btn sm" onClick={finishShang}>完成尚雯婕训练</button>
  )}
 </div>
 

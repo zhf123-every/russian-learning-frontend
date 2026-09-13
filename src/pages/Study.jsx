@@ -1091,14 +1091,11 @@ export default function Study() {
 <div className="toolbar" style={{ marginTop: 12 }}>
 <button className="btn sm" onClick={() =>go(-1)} disabled={curIdx === 0}>上一句</button>
 <span className="tb-sep" />
-{playingIdx >= 0 && !paused ? (
-<button className="btn sm" onClick={pausePlay}>暂停</button>
-) : paused ? (
-<button className="btn sm" onClick={resumePlay}>继续</button>
+{playingIdx >= 0 ? (
+<button className="btn sm" onClick={stopPlay}>停止</button>
 ) : (
 <button className="btn sm" onClick={() =>playSeg(loopMode)}>播放本句</button>
 )}
-<button className="btn sm" onClick={stopPlay}>停止</button>
 <button className={'btn sm' + (loopMode ? ' loop-on' : '')} onClick={toggleLoop}>循环</button>
 <select className="speed-select" value={speed} onChange={e =>setSpeed(parseFloat(e.target.value))}>
 <option value={0.5}>0.5x</option>
