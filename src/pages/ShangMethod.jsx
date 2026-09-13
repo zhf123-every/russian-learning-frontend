@@ -38,6 +38,7 @@ export default function ShangMethod() {
  const [curIdx, setCurIdx] = useState(0)
  const [speed, setSpeed] = useState(1.0)
  const [isPlaying, setIsPlaying] = useState(false)
+  const [paused, setPaused] = useState(false)
  const [loopMode, setLoopMode] = useState(true)
  const [userInput, setUserInput] = useState('')
  const [dictationResult, setDictationResult] = useState(null)
@@ -200,6 +201,7 @@ export default function ShangMethod() {
  // TTS 播放（支持变速 + 循环，自动选择浏览器/后端TTS）
  const playTTS = (text, loopOnce = false) =>{
  if (!text) return
+ 	setPaused(false)
  // 停止之前的播放
  if (window.speechSynthesis) window.speechSynthesis.cancel()
  if (serverAudioRef.current) serverAudioRef.current.pause()
@@ -228,6 +230,7 @@ export default function ShangMethod() {
  // 阶段 1：整篇连播（跟踪当前播放句子索引，用于全文对照面板高亮）
  const playAll = () =>{
  if (sentencesWithId.length === 0) return
+ 	setPaused(false)
  if (window.speechSynthesis) window.speechSynthesis.cancel()
  if (serverAudioRef.current) serverAudioRef.current.pause()
  setIsPlaying(true)
@@ -250,11 +253,31 @@ export default function ShangMethod() {
  }
 
  const stopPlay = () =>{
- ttsTokenRef.current++  // 使所有pending的播放回调失效
- if (window.speechSynthesis) window.speechSynthesis.cancel()
- if (serverAudioRef.current) serverAudioRef.current.pause()
- setIsPlaying(false)
- setTtsActiveIdx(-1)
+ 	ttsTokenRef.current++
+ 	if (window.speechSynthesis) window.speechSynthesis.cancel()
+ 	if (serverAudioRef.current) serverAudioRef.current.pause()
+ 	setIsPlaying(false)
+ 	setPaused(false)
+ 	setTtsActiveIdx(-1)
+ }
+
+ // 暂停 / 继续（语音循环时可随时暂停，再点继续恢复）
+ const pausePlay = () =>{
+ 	ttsTokenRef.current++
+ 	if (window.speechSynthesis) window.speechSynthesis.pause()
+ 	if (serverAudioRef.current) serverAudioRef.current.pause()
+ 	setIsPlaying(false)
+ 	setPaused(true)
+ }
+ const resumePlay = () =>{
+ 	setPaused(false)
+ 	if (ttsSource === 'server') {
+ 	if (serverAudioRef.current) serverAudioRef.current.play().catch(() =>{})
+ 	setIsPlaying(true)
+ 	} else if (window.speechSynthesis) {
+ 	window.speechSynthesis.resume()
+ 	setIsPlaying(true)
+ 	}
  }
 
  const pickCollection = (i) =>{
@@ -603,10 +626,10 @@ export default function ShangMethod() {
  onChange={e =>setUserInput(e.target.value)}
  placeholder="在这里输入你听到的俄语..."
  />
-<div style={{ marginTop: 8 }}>
+<div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
 <button className="btn primary" onClick={checkDictation}>检查本句</button>
-<button className="btn" onClick={() =>playTTS(currentSentenceWithId.russian, true)} style={{ marginLeft: 8 }}>再听本句</button>
-<button className="btn" onClick={skipSentence} style={{ marginLeft: 8 }}>跳过本句</button>
+<button className="btn" onClick={() =>playTTS(currentSentenceWithId.russian, true)}>再听本句</button>
+<button className="btn" onClick={skipSentence}>跳过本句</button>
 </div>
  {dictationResult && (
 <div className={'result ' + (dictationResult.correct ? 'ok' : 'err')} style={{ marginTop: 8 }}>
@@ -656,10 +679,10 @@ export default function ShangMethod() {
 <div className="zh-medium">{currentSentenceWithId.chinese}</div>
 <div className="mode-hint" style={{ marginTop: 10 }}>
 <div className="hint">影子跟读：听 跟读 模仿重音、语速、语调</div>
-<div style={{ marginTop: 8 }}>
+<div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
 <button className="btn primary" onClick={() =>playTTS(currentSentenceWithId.russian, true)}>循环本句</button>
-<button className="btn" onClick={() =>playTTS(currentSentenceWithId.russian)} style={{ marginLeft: 8 }}>听一次</button>
-<button className="btn sm" onClick={() =>{ setTtsActiveIdx(curIdx); openFullText('全文跟读 · 字幕跟随') }} style={{ marginLeft: 8 }}>全文跟读</button>
+<button className="btn" onClick={() =>playTTS(currentSentenceWithId.russian)}>听一次</button>
+<button className="btn sm" onClick={() =>{ setTtsActiveIdx(curIdx); openFullText('全文跟读 · 字幕跟随') }}>全文跟读</button>
 </div>
 <div className="row" style={{ marginTop: 10 }}>
 <button className="btn sm" onClick={() =>markRecite(true)}>本句跟读流畅</button>
@@ -675,9 +698,9 @@ export default function ShangMethod() {
 <div className="ru-large" style={{ opacity: 0.15, fontSize: 22 }}>俄文字幕已隐藏 · 脱稿复述</div>
 <div style={{ fontSize: 50, margin: '14px 0' }}></div>
 <div className="hint" style={{ marginBottom: 10 }}>第 {curIdx + 1} 句 / 共 {sentencesWithId.length} 句 — 复述完成 {reciteProgress.done}/{reciteProgress.total}</div>
-<div>
+<div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
 <button className="btn primary" onClick={() =>playTTS(currentSentenceWithId.russian, false)}>听一句</button>
-<button className="btn" onClick={() =>playTTS(currentSentenceWithId.russian, true)} style={{ marginLeft: 8 }}>循环一句</button>
+<button className="btn" onClick={() =>playTTS(currentSentenceWithId.russian, true)}>循环一句</button>
 </div>
 <div className="row" style={{ marginTop: 14, justifyContent: 'center' }}>
 <button className="btn sm" onClick={() =>markReciteOut(true)}>已流利复述</button>
@@ -824,11 +847,16 @@ export default function ShangMethod() {
 <div className="method-controls">
 <div className="ctrl-row">
 <button className="btn" onClick={goPrev} disabled={curIdx === 0}>上一句</button>
-<button className="btn primary" onClick={() =>playTTS(currentSentenceWithId.russian)}>
- {isPlaying ? '播放中' : '播放'}
-</button>
+{isPlaying && !paused ? (
+<button className="btn primary" onClick={pausePlay}>暂停</button>
+) : paused ? (
+<button className="btn primary" onClick={resumePlay}>继续</button>
+) : (
+<button className="btn primary" onClick={() =>playTTS(currentSentenceWithId.russian)}>播放</button>
+)}
+<button className="btn" onClick={stopPlay}>停止</button>
 <button className={'btn' + (loopMode ? ' primary' : '')} onClick={() =>setLoopMode(!loopMode)}>
- 循环播放
+ 循环
 </button>
 <select className="speed-select" value={speed} onChange={e =>{
  const newSpeed = parseFloat(e.target.value)

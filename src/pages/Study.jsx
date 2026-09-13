@@ -81,6 +81,7 @@ export default function Study() {
  const isShangFinished = !!shangState.finished
 
  const [playingIdx, setPlayingIdx] = useState(-1)
+ const [paused, setPaused] = useState(false)
  const [aiHtml, setAiHtml] = useState('')
  const [showZh, setShowZh] = useState(false)
  const [shangUserInput, setShangUserInput] = useState('')
@@ -377,6 +378,7 @@ export default function Study() {
 
  // 视频控制函数（对齐句子时间点）— 三级兜底：pRef videoRef直控 错误提示
  const playSeg = (loop = true) =>{
+ 	setPaused(false)
  if (!cur) return
  console.log('[Study] playSeg', { loop, curIdx: curIdx, curStart: cur.start, curEnd: cur.end, hasPlayer: !!pRef.current, hasVideoEl: !!videoRef.current, playType: play?.type, videoUrl: video?.videoUrl })
  ensurePlayer()
@@ -409,10 +411,23 @@ export default function Study() {
  if (shangMode && shangWenjieStage === STAGES.DICTATE) setDictateVideoShown(false)
  }
  const stopPlay = () =>{
- if (pRef.current) { pRef.current.pause(); pRef.current.stopLoop() }
- if (videoRef.current) { videoRef.current.pause() }
- setPlayingIdx(-1)
- setActiveSentenceIdx(-1)
+ 	if (pRef.current) { pRef.current.pause(); pRef.current.stopLoop() }
+ 	if (videoRef.current) { videoRef.current.pause() }
+ 	setPlayingIdx(-1)
+ 	setPaused(false)
+ 	setActiveSentenceIdx(-1)
+ }
+
+ // 暂停 / 继续（循环播放时可随时暂停，再点继续恢复）
+ const pausePlay = () =>{
+ 	if (pRef.current) pRef.current.pause()
+ 	if (videoRef.current) videoRef.current.pause()
+ 	setPaused(true)
+ }
+ const resumePlay = () =>{
+ 	setPaused(false)
+ 	if (pRef.current) { try { pRef.current.play() } catch (e) { /* ignore */ } }
+ 	else if (videoRef.current) videoRef.current.play().catch(() =>{ /* 浏览器自动播放限制 */ })
  }
  const onSpeed = (r) =>{
  setSpeed(r)
@@ -1076,7 +1091,14 @@ export default function Study() {
 <div className="toolbar" style={{ marginTop: 12 }}>
 <button className="btn sm" onClick={() =>go(-1)} disabled={curIdx === 0}>上一句</button>
 <span className="tb-sep" />
+{playingIdx >= 0 && !paused ? (
+<button className="btn sm" onClick={pausePlay}>暂停</button>
+) : paused ? (
+<button className="btn sm" onClick={resumePlay}>继续</button>
+) : (
 <button className="btn sm" onClick={() =>playSeg(loopMode)}>播放本句</button>
+)}
+<button className="btn sm" onClick={stopPlay}>停止</button>
 <button className={'btn sm' + (loopMode ? ' loop-on' : '')} onClick={toggleLoop}>循环</button>
 <select className="speed-select" value={speed} onChange={e =>setSpeed(parseFloat(e.target.value))}>
 <option value={0.5}>0.5x</option>
