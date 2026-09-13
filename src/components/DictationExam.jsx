@@ -16,6 +16,67 @@ const wordCorrect = (target, input) => normWord(target) === normWord(input)
 const tokenize = (text) => (text || '').match(TOKEN_RE_G) || []
 const SCORE_COLORS = { 100: '#3E8E5A', 95: '#3E8E5A', 90: '#6E9A4F', 85: '#C08133', 80: '#C0563B' }
 const STATUS_LABEL = { correct: '正确', misread: '读错', omitted: '漏读', extra: '多读' }
+// 纯字母比较（去重音/空格/连字符/大小写/ё=е），用于判断 AI 碎片能否拼回目标词
+const pureNorm = (s) => stripStress(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[\s\-]+/g, '')
+/**
+ * 把 AI 返回的 words/components 归组回本地正确分词。
+ * 背景：AI 有时把 "Доброе утро" 拆成音节（До/брое/у/тро）当单词返回，
+ * 导致解析面板出现音节卡片。这里以本地 targetWords 为准，用贪心拼接把
+ * AI 碎片合并回完整单词（pos/mean/role 取第一个碎片的值）。
+ */
+const alignAnalysis = (aiWords, aiComponents, targets) => {
+  const empty = targets.map(t => ({ word: t, stressed: t, pos: '', mean: '' }))
+  const aiW = Array.isArray(aiWords) ? aiWords : []
+  const aiC = Array.isArray(aiComponents) ? aiComponents : []
+  if (aiW.length === 0) return { words: empty, components: aiC }
+  if (aiW.length === targets.length) {
+    return {
+      words: aiW.map((w, i) => ({
+        word: targets[i],
+        stressed: (w && w.stressed) || targets[i],
+        pos: (w && w.pos) || '',
+        mean: (w && w.mean) || '',
+      })),
+      components: aiC,
+    }
+  }
+  const words = []
+  let wi = 0
+  for (const t of targets) {
+    let acc = ''
+    let first = null
+    while (wi < aiW.length) {
+      const w = aiW[wi] || {}
+      if (!first) first = w
+      acc += stripStress(w.word || '')
+      wi++
+      if (pureNorm(acc) === pureNorm(t)) break
+    }
+    words.push({
+      word: t,
+      stressed: (first && first.stressed) || t,
+      pos: (first && first.pos) || '',
+      mean: (first && first.mean) || '',
+    })
+  }
+  const comps = []
+  if (aiC.length) {
+    let ci = 0
+    for (const t of targets) {
+      let acc = ''
+      let role = ''
+      while (ci < aiC.length) {
+        const c = aiC[ci] || {}
+        acc += stripStress(c.text || '')
+        if (!role && c.role) role = c.role
+        ci++
+        if (pureNorm(acc) === pureNorm(t)) break
+      }
+      comps.push({ text: t, role })
+    }
+  }
+  return { words, components: comps }
+}
 
 /**
  * 默写 + 口语评测全屏面板（尚雯婕学习法 · 阶段2 检查正确后进入）
@@ -381,23 +442,27 @@ export default function DictationExam({
               {!analysisLoading && analysis && (
                 <>
                   {/* 逐词横排：句子成分 + 词性 + 重音单词 + 中文词义（参考图样式） */}
-                  {analysis.words && analysis.words.length > 0 && (
-                    <div className="dict-wordrow">
-                      {analysis.words.map((w, i) => {
-                        const comp = (analysis.components && analysis.components.length === analysis.words.length)
-                          ? (analysis.components[i]?.role || '')
-                          : ''
-                        return (
-                          <div className="dict-wordcol" key={i}>
-                            <div className="dict-wc-pos">{w.pos || '—'}</div>
-                            <div className="dict-wc-word">{w.stressed || w.word}</div>
-                            <div className="dict-wc-mean">{w.mean || '—'}</div>
-                            {comp && <div className="dict-wc-role">{comp}</div>}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                  {analysis.words && analysis.words.length > 0 && (() => {
+                    const { words: dispWords, components: dispComps } =
+                      alignAnalysis(analysis.words, analysis.components, targetWords)
+                    return (
+                      <div className="dict-wordrow">
+                        {dispWords.map((w, i) => {
+                          const comp = (dispComps && dispComps.length === dispWords.length)
+                            ? (dispComps[i]?.role || '')
+                            : ''
+                          return (
+                            <div className="dict-wordcol" key={i}>
+                              <div className="dict-wc-pos">{w.pos || '—'}</div>
+                              <div className="dict-wc-word">{w.stressed || w.word}</div>
+                              <div className="dict-wc-mean">{w.mean || '—'}</div>
+                              {comp && <div className="dict-wc-role">{comp}</div>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
 
                   {/* 整句中译（居中） */}
                   {analysis.translation && (
