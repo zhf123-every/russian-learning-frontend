@@ -7,6 +7,7 @@ import { API_BASE } from '../lib/api'
 import { toast } from '../lib/toast'
 import { courseLibrary, LEVELS } from '../data/courseLibrary'
 import FullTextPanel from '../components/FullTextPanel'
+import DictationExam from '../components/DictationExam'
 
 const LEVEL_COLORS = { A1: '#8B735F', A2: '#A8937F', B1: '#B08A5A', B2: '#A86454' }
 
@@ -63,6 +64,9 @@ export default function ShangMethod() {
  const [reciteAnalyzing, setReciteAnalyzing] = useState(false)
  const [showReciteCompare, setShowReciteCompare] = useState(false)
  const [reciteCompareIdx, setReciteCompareIdx] = useState(-1)
+ // 阶段2 检查正确后进入「默写 + 口语评测」全屏面板
+ const [showExam, setShowExam] = useState(false)
+ const [examIdx, setExamIdx] = useState(0)
 
  // 录音相关 ref
  const mediaRecorderRef = useRef(null)
@@ -310,7 +314,14 @@ export default function ShangMethod() {
  const target = norm(currentSentenceWithId.russian)
  const input = norm(userInput)
  const correct = target === input
+ if (correct) {
+ // 听写正确：不直接公布答案，进入「逐词默写 + 口语评测」环节
+ setDictationResult(null)
+ setExamIdx(curIdx)
+ setShowExam(true)
+ } else {
  setDictationResult({ correct, target: currentSentenceWithId.russian, input })
+ }
  if (materialId) {
  shang.setDictation(materialId, currentSentenceWithId.id, { text: userInput, ok: correct })
  }
@@ -883,6 +894,17 @@ export default function ShangMethod() {
  playTTS(sentencesWithId[idx]?.russian, false)
  }}
  title={fullTextTitle}
+ />
+ )}
+
+ {/* 阶段2：默写 + 口语评测全屏面板（TTS 标准音，支持男女声切换） */}
+ {showExam && (
+<DictationExam
+ sentences={sentencesWithId}
+ startIdx={examIdx}
+ ttsMode={true}
+ onSentenceChange={(i) =>setCurIdx(i)}
+ onClose={() =>setShowExam(false)}
  />
  )}
 

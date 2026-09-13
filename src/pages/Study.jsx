@@ -7,6 +7,7 @@ import { useShangStore, STAGES } from '../store/shangStore'
 import { useVocabStore } from '../store/vocabStore'
 import SentenceBox from '../components/SentenceBox'
 import FullTextPanel from '../components/FullTextPanel'
+import DictationExam from '../components/DictationExam'
 import WordPop from '../components/WordPop'
 import { explainSentence, reciteCompare } from '../lib/ai'
 import { getVideoPlay, createPlayer } from '../lib/videoPlayer'
@@ -106,6 +107,9 @@ export default function Study() {
  const [showTutor, setShowTutor] = useState(false)
  const [showQuiz, setShowQuiz] = useState(false)
  const [quizPrompt, setQuizPrompt] = useState(false)
+ // 阶段2 检查正确后进入「默写 + 口语评测」全屏面板
+ const [showExam, setShowExam] = useState(false)
+ const [examIdx, setExamIdx] = useState(0)
  // 普通模式 · 阶段3 写作批改 + 生词弹窗
  const [writeText, setWriteText] = useState('')
  const [writeResult, setWriteResult] = useState('')
@@ -439,13 +443,37 @@ export default function Study() {
  const normDict = s =>(s || '').replace(/[^\wа-яёА-ЯЁ\s]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
 
  const shangCheckDict = () =>{
- // 阶段2检查本句时显示视频
- if (shangMode && shangWenjieStage === STAGES.DICTATE) setDictateVideoShown(true)
  const target = normDict(cur.russian)
  const input = normDict(shangUserInput)
  const correct = target === input
- setShangDictResult({ correct, target: cur.russian, input })
  shang.setDictation(videoId, cur.id, { text: shangUserInput, ok: correct })
+ if (correct) {
+ // 听写正确：不直接公布答案，进入「逐词默写 + 口语评测」环节
+ setShangDictResult(null)
+ setExamIdx(curIdx)
+ setShowExam(true)
+ } else {
+ // 错误：保持现有纠错显示，视频继续隐藏
+ if (shangMode && shangWenjieStage === STAGES.DICTATE) setDictateVideoShown(false)
+ setShangDictResult({ correct, target: cur.russian, input })
+ }
+ }
+
+ // 按指定索引播放该句视频片段原声（默写面板使用：只出声，阶段2画面保持隐藏）
+ const playSegAt = (i, loop = false) =>{
+ const s = sentences[i]
+ if (!s) return
+ ensurePlayer()
+ const start = s.start != null ? s.start : 0
+ const end = s.end != null ? s.end : (videoRef.current?.duration || 0)
+ if (pRef.current) {
+ if (loop) pRef.current.playLoop(start, end)
+ else pRef.current.playSegment(start, end, false)
+ } else if (videoRef.current) {
+ try { videoRef.current.currentTime = start } catch (e) {}
+ videoRef.current.play().catch(() =>{})
+ }
+ setPlayingIdx(i)
  }
 
  const shangSkipSentence = () =>{
@@ -1413,6 +1441,18 @@ export default function Study() {
  videoId={videoId}
  videoTitle={video?.title || ''}
  onClose={() =>setShowQuiz(false)}
+ />
+ )}
+
+ {/* 阶段2：默写 + 口语评测全屏面板（仅尚雯婕模式，标准音取视频片段原声） */}
+ {shangMode && showExam && (
+<DictationExam
+ sentences={sentences}
+ startIdx={examIdx}
+ ttsMode={false}
+ playOriginal={(i) =>playSegAt(i, false)}
+ onSentenceChange={(i) =>setIdx(i)}
+ onClose={() =>setShowExam(false)}
  />
  )}
 
