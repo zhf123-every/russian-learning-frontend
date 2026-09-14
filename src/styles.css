@@ -1296,6 +1296,41 @@ html,body{overflow-x:hidden;max-width:100vw}
 .dict-translation{font-size:16px;color:var(--text,#3D332C);font-weight:600;margin-bottom:8px}
 .dict-grammar-text{font-size:14px;color:var(--text-soft,#5C4D3F);line-height:1.75;white-space:pre-line}
 
+/* 逐词横排（仿句子解析参考图：成分/词性/单词/词义一列一列） */
+.dict-wordrow{
+  display:flex;flex-wrap:wrap;gap:10px 14px;justify-content:center;align-items:stretch;
+  background:var(--card,#fff);border:1px solid var(--border,#E8E1D9);
+  border-radius:14px;padding:18px 16px;margin-bottom:14px;
+}
+.dict-wordcol{
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;
+  min-width:88px;padding:10px 12px;border-radius:12px;
+  background:var(--accent-lighter,#F7F2EA);border:1px solid var(--accent-light,#E8DDD0);
+  box-shadow:0 1px 3px rgba(155,123,94,0.08);
+}
+.dict-wc-role{
+  font-size:11.5px;color:var(--accent-dark,#856849);font-weight:600;
+  background:#fff;border:1px solid var(--accent-light,#E8DDD0);border-radius:20px;
+  padding:1px 9px;min-height:19px;display:flex;align-items:center;white-space:nowrap;margin-top:2px;
+}
+.dict-wc-pos{
+  font-size:11.5px;color:#fff;background:var(--accent,#9B7B5E);border-radius:20px;
+  padding:1px 9px;min-height:19px;display:flex;align-items:center;white-space:nowrap;
+}
+.dict-wc-word{
+  font-size:22px;font-weight:700;color:#3D2F22;line-height:1.3;
+  word-break:break-word;text-align:center;
+}
+.dict-wc-mean{
+  font-size:13px;color:var(--text-soft,#5C4D3F);text-align:center;line-height:1.4;min-height:18px;
+}
+/* 整句中译（居中大字） */
+.dict-sentence-trans{
+  font-size:19px;font-weight:600;color:var(--text,#3D332C);text-align:center;
+  padding:14px 12px;margin:6px 0 14px;background:var(--accent-lighter,#F7F2EA);
+  border-radius:12px;border:1px solid var(--accent-light,#E8DDD0);
+}
+
 /* 口语评测 */
 .dict-speak-card{
   background:var(--card,#fff);border:1px solid var(--border,#E8E1D9);
@@ -1339,6 +1374,11 @@ html,body{overflow-x:hidden;max-width:100vw}
   .dict-zh-text{font-size:16px}
   .dict-words{grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px}
   .dict-word-ru{font-size:16px}
+  .dict-wordrow{gap:8px;padding:12px 8px}
+  .dict-wordcol{min-width:72px;padding:8px 8px;gap:4px}
+  .dict-wc-word{font-size:18px}
+  .dict-wc-mean{font-size:12px}
+  .dict-sentence-trans{font-size:17px;padding:12px 10px}
   .dict-score-num{font-size:38px}
   .dict-actions .btn,.dict-speak-row .btn{flex:1;justify-content:center}
   .dict-voice-switch{width:100%}

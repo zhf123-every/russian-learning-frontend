@@ -380,22 +380,33 @@ export default function DictationExam({
 
               {!analysisLoading && analysis && (
                 <>
-                  {/* 逐词：重音 + 词性 + 词义 */}
-                  <div className="dict-section-title">逐词解析（重音 · 词性 · 词义）</div>
-                  <div className="dict-words">
-                    {(analysis.words || []).map((w, i) => (
-                      <div className="dict-word-card" key={i}>
-                        <div className="dict-word-ru">{w.stressed || w.word}</div>
-                        {w.pos && <div className="dict-word-pos">{w.pos}</div>}
-                        <div className="dict-word-mean">{w.mean || '—'}</div>
-                      </div>
-                    ))}
-                  </div>
+                  {/* 逐词横排：句子成分 + 词性 + 重音单词 + 中文词义（参考图样式） */}
+                  {analysis.words && analysis.words.length > 0 && (
+                    <div className="dict-wordrow">
+                      {analysis.words.map((w, i) => {
+                        const comp = (analysis.components && analysis.components.length === analysis.words.length)
+                          ? (analysis.components[i]?.role || '')
+                          : ''
+                        return (
+                          <div className="dict-wordcol" key={i}>
+                            <div className="dict-wc-pos">{w.pos || '—'}</div>
+                            <div className="dict-wc-word">{w.stressed || w.word}</div>
+                            <div className="dict-wc-mean">{w.mean || '—'}</div>
+                            {comp && <div className="dict-wc-role">{comp}</div>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
 
-                  {/* 句子成分 */}
-                  {analysis.components && analysis.components.length > 0 && (
-                    <>
-                      <div className="dict-section-title">句子成分</div>
+                  {/* 整句中译（居中） */}
+                  {analysis.translation && (
+                    <div className="dict-sentence-trans">{analysis.translation}</div>
+                  )}
+
+                  {/* 句子成分（未逐词对应时独立展示） */}
+                  {analysis.components && analysis.components.length > 0 &&
+                    (!analysis.words || analysis.components.length !== analysis.words.length) && (
                       <div className="dict-components">
                         {analysis.components.map((c, i) => (
                           <span className="dict-comp" key={i}>
@@ -404,13 +415,11 @@ export default function DictationExam({
                           </span>
                         ))}
                       </div>
-                    </>
-                  )}
+                    )}
 
-                  {/* 中译 + 语法 */}
-                  <div className="dict-section-title">中文释义与语法解析</div>
+                  {/* 语法解析 */}
+                  <div className="dict-section-title">语法解析</div>
                   <div className="dict-grammar-card">
-                    {analysis.translation && <div className="dict-translation">{analysis.translation}</div>}
                     {analysis.grammar
                       ? <div className="dict-grammar-text">{analysis.grammar}</div>
                       : <div className="dict-tip-info">语法解析暂未生成，可稍后重试</div>}
@@ -490,9 +499,10 @@ export default function DictationExam({
           )}
         </div>
 
-        {/* 底部：切换句子 */}
+        {/* 底部：切换句子 + 朗读（仿参考图操作条） */}
         <div className="dict-exam-footer">
           <button className="btn sm" disabled={idx === 0} onClick={() => goSentence(-1)}>上一句</button>
+          <button className="btn sm" onClick={() => playSentence(idx)}>朗读</button>
           <span className="dict-footer-progress">{idx + 1} / {sentences.length}</span>
           <button className="btn sm primary" disabled={idx === sentences.length - 1} onClick={() => goSentence(1)}>下一句</button>
         </div>
