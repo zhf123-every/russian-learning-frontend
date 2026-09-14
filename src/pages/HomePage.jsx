@@ -23,6 +23,15 @@ export default function HomePage() {
       tag: '系统训练',
     },
     {
+      title: '俄语闯关',
+      sub: '连词成句 · 连击评分 · 句子拆解',
+      desc: '像玩游戏一样用句子学俄语：打乱单词连成句，Perfect 连击评分，逐词拆解语法，SSS 评级等你拿。',
+      route: '/quest',
+      icon: '🎯',
+      tint: '#1C1814',
+      tag: '游戏化闯关',
+    },
+    {
       title: '俄语AI对话教练',
       sub: '开口说 · 实时纠错 · 语音陪练',
       desc: '和AI老师自由聊天，分A1-B2四个等级，说错就纠正语法并引导你重说。',

@@ -10,6 +10,7 @@ import Vocab from './pages/Vocab'
 import Profile from './pages/Profile'
 import Dictionary from './pages/Dictionary'
 import TutorChat from './pages/TutorChat'
+import RuQuest from './pages/RuQuest'
 import SettingsModal from './components/SettingsModal'
 
 export default function App() {
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/vocab" element={<Vocab />} />
         <Route path="/dictionary" element={<Dictionary />} />
         <Route path="/tutor" element={<TutorChat />} />
+        <Route path="/quest" element={<RuQuest />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
