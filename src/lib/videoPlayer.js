@@ -61,7 +61,8 @@ export function createPlayer(play, videoEl) {
     if (v.ended) { h.playing = false; return }
     if (h.loopContinuous && v.currentTime >= h.segEnd - 0.05) {
       try { v.currentTime = h.segStart } catch (e) {}
-    } else if (h.loop && v.currentTime >= h.segEnd - 0.05) {
+    } else if (h.segEnd != null && v.currentTime >= h.segEnd - 0.05) {
+      // 播放本句：播到句尾即暂停（不再继续往下播）
       v.pause()
       h.playing = false
       try { v.currentTime = h.segStart } catch (e) {}
@@ -114,13 +115,16 @@ export function createPlayer(play, videoEl) {
   }
   function iframeTick() {
     // 循环用定时器近似；YouTube 拿不到精确 currentTime，尽力而为
-    if (!h.loopContinuous || !h.playing) return
+    if (!h.playing) return
     if (h._timer) clearTimeout(h._timer)
     const dur = Math.max(0.1, (h.segEnd - h.segStart))
     h._timer = setTimeout(() => {
-      if (h.loopContinuous && h.playing) {
+      if (!h.playing) return
+      if (h.loopContinuous) {
         iframeSeek(h.segStart)
         iframePlay()
+      } else {
+        h._pause()
       }
     }, dur * 1000 * h.rate)
   }

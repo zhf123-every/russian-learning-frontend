@@ -1097,7 +1097,7 @@ export default function Study() {
 <button className="btn sm" onClick={() =>playSeg(loopMode)}>播放本句</button>
 )}
 <button className={'btn sm' + (loopMode ? ' loop-on' : '')} onClick={toggleLoop}>循环</button>
-<select className="speed-select" value={speed} onChange={e =>setSpeed(parseFloat(e.target.value))}>
+<select className="speed-select" value={speed} onChange={e =>onSpeed(parseFloat(e.target.value))}>
 <option value={0.5}>0.5x</option>
 <option value={0.75}>0.75x</option>
 <option value={1.0}>1.0x</option>
