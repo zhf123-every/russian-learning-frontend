@@ -385,8 +385,10 @@ export default function Study() {
  const start = cur.start != null ? cur.start : 0
  const end = cur.end != null ? cur.end : (videoRef.current?.duration || 0)
  if (pRef.current) {
- if (loop) pRef.current.playLoop(start, end)
- else pRef.current.playSegment(start, end, false)
+ if (loop) {
+ pRef.current.onLoopEnd = () =>setLoopMode(false)
+ pRef.current.playLoop(start, end, 3)
+ } else pRef.current.playSegment(start, end, false)
  } else if (videoRef.current) {
  // 终极兜底：直接控制 video 元素
  try { if (start >0) videoRef.current.currentTime = start } catch (e) {}

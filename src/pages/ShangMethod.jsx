@@ -199,29 +199,35 @@ export default function ShangMethod() {
  }
 
  // TTS 播放（支持变速 + 循环，自动选择浏览器/后端TTS）
- const playTTS = (text, loopOnce = false) =>{
+ const playTTS = (text, loopOnce = false, remain = 3) =>{
  if (!text) return
  	setPaused(false)
  // 停止之前的播放
  if (window.speechSynthesis) window.speechSynthesis.cancel()
  if (serverAudioRef.current) serverAudioRef.current.pause()
 
+ const finish = () =>{
+ setIsPlaying(false)
+ if (loopMode || loopOnce) {
+ if (remain > 1) {
+ playTTS(text, loopOnce, remain - 1)
+ } else {
+ // 循环 3 遍结束：关闭循环，自动停止
+ if (loopMode) setLoopMode(false)
+ }
+ }
+ }
+
  if (ttsSource === 'server') {
  // 后端TTS：通过playbackRate支持变速，保证有声音
  setIsPlaying(true)
- playServerTTS(text, () =>{
- setIsPlaying(false)
- if (loopMode || loopOnce) playTTS(text, loopOnce)
- })
+ playServerTTS(text, finish)
  } else if (window.speechSynthesis) {
  // 浏览器内置TTS：支持变速
  const utter = new SpeechSynthesisUtterance(text)
  utter.lang = 'ru-RU'
  utter.rate = speed
- utter.onend = () =>{
- setIsPlaying(false)
- if (loopMode || loopOnce) playTTS(text, loopOnce)
- }
+ utter.onend = finish
  window.speechSynthesis.speak(utter)
  setIsPlaying(true)
  }

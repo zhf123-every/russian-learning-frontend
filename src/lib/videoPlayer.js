@@ -60,7 +60,18 @@ export function createPlayer(play, videoEl) {
     const v = h.videoEl
     if (v.ended) { h.playing = false; return }
     if (h.loopContinuous && v.currentTime >= h.segEnd - 0.05) {
-      try { v.currentTime = h.segStart } catch (e) {}
+      h.loopCount += 1
+      if (h.loopCount >= h.loopTimes) {
+        // 循环 N 遍结束：自动暂停
+        h.loopContinuous = false
+        h.loop = false
+        v.pause()
+        h.playing = false
+        if (h.onLoopEnd) h.onLoopEnd()
+        try { v.currentTime = h.segStart } catch (e) {}
+      } else {
+        try { v.currentTime = h.segStart } catch (e) {}
+      }
     } else if (h.segEnd != null && v.currentTime >= h.segEnd - 0.05) {
       // 播放本句：播到句尾即暂停（不再继续往下播）
       v.pause()
@@ -121,8 +132,16 @@ export function createPlayer(play, videoEl) {
     h._timer = setTimeout(() => {
       if (!h.playing) return
       if (h.loopContinuous) {
-        iframeSeek(h.segStart)
-        iframePlay()
+        h.loopCount += 1
+        if (h.loopCount >= h.loopTimes) {
+          h.loopContinuous = false
+          h.loop = false
+          h._pause()
+          if (h.onLoopEnd) h.onLoopEnd()
+        } else {
+          iframeSeek(h.segStart)
+          iframePlay()
+        }
       } else {
         h._pause()
       }
@@ -165,11 +184,13 @@ export function createPlayer(play, videoEl) {
     h.seek(start)
     h.play()
   }
-  h.playLoop = (start, end) => {
+  h.playLoop = (start, end, times = 3) => {
     h.segStart = start
     h.segEnd = end
     h.loop = true
     h.loopContinuous = true
+    h.loopCount = 0
+    h.loopTimes = Math.max(1, times)
     if (h._timer) { clearTimeout(h._timer); h._timer = null }
     h.seek(start)
     h.play()
