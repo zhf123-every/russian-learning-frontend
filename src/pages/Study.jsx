@@ -456,15 +456,15 @@ export default function Study() {
  else if (videoRef.current) { videoRef.current.playbackRate = r }
  }
  const toggleLoop = () =>{
- setLoopMode(v =>{
- const next = !v
+ const next = !loopMode
+ setLoopMode(next)
  if (next) playSeg(true)
  else {
  if (pRef.current) { pRef.current.pause(); pRef.current.stopLoop() }
  if (videoRef.current) { videoRef.current.pause() }
+ setPlayingIdx(-1)
+ setPaused(false)
  }
- return next
- })
  if (shangMode && shangWenjieStage === STAGES.DICTATE) setDictateVideoShown(false)
  }
 

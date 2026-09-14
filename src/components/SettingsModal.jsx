@@ -33,10 +33,10 @@ export default function SettingsModal({ onClose }) {
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <h2>设置</h2>
-        <p className="hint">「语法解释 / AI 解析」由服务端密钥统一调用（部署时在环境变量配置）。下方「API Key」仅用于本地「AI 断句」。</p>
-        <div className="field"><label>接口地址 baseUrl</label><input value={s.baseUrl} onChange={e => set('baseUrl', e.target.value)} /></div>
-        <div className="field"><label>API Key</label><input type="password" value={s.apiKey} onChange={e => set('apiKey', e.target.value)} placeholder="sk-..." /></div>
-        <div className="field"><label>模型名</label><input value={s.model} onChange={e => set('model', e.target.value)} /></div>
+        <p className="hint">「语法解释 / AI 解析 / AI 断句 / AI 助教」等 AI 功能均由服务端统一处理（密钥在服务器环境变量中配置），无需在网页内填写。</p>
+        
+        
+        
         <div className="field">
           <label>Whisper 转写模型（「从音频识别字幕」用，纯本地无需 key）</label>
           <select value={s.whisperModel || 'small'} onChange={e => set('whisperModel', e.target.value)}>
@@ -44,6 +44,18 @@ export default function SettingsModal({ onClose }) {
             <option value="base">base —— 快，一般</option>
             <option value="small">small —— 推荐，质量/速度平衡</option>
             <option value="medium">medium —— 更准，慢、占内存多</option>
+          </select>
+        </div>
+        <div className="field"><label>AI 朗读声音</label>
+          <select value={s.ttsVoice || 'female'} onChange={e => set('ttsVoice', e.target.value)}>
+            <option value="female">女声</option>
+            <option value="male">男声（Dmitry）</option>
+          </select>
+        </div>
+        <div className="field"><label>AI 助教自动朗读</label>
+          <select value={s.autoRead === false ? 'off' : 'on'} onChange={e => set('autoRead', e.target.value === 'on')}>
+            <option value="on">开启（AI 回复后自动朗读）</option>
+            <option value="off">关闭（手动点朗读）</option>
           </select>
         </div>
         <div className="field"><label>语速 rate</label><input type="number" step="0.1" min="0.5" max="2" value={s.rate} onChange={e => set('rate', parseFloat(e.target.value) || 1)} /></div>

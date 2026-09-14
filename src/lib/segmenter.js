@@ -65,7 +65,7 @@ function validate(parsed, origWords) {
 // 解析纯文本：用 plainToSentences 兜底
 async function aiSegmentFromPlain(text, feedback, settings) {
   const sents = plainToSentences(text)
-  if (!settings.apiKey || !sents.length) {
+  if (!sents.length) {
     return { sentences: sents, translations: [], understanding: null }
   }
   // 简化版：直接调一次 AI 让它断句 + 翻译
@@ -98,7 +98,7 @@ function parseResult(content) {
 
 // 从 cues 断句 + 翻译（带 overlap 处理）
 export async function aiSegmentFromCues(cues, feedback, prevSentences, settings) {
-  if (!settings.apiKey || !cues || !cues.length) return null
+  if (!cues || !cues.length) return null
   const fullText = cues.map(c => c.text).join(' ')
   const inWords = fullText.trim().split(/\s+/).filter(Boolean)
   if (!inWords.length) return null

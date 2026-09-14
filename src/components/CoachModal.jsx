@@ -100,7 +100,6 @@ export default function CoachModal({ sentences, onClose, onNext }) {
   const lessonText = sentences.map(s => s.text || s.russian).join('\n')
 
   const start = async () => {
-    if (!settings.apiKey) { toast('请先在「设置」里填写 API Key'); return }
     setPhase('loading')
     try {
       const res = await chat({ ...settings, messages: [

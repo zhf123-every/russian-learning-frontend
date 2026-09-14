@@ -2,10 +2,9 @@ import { create } from 'zustand'
 import { loadLS, saveLS, LS } from '../lib/persistence'
 
 const defaults = {
-  baseUrl: 'https://api.deepseek.com',
-  apiKey: '',
-  model: 'deepseek-chat',
   whisperModel: 'small',
+  ttsVoice: 'female',
+  autoRead: true,
   voiceURI: '',
   rate: 1.0,
   loopTimes: 3,

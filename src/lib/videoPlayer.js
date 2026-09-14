@@ -85,8 +85,10 @@ export function createPlayer(play, videoEl) {
   // 必须等 iframe 加载完成（enablejsapi=1 生效）后才能响应 postMessage
   h._iframeReady = false
   h._pendingCmds = []
+  h._lastCmd = null
 
   function iframePost(msg) {
+    h._lastCmd = msg
     if (!h._iframe) return
     if (!h._iframeReady) {
       // iframe 还没加载完成，缓存命令，等 ready 后重发
@@ -228,11 +230,21 @@ export function createPlayer(play, videoEl) {
     // 监听 iframe 加载完成，YouTube enablejsapi 需要等 iframe ready 后才能响应 postMessage
     const markReady = () => {
       h._iframeReady = true
-      // 重发缓存的命令
-      const pending = h._pendingCmds.splice(0)
-      pending.forEach(cmd => {
-        try { h._iframe.contentWindow.postMessage(JSON.stringify(cmd), '*') } catch (e) {}
-      })
+      // 重发缓存的命令，并多次重试：YouTube 播放器 API 初始化可能需要几秒
+      let flushAttempts = 0
+      const flush = () => {
+        flushAttempts += 1
+        const pending = h._pendingCmds.splice(0)
+        pending.forEach(cmd => {
+          try { h._iframe.contentWindow.postMessage(JSON.stringify(cmd), '*') } catch (e) {}
+        })
+        // 最近的 seek/play 命令也重发，确保播放器就绪后生效
+        if (h._lastCmd && pending.length === 0) {
+          try { h._iframe.contentWindow.postMessage(JSON.stringify(h._lastCmd), '*') } catch (e) {}
+        }
+        if (flushAttempts < 8) setTimeout(flush, 700)  // 共约 5.6 秒
+      }
+      setTimeout(flush, 400)
       // YouTube：订阅 IFrame API 事件，获取当前播放时间
       if (h.type === 'youtube') {
         try {

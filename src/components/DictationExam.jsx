@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { analyzeSentence, pronunciationScore, ttsUrl } from '../lib/ai'
+import { useSettingsStore } from '../store/settingsStore'
 import { toast } from '../lib/toast'
 
 // —— 工具函数 ——
@@ -97,7 +98,9 @@ export default function DictationExam({
   ttsMode = false,
   playOriginal,
   onSentenceChange,
-}) {
+})
+{
+  const settings = useSettingsStore(s => s.settings)
   const [idx, setIdx] = useState(startIdx)
   const [phase, setPhase] = useState('dict') // dict | analysis
   const sentence = sentences[idx]
@@ -133,7 +136,7 @@ export default function DictationExam({
   const analysisCache = useRef({})
 
   // —— TTS（ttsMode） ——
-  const [voice, setVoice] = useState('female')
+  const [voice, setVoice] = useState(settings.ttsVoice || 'female')
   const ttsAudioRef = useRef(null)
 
   // —— 录音 ——

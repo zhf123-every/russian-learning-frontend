@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch, API_BASE } from '../lib/api'
+import { useSettingsStore } from '../store/settingsStore'
 import { parseAIJSON } from '../lib/ai'
 import { toast } from '../lib/toast'
 
@@ -21,13 +22,15 @@ const GREETINGS = {
 
 export default function TutorChat() {
   const navigate = useNavigate()
+  const settings = useSettingsStore(s => s.settings)
+  const saveSettings = useSettingsStore(s => s.save)
   const [level, setLevel] = useState(null)          // null=未选择难度
   const [messages, setMessages] = useState([])      // [{role:'user'|'ai', text, ruText, corrected, error_analysis, guidance, question}]
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [micActive, setMicActive] = useState(false)   // 麦克风持续监听中
   const [speaking, setSpeaking] = useState(false)     // 用户正在说话（呼吸动画）
-  const [autoTTS, setAutoTTS] = useState(true)        // 自动朗读开关，默认开启
+  const [autoTTS, setAutoTTS] = useState(settings.autoRead !== false)        // 自动朗读开关（读全局设置）
   const [cloudAsr, setCloudAsr] = useState(true)     // 云端俄语转写开关（后端 Whisper，默认开启：所有手机浏览器都能用）
   const [ttsPlaying, setTtsPlaying] = useState(false)
   const [srSupported] = useState(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition))
@@ -317,7 +320,7 @@ export default function TutorChat() {
       if (ttsTokenRef.current !== token) return
       audio.play().catch(() => { setTtsPlaying(false); resumeMicAfterTts() })
     }
-    audio.src = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now()
+    audio.src = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text) + '&voice=' + encodeURIComponent(settings.ttsVoice || 'female') + '&_=' + Date.now()
     audio.load()
     setTtsPlaying(true)
   }
@@ -417,7 +420,7 @@ export default function TutorChat() {
           </button>
           <button
             className={'tbtn tutor-tts-toggle' + (autoTTS ? ' on' : '')}
-            onClick={() => setAutoTTS(v => !v)}
+            onClick={() => setAutoTTS(v => { const nv = !v; saveSettings({ autoRead: nv }); return nv })}
             title="AI回复后是否自动朗读俄语"
           >
             自动朗读：{autoTTS ? '开' : '关'}
