@@ -383,16 +383,32 @@ export default function Study() {
  console.log('[Study] playSeg', { loop, curIdx: curIdx, curStart: cur.start, curEnd: cur.end, hasPlayer: !!pRef.current, hasVideoEl: !!videoRef.current, playType: play?.type, videoUrl: video?.videoUrl })
  ensurePlayer()
  const start = cur.start != null ? cur.start : 0
- const end = cur.end != null ? cur.end : (videoRef.current?.duration || 0)
+ let end = cur.end != null ? cur.end : (videoRef.current?.duration || 0)
+ // 无有效句尾时间戳（未设置或等于视频总长）时：按词数估算句长，避免整篇连播
+ const vdur = videoRef.current?.duration
+ if (end == null || end <= start || (vdur && end >= vdur - 0.5)) {
+ const wc = (cur.text || cur.russian || '').trim().split(/\s+/).filter(Boolean).length
+ end = start + Math.min(12, Math.max(3, wc * 0.7))
+ }
  if (pRef.current) {
  if (loop) {
  pRef.current.onLoopEnd = () =>setLoopMode(false)
  pRef.current.playLoop(start, end, 3)
  } else pRef.current.playSegment(start, end, false)
  } else if (videoRef.current) {
- // 终极兜底：直接控制 video 元素
- try { if (start >0) videoRef.current.currentTime = start } catch (e) {}
- videoRef.current.play().catch(() =>{ toast('视频播放被浏览器阻止，请点击视频画面播放') })
+ // 终极兜底：直接控制 video 元素，播到句尾自动暂停（不再整篇连播）
+ const v = videoRef.current
+ const segEnd = cur.end != null ? cur.end : (v.duration || 0)
+ const onTU = () =>{
+ if (v.currentTime >= segEnd - 0.05) {
+ v.pause()
+ v.removeEventListener('timeupdate', onTU)
+ }
+ }
+ v.removeEventListener('timeupdate', onTU)
+ v.addEventListener('timeupdate', onTU)
+ try { if (start > 0) v.currentTime = start } catch (e) {}
+ v.play().catch(() =>{ toast('视频播放被浏览器阻止，请点击视频画面播放') })
  } else {
  toast('视频未加载（该素材可能没有视频地址），无法播放')
  }
