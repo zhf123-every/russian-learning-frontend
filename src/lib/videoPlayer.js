@@ -183,6 +183,8 @@ export function createPlayer(play, videoEl) {
     if (h._timer) { clearTimeout(h._timer); h._timer = null }
     h.seek(start)
     h.play()
+    // 重要：非循环也要启动停止定时器（iframe 无 timeupdate 驱动）
+    h._tick()
   }
   h.playLoop = (start, end, times = 3) => {
     h.segStart = start

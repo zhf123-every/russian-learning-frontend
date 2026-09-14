@@ -9,7 +9,7 @@ import SentenceBox from '../components/SentenceBox'
 import FullTextPanel from '../components/FullTextPanel'
 import DictationExam from '../components/DictationExam'
 import WordPop from '../components/WordPop'
-import { explainSentence, reciteCompare } from '../lib/ai'
+import { explainSentence, reciteCompare, callAI } from '../lib/ai'
 import { getVideoPlay, createPlayer } from '../lib/videoPlayer'
 import { toast } from '../lib/toast'
 import { mdToHtml } from '../lib/md'
@@ -83,6 +83,7 @@ export default function Study() {
  const [playingIdx, setPlayingIdx] = useState(-1)
  const [paused, setPaused] = useState(false)
  const [aiHtml, setAiHtml] = useState('')
+ const [zhAiText, setZhAiText] = useState('')
  const [showZh, setShowZh] = useState(false)
  const [shangUserInput, setShangUserInput] = useState('')
  const [shangDictResult, setShangDictResult] = useState(null)
@@ -337,6 +338,7 @@ export default function Study() {
 
  const go = (d) =>{
  setAiHtml('')
+ setZhAiText('')
  const n = curIdx + d
  if (n< 0 || n >= sentences.length) return
  setActiveSentenceIdx(-1)
@@ -470,6 +472,20 @@ export default function Study() {
  setAiHtml('解析中…')
  try { setAiHtml(mdToHtml(await explainSentence(cur.russian))) }
  catch (e) { setAiHtml(''); toast(e.message) }
+ }
+ // 显示中译：用 AI 生成本句中文释义
+ const fetchZh = async () =>{
+ if (!cur) return
+ if (zhAiText) return
+ setZhAiText('（AI 翻译生成中…）')
+ try {
+ const text = cur.russian || cur.text || ''
+ const r = await callAI([
+ { role: 'system', content: '你是俄语翻译。把用户给的俄语句子翻译成自然、通顺、口语化的中文。只输出中文译文，不要任何解释。' },
+ { role: 'user', content: text }
+ ])
+ setZhAiText(r)
+ } catch (e) { setZhAiText(''); toast('AI 翻译失败：' + e.message) }
  }
 
  // 听写规范化
@@ -845,7 +861,7 @@ export default function Study() {
  />
 <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 8 }}>
 <button className="btn primary" onClick={shangCheckDict}>检查本句</button>
-<button className="btn primary" onClick={() =>playSeg(true)}>再听本句</button>
+<button className="btn primary" onClick={() =>playSeg(false)}>再听本句</button>
 <button className="btn primary" onClick={shangSkipSentence}>跳过本句</button>
 </div>
  {shangDictResult && (
@@ -862,7 +878,7 @@ export default function Study() {
  {shangWenjieStage === STAGES.CORRECT && (
 <>
 <div className="ru-large">{cur.russian}</div>
- {showZh &&<div className="zh-medium" style={{ marginTop: 6 }}>{cur.chinese}</div>}
+ {showZh &&<div className="zh-medium" style={{ marginTop: 6 }}>{zhAiText || cur.chinese || '（AI 翻译生成中…）'}</div>}
  {(() =>{
  const d = shangDictations[cur.id]
  if (!d) return null
@@ -877,7 +893,7 @@ export default function Study() {
  {aiHtml &&<div className="translation" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: aiHtml }} />}
 <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 6 }}>
 <button className="btn sm" onClick={runAI}>AI 解析</button>
-<button className="btn sm" onClick={() =>setShowZh(v =>!v)}>{showZh ? '隐藏中译' : '显示中译'}</button>
+<button className="btn sm" onClick={() =>{ setShowZh(v =>{ const n = !v; if (n) fetchZh(); return n }) }}>{showZh ? '隐藏中译' : '显示中译'}</button>
 <button className="btn sm" onClick={() =>openFullText('全文对照 · 精读纠错')}>全文对照</button>
 </div>
 </>
