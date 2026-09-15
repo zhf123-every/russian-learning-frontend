@@ -10,6 +10,8 @@ import SummaryModal from '../components/quest/SummaryModal'           // P4 结�
 import GameSettingModal from '../components/quest/GameSettingModal'   // P4 游戏内设置（倍速/播放次数/间隔）
 import GamePauseModal from '../components/quest/GamePauseModal'       // P4 暂停弹窗
 import CourseContentsModal from '../components/quest/CourseContentsModal' // P4 本课内容面板（筛选+发音+跳转）
+import DictationControls from '../components/quest/DictationControls'       // P5 听写模式播放控制栏（盲听/慢听/提示）
+import LearningTimer from '../components/quest/LearningTimer'                 // P5 学习计时器（当前用时+今日累计）
 import * as questSounds from '../lib/questSounds' // 官方句乐部 mp3 原声音效（键盘/答对/答错）
 
 // ================= 工具 =================
@@ -180,9 +182,11 @@ const sfxRating = (label) => { // 结算评级成就音
 }
 
 // ================= 模块1.1 字体与字号体系 =================
-// 字体规则：俄文+中文统一系统默认无衬线；可选 Fredoka 圆润英文字体切换（只覆盖拉丁字符，其余自动回退）
+// 字体规则：俄文+中文统一系统默认无衬线；可选 Nunito/Fredoka 圆润英文字体切换（只覆盖拉丁字符，其余自动回退）
+// P5 新增 Nunito（官方句乐部同款圆润字体）
 const FONT_STACK = {
   system: "-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei','Noto Sans','Helvetica Neue',sans-serif",
+  nunito: "'Nunito',-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei','Noto Sans','Helvetica Neue',sans-serif",
   fredoka: "'Fredoka',-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei','Noto Sans',sans-serif",
 }
 // 字号分级：小 / 中 / 大 三档，默认中
@@ -240,6 +244,7 @@ export default function RuQuest() {
   const [paused, setPaused] = useState(false)            // 暂停状态
   const [showSettings, setShowSettings] = useState(false) // 设置弹窗（快捷键/播放/听力等配置，仅俄语闯关页内打开）
   const [gameSettingOpen, setGameSettingOpen] = useState(false) // P4 游戏内设置弹窗（倍速/播放次数/间隔）
+  const [dictTipVisible, setDictTipVisible] = useState(false)    // P5 听写模式答案提示显示状态
   const [comboPop, setComboPop] = useState(null)         // 连击浮动文字 {n, high}
   const [comboBreak, setComboBreak] = useState(false)    // 连击中断回落
   const [perfect, setPerfect] = useState(0)
@@ -505,15 +510,29 @@ export default function RuQuest() {
   hotActionsRef.current = { playWordByWord, playCurrentWordFn, playRecordingFn, startRec: () => startRec(), stopRec: () => stopRec(), showAnswerNow: () => showAnswerNow() }
 
   // —— 先读后写：进入新题自动朗读（听写模式默认自动播；autoSpeak 开关控制其他模式） ——
+  // P5 听写模式自动播放读取游戏设置工具栏（倍速/次数/间隔），其他模式用外观页朗读设置
   useEffect(() => {
     if (phase !== 'game' || !cur) return
     if (done || mode === 'speaking') return
     const needAuto = mode === 'dictation' || uiCfg.autoSpeak
     if (!needAuto) return
-    const times = uiCfg.speakTimes || 1
+    let times, speed, gap
+    if (mode === 'dictation') {
+      // P5 听写模式：从游戏设置工具栏读取配置
+      try {
+        const tb = JSON.parse(localStorage.getItem('rlearn_quest_toolbar') || 'null') || { times: '2', rate: '1', interval: '3000' }
+        times = parseInt(tb.times) || 2
+        speed = parseFloat(tb.rate) || 1
+        gap = (parseInt(tb.interval) || 3000) / 1000
+      } catch { times = 2; speed = 1; gap = 3 }
+    } else {
+      times = uiCfg.speakTimes || 1
+      speed = uiCfg.speakSpeed
+      gap = uiCfg.speakGap
+    }
     const timers = []
     for (let i = 0; i < times; i++) {
-      timers.push(setTimeout(() => speak(cur.s.russian, uiCfg.speakSpeed), i * ((uiCfg.speakGap * 1000) + 600)))
+      timers.push(setTimeout(() => speak(cur.s.russian, speed), i * ((gap * 1000) + 600)))
     }
     return () => timers.forEach(clearTimeout)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -861,6 +880,7 @@ export default function RuQuest() {
   // —— 切题（上一题/下一题），切换时自动保存学习进度 ——
   const nextQ = () => {
     saveProgress()
+    setDictTipVisible(false) // P5 切换题目时重置听写答案提示
     if (qi + 1 >= questions.length) { runCloseLoop(); setPhase('result'); const r = ratingOf(acc); setTimeout(() => sfxRating(r.label), 260); return }
     sfxScene()
     setQi(q => q + 1)
@@ -868,6 +888,7 @@ export default function RuQuest() {
   const prevQ = () => {
     if (qi <= 0) return
     saveProgress()
+    setDictTipVisible(false) // P5 切换题目时重置听写答案提示
     sfxScene()
     setQi(q => q - 1)
   }
@@ -1345,7 +1366,16 @@ export default function RuQuest() {
             <div style={{ ...styles.progressFill, width: Math.max(3, Math.round(100 * (qi + 1) / questions.length)) + '%', background: T.brand }} />
           </div>
           <span style={styles.topPart}>{uiCfg.showProgress !== false ? (qi + 1) + '/' + questions.length : ''}</span>
-          <span style={styles.topTime}>{fmtTime(elapsed)}</span>
+          {/* P5 学习计时器：当前用时 + 今日累计学习时长 */}
+          <LearningTimer
+            elapsed={elapsed}
+            paused={paused}
+            active={phase === 'game' && !done}
+            theme={T}
+            dark={uiCfg.themeMode === 'dark' || uiCfg.theme === 'dark'}
+            showToday={topExpanded}
+            compact={!topExpanded}
+          />
           {uiCfg.showScore !== false && <span style={{ ...styles.topScore, fontSize: AUX_SIZE[uiCfg.qSize] + 2, color: T.brand }}>{fmtScore(score)}</span>}
           <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title={topExpanded ? '收起功能栏' : '展开功能栏'} onClick={() => { sfxFunc(); setTopExpanded(o => !o) }}>{topExpanded ? '✕' : '⚙'}</button>
           {topExpanded && (
@@ -1381,7 +1411,36 @@ export default function RuQuest() {
             <div style={{ ...styles.praise, ...(combo >= 2 ? { background: 'linear-gradient(90deg,' + T.brand + ',' + T.ok + ',' + T.brand + ')', backgroundSize: '200% auto', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', animation: 'ruqGrad 1.6s linear infinite' } : { color: T.ok }) }}>{praise}</div>
           )}
           {!done && (mode === 'dictation'
-            ? <div style={{ ...styles.dictHint, fontSize: Q_SIZE[uiCfg.qSize], color: T.brand }}>🎧 听写 · 请听音拼写</div>
+            ? <>
+                <div style={{ ...styles.dictHint, fontSize: Q_SIZE[uiCfg.qSize], color: T.brand }}>🎧 听写 · 请听音拼写</div>
+                {/* P5 听写模式播放控制栏：盲听(正常速) → 慢听(0.5x) → 显示答案提示 */}
+                <DictationControls
+                  text={cur.s.russian}
+                  onPlay={(t, rate) => speak(t, rate)}
+                  onToggleTip={() => setDictTipVisible(v => !v)}
+                  showTip={dictTipVisible}
+                  theme={T}
+                  dark={uiCfg.themeMode === 'dark' || uiCfg.theme === 'dark'}
+                />
+                {/* 答案提示浮层（对齐官方 AnswerTip.vue） */}
+                {dictTipVisible && (
+                  <div style={{
+                    position: 'relative', margin: '0 auto 20px', maxWidth: 600,
+                    padding: '14px 22px', borderRadius: 14,
+                    background: T.panel, border: '1px solid ' + T.brand,
+                    boxShadow: '0 8px 24px rgba(0,0,0,.15)',
+                    animation: 'ruqPop .25s ease',
+                  }}>
+                    <button onClick={() => setDictTipVisible(false)} style={{
+                      position: 'absolute', right: 8, top: 8, width: 26, height: 26,
+                      borderRadius: 6, border: 'none', background: T.bgSoft, color: T.sub,
+                      cursor: 'pointer', fontSize: 14,
+                    }}>✕</button>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: T.text, textAlign: 'center', paddingRight: 20 }}>{cur.s.russian}</div>
+                    {cur.s.soundmark && <div style={{ fontSize: 13, color: T.sub, textAlign: 'center', marginTop: 4 }}>{cur.s.soundmark}</div>}
+                  </div>
+                )}
+              </>
             : <div style={{ ...styles.zhText, fontSize: Q_SIZE[uiCfg.qSize], color: T.text, fontWeight: 500 }}>{cur.zh}</div>)}
           {done ? (
             /* 答案显示：浮层模式（官方 Answer.vue 样式：逐词可点击发音 + 音标 + 中文 + 再来一次/下一题；AI 拆解保留在下方） */
@@ -1698,7 +1757,7 @@ export default function RuQuest() {
             <div style={styles.uiRow}>
               <div style={styles.uiLabel}>字体</div>
               <div style={styles.uiOpts}>
-                {[['system', '系统默认'], ['fredoka', 'Fredoka 圆润']].map(([k, label]) => (
+                {[['system', '系统默认'], ['nunito', 'Nunito 圆润'], ['fredoka', 'Fredoka 圆润']].map(([k, label]) => (
                   <span key={k} style={{ ...styles.uiOpt, ...(uiCfg.font === k ? styles.uiOptOn : {}) }} onClick={() => saveUi({ font: k })}>{label}</span>
                 ))}
               </div>
