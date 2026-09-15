@@ -6,6 +6,7 @@ import { API_BASE } from '../lib/api'
 import { toast } from '../lib/toast'
 import { loadHotkeys, keysOfEvent } from '../components/SettingsModal'
 import SettingsModal from '../components/SettingsModal'
+import * as questSounds from '../lib/questSounds' // 官方句乐部 mp3 原声音效（键盘/答对/答错）
 
 // ================= 工具 =================
 const stripStress = s => (s || '').replace(/[\u0300-\u036f]/g, '')
@@ -136,13 +137,18 @@ const KEY_FX = {
   cherryBlue: () => { playTone(1650, 0.018, 'square', 0.05, 0, null, 'key'); playTone(720, 0.03, 'triangle', 0.04, 0.03, null, 'key') }, // Cherry 青轴（咔嗒+触底）
   cherryRed: () => { playTone(1050, 0.015, 'square', 0.04, 0, null, 'key'); playNoise(0.012, 0.018, 0, 'key') },                // Cherry 红轴（柔短闷响）
 }
-const sfxKey = () => { if (!SFX_CFG.enabled || !SFX_CFG.keyOn) return; (KEY_FX[SFX_CFG.keyType] || KEY_FX.soft)() }
-// —— 二、答题反馈音效组 ——
+// 按键音效：默认「轻柔按键音」= 官方句乐部 typing.mp3 原声（百分百复刻键盘声）；其余 6 种风格为合成音
+const sfxKey = () => {
+  if (!SFX_CFG.enabled || !SFX_CFG.keyOn) return
+  if (SFX_CFG.keyType === 'soft') { questSounds.ensureTypingSound(); questSounds.playTypingSound(); return }
+  ;(KEY_FX[SFX_CFG.keyType] || KEY_FX.soft)()
+}
+// —— 二、答题反馈音效组（官方 mp3 原声：答对 right.mp3 / 答错 error.mp3） ——
 const withAnswerVol = (fn) => { const _k = sfxKind; sfxKind = 'answer'; try { fn() } finally { sfxKind = _k } }
-const sfxPerfect = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => { playTone(523, 0.09, 'sine', 0.09); playTone(659, 0.09, 'sine', 0.09, 0.06); playTone(784, 0.09, 'sine', 0.09, 0.12); playTone(1046, 0.18, 'sine', 0.1, 0.18) }) } // 无修改全对：清亮琶音
-const sfxGreat = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => { playTone(659, 0.1, 'triangle', 0.08); playTone(784, 0.16, 'triangle', 0.08, 0.07) }) } // 有修改后答对：柔和确认
-const sfxError = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => { playTone(170, 0.16, 'sawtooth', 0.07, 0, 105) }) } // 答错：低沉短促警示（与抖动同步）
-const sfxSentence = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => { playTone(784, 0.08, 'sine', 0.08); playTone(1046, 0.08, 'sine', 0.08, 0.07); playTone(1318, 0.18, 'sine', 0.09, 0.14) }) } // 整句完成：收尾确认
+const sfxPerfect = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => questSounds.playRightSound()) } // 无修改全对：官方答对原声
+const sfxGreat = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => questSounds.playRightSound()) } // 有修改后答对：官方答对原声
+const sfxError = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => questSounds.playErrorSound()) } // 答错：官方错误原声（与抖动同步）
+const sfxSentence = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => questSounds.playRightSound()) } // 整句完成：官方答对原声收尾
 // —— 三、连击激励音效组（需 连击动画 + 连击音效 两开关同时开启） ——
 const sfxCombo = (level) => {
   if (!SFX_CFG.enabled || !SFX_CFG.comboFx || !SFX_CFG.comboAnim) return
@@ -686,7 +692,7 @@ export default function RuQuest() {
   const isLastIncorrectOf = (idx) => !slotState.incorrect.some(i => i > idx)
 
   const onInputKey = (e) => {
-    if (done) { if (e.key === 'Enter') { e.preventDefault(); nextQ() } return }
+    if (done) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nextQ() } return } // 官方 Answer：空格/Enter 下一题
     // Ctrl+Z 撤销（用户快捷键规范保留；须在 Ctrl 全拦截之前）
     if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); return }
     // Windows：Ctrl+Backspace 删除上一个单词（官方扩展，兼容某些浏览器 input 不支持 ctrl+backspace）
@@ -1331,6 +1337,10 @@ export default function RuQuest() {
         @keyframes ruqFlash { 0%{opacity:0} 30%{opacity:1} 100%{opacity:0} }
         @keyframes ruqBreak { 0%{opacity:.85; transform:translateX(-50%) scale(1)} 100%{opacity:0; transform:translateX(-50%) scale(.92) translateY(14px)} }
         @keyframes ruqFadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+        .ruq-aw:hover{color:#E879F9 !important}
+        .ruq-as:hover{color:#E879F9 !important}
+        .ruq-awbtn:hover{border-color:#8B5CF6; color:#8B5CF6}
+        .ruq-mainbtn:hover{opacity:.85}
       `}</style>
       {/* 顶部工具栏：默认收起仅显示进度信息；hover 或点击 ⚙ 展开完整功能栏（左右分布，不遮挡中央答题区） */}
       <div
@@ -1387,10 +1397,25 @@ export default function RuQuest() {
             ? <div style={{ ...styles.dictHint, fontSize: Q_SIZE[uiCfg.qSize], color: T.brand }}>🎧 听写 · 请听音拼写</div>
             : <div style={{ ...styles.zhText, fontSize: Q_SIZE[uiCfg.qSize], color: T.text, fontWeight: 500 }}>{cur.zh}</div>)}
           {done ? (
-            /* 答案显示：浮层模式 / 内嵌模式 */
+            /* 答案显示：浮层模式（官方 Answer.vue 样式：逐词可点击发音 + 音标 + 中文 + 再来一次/下一题；AI 拆解保留在下方） */
             uiCfg.answerMode === 'float' ? (
               <div style={styles.answerMask}>
-                <div style={{ ...styles.answerCard, background: T.panel, boxShadow: T.shadow, color: T.text, animation: 'ruqPop .3s ease' }}>
+                <div style={{ ...styles.answerCard, background: T.panel, boxShadow: T.shadow, color: T.text, animation: 'ruqPop .3s ease', maxHeight: '88vh', overflowY: 'auto' }}>
+                  {/* 官方：整句逐词大字号展示，点击单词发音；右侧整句发音喇叭 */}
+                  <div style={styles.answerWords}>
+                    {cur.answer.trim().split(/\s+/).map((w, i) => (
+                      <span key={i} className="ruq-aw" style={styles.answerWord} onClick={() => speak(w)} title="点击发音">{w}</span>
+                    ))}
+                    <span className="ruq-as" style={styles.answerSpeaker} onClick={() => speak(cur.s.russian)} title="整句发音">🔊</span>
+                  </div>
+                  {cur.s.soundmark && <div style={{ ...styles.answerSoundmark, color: T.sub }}>{cur.s.soundmark}</div>}
+                  <div style={{ ...styles.answerZhLine, color: T.sub }}>{cur.zh || cur.s.chinese}</div>
+                  <div style={styles.answerBtns}>
+                    <button className="ruq-awbtn" style={styles.answerBtn} onClick={() => loadQuestion(qi)}>再来一次</button>
+                    <button className="ruq-mainbtn" style={styles.answerBtnMain} onClick={nextQ}>{qi + 1 >= questions.length ? '完成本课 →' : '下一题 →'}</button>
+                  </div>
+                  <div style={{ ...styles.answerOk, color: T.ok }}>√ Perfect! 完全正确</div>
+                  {/* 保留：AI 逐词拆解（词性/语法成分/释义，用户原有功能） */}
                   {analysis?.roles ? (
                     <div style={styles.rolesRow}>
                       {analysis.roles.map((r, ri) => (
@@ -1411,22 +1436,11 @@ export default function RuQuest() {
                     </div>
                   ) : analysis?.err ? (
                     <div style={styles.answerFallback}>
-                      <div style={{ ...styles.answerBig, fontSize: S_BIG[uiCfg.sSize], color: T.textStrong }}>{cur.answer}</div>
-                      <div style={{ ...styles.answerZh, fontSize: AUX_SIZE[uiCfg.qSize] + 5, color: T.sub }}>{cur.zh}</div>
                       <div style={{ ...styles.answerErr, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub }}>AI 拆解失败，点击 <span style={{ ...styles.retry, color: T.brand }} onClick={() => fetchAnalysis(cur)}>重试</span></div>
                     </div>
-                  ) : (
-                    <div style={styles.answerFallback}>
-                      <div style={{ ...styles.answerBig, fontSize: S_BIG[uiCfg.sSize], color: T.textStrong }}>{cur.answer}</div>
-                      <div style={{ ...styles.answerZh, fontSize: AUX_SIZE[uiCfg.qSize] + 5, color: T.sub }}>{cur.zh}</div>
-                      {analysing && <div style={{ ...styles.answerErr, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub }}>正在解析…</div>}
-                    </div>
+                  ) : analysing && (
+                    <div style={{ ...styles.answerErr, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub }}>正在解析…</div>
                   )}
-                  <div style={{ ...styles.answerOk, color: T.ok }}>√ Perfect! 完全正确</div>
-                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 22 }}>
-                    {qi > 0 && <button style={styles.btnGhost} onClick={prevQ}>← 上一题</button>}
-                    <button style={{ ...styles.btnPrimary, padding: '10px 28px' }} onClick={nextQ}>{qi + 1 >= questions.length ? '完成本课 →' : '下一题 →'}</button>
-                  </div>
                 </div>
               </div>
             ) : (
@@ -1510,25 +1524,26 @@ export default function RuQuest() {
             </div>
           ) : (
             <>
-              {/* 官方连词成句：单词下划线槽（每词一个底部横线槽，光标所在词品牌紫，错误词红色抖动） */}
+              {/* 官方连词成句：单词下划线槽（QuestionInput.vue 1:1：激活整词 fuchsia / 错误整词 red+shake / 默认 #20202099；标点直接显示无槽） */}
               <div ref={inputRowRef} style={{ ...styles.slotRow, ...(wrong && fixMode === 'input' ? { animation: 'ruqShake .4s ease' } : {}) }}>
                 {expectChunks.map((text, i) => {
                   const userInput = typed.split(' ')[i] !== undefined ? typed.split(' ')[i] : ''
                   const editing = fixMode === 'fix_input' && i === editIdx
                   const incorrect = !editing && slotState.incorrect.includes(i)
                   const active = fixMode === 'input' && slotState.active === i
+                  const isWordChunk = /[a-zA-Zа-яА-ЯёЁ0-9]/.test(text || '') // 官方 isWord（俄语扩展西里尔）
+                  // 官方三态词级高亮（getWordsClassNames）
+                  let col = '#20202099', bcol = '#D1D5DB'
+                  if (incorrect) { col = '#EF4444'; bcol = '#EF4444' }
+                  else if (active) { col = '#E879F9'; bcol = '#E879F9' }
                   const slotW = uiCfg.inputStyle === 'fixed' ? 96 : Math.max(2.4, (text?.length || 3) + 0.8)
-                  const borderC = incorrect ? T.err : (active ? T.brand : T.border)
-                  const slotBox = { ...styles.slotBox, minWidth: slotW + 'ch', borderBottom: '2px solid ' + borderC, fontSize: S_WORD[uiCfg.sSize], color: T.textStrong }
-                  if (incorrect && fixMode !== 'input') slotBox.animation = 'ruqShake .3s ease'
+                  if (!isWordChunk) {
+                    // 官方：非词（标点）无下划线槽，直接显示
+                    return <div key={i} style={{ ...styles.slotPunct, fontSize: S_WORD[uiCfg.sSize], color: '#20202099' }}>{text}</div>
+                  }
                   return (
-                    <div key={i} style={slotBox}>
-                      {[...userInput].map((ch, ci) => {
-                        const good = ci < text.length && ch.toLowerCase() === text[ci].toLowerCase()
-                        const col = (incorrect && !editing) ? T.err : (good ? T.brand : T.err)
-                        return <span key={ci} style={{ color: col, fontWeight: 600 }}>{ch}</span>
-                      })}
-                      {userInput === '' && <span style={{ color: 'transparent' }}>·</span>}
+                    <div key={i} style={{ ...styles.slotBox, minWidth: slotW + 'ch', borderBottom: '2px solid ' + bcol, fontSize: S_WORD[uiCfg.sSize], color: col, ...(incorrect && fixMode !== 'input' ? { animation: 'ruqShake .3s ease' } : {}) }}>
+                      {userInput}
                     </div>
                   )
                 })}
@@ -1976,6 +1991,7 @@ const styles = {
   // 官方连词成句：单词下划线槽 + 透明覆盖输入框（1:1 复刻 earthworm QuestionInput）
   slotRow: { display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', alignItems: 'baseline', minHeight: 66, maxWidth: 680, position: 'relative', padding: '10px 4px' },
   slotBox: { display: 'inline-flex', alignItems: 'baseline', justifyContent: 'center', borderRadius: 2, borderBottom: '2px solid', padding: '2px 7px 5px', minHeight: '1.5em', lineHeight: 1.35, textAlign: 'center', fontWeight: 600, transition: 'border-color .15s, color .15s' },
+  slotPunct: { display: 'inline-flex', alignItems: 'baseline', justifyContent: 'center', minHeight: '1.5em', lineHeight: 1.35, textAlign: 'center', fontWeight: 600, padding: '0 3px' },
   slotInput: { position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'text', border: 'none', outline: 'none', background: 'transparent', color: 'transparent', caretColor: 'transparent', zIndex: 1, fontSize: 16 },
   hiddenInput: { width: 0, height: 0, opacity: 0, position: 'absolute', pointerEvents: 'none' },
   inputHint: { fontSize: 12.5, color: '#8B7FA3', marginTop: 14 },
@@ -1987,6 +2003,15 @@ const styles = {
   stuckNo: { padding: '6px 16px', borderRadius: 16, background: 'transparent', border: '1px solid rgba(255,255,255,.25)', color: '#B9AFCB', fontSize: 12.5, cursor: 'pointer' },
   stuckYes: { padding: '6px 16px', borderRadius: 16, background: '#8B5CF6', border: 'none', color: '#fff', fontSize: 12.5, cursor: 'pointer' },
   answerCard: { width: 560, maxWidth: '94vw', textAlign: 'center', padding: 30, borderRadius: 20 },
+  // 官方 Answer.vue：逐词大字号可点击发音 + 整句喇叭 + 音标 + 中文 + 再来一次/下一题
+  answerWords: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6, fontSize: 40, fontWeight: 600, lineHeight: 1.4, margin: '4px 0 8px' },
+  answerWord: { cursor: 'pointer', padding: '0 3px', transition: 'color .12s' },
+  answerSpeaker: { marginLeft: 8, fontSize: 24, cursor: 'pointer', color: '#9CA3AF', transition: 'color .12s' },
+  answerSoundmark: { fontSize: 20, margin: '10px 0 6px' },
+  answerZhLine: { fontSize: 20, margin: '6px 0 20px' },
+  answerBtns: { display: 'flex', gap: 12, justifyContent: 'center', margin: '6px 0 16px' },
+  answerBtn: { padding: '8px 20px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'transparent', color: '#4B5563', fontSize: 14, cursor: 'pointer', transition: 'border-color .12s,color .12s' },
+  answerBtnMain: { padding: '8px 20px', borderRadius: 8, border: 'none', background: '#8B5CF6', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'opacity .12s' },
   answerMask: { position: 'fixed', inset: 0, background: 'rgba(10,8,20,.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 40, padding: 20 },
   inlineWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, maxWidth: 640 },
   inlineMeta: { display: 'flex', flexWrap: 'wrap', gap: '10px 18px', justifyContent: 'center', lineHeight: 1.9 },
