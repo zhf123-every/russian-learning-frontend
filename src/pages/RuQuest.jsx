@@ -1168,57 +1168,33 @@ export default function RuQuest() {
     ]
   }, [cur])
 
-  // —— 渲染：课程选择（商城） ——
+  // —— 渲染：课程选择（对齐 Earthworm pages/course-pack/index.vue + CoursePackCard.vue） ——
   if (phase === 'courses' || phase === 'lessons') {
     return (
       <div style={styles.coursesRoot}>
         {phase === 'courses' && (
           <>
-            <div style={styles.mallHeader}>
-              <div style={styles.mallTitle}>课程包商城</div>
-              <div style={styles.tabsWrap}>
-                {['推荐', '零基础', '初级', '中级', '高级', '全部'].map((t, i) => (
-                  <span key={t} style={{ ...styles.tab, ...(i === 0 ? styles.tabOn : {}) }}>{t}</span>
-                ))}
-                <span style={styles.tabSearch}>🔍 大家都在搜：A1</span>
-              </div>
-            </div>
-            <div style={styles.mallBody}>
-              <div style={styles.sectionTitle}>本周主编精选</div>
+            <h2 style={styles.mallTitle}>课程包列表</h2>
+            <div style={styles.mallScroll}>
               <div style={styles.courseGrid}>
                 {LEVELS.map((lv, i) => {
                   const m = COURSE_META[lv]
                   const pool = poolOf(lv)
+                  const gradients = ['linear-gradient(135deg,#8B5CF6,#6D28D9)', 'linear-gradient(135deg,#3B82F6,#1D4ED8)', 'linear-gradient(135deg,#10B981,#047857)', 'linear-gradient(135deg,#F59E0B,#B45309)']
                   return (
                     <div key={lv} style={styles.courseCard} onClick={() => { setCurLevel(lv); setLessons(lessonsByLevel[lv]); setPhase('lessons') }}>
-                      <div style={{ ...styles.courseCover, background: `linear-gradient(135deg, ${['#8B5CF6,#6D28D9', '#3B82F6,#1D4ED8', '#10B981,#047857', '#F59E0B,#B45309'][i]})` }}>
+                      <div style={{ ...styles.courseCover, background: gradients[i] }}>
                         <span style={styles.courseEmoji}>{m.emoji}</span>
                         <span style={styles.courseTag}>{m.tag}</span>
                       </div>
                       <div style={styles.courseInfo}>
-                        <div style={styles.courseName}>{m.title} <span style={styles.courseNew}>({lv})</span></div>
-                        <div style={styles.courseSub}>{m.subtitle}</div>
-                        <div style={styles.courseMeta}>{pool.length} 句 · {lessonsByLevel[lv].length} 课 · 渐进式造句</div>
+                        <h3 style={styles.courseName}>{m.title} ({lv})</h3>
+                        <p style={styles.courseSub}>{m.subtitle}</p>
+                        <p style={styles.courseMeta}>{pool.length} 句 · {lessonsByLevel[lv].length} 课</p>
                       </div>
                     </div>
                   )
                 })}
-              </div>
-              <div style={{ ...styles.sectionTitle, marginTop: 34 }}>精选跟读素材</div>
-              <div style={styles.courseGrid}>
-                {LEVELS.map((lv, i) => (
-                  <div key={'s' + lv} style={{ ...styles.courseCard, opacity: 0.55, cursor: 'default' }}>
-                    <div style={{ ...styles.courseCover, background: `linear-gradient(135deg, ${['#A78BFA,#7C3AED', '#93C5FD,#2563EB', '#6EE7B7,#059669', '#FCD34D,#D97706'][i]})` }}>
-                      <span style={styles.courseEmoji}>🎧</span>
-                      <span style={styles.courseTag}>视频跟读</span>
-                    </div>
-                    <div style={styles.courseInfo}>
-                      <div style={styles.courseName}>{COURSE_META[lv].title} · 跟读</div>
-                      <div style={styles.courseSub}>进入尚雯婕学习法使用</div>
-                      <div style={styles.courseMeta}>在分级课程中使用</div>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           </>
@@ -1226,7 +1202,7 @@ export default function RuQuest() {
         {phase === 'lessons' && (
           <>
             <div style={styles.mallHeader}>
-              <div style={{ ...styles.mallTitle, cursor: 'pointer' }} onClick={() => setPhase('courses')}>← 课程包商城</div>
+              <div style={{ ...styles.mallTitle, cursor: 'pointer' }} onClick={() => setPhase('courses')}>← 课程包列表</div>
               <div style={styles.tabsWrap}>
                 <span style={styles.tab}>全部</span><span style={styles.tabOn}>正序</span>
                 <span style={styles.tabSearch}>📌 {COURSE_META[curLevel]?.title}（{curLevel}）</span>
@@ -1957,25 +1933,26 @@ export default function RuQuest() {
 
 // ================= 样式 =================
 const styles = {
-  coursesRoot: { minHeight: '100vh', background: '#F6F1E8', color: '#3D2E1E', fontFamily: FONT_STACK.system, paddingBottom: 90 },
-  mallHeader: { background: '#FFFDF9', borderBottom: '1px solid #EAE0D2', padding: '14px 30px', position: 'sticky', top: 0, zIndex: 5 },
-  mallTitle: { fontSize: 20, fontWeight: 700, color: '#3D2E1E', marginBottom: 10 },
+  coursesRoot: { minHeight: '100vh', background: '#ffffff', color: '#1a1a1a', fontFamily: FONT_STACK.system, paddingBottom: 60 },
+  mallHeader: { background: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '14px 30px', position: 'sticky', top: 0, zIndex: 5 },
+  mallTitle: { fontSize: 30, fontWeight: 400, color: '#1a1a1a', textAlign: 'center', marginBottom: 16, marginTop: 8 },
+  mallScroll: { maxWidth: 1120, margin: '0 auto', padding: '0 16px', maxHeight: '79vh', overflowY: 'auto', overflowX: 'hidden' },
   tabsWrap: { display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
-  tab: { padding: '4px 12px', borderRadius: 14, fontSize: 13, color: '#7A6A55', cursor: 'pointer' },
-  tabOn: { background: '#3D2E1E', color: '#F6F1E8', fontWeight: 600 },
-  tabSearch: { marginLeft: 'auto', fontSize: 12.5, color: '#A99C8B' },
+  tab: { padding: '4px 12px', borderRadius: 14, fontSize: 13, color: '#6b7280', cursor: 'pointer' },
+  tabOn: { background: '#1a1a1a', color: '#fff', fontWeight: 600 },
+  tabSearch: { marginLeft: 'auto', fontSize: 12.5, color: '#9ca3af' },
   mallBody: { maxWidth: 1120, margin: '0 auto', padding: '26px 30px' },
-  sectionTitle: { fontSize: 17, fontWeight: 700, color: '#3D2E1E', marginBottom: 16 },
-  courseGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(250px,1fr))', gap: 18 },
-  courseCard: { background: '#FFFDF9', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 14px rgba(61,46,30,.07)', cursor: 'pointer', transition: 'transform .18s, box-shadow .18s' },
-  courseCover: { height: 120, display: 'flex', alignItems: 'flex-end', padding: 12, position: 'relative' },
-  courseEmoji: { fontSize: 46, lineHeight: 1 },
+  sectionTitle: { fontSize: 17, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 },
+  courseGrid: { display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 16, '@media (min-width:640px)': { gridTemplateColumns: 'repeat(2, minmax(0,1fr))' }, '@media (min-width:768px)': { gridTemplateColumns: 'repeat(3, minmax(0,1fr))' }, '@media (min-width:1024px)': { gridTemplateColumns: 'repeat(4, minmax(0,1fr))' } },
+  courseCard: { background: '#ffffff', borderRadius: '6px', borderTopLeftRadius: '12px', borderTopRightRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden', cursor: 'pointer', transition: 'all .3s ease', ':hover': { boxShadow: '0 10px 30px rgba(0,0,0,.12)', transform: 'translateY(-2px)' } },
+  courseCover: { aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
+  courseEmoji: { fontSize: 56, lineHeight: 1 },
   courseTag: { position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,.35)', color: '#fff', fontSize: 11, padding: '2px 8px', borderRadius: 10 },
-  courseInfo: { padding: 13 },
-  courseName: { fontSize: 14.5, fontWeight: 700, color: '#3D2E1E' },
-  courseNew: { fontSize: 11, color: '#A99C8B', fontWeight: 400 },
-  courseSub: { fontSize: 12, color: '#8A7A66', margin: '4px 0 8px' },
-  courseMeta: { fontSize: 11.5, color: '#B3A692' },
+  courseInfo: { padding: 16, display: 'flex', flexDirection: 'column', flexGrow: 1 },
+  courseName: { fontSize: 18, fontWeight: 600, color: '#1a1a1a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  courseNew: { fontSize: 11, color: '#9ca3af', fontWeight: 400 },
+  courseSub: { fontSize: 14, color: '#6b7280', margin: '8px 0 0', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' },
+  courseMeta: { fontSize: 12, color: '#9ca3af', marginTop: 8 },
   backHome: { position: 'fixed', left: 18, bottom: 18, background: '#3D2E1E', color: '#F6F1E8', border: 'none', padding: '8px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer', zIndex: 10 },
   lessonHead: { maxWidth: 900, margin: '20px auto 0', background: '#FFFDF9', borderRadius: 18, padding: 22, display: 'flex', gap: 20, boxShadow: '0 2px 14px rgba(61,46,30,.06)' },
   lessonCover: { width: 90, height: 90, borderRadius: 14, background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, flexShrink: 0 },
