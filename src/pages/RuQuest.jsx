@@ -1383,11 +1383,15 @@ export default function RuQuest() {
   if (phase === 'loading') {
     return (
       <div style={styles.loadRoot}>
-        <div style={styles.loadLogo}>🇷🇺</div>
-        <div style={styles.loadText}>LOADING</div>
-        <div style={styles.loadBar}><div style={{ ...styles.loadFill, width: loadPct + '%' }} /></div>
-        <div style={styles.loadPct}>{loadPct}%</div>
-        <div style={styles.loadTip}>正在准备题目与逐词解析…</div>
+        <img src="/logo.png" style={styles.loadLogo} alt="Russian Learning" />
+        <div style={styles.loadTip}>" 想看俄语词性缩写？点击 ⚙ 设置 → 学习 → 切换标签样式 "</div>
+        <div style={styles.loadBottom}>
+          <span style={styles.loadText}>LOADING</span>
+          <span style={styles.loadPct}>{loadPct}%</span>
+        </div>
+        <div style={styles.loadBar}>
+          <div style={{ ...styles.loadFill, width: loadPct + '%' }} />
+        </div>
       </div>
     )
   }
@@ -2177,13 +2181,14 @@ const styles = {
   modeFoot: { display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 22 },
   modeCancel: { padding: '9px 22px', borderRadius: 20, border: '1px solid #E0D5C3', background: '#fff', color: '#7A6A55', fontSize: 14, cursor: 'pointer' },
   modeStart: { padding: '9px 26px', borderRadius: 20, border: 'none', background: '#DC2626', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
-  loadRoot: { position: 'fixed', inset: 0, background: '#0D0918', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 60, fontFamily: FONT_STACK.system },
-  loadLogo: { fontSize: 52 },
-  loadText: { fontSize: 13, letterSpacing: 3, color: '#9B8DB5' },
-  loadBar: { width: 260, height: 4, background: 'rgba(255,255,255,.12)', borderRadius: 2, overflow: 'hidden', marginTop: 8 },
-  loadFill: { height: '100%', background: '#8B5CF6', transition: 'width .2s' },
-  loadPct: { fontSize: 12, color: '#9B8DB5' },
-  loadTip: { fontSize: 11.5, color: '#6B5E85', marginTop: 8 },
+  loadRoot: { position: 'fixed', inset: 0, background: '#0a0a0a', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 60, fontFamily: FONT_STACK.system },
+  loadLogo: { width: 280, height: 'auto', filter: 'invert(1)', marginBottom: 70, opacity: 0.95 },
+  loadTip: { fontSize: 14, color: '#777', marginBottom: 90, textAlign: 'center', letterSpacing: 0.5, maxWidth: 500 },
+  loadBottom: { width: 560, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  loadText: { fontSize: 13, letterSpacing: 4, color: '#555', fontWeight: 600 },
+  loadBar: { width: 560, height: 22, background: '#161616', borderRadius: 11, border: '1px solid #262626', overflow: 'hidden', position: 'relative', backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 55px, #2a2a2a 55px, #2a2a2a 56px)' },
+  loadFill: { height: '100%', background: 'linear-gradient(90deg,#a855f7,#d946ef)', borderRadius: 10, transition: 'width .25s ease', boxShadow: '0 0 12px rgba(168,85,247,.5)' },
+  loadPct: { fontSize: 18, color: '#a855f7', fontWeight: 700 },
   resultRoot: { position: 'fixed', inset: 0, background: 'linear-gradient(160deg,#0D0918 0%,#1B1330 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT_STACK.system, overflowY: 'auto' },
   resultCard: { width: 660, maxWidth: '94vw', background: '#171028', borderRadius: 24, padding: '34px 34px 30px', textAlign: 'center', border: '1px solid rgba(255,255,255,.08)', margin: '20px auto' },
   ratingBadge: { fontSize: 56, fontWeight: 900, letterSpacing: 2 },
