@@ -11,14 +11,13 @@ import Profile from './pages/Profile'
 import Dictionary from './pages/Dictionary'
 import TutorChat from './pages/TutorChat'
 import RuQuest from './pages/RuQuest'
-import SettingsModal from './components/SettingsModal'
 
 export default function App() {
   const loc = useLocation()
-  const [showSettings, setShowSettings] = useState(false)
 
   return (
     <>
+      {loc.pathname !== '/quest' && (
       <div className="topbar">
         <div className="brand">
           <span className="logo">📖</span>
@@ -29,8 +28,8 @@ export default function App() {
         <Link className="tbtn" to="/vocab">生词本</Link>
         <Link className="tbtn" to="/dictionary">词典</Link>
         <Link className="tbtn" to="/profile">统计</Link>
-        <button className="tbtn" onClick={() => setShowSettings(true)}>设置</button>
       </div>
+      )}
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/course" element={<CoursePage />} />
@@ -46,7 +45,6 @@ export default function App() {
         <Route path="/quest" element={<RuQuest />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </>
   )
 }
