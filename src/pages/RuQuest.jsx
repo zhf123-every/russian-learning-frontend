@@ -12,6 +12,8 @@ import GamePauseModal from '../components/quest/GamePauseModal'       // P4 暂�
 import CourseContentsModal from '../components/quest/CourseContentsModal' // P4 本课内容面板（筛选+发音+跳转）
 import DictationControls from '../components/quest/DictationControls'       // P5 听写模式播放控制栏（盲听/慢听/提示）
 import LearningTimer from '../components/quest/LearningTimer'                 // P5 学习计时器（当前用时+今日累计）
+import DesktopPet, { petSpeak, petSetMood } from '../components/quest/DesktopPet' // P6 桌面宠物
+import WrongBookModal from '../components/quest/WrongBookModal'               // P6 错题本独立弹窗
 import * as questSounds from '../lib/questSounds' // 官方句乐部 mp3 原声音效（键盘/答对/答错）
 
 // ================= 工具 =================
@@ -245,6 +247,8 @@ export default function RuQuest() {
   const [showSettings, setShowSettings] = useState(false) // 设置弹窗（快捷键/播放/听力等配置，仅俄语闯关页内打开）
   const [gameSettingOpen, setGameSettingOpen] = useState(false) // P4 游戏内设置弹窗（倍速/播放次数/间隔）
   const [dictTipVisible, setDictTipVisible] = useState(false)    // P5 听写模式答案提示显示状态
+  const [wrongBookOpen, setWrongBookOpen] = useState(false)      // P6 错题本独立弹窗
+  const [petVisible, setPetVisible] = useState(true)              // P6 桌面宠物可见性
   const [comboPop, setComboPop] = useState(null)         // 连击浮动文字 {n, high}
   const [comboBreak, setComboBreak] = useState(false)    // 连击中断回落
   const [perfect, setPerfect] = useState(0)
@@ -605,6 +609,7 @@ export default function RuQuest() {
       setAcc(a => ({ ...a, answered: a.answered + 1, correct: a.correct + 1, firstHit: a.firstHit + (isPerfect ? 1 : 0) }))
       if (wrongCount > 0 && wrongCount >= recThreshold) recordWrong(cur, parts.slice(0, exp.length).join(' ') || '（有修改后答对）', wrongReasonOf(cur, parts.slice(0, exp.length).map(cleanWord).map(normFor)))
       if (isPerfect) sfxPerfect(); else sfxGreat()          // 答对反馈：Perfect 清亮 / Great 柔和
+      if (petVisible) { petSpeak('correct', 4000); petSetMood(isPerfect ? 'excited' : 'happy') } // P6 宠物答对互动
       if (cur.full) sfxSentence()                            // 整句完成收尾音
       if (nc >= 3 && isPerfect) sfxCombo(nc)                 // 连击激励（3-5 / 6-10 / 10+）
       if (nc >= 3 && SFX_CFG.comboAnim) {                    // 连击动效：Perfect × N 浮动文字（10+ 高亮发光+全屏闪效）
@@ -631,6 +636,7 @@ export default function RuQuest() {
       setCombo(0)
       shakeRow()
       sfxError()
+      if (petVisible) { petSpeak('wrong', 4000); petSetMood('thinking') } // P6 宠物答错鼓励
       if (wc >= revealThreshold) showAnswerNow()    // 「自动显示答案」：错误 N 次后自动展示答案
       else if (wc >= 3) setStuckOpen(true)          // 未开启自动显示时，保留原「答错3次提示看答案」
       // 官方 Fix 修复流：标记错误词并进入修复模式（按任意键清空第一个错误词重打）
@@ -1398,6 +1404,8 @@ export default function RuQuest() {
               <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="全屏沉浸练习" onClick={toggleFullscreen}>⛶ 全屏</button>
               <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="外观设置：字体/字号/配色/输入框/答案/词性/朗读" onClick={() => setUiOpen(o => !o)}>Aa</button>
               <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="游戏设置：倍速/播放次数/播放间隔（听写模式）" onClick={() => { sfxFunc(); setGameSettingOpen(true) }}>🎛 游戏设置</button>
+              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="错题本：查看历史错题、发音、标记已掌握" onClick={() => { sfxFunc(); setWrongBookOpen(true) }}>📕 错题本</button>
+              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title={petVisible ? '隐藏桌面宠物' : '显示桌面宠物'} onClick={() => { sfxFunc(); setPetVisible(v => !v) }}>{petVisible ? '🐱 宠物' : '🚫 宠物'}</button>
               <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="设置：快捷键/播放/听力/外观等（Ctrl+, 快捷开关）" onClick={() => { sfxFunc(); setShowSettings(true) }}>⚙ 设置</button>
             </>
           )}
@@ -1747,6 +1755,22 @@ export default function RuQuest() {
         onChange={data => { /* 设置已自动保存到 localStorage，听写模式读取时生效 */ }}
         theme={T}
         dark={uiCfg.themeMode === 'dark' || uiCfg.theme === 'dark'}
+      />
+
+      {/* P6 错题本独立弹窗 */}
+      <WrongBookModal
+        visible={wrongBookOpen}
+        onClose={() => setWrongBookOpen(false)}
+        onPlaySound={text => speak(text)}
+        theme={T}
+        dark={uiCfg.themeMode === 'dark' || uiCfg.theme === 'dark'}
+      />
+
+      {/* P6 桌面宠物（可拖拽、点击互动、随机台词） */}
+      <DesktopPet
+        visible={petVisible && phase === 'game'}
+        theme={uiCfg.themeMode === 'dark' || uiCfg.theme === 'dark' ? 'dark' : 'light'}
+        position={{ x: 24, y: 140 }}
       />
 
       {/* 模块1.1 外观设置弹窗 */}
