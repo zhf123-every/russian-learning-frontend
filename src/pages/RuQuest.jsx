@@ -278,6 +278,7 @@ export default function RuQuest() {
   const [aiOpen, setAiOpen] = useState(false)             // 右下角悬浮图标唤起侧边AI助手（默认收起，不遮挡答题区）
   const [contentOpen, setContentOpen] = useState(false)   // 本课内容面板（句子列表 + 跳转）
   const undoStack = useRef([])                            // 输入撤销栈（Ctrl+Z 回退上一步输入）
+  const composing = useRef(false)                         // 中文输入法组合中（官方：composition 期间不触发提交）
   // 模块1.1 外观设置（字体 + 字号档位）
   const [uiOpen, setUiOpen] = useState(false)
   const [ui, setUi] = useState(() => {
@@ -686,24 +687,28 @@ export default function RuQuest() {
 
   const onInputKey = (e) => {
     if (done) { if (e.key === 'Enter') { e.preventDefault(); nextQ() } return }
+    // Ctrl+Z 撤销（用户快捷键规范保留；须在 Ctrl 全拦截之前）
     if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); return }
+    // Windows：Ctrl+Backspace 删除上一个单词（官方扩展，兼容某些浏览器 input 不支持 ctrl+backspace）
+    if (e.ctrlKey && e.key === 'Backspace') { e.preventDefault(); deletePrevWordOnWin(); return }
+    // 官方：Ctrl 键全拦截（避免中文输入法预输入上屏 / 触发异常）
+    if (e.ctrlKey) { e.preventDefault(); return }
     if (e.key === 'Escape') { e.preventDefault(); inputRef.current?.blur(); return }
-    // 官方：禁止上下方向键（避免光标乱跑导致激活词错乱）
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); return }
-    // 官方 Fix 修复流：提交有错后，按任意可打印键（空格/退格/修饰键除外）→ 定位并清空第一个错误词进入修改
+    // 官方：全部方向键禁止（避免光标乱跑导致激活词错乱）
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); return }
+    // 官方 Fix 修复流：提交有错后，按任意键（含空格/退格，仅 preventDefault 不上屏）→ 定位并清空第一个错误词进入修改
     if (fixMode === 'fix') {
-      if (e.key === 'Space' || e.key === 'Backspace') { e.preventDefault(); return }
-      if (e.key.length > 1) return // 修饰键（Shift/Ctrl/Alt/Meta）与功能键忽略
+      if (e.key === 'Enter') return // 官方：Fix 态 Enter 无动作（submitAnswer 在 Fix 下直接 return）
+      if (e.key === 'Space' || e.key === 'Backspace') e.preventDefault()
       const idx = slotState.incorrect[0]
       if (idx >= 0) {
-        e.preventDefault()
         clearSlotWord(idx)
         setEditIdx(idx)
         setFixMode('fix_input')
       }
       return
     }
-    // Fix_Input：空格在最后一个错误词 → 提交；Backspace 空词 → 回上一错误词；Enter 提交
+    // Fix_Input：空格在最后一个错误词 → 提交；Backspace 空词 → 回上一错误词；Enter 提交（中文输入法组合中跳过）
     if (fixMode === 'fix_input') {
       if (e.key === 'Space' && isLastIncorrectOf(editIdx)) { e.preventDefault(); submit(); return }
       if (e.key === 'Backspace' && (typed.split(' ')[editIdx] || '') === '') {
@@ -712,10 +717,25 @@ export default function RuQuest() {
         if (prev >= 0) { clearSlotWord(prev); setEditIdx(prev) }
         return
       }
-      if (e.key === 'Enter') { e.preventDefault(); submit(); return }
+      if (e.key === 'Enter' && !composing.current) { e.preventDefault(); submit(); return }
       return // 其余按键直接上屏（原生 input）
     }
-    if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); submit() }
+    if (e.key === 'Enter' && !composing.current && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); submit() }
+  }
+
+  // Windows Ctrl+Backspace：删除光标前的整个上一个单词（官方 deletePreviousWordOnWin 移植）
+  const deletePrevWordOnWin = () => {
+    const el = inputRef.current
+    if (!el) return
+    let start = el.selectionStart ?? typed.length
+    const end = el.selectionEnd ?? typed.length
+    if (end === 0) return
+    while (start > 0 && typed[start - 1] === ' ') start--
+    const newEnd = typed.substring(0, start).lastIndexOf(' ') + 1
+    const nv = typed.substring(0, newEnd)
+    setTyped(nv)
+    setChunks(nv.trim() ? nv.trim().split(/\s+/) : [])
+    requestAnimationFrame(() => { el.setSelectionRange(newEnd, newEnd); setSlotState(s => ({ ...s, active: activeFromCursor(nv, newEnd) })) })
   }
 
   // 全局快捷键
@@ -1504,7 +1524,7 @@ export default function RuQuest() {
                   return (
                     <div key={i} style={slotBox}>
                       {[...userInput].map((ch, ci) => {
-                        const good = ci < text.length && ch.toLowerCase() === text[ci]
+                        const good = ci < text.length && ch.toLowerCase() === text[ci].toLowerCase()
                         const col = (incorrect && !editing) ? T.err : (good ? T.brand : T.err)
                         return <span key={ci} style={{ color: col, fontWeight: 600 }}>{ch}</span>
                       })}
@@ -1512,15 +1532,20 @@ export default function RuQuest() {
                     </div>
                   )
                 })}
-                {/* 官方透明输入框：覆盖整个词行，点击/光标定位激活词 */}
+                {/* 官方透明输入框：覆盖整个词行，点击/光标定位激活词；双击与鼠标按下按官方仅聚焦不移动光标 */}
                 <input
                   ref={inputRef}
                   value={typed}
                   onChange={onInputChange}
                   onKeyDown={onInputKey}
+                  onCompositionStart={() => { composing.current = true }}
+                  onCompositionEnd={() => { composing.current = false }}
                   onSelect={e => { const pos = e.target.selectionStart ?? typed.length; setSlotState(s => ({ ...s, active: activeFromCursor(typed, pos) })) }}
                   onFocus={() => { const pos = inputRef.current?.selectionStart ?? typed.length; setSlotState(s => ({ ...s, active: activeFromCursor(typed, pos) })) }}
+                  onDoubleClick={e => e.preventDefault()}
+                  onMouseDown={e => { e.preventDefault(); inputRef.current?.focus() }}
                   style={styles.slotInput}
+                  lang="ru"
                   autoComplete="off" autoCorrect="off" spellCheck={false}
                 />
               </div>
@@ -1949,7 +1974,7 @@ const styles = {
   wordRow: { display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', minHeight: 62, alignItems: 'center', maxWidth: 640 },
   wordChip: { padding: '8px 16px', borderRadius: 12, border: '1px solid', fontSize: 20, fontWeight: 700, minWidth: 40, textAlign: 'center', transition: 'all .15s' },
   // 官方连词成句：单词下划线槽 + 透明覆盖输入框（1:1 复刻 earthworm QuestionInput）
-  slotRow: { display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center', alignItems: 'baseline', minHeight: 66, maxWidth: 680, position: 'relative', padding: '10px 4px' },
+  slotRow: { display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', alignItems: 'baseline', minHeight: 66, maxWidth: 680, position: 'relative', padding: '10px 4px' },
   slotBox: { display: 'inline-flex', alignItems: 'baseline', justifyContent: 'center', borderRadius: 2, borderBottom: '2px solid', padding: '2px 7px 5px', minHeight: '1.5em', lineHeight: 1.35, textAlign: 'center', fontWeight: 600, transition: 'border-color .15s, color .15s' },
   slotInput: { position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'text', border: 'none', outline: 'none', background: 'transparent', color: 'transparent', caretColor: 'transparent', zIndex: 1, fontSize: 16 },
   hiddenInput: { width: 0, height: 0, opacity: 0, position: 'absolute', pointerEvents: 'none' },
