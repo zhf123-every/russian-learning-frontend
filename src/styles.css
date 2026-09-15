@@ -1,47 +1,21 @@
-/* ===== Nunito 本地字体（对齐 Earthworm CustomFont） ===== */
-@font-face{
-  font-family:'Nunito';font-display:swap;font-weight:400;font-style:normal;
-  src:url('/fonts/Nunito/Nunito-Regular.ttf') format('truetype');
-}
-@font-face{
-  font-family:'Nunito';font-display:swap;font-weight:600;font-style:normal;
-  src:url('/fonts/Nunito/Nunito-SemiBold.ttf') format('truetype');
-}
-@font-face{
-  font-family:'Nunito';font-display:swap;font-weight:700;font-style:normal;
-  src:url('/fonts/Nunito/Nunito-Bold.ttf') format('truetype');
-}
-@font-face{
-  font-family:'Nunito';font-display:swap;font-weight:800;font-style:normal;
-  src:url('/fonts/Nunito/Nunito-ExtraBold.ttf') format('truetype');
-}
-
 :root{
-  /* ===== Earthworm 对齐：纯白底 + fuchsia-500 强调色 ===== */
-  --background:#ffffff;
-  --foreground:#0a0a0a;
-  --accent:#d946ef;
-  --accent-dark:#c026d3;
-  --accent-darker:#a21caf;
-  --accent-soft:#fae8ff;
-  --accent-light:#f0abfc;
-  --accent-lighter:#fdf4ff;
-  --muted:#6b7280;
-  --border:#e5e7eb;
-  /* 向后兼容别名（旧组件仍引用 --bg/--text/--card 等） */
-  --bg:#ffffff; --bg-soft:#ffffff; --card:#ffffff; --card-soft:#fafafa;
-  --border2:#d1d5db; --border-light:#f3f4f6;
-  --text:#0a0a0a; --text-soft:#374151; --faint:#9ca3af;
-  --champagne:#e5e7eb; --champagne-light:#f3f4f6;
-  /* 状态色（中性化） */
-  --danger:#ef4444; --danger-light:#fecaca; --danger-soft:#fef2f2;
-  --success:#16a34a; --success-light:#bbf7d0; --success-soft:#f0fdf4;
-  --warn:#d97706; --warn-light:#fde68a; --warn-soft:#fffbeb;
-  /* 圆角与阴影（中性灰） */
+  /* 奶咖燕麦轻奢配色体系 */
+  --bg:#F5F0EB; --bg-soft:#FAF7F3; --card:#FFFFFF; --card-soft:#FBF8F4;
+  --border:#E8E1D9; --border2:#E0D6CB; --border-light:#F0EBE4;
+  --text:#3D332C; --text-soft:#5C4D3F; --muted:#86796D; --faint:#B4A79C;
+  /* 主色调 - 温暖奶咖色 */
+  --accent:#9B7B5E; --accent-dark:#856849; --accent-darker:#6E5438;
+  --accent-soft:#F2EDE8; --accent-light:#E8DDD0; --accent-lighter:#F5EFE7;
+  --champagne:#C8B6A6; --champagne-light:#E0D5C8;
+  /* 状态色 - 与主色调协调 */
+  --danger:#A86454; --danger-light:#F4E4DF; --danger-soft:#FAF0ED;
+  --success:#6E8F7E; --success-light:#E4EDE8; --success-soft:#F0F5F2;
+  --warn:#B08A5A; --warn-light:#F0E6D6; --warn-soft:#F8F3EA;
+  /* 圆角与阴影 */
   --radius:16px; --radius-sm:12px; --radius-xs:8px;
-  --shadow:0 2px 12px rgba(0,0,0,0.05);
-  --shadow-md:0 4px 16px rgba(0,0,0,0.08);
-  --shadow-lg:0 8px 28px rgba(0,0,0,0.12);
+  --shadow:0 2px 12px rgba(155,123,94,0.06);
+  --shadow-md:0 4px 16px rgba(155,123,94,0.10);
+  --shadow-lg:0 8px 28px rgba(155,123,94,0.14);
   /* 间距体系 */
   --space-xs:4px; --space-sm:8px; --space-md:12px; --space-lg:16px; --space-xl:24px;
   /* 过渡动画 */
@@ -51,12 +25,21 @@
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
-  font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei','PingFang SC',sans-serif;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
   color:var(--text); font-size:15px; line-height:1.6;
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
   touch-action:manipulation; -webkit-text-size-adjust:100%; text-size-adjust:100%;
-  /* 非答题页纯白背景（对齐 Earthworm bg-white） */
-  background-color:#ffffff;
+  /* 背景高级感：暖金光晕 + 细腻网格（全部取自现有奶咖色系，仅用透明度） */
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(ellipse 65% 42% at 12% -2%, rgba(155,123,94,.07), transparent 62%),
+    radial-gradient(ellipse 55% 38% at 92% 102%, rgba(200,182,166,.10), transparent 60%),
+    radial-gradient(ellipse 32% 26% at 88% -3%, rgba(155,123,94,.05), transparent 60%),
+    radial-gradient(ellipse 30% 22% at -4% 98%, rgba(200,182,166,.07), transparent 62%),
+    linear-gradient(rgba(155,123,94,.032) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(155,123,94,.032) 1px, transparent 1px);
+  background-size:auto, auto, auto, auto, 36px 36px, 36px 36px;
+  background-attachment:fixed;
   min-height:100vh;
 }
 .ru{font-family:"PT Serif",Georgia,"Segoe UI",serif;letter-spacing:.3px}
@@ -68,42 +51,25 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 }
 .hidden{display:none!important}
 
-/* ---------- 顶部导航（对齐 Earthworm Navbar） ---------- */
-.navbar{
-  position:sticky;top:0;z-index:30;width:100%;
-  background:#ffffff;border-bottom:1px solid var(--border);
+/* ---------- 顶栏 ---------- */
+.topbar{
+  position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:12px 24px;min-height:56px;
 }
-.navbar-inner{
-  max-width:1280px;margin:0 auto;height:64px;
-  display:flex;align-items:center;justify-content:space-between;gap:16px;
-  padding:0 20px;
+.brand{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600;color:var(--text)}
+.brand .logo{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;
+display:flex;align-items:center;justify-content:center;font-size:16px}
+.brand-logo{width:34px;height:34px;object-fit:contain}
+  display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(155,123,94,0.25)}
+.topbar .spacer{flex:1}
+.topbar select{
+  max-width:220px;padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:#fff;font-size:14px;
+  color:var(--text);transition:border-color var(--transition),box-shadow var(--transition);cursor:pointer;
 }
-.navbar-brand{display:flex;align-items:center;gap:12px;text-decoration:none}
-.navbar-logo{
-  width:48px;height:48px;border-radius:6px;
-  background:linear-gradient(135deg,#d946ef,#a21caf);color:#fff;
-  display:flex;align-items:center;justify-content:center;font-size:24px;
-  flex-shrink:0;
-}
-.navbar-title{font-size:24px;font-weight:800;color:#0a0a0a;margin:0;line-height:1.2}
-.navbar-right{display:flex;align-items:center;gap:6px}
-.nav-link{
-  padding:8px 14px;border-radius:8px;font-size:14px;font-weight:600;
-  color:#6b7280;text-decoration:none;white-space:nowrap;
-  transition:color .2s,background .2s;
-}
-.nav-link:hover{color:#d946ef;background:#fdf4ff}
-.navbar-avatar{
-  width:32px;height:32px;border-radius:50%;background:#d1d5db;color:#fff;
-  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
-  margin-left:8px;cursor:pointer;transition:transform .2s,opacity .2s;flex-shrink:0;
-}
-.navbar-avatar:hover{transform:scale(1.25);opacity:.9}
-@media (max-width:768px){
-  .nav-link.hide-sm{display:none}
-  .navbar-inner{padding:0 12px}
-  .navbar-title{font-size:20px}
-}
+.topbar select:hover{border-color:var(--accent-light)}
+.topbar select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-lighter)}
 .tbtn{
   padding:9px 14px;border:none;border-radius:var(--radius-sm);background:transparent;
   font-size:14px;color:var(--muted);white-space:nowrap;font-weight:400;
@@ -264,64 +230,52 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 
 /* 按钮行 */
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-/* ===== 通用按钮（对齐 daisyUI outline / primary） ===== */
 .btn{
-  padding:6px 16px;border:1px solid #d1d5db;border-radius:8px;
-  background:transparent;font-size:14px;color:var(--text);font-weight:600;
-  transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding:11px 22px;border:1px solid var(--border2);border-radius:var(--radius-sm);
+  background:var(--bg-soft);font-size:14px;color:var(--text-soft);font-weight:500;
+  transition:background var(--transition),border-color var(--transition),color var(--transition),
+    box-shadow var(--transition),transform var(--transition);
   display:inline-flex;align-items:center;justify-content:center;gap:6px;
   white-space:nowrap;line-height:1.4;
 }
-.btn:hover{background:#f3f4f6;border-color:#d1d5db;color:var(--text);
-  box-shadow:none;transform:none}
-.btn:active{transform:scale(.97)}
+.btn:hover{background:var(--accent-soft);border-color:var(--accent-light);color:var(--accent-dark);
+  box-shadow:0 2px 8px rgba(155,123,94,0.08);transform:translateY(-1px)}
+.btn:active{transform:translateY(1px) scale(.96);box-shadow:none;filter:brightness(.94)}
 .btn.primary{
-  background:#d946ef;border-color:#d946ef;color:#fff;font-weight:700;
-  box-shadow:none;
+  background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+  border-color:transparent;color:#fff;font-weight:500;
+  box-shadow:0 3px 10px rgba(155,123,94,0.20),inset 0 1px 0 rgba(255,255,255,0.15);
 }
-.btn.primary:hover{background:#c026d3;border-color:#c026d3;color:#fff;
-  box-shadow:none;transform:none}
-.btn.primary:active{transform:scale(.97)}
+.btn.primary:hover{background:linear-gradient(135deg,var(--accent-dark),var(--accent-darker));
+  border-color:transparent;color:#fff;box-shadow:0 5px 16px rgba(155,123,94,0.28),inset 0 1px 0 rgba(255,255,255,0.15);
+  transform:translateY(-2px)}
+.btn.primary:active{transform:translateY(1px) scale(.96);box-shadow:0 2px 6px rgba(155,123,94,0.20);filter:brightness(.93)}
 .btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
-.btn.ghost:hover{background:#f3f4f6;color:var(--text);border-color:transparent;box-shadow:none;transform:none}
-.btn.danger{color:#ef4444;border-color:#fecaca;background:#fef2f2}
-.btn.danger:hover{background:#fee2e2;border-color:#ef4444;color:#ef4444;
-  box-shadow:none;transform:none}
-.btn.success{color:#16a34a;border-color:#bbf7d0;background:#f0fdf4}
-.btn.success:hover{background:#dcfce7;border-color:#16a34a;color:#16a34a;
-  box-shadow:none;transform:none}
+.btn.ghost:hover{background:var(--accent-soft);color:var(--text);border-color:transparent;box-shadow:none;transform:none}
+.btn.danger{color:var(--danger);border-color:var(--danger-light);background:var(--danger-soft)}
+.btn.danger:hover{background:var(--danger-light);border-color:var(--danger);color:var(--danger);
+  box-shadow:0 2px 8px rgba(168,100,84,0.12);transform:translateY(-1px)}
+.btn.success{color:var(--success);border-color:var(--success-light);background:var(--success-soft)}
+.btn.success:hover{background:var(--success-light);border-color:var(--success);color:var(--success);
+  box-shadow:0 2px 8px rgba(110,143,126,0.12);transform:translateY(-1px)}
 .btn.sm{
-  background:transparent;border:1px solid #d1d5db;color:var(--text);
-  padding:6px 16px;font-size:13px;font-weight:600;border-radius:8px;
+  background:var(--bg-soft);border:1px solid var(--border-light);color:var(--text-soft);
+  padding:7px 16px;font-size:13px;font-weight:500;border-radius:var(--radius-xs);
 }
-.btn.sm:hover{color:var(--text);background:#f3f4f6;border-color:#d1d5db;
-  box-shadow:none;transform:none}
-.btn.sm:active{transform:scale(.97)}
+.btn.sm:hover{color:var(--accent-dark);background:var(--accent-soft);border-color:var(--accent-light);
+  box-shadow:0 1px 4px rgba(155,123,94,0.06);transform:translateY(-1px)}
+.btn.sm:active{transform:scale(.96);filter:brightness(.94)}
 .btn.sm.primary{
-  background:#d946ef;border-color:#d946ef;color:#fff;font-weight:700;
-  box-shadow:none;
+  background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+  border-color:transparent;color:#fff;font-weight:500;
+  box-shadow:0 2px 6px rgba(155,123,94,0.18);
 }
-.btn.sm.primary:hover{background:#c026d3;border-color:#c026d3;color:#fff;box-shadow:none;transform:none}
-.btn.sm.danger{color:#ef4444;border-color:#fecaca;background:#fef2f2}
-.btn.sm.danger:hover{background:#fee2e2;border-color:#ef4444;color:#ef4444}
+.btn.sm.primary:hover{background:linear-gradient(135deg,var(--accent-dark),var(--accent-darker));
+  border-color:transparent;color:#fff;box-shadow:0 3px 10px rgba(155,123,94,0.24);transform:translateY(-1px)}
+.btn.sm.danger{color:var(--danger);border-color:var(--danger-light);background:var(--danger-soft)}
+.btn.sm.danger:hover{background:var(--danger-light);border-color:var(--danger);color:var(--danger)}
 .btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
 .btn:disabled:hover{transform:none!important;box-shadow:none!important}
-
-/* ===== daisyUI 风格按钮别名 ===== */
-.btn-outline{
-  padding:6px 16px;border:1px solid #d1d5db;border-radius:8px;background:transparent;
-  font-size:14px;font-weight:600;color:var(--text);line-height:1.4;
-  display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;
-  transition:all .2s;cursor:pointer;
-}
-.btn-outline:hover{background:#f3f4f6}
-.btn-primary{
-  padding:6px 16px;border:1px solid #d946ef;border-radius:8px;background:#d946ef;
-  font-size:14px;font-weight:700;color:#fff;line-height:1.4;
-  display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;
-  transition:all .2s;cursor:pointer;
-}
-.btn-primary:hover{background:#c026d3;border-color:#c026d3}
 
 /* ===== 分级课程（method-wrap）：按钮默认浅棕 → 按下深棕 ===== */
 .method-wrap .btn{
@@ -1468,72 +1422,4 @@ html,body{overflow-x:hidden;max-width:100vw}
   .dict-actions .btn,.dict-speak-row .btn{flex:1;justify-content:center}
   .dict-voice-switch{width:100%}
   .dict-voice-switch .btn{flex:1}
-}
-
-/* ============================================================
-   对齐 Earthworm：滚动条 + 新版首页布局（hw-* 前缀）
-   ============================================================ */
-::-webkit-scrollbar{width:7px;height:7px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:#e1ddddc7;border-radius:7px}
-::-webkit-scrollbar-thumb:hover{background:#cecacac7}
-
-/* ---------- 新版首页（Earthworm Home 复刻） ---------- */
-.hw-home{
-  max-width:1280px;margin:32px auto 0;padding:0 20px 48px;
-  display:flex;justify-content:space-between;gap:64px;align-items:flex-start;
-}
-/* 左侧头像栏 */
-.hw-side{width:288px;flex-shrink:0;display:none}
-@media (min-width:768px){.hw-side{display:block}}
-.hw-avatar{
-  width:224px;height:224px;border-radius:50%;margin:0 auto;
-  border:2px solid #d1d5db;background:#d1d5db;
-  display:flex;align-items:center;justify-content:center;
-  font-size:72px;color:#fff;overflow:hidden;
-}
-.hw-username{margin-top:16px;text-align:center;font-size:30px;font-weight:700;color:#0a0a0a}
-.hw-subname{margin-top:4px;text-align:center;font-size:15px;color:#9ca3af}
-.hw-divider{border:none;border-top:1px solid #e5e7eb;margin:20px 0}
-/* 右侧主区 */
-.hw-main{flex:1;min-width:0;width:100%}
-.hw-section-head{
-  display:flex;justify-content:space-between;align-items:baseline;
-  border-bottom:1px solid #e5e7eb;padding-bottom:8px;margin-bottom:16px;
-}
-.hw-section-title{font-size:20px;font-weight:500;color:#0a0a0a;margin:0}
-.hw-more{font-size:14px;color:#3b82f6;text-decoration:none;font-weight:500}
-.hw-more:hover{opacity:.75}
-.hw-packs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
-.hw-pack{
-  border:1px solid #e5e7eb;border-radius:8px;background:#fff;
-  overflow:hidden;cursor:pointer;transition:all .3s;
-  display:flex;flex-direction:column;
-}
-.hw-pack:hover{color:#d946ef;box-shadow:0 8px 20px rgba(0,0,0,.08)}
-.hw-pack-cover{
-  aspect-ratio:16/9;background:linear-gradient(135deg,#fdf4ff,#fae8ff);
-  display:flex;align-items:center;justify-content:center;font-size:48px;
-}
-.hw-pack-body{padding:16px;flex:1;display:flex;flex-direction:column}
-.hw-pack-title{font-size:16px;font-weight:600;color:#0a0a0a;margin:0 0 6px}
-.hw-pack-desc{font-size:13px;color:#6b7280;margin:0 0 12px;flex:1;line-height:1.6}
-.hw-pack-actions{display:flex;justify-content:space-between;gap:8px;align-items:center}
-.hw-pack-actions .btn{padding:5px 12px;font-size:12.5px}
-.hw-calendar{margin-top:40px}
-/* 功能入口区（保留现有四张卡） */
-.hw-features{max-width:1280px;margin:0 auto;padding:0 20px 64px}
-.hw-features-title{font-size:20px;font-weight:700;color:#0a0a0a;margin:0 0 16px}
-.hw-feature-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
-.hw-feature{
-  border:1px solid #e5e7eb;border-radius:12px;background:#fff;padding:20px;
-  cursor:pointer;transition:all .2s;
-}
-.hw-feature:hover{border-color:#d946ef;box-shadow:0 6px 18px rgba(217,70,239,.12);transform:translateY(-2px)}
-.hw-feature-icon{font-size:30px;margin-bottom:10px}
-.hw-feature h3{font-size:16px;font-weight:700;color:#0a0a0a;margin:0 0 4px}
-.hw-feature p{font-size:13px;color:#6b7280;margin:0;line-height:1.6}
-@media (max-width:768px){
-  .hw-home{flex-direction:column;gap:32px;margin-top:20px}
-  .hw-packs{grid-template-columns:1fr}
 }

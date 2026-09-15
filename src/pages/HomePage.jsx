@@ -1,119 +1,86 @@
 import { useNavigate } from 'react-router-dom'
-import CalendarGraph from '../components/quest/CalendarGraph'
-
-// 最近使用的课程包（无后端，用现有路由渲染 3 个入口）
-const recentPacks = [
-  {
-    title: '自定义素材',
-    desc: '上传 / 粘贴视频生成学习材料，自动断句、逐句听写与跟读训练。',
-    route: '/custom',
-    icon: '🎬',
-  },
-  {
-    title: '分级课程',
-    desc: '尚雯婕学习法，从 A1 到 B2 系统训练短句，或到学习广场浏览精选素材。',
-    route: '/course',
-    icon: '📚',
-  },
-  {
-    title: '俄语闯关',
-    desc: '像玩游戏一样用句子学俄语：打乱单词连成句，Perfect 连击，SSS 评级。',
-    route: '/quest',
-    icon: '🎯',
-  },
-]
-
-// 功能入口卡（保留原有四个入口）
-const featureCards = [
-  {
-    title: '自定义素材',
-    sub: '上传 / 粘贴视频生成学习材料',
-    route: '/custom',
-    icon: '🎬',
-  },
-  {
-    title: '分级课程',
-    sub: '尚雯婕学习法 · 学习广场',
-    route: '/course',
-    icon: '📚',
-  },
-  {
-    title: '俄语闯关',
-    sub: '连词成句 · 连击评分 · 句子拆解',
-    route: '/quest',
-    icon: '🎯',
-  },
-  {
-    title: 'AI 对话教练',
-    sub: '开口说 · 实时纠错 · 语音陪练',
-    route: '/tutor',
-    icon: '🗣️',
-  },
-]
 
 export default function HomePage() {
   const navigate = useNavigate()
 
+  const cards = [
+    {
+      title: '自定义素材',
+      sub: '上传 / 粘贴视频生成学习材料',
+      desc: '导入你自己的视频或字幕，自动断句，逐句听写、跟读、循环训练。',
+      route: '/custom',
+      icon: '🎬',
+      tint: '#F0E8DC',
+      tag: '自由导入',
+    },
+    {
+      title: '分级课程',
+      sub: '尚雯婕学习法 · 学习广场',
+      desc: '从 A1 到 B2 系统训练短句，或到学习广场浏览精选公开素材。',
+      route: '/course',
+      icon: '📚',
+      tint: '#E8E3D9',
+      tag: '系统训练',
+    },
+    {
+      title: '俄语闯关',
+      sub: '连词成句 · 连击评分 · 句子拆解',
+      desc: '像玩游戏一样用句子学俄语：打乱单词连成句，Perfect 连击评分，逐词拆解语法，SSS 评级等你拿。',
+      route: '/quest',
+      icon: '🎯',
+      tint: '#1C1814',
+      tag: '游戏化闯关',
+    },
+    {
+      title: '俄语AI对话教练',
+      sub: '开口说 · 实时纠错 · 语音陪练',
+      desc: '和AI老师自由聊天，分A1-B2四个等级，说错就纠正语法并引导你重说。',
+      route: '/tutor',
+      icon: '🗣️',
+      tint: '#F3E9DE',
+      tag: '智能陪练',
+    },
+  ]
+
   return (
-    <>
-      {/* 主体：左头像栏 + 右内容（对齐 Earthworm Home） */}
-      <div className="hw-home">
-        {/* 左侧头像区 */}
-        <aside className="hw-side">
-          <div className="hw-avatar">👤</div>
-          <div className="hw-username">俄语学习者</div>
-          <div className="hw-subname">Привет! Давай учиться</div>
-          <hr className="hw-divider" />
-        </aside>
-
-        {/* 右侧内容区 */}
-        <div className="hw-main">
-          <div className="hw-section-head">
-            <h2 className="hw-section-title">最近使用的课程包</h2>
-            <a className="hw-more" href="/course" onClick={(e) => { e.preventDefault(); navigate('/course') }}>
-              更多 →
-            </a>
-          </div>
-
-          <div className="hw-packs">
-            {recentPacks.map((p) => (
-              <div key={p.title} className="hw-pack" onClick={() => navigate(p.route)}>
-                <div className="hw-pack-cover">{p.icon}</div>
-                <div className="hw-pack-body">
-                  <h3 className="hw-pack-title">{p.title}</h3>
-                  <p className="hw-pack-desc">{p.desc}</p>
-                  <div className="hw-pack-actions">
-                    <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); navigate(p.route) }}>
-                      打开
-                    </button>
-                    <button className="btn btn-sm primary" onClick={(e) => { e.stopPropagation(); navigate(p.route) }}>
-                      继续学习
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="hw-calendar">
-            <CalendarGraph theme="light" />
-          </div>
+    <div className="home">
+      {/* 顶部品牌区 */}
+      <div className="home-hero">
+        <div className="hero-badge">
+          <span className="hero-badge-dot"></span>
+          Изучаем русский язык
+        </div>
+        <h1 className="hero-title">
+          Russian<span className="hero-accent">Learning</span>
+        </h1>
+        <p className="hero-sub">选择一种学习方式，开始今天的俄语训练</p>
+        <div className="hero-deco" aria-hidden="true">
+          <span>А</span><span>Б</span><span>В</span><span>Г</span><span>Д</span><span>Е</span><span>Ё</span><span>Ж</span>
         </div>
       </div>
 
-      {/* 功能入口区（保留） */}
-      <section className="hw-features">
-        <h2 className="hw-features-title">选择学习方式</h2>
-        <div className="hw-feature-grid">
-          {featureCards.map((c) => (
-            <div key={c.title} className="hw-feature" onClick={() => navigate(c.route)}>
-              <div className="hw-feature-icon">{c.icon}</div>
-              <h3>{c.title}</h3>
-              <p>{c.sub}</p>
+      {/* 功能卡片区 */}
+      <div className="home-cards">
+        {cards.map(c => (
+          <div
+            key={c.title}
+            className="home-card"
+            onClick={() => navigate(c.route)}
+          >
+            <div className="home-card-top">
+              <div className="home-card-icon" style={{ background: c.tint }}>{c.icon}</div>
+              <span className="home-card-tag">{c.tag}</span>
             </div>
-          ))}
-        </div>
-      </section>
-    </>
+            <h2>{c.title}</h2>
+            <div className="home-card-sub">{c.sub}</div>
+            <p>{c.desc}</p>
+            <div className="home-card-btn">
+              进入学习
+              <span className="btn-arrow">→</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }

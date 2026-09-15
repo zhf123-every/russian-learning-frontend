@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import CoursePage from './pages/CoursePage'
@@ -17,22 +18,17 @@ export default function App() {
   return (
     <>
       {loc.pathname !== '/quest' && (
-        <header className="navbar">
-          <div className="navbar-inner">
-            <Link className="navbar-brand" to="/">
-              <span className="navbar-logo">📖</span>
-              <h1 className="navbar-title">Russian Learning</h1>
-            </Link>
-            <div className="navbar-right">
-              <Link className="nav-link hide-sm" to="/custom">导入</Link>
-              <Link className="nav-link hide-sm" to="/square">广场</Link>
-              <Link className="nav-link" to="/vocab">生词本</Link>
-              <Link className="nav-link" to="/dictionary">词典</Link>
-              <Link className="nav-link hide-sm" to="/profile">统计</Link>
-              <div className="navbar-avatar" title="学习者">Я</div>
-            </div>
-          </div>
-        </header>
+      <div className="topbar">
+        <div className="brand">
+          <span className="logo">📖</span>
+          <span>Russian learning</span>
+        </div>
+        {loc.pathname !== '/' && <Link className="tbtn" to="/">首页</Link>}
+        <div className="spacer"></div>
+        <Link className="tbtn" to="/vocab">生词本</Link>
+        <Link className="tbtn" to="/dictionary">词典</Link>
+        <Link className="tbtn" to="/profile">统计</Link>
+      </div>
       )}
       <Routes>
         <Route path="/" element={<HomePage />} />
