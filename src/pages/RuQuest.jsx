@@ -1249,44 +1249,62 @@ export default function RuQuest() {
         )}
         {phase === 'lessons' && (
           <>
-            <div style={styles.mallHeader}>
-              <div style={{ ...styles.mallTitle, cursor: 'pointer' }} onClick={() => setPhase('courses')}>← 课程包列表</div>
-              <div style={styles.tabsWrap}>
-                <span style={styles.tab}>全部</span><span style={styles.tabOn}>正序</span>
-                <span style={styles.tabSearch}>📌 {COURSE_META[curLevel]?.title}（{curLevel}）</span>
-              </div>
+            {/* 顶部导航 */}
+            <div style={styles.detailNav}>
+              <span style={styles.detailBack} onClick={() => setPhase('courses')}>←</span>
+              <span style={styles.detailNavTitle}>课程详情</span>
             </div>
-            <div style={styles.lessonHead}>
-              <div style={styles.lessonCover}>{COURSE_META[curLevel]?.emoji}</div>
-              <div style={{ flex: 1 }}>
-                <div style={styles.lessonTitle}>{COURSE_META[curLevel]?.title}</div>
-                <div style={styles.lessonDesc}>{COURSE_META[curLevel]?.desc}</div>
-                <div style={styles.lessonTags}>
-                  {['基础', '句型', '词汇', '口语'].map(t => <span key={t} style={styles.tagPill}>{t}</span>)}
+
+            {/* 课程信息头部 */}
+            <div style={styles.detailContent}>
+              <div style={styles.detailHead}>
+                <div style={{ ...styles.detailCover, background: gradients[LEVELS.indexOf(curLevel)] }}>
+                  <span style={styles.detailCoverLevel}>{curLevel}</span>
                 </div>
-                <div style={styles.lessonStat}>0/{lessons.length} 课 · 0% 完成</div>
-              </div>
-            </div>
-            <div style={styles.outline}>
-              <div style={styles.outlineTitle}>大纲 · 共{lessons.length}课 全部免费试学</div>
-              {lessons.map((l, i) => {
-                let hasProg = false
-                try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
-                return (
-                  <div key={l.id} style={styles.lessonRow} onClick={() => startLesson(l, true)}>
-                    <div style={styles.lessonNo}>{String(l.idx).padStart(2, '0')}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={styles.lessonRowName}>L{String(l.idx).padStart(2, '0')} {l.sentences[0]?.source || COURSE_META[curLevel]?.title} #{l.idx}</div>
-                      <div style={styles.lessonRowDesc}>{l.sentences.slice(0, 2).map(s => stripStress(s.russian)).join(' · ')}…</div>
-                    </div>
-                    <span style={{ ...styles.trial, ...(hasProg ? { background: '#DCFCE7', color: '#15803D' } : {}) }}>{hasProg ? '▶ 继续学习' : '可试学'}</span>
+                <div style={styles.detailHeadInfo}>
+                  <div style={styles.detailTitle}>{COURSE_META[curLevel]?.title}</div>
+                  <div style={styles.detailDesc}>{COURSE_META[curLevel]?.desc}</div>
+                  <div style={styles.detailTags}>
+                    {['基础', '句型', '词汇', '口语'].map(t => <span key={t} style={styles.detailTag}>{t}</span>)}
                   </div>
-                )
-              })}
+                  <div style={styles.detailMeta}>
+                    <span style={styles.detailMetaItem}>句乐部</span>
+                    <span style={styles.detailMetaDot}>·</span>
+                    <span style={styles.detailMetaItem}>{lessons.length} 课</span>
+                    <span style={styles.detailMetaDot}>·</span>
+                    <span style={styles.detailMetaItem}>{poolOf(curLevel).length} 句</span>
+                  </div>
+                </div>
+                <div style={styles.detailHeadRight}>
+                  <button style={styles.detailStartBtn} onClick={() => lessons.length > 0 && startLesson(lessons[0], false)}>开始学习</button>
+                </div>
+              </div>
+
+              {/* 大纲列表 */}
+              <div style={styles.detailOutline}>
+                <div style={styles.detailOutlineHeader}>
+                  <div style={styles.detailOutlineTitle}>大纲 <span style={styles.detailOutlineCount}>共 {lessons.length} 课</span> <span style={styles.detailOutlineTrial}>全部免费试学</span></div>
+                  <div style={styles.detailSortBtn}>⇅ 正序</div>
+                </div>
+                {lessons.map((l, i) => {
+                  let hasProg = false
+                  try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
+                  return (
+                    <div key={l.id} style={styles.detailLessonRow} onClick={() => startLesson(l, true)}>
+                      <div style={styles.detailLessonNo}>{String(i + 1).padStart(2, '0')}</div>
+                      <div style={styles.detailLessonIcon}>📄</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={styles.detailLessonName}>第{l.idx}课 · {l.sentences[0]?.source || COURSE_META[curLevel]?.title}</div>
+                        <div style={styles.detailLessonDesc}>{l.sentences.slice(0, 2).map(s => stripStress(s.russian)).join(' · ')}…</div>
+                      </div>
+                      <span style={{ ...styles.detailTrialTag, ...(hasProg ? styles.detailTrialActive : {}) }}>{hasProg ? '继续学习' : '可试学'}</span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </>
         )}
-        <button style={styles.backHome} onClick={() => navigate('/')}>← 返回首页</button>
       </div>
     )
   }
@@ -2030,6 +2048,37 @@ const styles = {
   mallListInfo: { padding: '14px 16px 16px' },
   mallListName: { fontSize: 14, fontWeight: 600, color: '#1a1a1a', marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   mallListMeta: { fontSize: 11.5, color: '#aaa', fontWeight: 400 },
+  // —— 课程详情页（对齐句乐部课程详情） ——
+  detailNav: { background: '#fff', borderBottom: '1px solid #f0f0f0', padding: '0 40px', display: 'flex', alignItems: 'center', height: 56, position: 'sticky', top: 0, zIndex: 10 },
+  detailBack: { fontSize: 22, color: '#1a1a1a', cursor: 'pointer', marginRight: 16, fontWeight: 300 },
+  detailNavTitle: { fontSize: 17, fontWeight: 600, color: '#1a1a1a' },
+  detailContent: { maxWidth: 1200, margin: '0 auto', padding: '28px 40px 60px' },
+  detailHead: { background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.05)', padding: 28, display: 'flex', gap: 24, alignItems: 'flex-start' },
+  detailCover: { width: 200, height: 140, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
+  detailCoverLevel: { fontSize: 36, fontWeight: 200, color: 'rgba(255,255,255,.9)', fontStyle: 'italic', letterSpacing: 2 },
+  detailHeadInfo: { flex: 1, minWidth: 0 },
+  detailTitle: { fontSize: 24, fontWeight: 700, color: '#1a1a1a', marginBottom: 8 },
+  detailDesc: { fontSize: 14, color: '#888', marginBottom: 14, lineHeight: 1.6 },
+  detailTags: { display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
+  detailTag: { fontSize: 12, color: '#666', background: '#f5f5f5', padding: '4px 12px', borderRadius: 12 },
+  detailMeta: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#999' },
+  detailMetaItem: {},
+  detailMetaDot: { color: '#ddd' },
+  detailHeadRight: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 },
+  detailStartBtn: { background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', color: '#fff', border: 'none', padding: '12px 36px', borderRadius: 24, fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'opacity .2s', boxShadow: '0 4px 16px rgba(139,92,246,.3)' },
+  detailOutline: { background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginTop: 24, padding: '20px 28px' },
+  detailOutlineHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  detailOutlineTitle: { fontSize: 17, fontWeight: 600, color: '#1a1a1a' },
+  detailOutlineCount: { fontSize: 14, color: '#888', fontWeight: 400, marginLeft: 10 },
+  detailOutlineTrial: { fontSize: 13, color: '#aaa', marginLeft: 10 },
+  detailSortBtn: { fontSize: 13, color: '#666', background: '#f7f7f7', padding: '6px 14px', borderRadius: 8, cursor: 'pointer', border: '1px solid #eee' },
+  detailLessonRow: { display: 'flex', alignItems: 'center', gap: 14, padding: '16px 0', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', transition: 'background .15s' },
+  detailLessonNo: { fontSize: 14, color: '#ccc', fontWeight: 500, width: 28, flexShrink: 0, textAlign: 'center' },
+  detailLessonIcon: { fontSize: 16, color: '#ddd', flexShrink: 0 },
+  detailLessonName: { fontSize: 15, fontWeight: 600, color: '#1a1a1a', marginBottom: 4 },
+  detailLessonDesc: { fontSize: 12.5, color: '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  detailTrialTag: { fontSize: 12, color: '#999', background: '#f7f7f7', padding: '4px 14px', borderRadius: 12, flexShrink: 0, fontWeight: 500 },
+  detailTrialActive: { color: '#15803D', background: '#DCFCE7' },
   backHome: { position: 'fixed', left: 18, bottom: 18, background: '#3D2E1E', color: '#F6F1E8', border: 'none', padding: '8px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer', zIndex: 10 },
   lessonHead: { maxWidth: 900, margin: '20px auto 0', background: '#FFFDF9', borderRadius: 18, padding: 22, display: 'flex', gap: 20, boxShadow: '0 2px 14px rgba(61,46,30,.06)' },
   lessonCover: { width: 90, height: 90, borderRadius: 14, background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, flexShrink: 0 },
