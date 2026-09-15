@@ -4,6 +4,8 @@ import { getLevelVideos, LEVELS } from '../data/courseLibrary'
 import { callAI } from '../lib/ai'
 import { API_BASE } from '../lib/api'
 import { toast } from '../lib/toast'
+import { loadHotkeys, keysOfEvent } from '../components/SettingsModal'
+import SettingsModal from '../components/SettingsModal'
 
 // ================= 工具 =================
 const stripStress = s => (s || '').replace(/[\u0300-\u036f]/g, '')
@@ -18,9 +20,30 @@ const shuffle = arr => {
 const norm = w => stripStress(w || '').toLowerCase().trim()
 const cleanWord = w => (w || '').replace(/[.,!?…;:—"«»()]/g, '')
 const fmtTime = s => {
-  const m = Math.floor(s / 60), ss = s % 60
-  return (m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss
 }
+const fmtScore = n => n.toLocaleString('en-US')
+
+// ================= 课程库（俄语闯关课程，基于分级句子） =================
+const COURSE_META = {
+  A1: { title: '零基础生存俄语', subtitle: '打招呼 · 自我介绍 · 日常需求', emoji: '🌱', tag: '新手推荐', desc: '从最基础的词汇和短句开始，掌握打招呼、自我介绍、买东西等真实场景表达。' },
+  A2: { title: '初级日常俄语', subtitle: '生活场景 · 购物 · 出行', emoji: '🚶', tag: '初级', desc: '围绕日常生活的真实场景，积累常用句型，学会表达时间、地点、喜好和需求。' },
+  B1: { title: '中级进阶表达', subtitle: '观点 · 经历 · 社会话题', emoji: '💬', tag: '中级', desc: '能谈论自己的经历和观点，掌握更复杂的句型结构，表达更自然流畅。' },
+  B2: { title: '高级流利输出', subtitle: '深度话题 · 复杂句型', emoji: '🎓', tag: '高级', desc: '挑战长句和复杂表达，掌握高级语法结构，能够就深度话题展开讨论。' },
+}
+const MODES = [
+  { key: 'chinese_to_english', name: '中译俄模式', tag: '初级', rec: '新手推荐', desc: '看到中文提示，尝试用俄语表达。练习运用所学词汇和语法。' },
+  { key: 'dictation', name: '听写模式', tag: '初级', desc: '听俄语原声，把听到的句子写下来。锻炼听力与拼写。' },
+  { key: 'speaking', name: '口语评测模式', tag: '初级', desc: '先听标准发音，跟读录音，AI 实时评分并纠正发音。' },
+  { key: 'scramble', name: '乱序模式', tag: '中级', desc: '句子单词顺序打乱，通过点击或键盘重组完整句子。' },
+  { key: 'reading', name: '阅读模式', tag: '初级', desc: '先全文通读 + 逐句跟读预习，再开始打字答题。' },
+]
+const DIFFS = ['自定义', '初级', '中级', '高级']
+
+// ================= 俄语鼓励词 =================
+const PRAISE = ['Молодец!', 'Отлично!', 'Супер!', 'Прекрасно!', 'Великолепно!', 'Так держать!', 'Замечательно!', 'Браво!']
+const pickPraise = () => PRAISE[Math.floor(Math.random() * PRAISE.length)]
 
 const RATINGS = [
   { min: 0.95, label: 'SSS', color: '#FFD75E' },
@@ -35,85 +58,272 @@ const ratingOf = acc => {
   return RATINGS.find(x => r >= x.min) || RATINGS[RATINGS.length - 1]
 }
 
-// 环形图（SVG）
-const Ring = ({ pct, label, color = '#FFD75E' }) => {
-  const R = 26, C = 2 * Math.PI * R
-  const v = Math.max(0, Math.min(100, pct))
-  return (
-    <svg width="68" height="68" viewBox="0 0 68 68">
-      <circle cx="34" cy="34" r={R} fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="6" />
-      <circle
-        cx="34" cy="34" r={R} fill="none" stroke={color} strokeWidth="6"
-        strokeLinecap="round" strokeDasharray={`${(v / 100) * C} ${C}`}
-        transform="rotate(-90 34 34)" style={{ transition: 'stroke-dasharray .6s' }}
-      />
-      <text x="34" y="37" textAnchor="middle" dominantBaseline="middle" fill="#F5EDE2" fontSize="13" fontWeight="700">
-        {Math.round(v)}%
-      </text>
-      <text x="34" y="63" textAnchor="middle" fill="#A99C8B" fontSize="9">{label}</text>
-    </svg>
-  )
+// ================= 音效系统（Web Audio 合成 · 可配置） =================
+let audioCtx = null
+const SFX_DEFAULT = {
+  enabled: true,   // 全局音效总开关（一键静音）
+  vol: 0.7,        // 全局音量 0~1
+  keyOn: true,     // 按键音效开关
+  keyType: 'soft', // 按键音风格：soft 轻柔 / drum 鼓点 / bubble 气泡 / typewriter 打字机 / sword 金属剑 / cherryBlue 青轴 / cherryRed 红轴
+  keyVol: 1,       // 打字音效音量 0~1（声音设置页滑块，默认100%）
+  answerOn: true,  // 答题反馈音效开关
+  answerVol: 1,    // 反馈音效音量 0~1（声音设置页滑块，默认100%）
+  comboAnim: true, // 连击动画开关（与连击音效联动）
+  comboFx: true,   // 连击激励音效开关
+  sceneOn: true,   // 场景功能音效开关
+}
+let SFX_CFG = { ...SFX_DEFAULT }
+const loadSfxCfg = () => {
+  try {
+    const s = JSON.parse(localStorage.getItem('rlearn_quest_sfx') || 'null')
+    if (s) SFX_CFG = { ...SFX_DEFAULT, ...s }
+  } catch (e) { /* 忽略 */ }
+}
+const saveSfxCfg = (patch) => {
+  SFX_CFG = { ...SFX_CFG, ...patch }
+  try { localStorage.setItem('rlearn_quest_sfx', JSON.stringify(SFX_CFG)) } catch (e) { /* 忽略 */ }
+}
+loadSfxCfg()
+function ac() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {})
+    return audioCtx
+  } catch (e) { return null }
+}
+// 当前音效类别（'key' 按键 / 'answer' 反馈 / '' 其他），用于按类别应用独立音量
+let sfxKind = ''
+function playTone(freq, dur, type = 'sine', gain = 0.1, when = 0, slideTo, kind) {
+  const ctx = ac(); if (!ctx) return
+  try {
+    const k = kind || sfxKind
+    const kv = k === 'key' ? (SFX_CFG.keyVol ?? 1) : k === 'answer' ? (SFX_CFG.answerVol ?? 1) : 1
+    const t = ctx.currentTime + when
+    const o = ctx.createOscillator(); const g = ctx.createGain()
+    o.type = type; o.frequency.setValueAtTime(freq, t)
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t + dur)
+    g.gain.setValueAtTime(gain * SFX_CFG.vol * kv, t)
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur)
+    o.connect(g); g.connect(ctx.destination)
+    o.start(t); o.stop(t + dur + 0.03)
+  } catch (e) { /* 忽略 */ }
+}
+function playNoise(dur, gain = 0.08, when = 0, kind) {
+  const ctx = ac(); if (!ctx) return
+  try {
+    const k = kind || sfxKind
+    const kv = k === 'key' ? (SFX_CFG.keyVol ?? 1) : k === 'answer' ? (SFX_CFG.answerVol ?? 1) : 1
+    const t = ctx.currentTime + when
+    const len = Math.max(1, Math.floor(ctx.sampleRate * dur))
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len)
+    const src = ctx.createBufferSource(); src.buffer = buf
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(gain * SFX_CFG.vol * kv, t)
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur)
+    src.connect(g); g.connect(ctx.destination)
+    src.start(t); src.stop(t + dur + 0.02)
+  } catch (e) { /* 忽略 */ }
+}
+// —— 一、按键音效组（7 种风格） ——
+const KEY_FX = {
+  soft: () => playTone(1560, 0.03, 'sine', 0.05, 0, null, 'key'),                                                     // 默认轻柔按键音
+  drum: () => { playNoise(0.06, 0.07, 0, 'key'); playTone(120, 0.07, 'sine', 0.09, 0, 80, 'key') },                    // 鼓点打击乐
+  bubble: () => playTone(420, 0.07, 'sine', 0.06, 0, 1300, 'key'),                                           // 气泡破裂（上滑）
+  typewriter: () => { playTone(950, 0.02, 'square', 0.035, 0, null, 'key'); playNoise(0.015, 0.025, 0, 'key') },                // 复古打字机
+  sword: () => playTone(2300, 0.07, 'sawtooth', 0.045, 0, 900, 'key'),                                       // 金属剑音（扫频）
+  cherryBlue: () => { playTone(1650, 0.018, 'square', 0.05, 0, null, 'key'); playTone(720, 0.03, 'triangle', 0.04, 0.03, null, 'key') }, // Cherry 青轴（咔嗒+触底）
+  cherryRed: () => { playTone(1050, 0.015, 'square', 0.04, 0, null, 'key'); playNoise(0.012, 0.018, 0, 'key') },                // Cherry 红轴（柔短闷响）
+}
+const sfxKey = () => { if (!SFX_CFG.enabled || !SFX_CFG.keyOn) return; (KEY_FX[SFX_CFG.keyType] || KEY_FX.soft)() }
+// —— 二、答题反馈音效组 ——
+const withAnswerVol = (fn) => { const _k = sfxKind; sfxKind = 'answer'; try { fn() } finally { sfxKind = _k } }
+const sfxPerfect = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => { playTone(523, 0.09, 'sine', 0.09); playTone(659, 0.09, 'sine', 0.09, 0.06); playTone(784, 0.09, 'sine', 0.09, 0.12); playTone(1046, 0.18, 'sine', 0.1, 0.18) }) } // 无修改全对：清亮琶音
+const sfxGreat = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => { playTone(659, 0.1, 'triangle', 0.08); playTone(784, 0.16, 'triangle', 0.08, 0.07) }) } // 有修改后答对：柔和确认
+const sfxError = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => { playTone(170, 0.16, 'sawtooth', 0.07, 0, 105) }) } // 答错：低沉短促警示（与抖动同步）
+const sfxSentence = () => { if (!SFX_CFG.enabled || !SFX_CFG.answerOn) return; withAnswerVol(() => { playTone(784, 0.08, 'sine', 0.08); playTone(1046, 0.08, 'sine', 0.08, 0.07); playTone(1318, 0.18, 'sine', 0.09, 0.14) }) } // 整句完成：收尾确认
+// —— 三、连击激励音效组（需 连击动画 + 连击音效 两开关同时开启） ——
+const sfxCombo = (level) => {
+  if (!SFX_CFG.enabled || !SFX_CFG.comboFx || !SFX_CFG.comboAnim) return
+  withAnswerVol(() => {
+  if (level >= 10) { // 高燃冲刺
+    playTone(523, 0.06, 'square', 0.07); playTone(659, 0.06, 'square', 0.07, 0.05); playTone(784, 0.06, 'square', 0.07, 0.1); playTone(1046, 0.06, 'square', 0.07, 0.15); playTone(1318, 0.08, 'square', 0.07, 0.2); playTone(1568, 0.22, 'square', 0.08, 0.25); playNoise(0.18, 0.05, 0.1)
+  } else if (level >= 6) { // 递进节奏
+    playTone(523, 0.07, 'triangle', 0.08); playTone(659, 0.07, 'triangle', 0.08, 0.06); playTone(784, 0.07, 'triangle', 0.08, 0.12); playTone(1046, 0.16, 'triangle', 0.09, 0.18)
+  } else { // 3-5 连击：基础轻快激励
+    playTone(523, 0.09, 'triangle', 0.08); playTone(784, 0.16, 'triangle', 0.09, 0.08)
+  }
+  })
+}
+const sfxComboBreak = () => { if (!SFX_CFG.enabled || !SFX_CFG.comboFx || !SFX_CFG.comboAnim) return; withAnswerVol(() => { playTone(784, 0.1, 'sine', 0.06, 0, 480) }) } // 连击中断：轻微回落
+// —— 四、场景功能音效组 ——
+const sfxScene = () => { if (!SFX_CFG.enabled || !SFX_CFG.sceneOn) return; withAnswerVol(() => { playTone(523, 0.07, 'triangle', 0.06); playTone(784, 0.1, 'triangle', 0.06, 0.06) }) } // 页面切换/切题过渡
+const sfxFunc = () => { if (!SFX_CFG.enabled || !SFX_CFG.sceneOn) return; withAnswerVol(() => { playTone(880, 0.04, 'sine', 0.045) }) } // 功能操作（发音/生词/答案）轻量确认
+const sfxRating = (label) => { // 结算评级成就音
+  if (!SFX_CFG.enabled || !SFX_CFG.sceneOn) return
+  withAnswerVol(() => {
+  const seq = { SSS: [523, 659, 784, 1046, 1318, 1568], SS: [523, 659, 784, 1046], S: [523, 659, 784], A: [523, 659], B: [523], C: [392, 330] }[label] || [523]
+  seq.forEach((f, i) => playTone(f, label === 'SSS' ? 0.16 : 0.1, label === 'SSS' ? 'sine' : 'triangle', 0.09, i * 0.09))
+  if (label === 'SSS') playTone(2093, 0.5, 'sine', 0.05, 0.5)
+  })
 }
 
-// 页面全局样式（深色游戏风 · 复刻句乐部）
-const GLOBAL_CSS = `
-.quest-root{min-height:100vh;background:radial-gradient(1200px 600px at 20% -10%,rgba(255,215,94,.07),transparent 60%),linear-gradient(165deg,#100E0C 0%,#191510 55%,#221B14 100%);color:#F5EDE2;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
-.quest-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#F5EDE2;border-radius:999px;padding:9px 20px;cursor:pointer;font-size:14px;transition:.15s}
-.quest-btn:hover{border-color:#FFD75E;color:#FFD75E}
-.quest-btn.primary{background:linear-gradient(135deg,#FFD75E,#F0B83C);color:#17130E;font-weight:700;border:none}
-.quest-btn.primary:hover{filter:brightness(1.08);color:#17130E}
-.quest-btn.gold{background:rgba(255,215,94,.14);border-color:rgba(255,215,94,.4);color:#FFD75E}
-.kbd{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:5px;padding:2px 7px;font-size:11px;color:#C9BCAB;font-family:ui-monospace,monospace}
-`
+// ================= 模块1.1 字体与字号体系 =================
+// 字体规则：俄文+中文统一系统默认无衬线；可选 Fredoka 圆润英文字体切换（只覆盖拉丁字符，其余自动回退）
+const FONT_STACK = {
+  system: "-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei','Noto Sans','Helvetica Neue',sans-serif",
+  fredoka: "'Fredoka',-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei','Noto Sans',sans-serif",
+}
+// 字号分级：小 / 中 / 大 三档，默认中
+const Q_SIZE = { 小: 24, 中: 30, 大: 38 }   // 核心题干（页面最高视觉层级）
+const S_WORD = { 小: 16, 中: 20, 大: 26 }   // 重音·输入词块
+const S_ROLE = { 小: 24, 中: 30, 大: 38 }   // 重音·答案词
+const S_BIG  = { 小: 32, 中: 42, 大: 54 }   // 重音·答案大词
+const AUX_SIZE = { 小: 11, 中: 12.5, 大: 14 } // 辅助文字（顶部进度条/底部操作栏/提示文案，比题干低2个层级，跟随题干档位自动适配）
+
+// ================= 模块1.2 全局配色体系（浅色默认 + 3 种护眼主题） =================
+const THEMES = {
+  light: { name: '浅色', bg: '#FFFFFF', bgSoft: '#F6F6F8', panel: '#FFFFFF', text: '#3A3A3A', textStrong: '#1C1C1E', sub: '#8E8E93', border: '#E4E4E7', brand: '#7C5CFC', brandSoft: 'rgba(124,92,252,.10)', ok: '#22C55E', okSoft: 'rgba(34,197,94,.12)', err: '#EF4444', errSoft: 'rgba(239,68,68,.10)', aiBg: '#FBFBFD', aiBorder: '#ECE9F4', shadow: '0 12px 44px rgba(60,40,120,.14)', grad: 'linear-gradient(160deg,#F7F6FB 0%,#FFFFFF 45%)' },
+  dark: { name: '深色', bg: '#0D0918', bgSoft: '#16111F', panel: '#1B1330', text: '#F5EDE2', textStrong: '#FFFFFF', sub: '#8B7FA3', border: 'rgba(255,255,255,.12)', brand: '#8B5CF6', brandSoft: 'rgba(139,92,246,.16)', ok: '#10B981', okSoft: 'rgba(16,185,129,.2)', err: '#F87171', errSoft: 'rgba(239,68,68,.15)', aiBg: 'rgba(20,14,36,.94)', aiBorder: 'rgba(255,255,255,.07)', shadow: '0 18px 60px rgba(0,0,0,.5)', grad: 'radial-gradient(ellipse at 50% -20%, #241A3D 0%, #0D0918 55%)' },
+  warm: { name: '暖色护眼', bg: '#FAF3E7', bgSoft: '#F3E9D7', panel: '#FFFDF7', text: '#4A3F33', textStrong: '#2E2620', sub: '#9A8A76', border: '#E5D9C7', brand: '#B0793B', brandSoft: 'rgba(176,121,59,.12)', ok: '#4C9A57', okSoft: 'rgba(76,154,87,.12)', err: '#C0564B', errSoft: 'rgba(192,86,75,.12)', aiBg: '#FBF6EC', aiBorder: '#EFE3D0', shadow: '0 12px 40px rgba(74,63,51,.10)', grad: 'linear-gradient(160deg,#F7EFE0 0%,#FAF3E7 45%)' },
+  green: { name: '绿色护眼', bg: '#EAF4EA', bgSoft: '#DEEBDE', panel: '#F5FBF5', text: '#2F4432', textStrong: '#1F2E21', sub: '#7E9783', border: '#CFE0CF', brand: '#3E8E4E', brandSoft: 'rgba(62,142,78,.12)', ok: '#2E9E4F', okSoft: 'rgba(46,158,79,.12)', err: '#C14B4B', errSoft: 'rgba(193,75,75,.12)', aiBg: '#F0F8F0', aiBorder: '#DCEBDC', shadow: '0 12px 40px rgba(31,46,33,.10)', grad: 'linear-gradient(160deg,#E2F0E2 0%,#EAF4EA 45%)' },
+}
+// 词性标注：不同词性使用不同下划线颜色；posMark=false 时隐藏
+const POS_COLORS = {
+  'сущ.': '#3B82F6', '名词': '#3B82F6',
+  'гл.': '#22C55E', '动词': '#22C55E',
+  'прил.': '#F59E0B', '形容词': '#F59E0B',
+  'нар.': '#8B5CF6', '副词': '#8B5CF6',
+  'мест.': '#EC4899', '代词': '#EC4899',
+  'предл.': '#14B8A6', '介词': '#14B8A6',
+  'союз': '#EF4444', '连词': '#EF4444',
+}
+const posColor = (pos) => { for (const k in POS_COLORS) { if ((pos || '').includes(k)) return POS_COLORS[k] } return '#9CA3AF' }
+const UI_DEFAULT = { font: 'system', qSize: '中', sSize: '中', theme: 'light', inputStyle: 'dynamic', answerMode: 'float', posMark: true, autoSpeak: false, speakTimes: 2, speakSpeed: 1, speakGap: 1, answerSpeak: false, autoNext: false, ignoreCase: true, showImage: true, imgPos: 'center', imgSize: 'mid', autoReveal: '3', wrongRec: '3', learnDefault: '初级', showProgress: true, showStruct: true, structStyle: 'outline', showWordTrans: true, skipNames: true, showPos: true, posStyle: 'color_text', posColors: { '名词': '#3b82f6', '动词': '#22c55e', '形容词': '#8b5cf6', '副词': '#eab308', '代词': '#ef4444', '介词': '#1e40af', '并列连词': '#f43f5e', '从属连词': '#f43f5e', '感叹词': '#f97316', '限定词': '#14b8a6', '助动词': '#22c55e', '专有名词': '#3b82f6', '人名': '#3b82f6', '数词': '#8b5cf6', '助词': '#9ca3af' }, posVis: { '名词': true, '动词': true, '形容词': true, '副词': true, '代词': true, '介词': true, '并列连词': true, '从属连词': true, '感叹词': true, '限定词': true, '助动词': true, '专有名词': true, '人名': true, '数词': true, '助词': true } }
+// 朗读速度档位（0.5x ~ 2x）
+const SPEED_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+// 两遍朗读之间的停顿间隔（秒）
+const GAP_STEPS = [0.3, 0.5, 0.8, 1]
 
 // ================= 主组件 =================
 export default function RuQuest() {
   const navigate = useNavigate()
-  // 阶段：landing 落地页 / review 今日推荐 / play 答题 / result 结算
-  const [phase, setPhase] = useState('landing')
-  const [level, setLevel] = useState('A1')
-  const [mode, setMode] = useState('cn2ru') // cn2ru 中译英 / listen 听写 / speak 口语
-  const [count, setCount] = useState(10)
-  const [round, setRound] = useState([])
-  const [qi, setQi] = useState(0)
+  // 阶段：courses 课程选择 / lessons 课列表 / preview 阅读预习 / loading 准备 / game 答题 / result 结算
+  const [phase, setPhase] = useState('courses')
+  const [curLevel, setCurLevel] = useState('A1')
+  const [lessons, setLessons] = useState([])       // 当前课程的全部课
+  const [curLesson, setCurLesson] = useState(null) // 当前课
+  const [mode, setMode] = useState(() => {
+    try { return localStorage.getItem('rlearn_quest_mode') || 'chinese_to_english' } catch (e) { return 'chinese_to_english' }
+  })
+  const [modeOpen, setModeOpen] = useState(false)  // 答题页内模式切换面板
+
+  // 答题状态
+  const [questions, setQuestions] = useState([])   // 本课全部题（每词一题 + 整句一题）
+  const [qi, setQi] = useState(0)                  // 全局题号 (x/总)
   const [score, setScore] = useState(0)
+  const [elapsed, setElapsed] = useState(0)
+  const [startAt, setStartAt] = useState(0)
   const [combo, setCombo] = useState(0)
   const [maxCombo, setMaxCombo] = useState(0)
+  const [paused, setPaused] = useState(false)            // 暂停状态
+  const [showSettings, setShowSettings] = useState(false) // 设置弹窗（快捷键/播放/听力等配置，仅俄语闯关页内打开）
+  const [comboPop, setComboPop] = useState(null)         // 连击浮动文字 {n, high}
+  const [comboBreak, setComboBreak] = useState(false)    // 连击中断回落
   const [perfect, setPerfect] = useState(0)
   const [good, setGood] = useState(0)
   const [skipped, setSkipped] = useState(0)
-  const [startAt, setStartAt] = useState(0)
-  const [elapsed, setElapsed] = useState(0)
-  const [acc, setAcc] = useState({ answered: 0, correct: 0, firstHit: 0, listens: 0, usedMs: 0 })
-  // 单题
-  const [words, setWords] = useState([])
-  const [shuffled, setShuffled] = useState([])
-  const [picked, setPicked] = useState([])
-  const [done, setDone] = useState(false)
-  const [okSeq, setOkSeq] = useState(false)
+  const [acc, setAcc] = useState({ answered: 0, correct: 0, firstHit: 0 })
+  // 结算与闭环：本次练习错题记录 / 结算页错题回顾弹层
+  const [wrongList, setWrongList] = useState([])
+  const [resultWrong, setResultWrong] = useState(false)
+  // 单题状态
+  const [typed, setTyped] = useState('')           // 输入串（空格分隔的词，透明输入框真实值）
+  const [chunks, setChunks] = useState([])         // 输入拆词（兼容乱序/撤销）
+  const [wrong, setWrong] = useState(false)
+  const [wrongCount, setWrongCount] = useState(0)
+  // —— 官方连词成句状态机（移植自 earthworm apps/client/composables/main/question.ts，俄语适配） ——
+  // mode: input 正常输入 / fix 提交后有错误 / fix_input 正在修改某个错误词
+  const [fixMode, setFixMode] = useState('input')
+  const [editIdx, setEditIdx] = useState(-1)       // fix_input 正在编辑的错误词下标
+  const [slotState, setSlotState] = useState({ incorrect: [], active: -1 }) // 错误词下标集 + 当前激活词下标
+  const [done, setDone] = useState(false)          // 当前题答对
+  const [showAnswer, setShowAnswer] = useState(false)
   const [analysis, setAnalysis] = useState(null)
   const [analysing, setAnalysing] = useState(false)
-  const [grammarTip, setGrammarTip] = useState(null)
-  // AI 助手侧栏
-  const [aiOpen, setAiOpen] = useState(false)
-  const [aiQ, setAiQ] = useState('')
-  const [aiThread, setAiThread] = useState([])
-  const [aiBusy, setAiBusy] = useState(false)
-  // 复习收藏
+  const [praise, setPraise] = useState('')
+  const [stuckOpen, setStuckOpen] = useState(false) // 卡住了吗
+  const [loadPct, setLoadPct] = useState(0)
+  // 口语评测（模式 speaking）
+  const [recording, setRecording] = useState(false)
+  const [recDur, setRecDur] = useState(0)
+  const [speakLoading, setSpeakLoading] = useState(false)
+  const [speakResult, setSpeakResult] = useState(null)
+  const [recordingUrl, setRecordingUrl] = useState('')   // 最近一次口语录音的本地回放地址
+  const mediaRecRef = useRef(null)
+  const recChunks = useRef([])
+  const recTimer = useRef(null)
+  // 乱序模式（scramble）
+  const [scramblePicked, setScramblePicked] = useState([])
+  // 掌握/生词
   const [mastered, setMastered] = useState(() => JSON.parse(localStorage.getItem('rlearn_quest_mastered') || '[]'))
   const [vocabNote, setVocabNote] = useState(() => JSON.parse(localStorage.getItem('rlearn_quest_vocab') || '[]'))
-  const [todayQuote, setTodayQuote] = useState(null)
+  // AI 助手
+  const [aiThread, setAiThread] = useState([])
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiQ, setAiQ] = useState('')
+  // 页面功能控件：顶部工具栏收起/展开、AI 侧栏唤起、本课内容、撤销栈
+  const [topExpanded, setTopExpanded] = useState(false)   // 顶部功能栏展开（hover 或点击展开按钮）
+  const [aiOpen, setAiOpen] = useState(false)             // 右下角悬浮图标唤起侧边AI助手（默认收起，不遮挡答题区）
+  const [contentOpen, setContentOpen] = useState(false)   // 本课内容面板（句子列表 + 跳转）
+  const undoStack = useRef([])                            // 输入撤销栈（Ctrl+Z 回退上一步输入）
+  // 模块1.1 外观设置（字体 + 字号档位）
+  const [uiOpen, setUiOpen] = useState(false)
+  const [ui, setUi] = useState(() => {
+    try { return { ...UI_DEFAULT, ...(JSON.parse(localStorage.getItem('rlearn_quest_ui') || '{}') || {}) } } catch { return { ...UI_DEFAULT } }
+  })
+  // 主题派生：外观页「主题设置」强制浅/深；跟随系统时由「练习背景色」决定（默认/暖色/绿色）
+  const themeOf = () => {
+    if (ui.themeMode === 'light') return 'light'
+    if (ui.themeMode === 'dark') return 'dark'
+    if (ui.bgColor === 'warm') return 'warm'
+    if (ui.bgColor === 'green') return 'green'
+    return 'light'
+  }
+  const uiCfg = { font: ui.font || 'system', qSize: ui.qSize || '中', sSize: ui.sSize || '中', theme: themeOf(), themeMode: ui.themeMode || 'auto', bgColor: ui.bgColor || 'default', inputStyle: ui.inputStyle || 'dynamic', answerMode: ui.answerMode || 'float', posMark: ui.posMark !== false, autoSpeak: !!ui.autoSpeak, speakTimes: ui.speakTimes || 2, speakSpeed: ui.speakSpeed || 1, speakGap: ui.speakGap ?? 1, answerSpeak: !!ui.answerSpeak, autoNext: !!ui.autoNext, ignoreCase: ui.ignoreCase !== false, showImage: ui.showImage !== false, imgPos: ui.imgPos || 'center', imgSize: ui.imgSize || 'mid', autoReveal: ui.autoReveal || '3', wrongRec: ui.wrongRec || '3', learnDefault: ui.learnDefault || '初级', showProgress: ui.showProgress !== false, showStruct: ui.showStruct !== false, structStyle: ui.structStyle || 'outline', showWordTrans: ui.showWordTrans !== false, skipNames: ui.skipNames !== false, showPos: ui.showPos !== false, posStyle: ui.posStyle || 'color_text', posColors: ui.posColors || UI_DEFAULT.posColors, posVis: ui.posVis || UI_DEFAULT.posVis, showScore: ui.showScore !== false, bgImage: ui.bgImage || null }
+  // 练习背景图（外观页上传，覆盖在主题渐变之上）
+  const bgImageStyle = uiCfg.bgImage ? { backgroundImage: 'url(' + uiCfg.bgImage + ')', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } : null
+  // 答题校验：忽略大小写（默认开）→ 小写归一；关闭 → 严格大小写
+  const normFor = (w) => { const c = cleanWord(w || ''); return uiCfg.ignoreCase ? stripStress(c).toLowerCase().trim() : stripStress(c).trim() }
+  const recThreshold = { '3': 3, '2': 2, '1': 1, always: 1 }[uiCfg.wrongRec] || 3        // 记录到错题本阈值
+  const revealThreshold = { '3': 3, '2': 2, '1': 1, off: 99 }[uiCfg.autoReveal] || 3     // 自动显示答案阈值
+  const saveUi = useCallback((patch) => {
+    const n = { ...uiCfg, ...patch }
+    setUi(n)
+    try { localStorage.setItem('rlearn_quest_ui', JSON.stringify(n)) } catch { /* 忽略 */ }
+  }, [uiCfg])
+  // 选择 Fredoka 时动态加载字体（加载失败自动回退系统字体）
+  useEffect(() => {
+    if (uiCfg.font === 'fredoka' && !document.getElementById('fredoka-font')) {
+      const l = document.createElement('link')
+      l.id = 'fredoka-font'; l.rel = 'stylesheet'
+      l.href = 'https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap'
+      document.head.appendChild(l)
+    }
+  }, [uiCfg.font])
 
   const audioRef = useRef(null)
   const inputRef = useRef(null)
+  const inputRowRef = useRef(null)
   const analysisCache = useRef({})
-  const gramTipCache = useRef({})
+  const dictCache = useRef({})
   const mounted = useRef(true)
   useEffect(() => () => { mounted.current = false }, [])
 
-  const cur = round[qi] || null
+  const cur = questions[qi] || null
 
-  // 题库
+  // —— 课程/题库 ——
   const poolOf = useCallback((lv) => {
     const sents = []
     for (const { video } of getLevelVideos(lv)) {
@@ -124,142 +334,507 @@ export default function RuQuest() {
     return sents
   }, [])
 
-  // 开始一轮
-  const startRound = (lv, m, n) => {
+  // 生成课程（每课 10 句）
+  const buildLessons = useCallback((lv) => {
     const pool = shuffle(poolOf(lv))
-    setRound(pool.slice(0, n))
-    setQi(0); setScore(0); setCombo(0); setMaxCombo(0); setPerfect(0); setGood(0); setSkipped(0)
-    setAcc({ answered: 0, correct: 0, firstHit: 0, listens: 0, usedMs: 0 })
-    setElapsed(0); setStartAt(Date.now()); setAnalysis(null); setGrammarTip(null); setAiThread([])
-    setTodayQuote(pool[Math.floor(Math.random() * pool.length)])
-    setPhase('play')
+    const list = []
+    for (let i = 0; i < pool.length; i += 10) {
+      list.push({ id: lv + '_L' + String(list.length + 1).padStart(2, '0'), idx: list.length + 1, sentences: pool.slice(i, i + 10) })
+    }
+    return list.slice(0, 8)
+  }, [poolOf])
+
+  const lessonsByLevel = useMemo(() => {
+    const m = {}
+    for (const lv of LEVELS) m[lv] = buildLessons(lv)
+    return m
+  }, [buildLessons])
+
+  // 拉取一句的逐词词典（复用 /api/dict，带缓存）
+  const fetchDict = useCallback(async (word) => {
+    const w = cleanWord(word)
+    if (!w) return null
+    if (dictCache.current[w]) return dictCache.current[w]
+    try {
+      const r = await fetch((API_BASE || '') + '/api/dict?word=' + encodeURIComponent(stripStress(w)), { headers: { 'Content-Type': 'application/json' } })
+      if (!r.ok) return null
+      const j = await r.json()
+      const d = j && (j.entries?.[0] || j.data?.entries?.[0] || j)
+      dictCache.current[w] = d || null
+      return d || null
+    } catch (e) { return null }
+  }, [])
+
+  // 生成课内题目（每词一题 + 整句一题），逐词题提示 = 词 + 整句中文作参考
+  const buildQuestions = useCallback(async (lesson) => {
+    const qs = []
+    for (const s of lesson.sentences) {
+      const ws = s.russian.trim().split(/\s+/).filter(Boolean)
+      // 逐词题：中文整句 + 该词高亮位置提示；答案 = 该词
+      ws.forEach((w, i) => {
+        qs.push({ s, partIdx: i, partTotal: ws.length, full: false, zh: s.chinese || '', answer: w, wordCount: 1, id: s.id + '_w' + i })
+      })
+      // 整句题
+      qs.push({ s, partIdx: ws.length, partTotal: ws.length, full: true, zh: s.chinese || '', answer: s.russian, wordCount: ws.length, id: s.id + '_full' })
+    }
+    return qs
+  }, [])
+
+  // —— 开始一课（支持恢复上次进度；reading 模式先进预习） ——
+  const startLesson = async (lesson, resume) => {
+    setCurLesson(lesson)
+    setPhase('loading'); setLoadPct(5)
+    const timer = setInterval(() => {
+      setLoadPct(p => Math.min(92, p + Math.floor(Math.random() * 12) + 4))
+    }, 220)
+    const qs = await buildQuestions(lesson)
+    clearInterval(timer)
+    setQuestions(qs)
+    let saved = null
+    try { saved = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null') } catch (e) { saved = null }
+    const useSaved = resume && saved && saved.lessonId === lesson.id
+    if (useSaved) {
+      setQi(Math.min(saved.qi || 0, Math.max(0, qs.length - 1)))
+      setScore(saved.score || 0)
+      setCombo(saved.combo || 0); setMaxCombo(saved.maxCombo || 0)
+      setPerfect(saved.perfect || 0); setGood(saved.good || 0); setSkipped(saved.skipped || 0)
+      setAcc(saved.acc || { answered: 0, correct: 0, firstHit: 0 })
+      setElapsed(saved.elapsed || 0); setStartAt(Date.now() - (saved.elapsed || 0) * 1000)
+    } else {
+      setQi(0); setScore(0); setCombo(0); setMaxCombo(0); setPerfect(0); setGood(0); setSkipped(0)
+      setAcc({ answered: 0, correct: 0, firstHit: 0 })
+      setElapsed(0); setStartAt(Date.now())
+    }
+    setWrongList([]); setResultWrong(false)
+    setAnalysis(null); setAiThread([]); setModeOpen(false)
+    setLoadPct(100)
+    sfxScene()
+    setTimeout(() => setPhase(mode === 'reading' ? 'preview' : 'game'), 350)
   }
 
+  // —— 进度自动保存（切换题目/离开时写入 localStorage） ——
+  const saveProgress = useCallback(() => {
+    if (!curLesson) return
+    try {
+      localStorage.setItem('rlearn_quest_progress', JSON.stringify({
+        lessonId: curLesson.id, qi, score, elapsed, combo, maxCombo, perfect, good, skipped, acc,
+        updatedAt: Date.now(),
+      }))
+    } catch (e) { /* 忽略 */ }
+  }, [curLesson, qi, score, elapsed, combo, maxCombo, perfect, good, skipped, acc])
+
+  // —— 加载题目 ——
   const loadQuestion = useCallback((idx) => {
-    const s = round[idx]
-    if (!s) return
-    const ws = s.russian.trim().split(/\s+/).filter(Boolean)
-    setWords(ws)
-    setShuffled(shuffle(ws))
-    setPicked([]); setDone(false); setOkSeq(false)
-    setAnalysis(analysisCache.current[s.id] || null)
-    setGrammarTip(gramTipCache.current[s.id] || null)
-    setAnalysing(false)
-  }, [round])
+    const q = questions[idx]
+    if (!q) return
+    setTyped(''); setChunks([]); setWrong(false); setWrongCount(0); setDone(false); setShowAnswer(false)
+    setFixMode('input'); setEditIdx(-1); setSlotState({ incorrect: [], active: -1 })
+    setPraise(''); setAnalysis(analysisCache.current[q.id] || null); setAnalysing(false)
+    setStuckOpen(false)
+    setScramblePicked([])          // 乱序模式：重置已选
+    setSpeakResult(null); setSpeakLoading(false); setRecording(false) // 口语模式：重置
+    if (q.full) {
+      // 整句题：预填已答过的词（前 partIdx 个词）？julebu 不预填，用户重输整句。
+      setTyped('')
+    }
+  }, [questions])
 
   useEffect(() => {
-    if (phase === 'play' && round.length) loadQuestion(qi)
+    if (phase === 'game' && questions.length) loadQuestion(qi)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qi, phase])
 
   useEffect(() => {
-    if (phase !== 'play') return
+    if (phase !== 'game' || paused) return
     const t = setInterval(() => setElapsed(Math.floor((Date.now() - startAt) / 1000)), 1000)
     return () => clearInterval(t)
-  }, [phase, startAt])
+  }, [phase, startAt, paused])
 
-  // 发音
-  const playSound = useCallback((text) => {
+  // 自动聚焦输入
+  useEffect(() => {
+    if (phase === 'game') {
+      const t = setTimeout(() => inputRef.current?.focus(), 80)
+      return () => clearTimeout(t)
+    }
+  }, [phase, qi, done])
+
+  // —— 发音（speed: 0.5~2.0，走后端 /api/tts?rate=） ——
+  const speak = useCallback((text, speed) => {
     if (!text) return
     if (!audioRef.current) audioRef.current = new Audio()
     const a = audioRef.current
     a.pause()
-    a.src = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now()
-    a.play().catch(() => toast('发音播放失败，请检查后端服务'))
-    setAcc(p => ({ ...p, listens: p.listens + 1 }))
+    const sp = speed != null && speed !== 1 ? speed : null
+    a.src = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now() + (sp ? '&rate=' + sp : '')
+    a.play().catch(() => {})
   }, [])
 
-  // AI 逐词拆解
-  const fetchAnalysis = useCallback(async (s) => {
-    if (!s) return
-    if (analysisCache.current[s.id]) { setAnalysis(analysisCache.current[s.id]); return }
+  const playCur = useCallback(() => {
+    if (cur) { sfxFunc(); speak(cur.s.russian) }
+  }, [cur, speak])
+
+  // —— 可配置快捷键动作（设置弹窗可改键位，配置存 rlearn_quest_hotkeys） ——
+  const playWordByWord = () => {
+    if (!cur) { toast('请先进入一课'); return }
+    const ws = cur.s.russian.trim().split(/\s+/)
+    ws.forEach((w, i) => setTimeout(() => speak(w), i * 900))
+    toast('逐词播放：' + ws.length + ' 个单词')
+  }
+  const playCurrentWordFn = () => {
+    if (!cur) { toast('请先进入一课'); return }
+    const ws = typed.trim() ? typed.trim().split(/\s+/) : cur.answer.trim().split(/\s+/)
+    speak(ws[ws.length - 1] || cur.answer)
+  }
+  const playRecordingFn = () => {
+    if (recordingUrl) { const a = new Audio(recordingUrl); a.play().catch(() => {}); return }
+    toast('暂无录音可播放，请先在口语评测中录音')
+  }
+  const hotActionsRef = useRef({})
+  hotActionsRef.current = { playWordByWord, playCurrentWordFn, playRecordingFn, startRec: () => startRec(), stopRec: () => stopRec(), showAnswerNow: () => showAnswerNow() }
+
+  // —— 先读后写：进入新题自动朗读（听写模式默认自动播；autoSpeak 开关控制其他模式） ——
+  useEffect(() => {
+    if (phase !== 'game' || !cur) return
+    if (done || mode === 'speaking') return
+    const needAuto = mode === 'dictation' || uiCfg.autoSpeak
+    if (!needAuto) return
+    const times = uiCfg.speakTimes || 1
+    const timers = []
+    for (let i = 0; i < times; i++) {
+      timers.push(setTimeout(() => speak(cur.s.russian, uiCfg.speakSpeed), i * ((uiCfg.speakGap * 1000) + 600)))
+    }
+    return () => timers.forEach(clearTimeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, cur?.id, done, mode, uiCfg.autoSpeak, uiCfg.speakTimes, uiCfg.speakGap, uiCfg.speakSpeed])
+
+  // —— AI 拆解（答案卡） ——
+  const fetchAnalysis = useCallback(async (q) => {
+    if (!q) return
+    if (analysisCache.current[q.id]) { setAnalysis(analysisCache.current[q.id]); return }
     setAnalysing(true)
     try {
       const content = await callAI([
-        { role: 'system', content: '你是俄语老师。把用户给的俄语句子逐词拆解，严格只输出 JSON，不要任何解释。JSON 格式：{"words":[{"word":"原词","stress":"带重音的规范词形(重音元音后用\'\u0301\'标,如 moma)","pos":"词性(中文)","zh":"中文释义"}],"zh":"整句中文翻译"}' },
-        { role: 'user', content: s.russian },
+        { role: 'system', content: '你是俄语老师。把用户给的俄语句子逐词拆解并按语法成分分组，严格只输出 JSON，不要任何解释。JSON 格式：{"zh":"整句中文翻译","roles":[{"role":"主语","words":[{"word":"原词","stress":"带重音的规范词形(重音元音后用\'\u0301\'标)","pos":"词性(中文)","zh":"中文释义"}]}]}，roles 按 主语/谓语/宾语/定语/状语 等成分分组，按句子实际成分输出' },
+        { role: 'user', content: q.s.russian },
       ])
       let t = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
       const a = t.indexOf('{'), b = t.lastIndexOf('}')
       if (a >= 0 && b > a) t = t.slice(a, b + 1)
       const parsed = JSON.parse(t)
-      if (parsed && parsed.words) {
-        analysisCache.current[s.id] = parsed
+      if (parsed && parsed.roles) {
+        analysisCache.current[q.id] = parsed
         setAnalysis(parsed)
       } else throw new Error('bad')
     } catch (e) {
-      setAnalysis({ words: null, zh: s.chinese || '', err: true })
+      setAnalysis({ roles: null, zh: q.zh || '', err: true })
     } finally {
       if (mounted.current) setAnalysing(false)
     }
   }, [])
 
-  // AI 语法讲解
-  const fetchGrammarTip = useCallback(async (s) => {
-    if (!s) return
-    if (gramTipCache.current[s.id]) { setGrammarTip(gramTipCache.current[s.id]); return }
-    try {
-      const content = await callAI([
-        { role: 'system', content: '你是俄语老师。用 2-3 句话用中文讲解这个俄语句子的关键语法点（时态、变格、句型等），简洁实用。' },
-        { role: 'user', content: s.russian },
-      ])
-      gramTipCache.current[s.id] = content
-      if (mounted.current) setGrammarTip(content)
-    } catch (e) { /* 静默 */ }
-  }, [])
+  // —— 暂停/恢复（恢复时固化已计时，避免暂停时长计入） ——
+  const resumePause = () => {
+    if (paused) { setStartAt(Date.now() - elapsed * 1000); setPaused(false) }
+  }
+  const togglePause = () => {
+    if (paused) resumePause()
+    else { setPaused(true); try { audioRef.current?.pause() } catch (e) { /* 忽略 */ } }
+  }
+  // 逐字错误：强制重触发输入行抖动动画（不打断输入）
+  const shakeRow = () => {
+    const el = inputRowRef.current
+    if (!el) return
+    el.style.animation = 'none'
+    void el.offsetWidth
+    el.style.animation = 'ruqShake .3s ease'
+  }
 
-  // 提交单词（点击词块 / 键盘回车）
-  const pick = useCallback((w) => {
-    if (done) return
-    setPicked(prev => {
-      const next = [...prev, w]
-      if (next.length === words.length) {
-        const ok = words.every((ow, i) => norm(cleanWord(next[i])) === norm(cleanWord(ow)))
-        const isFirst = prev.length === 0
-        setDone(true); setOkSeq(ok)
-        if (ok) {
-          setCombo(c => { const nc = c + 1; setMaxCombo(m => Math.max(m, nc)); return nc })
-          setScore(s => s + 100 + Math.min(500, combo * 50))
-          setPerfect(p => p + 1)
-          setAcc(a => ({ ...a, answered: a.answered + 1, correct: a.correct + 1, firstHit: a.firstHit + (isFirst ? 1 : 0), usedMs: a.usedMs + 900 }))
-          playSound(cur.russian)
-          fetchAnalysis(cur)
-          fetchGrammarTip(cur)
-        } else {
-          setCombo(0)
-          setGood(g => g + 1)
-          setAcc(a => ({ ...a, answered: a.answered + 1, usedMs: a.usedMs + 1800 }))
-          toast('顺序不对，看下方正确顺序')
-          // 展示正确顺序后题目算错
-          return next
-        }
+  // —— 提交（官方逐词校验 + Fix 修复流：有错时自动进入修复模式，改对后 Great） ——
+  const submit = useCallback(() => {
+    if (done || !cur) return
+    if (fixMode === 'fix') return                    // Fix 待命：等用户按键进入修改，不重复提交
+    const exp = expectWordsOf(cur)
+    const parts = typed.split(' ')
+    // 官方校验：逐词对比（词槽数 = 期望词数；多余输入忽略）
+    const incorrectIdx = []
+    for (let i = 0; i < exp.length; i++) {
+      const u = parts[i] !== undefined ? parts[i] : ''
+      if (normFor(cleanWord(u)) !== exp[i]) incorrectIdx.push(i)
+    }
+    const ok = incorrectIdx.length === 0 && parts.length >= exp.length
+    if (ok) {
+      setDone(true)
+      setFixMode('input'); setEditIdx(-1); setSlotState({ incorrect: [], active: -1 })
+      const isPerfect = wrongCount === 0 // 无修改全对 = Perfect；有修改后答对 = Great
+      const nc = combo + 1
+      setCombo(nc); setMaxCombo(m => Math.max(m, nc))
+      const base = cur.full ? 700 : (cur.wordCount > 1 ? 500 : 300)
+      setScore(s => s + base + Math.min(500, combo * 50))
+      setPerfect(p => p + 1)
+      setAcc(a => ({ ...a, answered: a.answered + 1, correct: a.correct + 1, firstHit: a.firstHit + (isPerfect ? 1 : 0) }))
+      if (wrongCount > 0 && wrongCount >= recThreshold) recordWrong(cur, parts.slice(0, exp.length).join(' ') || '（有修改后答对）', wrongReasonOf(cur, parts.slice(0, exp.length).map(cleanWord).map(normFor)))
+      if (isPerfect) sfxPerfect(); else sfxGreat()          // 答对反馈：Perfect 清亮 / Great 柔和
+      if (cur.full) sfxSentence()                            // 整句完成收尾音
+      if (nc >= 3 && isPerfect) sfxCombo(nc)                 // 连击激励（3-5 / 6-10 / 10+）
+      if (nc >= 3 && SFX_CFG.comboAnim) {                    // 连击动效：Perfect × N 浮动文字（10+ 高亮发光+全屏闪效）
+        setComboPop({ n: nc, high: nc >= 10 })
+        setTimeout(() => setComboPop(null), 420)
       }
-      return next
-    })
-  }, [done, words, combo, cur, playSound, fetchAnalysis, fetchGrammarTip])
+      const p = pickPraise()
+      setPraise(p)
+      speak(p)
+      if (uiCfg.answerSpeak) speak(cur.s.russian)   // 「显示答案时自动朗读」开关（默认关）
+      fetchAnalysis(cur)
+      if (uiCfg.autoNext) setTimeout(nextQ, 750)    // 「答题正确后自动下一题」开关（默认关，延迟让反馈可见）
+    } else {
+      setWrong(true)
+      setWrongCount(c => c + 1)
+      const wc = wrongCount + 1
+      const inputChunks = parts.slice(0, exp.length).filter(Boolean)
+      if (wc >= recThreshold) recordWrong(cur, inputChunks.join(' ') || '（答题错误）', wrongReasonOf(cur, parts.slice(0, exp.length).map(cleanWord).map(normFor)))
+      if (combo >= 3) {                             // 连击中断：回落音 + 轻微视觉回落
+        sfxComboBreak()
+        setComboBreak(true)
+        setTimeout(() => setComboBreak(false), 560)
+      }
+      setCombo(0)
+      shakeRow()
+      sfxError()
+      if (wc >= revealThreshold) showAnswerNow()    // 「自动显示答案」：错误 N 次后自动展示答案
+      else if (wc >= 3) setStuckOpen(true)          // 未开启自动显示时，保留原「答错3次提示看答案」
+      // 官方 Fix 修复流：标记错误词并进入修复模式（按任意键清空第一个错误词重打）
+      setSlotState({ incorrect: incorrectIdx, active: -1 })
+      setFixMode('fix')
+    }
+  }, [done, cur, typed, fixMode, combo, wrongCount, speak, fetchAnalysis, uiCfg.answerSpeak, uiCfg.autoNext, uiCfg.wrongRec, uiCfg.autoReveal, recThreshold, revealThreshold])
 
-  const undo = () => { if (!done) setPicked(p => p.slice(0, -1)) }
+  // —— 撤销：回退上一步输入（Ctrl+Z，仅标准输入模式；须在全局快捷键 effect 之前定义） ——
+  const undo = useCallback(() => {
+    if (mode === 'scramble') { toast('乱序模式不支持撤销'); return }
+    if (!undoStack.current.length) { toast('没有可撤销的输入'); return }
+    const prev = undoStack.current.pop()
+    setTyped(prev)
+    setChunks(prev.trim() ? prev.trim().split(/\s+/) : [])
+    setWrong(false)
+    setFixMode('input'); setEditIdx(-1); setSlotState(s => ({ ...s, incorrect: [], active: -1 }))
+    sfxFunc()
+  }, [mode])
 
-  const skip = () => {
+  // —— 输入处理（官方连词成句：透明输入框 + 单词下划线槽，空格分词） ——
+  // 期望词（去重音/标点/小写归一后的规范词）
+  const expectWordsOf = (q) => (q?.answer || '').trim().split(/\s+/).filter(Boolean).map(cleanWord).map(normFor)
+  const onInputChange = (e) => {
     if (done) return
-    setDone(true); setOkSeq(false)
-    setSkipped(s => s + 1); setCombo(0)
+    const v = e.target.value
+    // 撤销栈：每次输入变化压入上一步值（仅 insertText，栈深限 50）
+    if (e.nativeEvent?.inputType === 'insertText' && v !== typed) {
+      undoStack.current.push(typed)
+      if (undoStack.current.length > 50) undoStack.current.shift()
+    }
+    setTyped(v)
+    const cs = v.trim() ? v.trim().split(/\s+/) : []
+    setChunks(cs)
+    setWrong(false)
+    if (v.length > 0 && v[v.length - 1] !== ' ' && e.nativeEvent?.inputType === 'insertText') {
+      sfxKey()
+      // 逐字实时校验：新输入字符与期望位置不一致 → 输入行轻微抖动（不打断输入）
+      const target = expectWordsOf(cur)
+      const ci = cs.length - 1
+      const exp = ci < target.length ? target[ci] : ''
+      const chIdx = (cs[ci] || '').length - 1
+      if (chIdx >= 0 && (chIdx >= exp.length || v[v.length - 1].toLowerCase() !== exp[chIdx])) shakeRow()
+    }
+    // 光标变化 → 更新激活词（官方：光标所在词高亮）
+    const pos = e.target.selectionStart ?? v.length
+    setSlotState(s => ({ ...s, active: activeFromCursor(v, pos) }))
+  }
+
+  // 由光标位置计算激活词下标（词 i 覆盖 [start_i, end_i]）
+  const activeFromCursor = (val, pos) => {
+    const parts = val.split(' ')
+    let p = 0, active = -1
+    for (let i = 0; i < parts.length; i++) {
+      const s = p, e = s + parts[i].length
+      if (pos >= s && pos <= e) { active = i; break }
+      p = e + 1
+    }
+    if (active === -1 && parts.length) active = parts.length - 1
+    return active
+  }
+
+  // 清空第 idx 个槽的输入并把光标移到该词开头（Fix 修复流）
+  const clearSlotWord = (idx) => {
+    const exp = expectWordsOf(cur)
+    const parts = typed.split(' ')
+    while (parts.length < exp.length) parts.push('')
+    if (idx < 0 || idx >= exp.length) return
+    parts[idx] = ''
+    const v = parts.join(' ')
+    setTyped(v)
+    setChunks(v.trim() ? v.trim().split(/\s+/) : [])
+    requestAnimationFrame(() => {
+      const el = inputRef.current
+      if (!el) return
+      let pos = 0
+      for (let i = 0; i < idx; i++) pos += (parts[i].length + 1)
+      el.setSelectionRange(pos, pos)
+      setSlotState(s => ({ ...s, active: idx }))
+    })
+  }
+  const prevIncorrectOf = (idx) => { const a = slotState.incorrect.filter(i => i < idx); return a.length ? a[a.length - 1] : -1 }
+  const isLastIncorrectOf = (idx) => !slotState.incorrect.some(i => i > idx)
+
+  const onInputKey = (e) => {
+    if (done) { if (e.key === 'Enter') { e.preventDefault(); nextQ() } return }
+    if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); return }
+    if (e.key === 'Escape') { e.preventDefault(); inputRef.current?.blur(); return }
+    // 官方：禁止上下方向键（避免光标乱跑导致激活词错乱）
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); return }
+    // 官方 Fix 修复流：提交有错后，按任意可打印键（空格/退格/修饰键除外）→ 定位并清空第一个错误词进入修改
+    if (fixMode === 'fix') {
+      if (e.key === 'Space' || e.key === 'Backspace') { e.preventDefault(); return }
+      if (e.key.length > 1) return // 修饰键（Shift/Ctrl/Alt/Meta）与功能键忽略
+      const idx = slotState.incorrect[0]
+      if (idx >= 0) {
+        e.preventDefault()
+        clearSlotWord(idx)
+        setEditIdx(idx)
+        setFixMode('fix_input')
+      }
+      return
+    }
+    // Fix_Input：空格在最后一个错误词 → 提交；Backspace 空词 → 回上一错误词；Enter 提交
+    if (fixMode === 'fix_input') {
+      if (e.key === 'Space' && isLastIncorrectOf(editIdx)) { e.preventDefault(); submit(); return }
+      if (e.key === 'Backspace' && (typed.split(' ')[editIdx] || '') === '') {
+        e.preventDefault()
+        const prev = prevIncorrectOf(editIdx)
+        if (prev >= 0) { clearSlotWord(prev); setEditIdx(prev) }
+        return
+      }
+      if (e.key === 'Enter') { e.preventDefault(); submit(); return }
+      return // 其余按键直接上屏（原生 input）
+    }
+    if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); submit() }
+  }
+
+  // 全局快捷键
+  useEffect(() => {
+    const h = (e) => {
+      if (phase !== 'game' || paused) return
+      // 乱序模式：无输入框，拼好后按 Enter 提交
+      if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey && mode === 'scramble' && !done) { e.preventDefault(); submit(); return }
+      // 左右方向键切换上一题/下一题（输入框聚焦时保留光标移动，不切题）
+      if (e.key === 'ArrowLeft' && document.activeElement !== inputRef.current) { e.preventDefault(); prevQ(); return }
+      if (e.key === 'ArrowRight' && document.activeElement !== inputRef.current) { e.preventDefault(); nextQ(); return }
+    }
+    window.addEventListener('keydown', h)
+    document.addEventListener('keydown', h)
+    return () => { window.removeEventListener('keydown', h); document.removeEventListener('keydown', h) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, cur, qi, mode, done, paused, undo])
+
+  // —— 可配置全局快捷键（设置弹窗内可改键位；输入框激活或设置弹窗打开时自动禁用） ——
+  useEffect(() => {
+    const h = (e) => {
+      if (document.querySelector('.qs-mask')) return          // 设置弹窗打开时禁用
+      const ae = document.activeElement
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return // 打字时禁用
+      const k = keysOfEvent(e)
+      if (!k) return
+      const hk = loadHotkeys()
+      let act = null
+      for (const id in hk) { if (hk[id] === k) { act = id; break } }
+      if (!act) return
+      e.preventDefault()
+      const A = hotActionsRef.current
+      switch (act) {
+        case 'toggleSettings': setShowSettings(o => !o); break
+        case 'toggleCommand': toast('命令面板即将上线'); break
+        case 'playSound':
+          if (phase === 'game' && cur) speak(cur.s.russian)
+          else toast('请先在答题中播放声音')
+          break
+        case 'showAnswer':
+          if (phase === 'game' && cur) { if (done) toast('当前题已完成'); else A.showAnswerNow() }
+          else toast('请在答题中使用该快捷键')
+          break
+        case 'skipQ': if (phase === 'game') nextQ(); break
+        case 'prevQ': if (phase === 'game') prevQ(); break
+        case 'master': toggleMastered(); break
+        case 'undoMaster':
+          if (mastered.includes(cur ? cur.id + '_' + qi : '')) toggleMastered()
+          else toast('当前题未标记掌握')
+          break
+        case 'addVocab': addVocab(); break
+        case 'pauseGame': togglePause(); break
+        case 'courseContent': setContentOpen(true); break
+        case 'sentenceTree':
+          if (phase === 'game') { const n = uiCfg.showStruct; setUi(o => { const nu = { ...o, showStruct: !n }; try { localStorage.setItem('rlearn_quest_ui', JSON.stringify(nu)) } catch (e) { /* 忽略 */ } return nu }); toast(n ? '已隐藏句子结构' : '已显示句子结构') }
+          break
+        case 'toggleAI': setAiOpen(o => !o); break
+        case 'wordByWord': A.playWordByWord(); break
+        case 'playCurrentWord': A.playCurrentWordFn(); break
+        case 'toggleSpeech':
+          if (mode === 'speaking') { if (recording) A.stopRec(); else A.startRec() }
+          else toast('请先切换到口语评测模式')
+          break
+        case 'playRecording': A.playRecordingFn(); break
+        case 'toggleHint':
+          if (phase === 'game' && cur) { if (done) toast('当前题已完成'); else A.showAnswerNow() }
+          else toast('请在答题中使用该快捷键')
+          break
+        case 'toggleNotes': toast('笔记功能即将上线'); break
+        default: break
+      }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, cur, mode, recording, done, qi, mastered, uiCfg.showStruct])
+
+  const showAnswerNow = () => {
+    if (done || !cur) return
+    setDone(true); setShowAnswer(true); setSkipped(s => s + 1); setCombo(0)
     setAcc(a => ({ ...a, answered: a.answered + 1 }))
+    if (recThreshold <= 1) recordWrong(cur, '（未作答，查看答案）', '未作答 / 跳过') // 记录到错题本：「总是/错误1次后」才记录跳过
+    sfxFunc()
+    if (uiCfg.answerSpeak) speak(cur.s.russian)
     fetchAnalysis(cur)
   }
 
-  const next = () => {
-    if (qi + 1 >= round.length) { setPhase('result'); return }
+  // —— 切题（上一题/下一题），切换时自动保存学习进度 ——
+  const nextQ = () => {
+    saveProgress()
+    if (qi + 1 >= questions.length) { runCloseLoop(); setPhase('result'); const r = ratingOf(acc); setTimeout(() => sfxRating(r.label), 260); return }
+    sfxScene()
     setQi(q => q + 1)
   }
+  const prevQ = () => {
+    if (qi <= 0) return
+    saveProgress()
+    sfxScene()
+    setQi(q => q - 1)
+  }
 
-  const replay = () => loadQuestion(qi)
+  // —— 错题记录（本次练习内，供结算页错题本闭环使用） ——
+  const recordWrong = (q, user, reason) => {
+    setWrongList(w => w.some(x => x.id === q.id) ? w : [...w, { id: q.id, q, user, reason }])
+  }
+  const wrongReasonOf = (q, inputNorm) => {
+    const expect = (q.answer || '').trim().split(/\s+/).map(cleanWord).map(normFor)
+    if (!inputNorm || !inputNorm.length) return '未作答 / 跳过'
+    if (inputNorm.length < expect.length) return '漏词（输入词数少于答案）'
+    if (inputNorm.length > expect.length) return '多词（输入词数多于答案）'
+    return '拼写或词形错误'
+  }
 
   const toggleMastered = () => {
     if (!cur) return
     const id = cur.id + '_' + qi
     const nm = mastered.includes(id) ? mastered.filter(x => x !== id) : [...mastered, id]
     setMastered(nm); localStorage.setItem('rlearn_quest_mastered', JSON.stringify(nm))
+    sfxFunc()
     toast(mastered.includes(id) ? '已取消掌握' : '已标记掌握')
   }
   const addVocab = () => {
@@ -267,461 +842,1243 @@ export default function RuQuest() {
     const id = cur.id + '_' + qi
     const nv = vocabNote.includes(id) ? vocabNote.filter(x => x !== id) : [...vocabNote, id]
     setVocabNote(nv); localStorage.setItem('rlearn_quest_vocab', JSON.stringify(nv))
+    sfxFunc()
     toast(vocabNote.includes(id) ? '已从生词移除' : '已加入生词')
   }
 
-  // 快捷键
-  useEffect(() => {
-    const onKey = (e) => {
-      if (phase !== 'play') return
-      if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); playSound(cur?.russian); return }
-      if (e.ctrlKey && e.key === ';') { e.preventDefault(); replay(); return }
-      if (e.ctrlKey && (e.key === 'm' || e.key === 'M')) { e.preventDefault(); toggleMastered(); return }
-      if (e.ctrlKey && (e.key === 'n' || e.key === 'N')) { e.preventDefault(); addVocab(); return }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, cur, done])
+  // —— 重置本课进度：从头开始（清进度 + 清零统计与计时） ——
+  const resetLesson = useCallback(() => {
+    if (!curLesson || !window.confirm('确定重置本课进度，从头开始吗？')) return
+    try { localStorage.removeItem('rlearn_quest_progress') } catch (e) { /* 忽略 */ }
+    setQi(0); setScore(0); setCombo(0); setMaxCombo(0); setPerfect(0); setGood(0); setSkipped(0)
+    setAcc({ answered: 0, correct: 0, firstHit: 0 }); setElapsed(0); setStartAt(Date.now())
+    setModeOpen(false)
+    sfxScene()
+    toast('本课进度已重置，从头开始')
+  }, [curLesson])
 
-  // AI 助手提问
-  const askAI = async () => {
-    const q = aiQ.trim()
+  // —— 全屏沉浸模式 ——
+  const toggleFullscreen = () => {
+    sfxFunc()
+    if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}) }
+    else { document.documentElement.requestFullscreen().catch(() => toast('浏览器不支持全屏，请按 F11')) }
+  }
+
+  // —— 退出后自动闭环：错题本 / 智能复习计划 / 个人数据中心 ——
+  const collectCloseLoop = (lesson, wl, el, sc, ac) => {
+    if (!lesson) return
+    const now = Date.now()
+    // 1) 本次练习错题自动收录进错题本，标注错误原因
+    if (wl && wl.length) {
+      let wb = []
+      try { wb = JSON.parse(localStorage.getItem('rlearn_quest_wrongbook') || '[]') } catch (e) { wb = [] }
+      const seen = new Set(wb.map(x => x.id))
+      const fresh = wl.filter(w => !seen.has(w.id)).map(w => ({
+        id: w.id, lesson: lesson.id, qText: w.q.s.russian, zh: w.q.s.chinese || '',
+        user: w.user, correct: w.q.answer, reason: w.reason, ts: now,
+      }))
+      if (fresh.length) {
+        try { localStorage.setItem('rlearn_quest_wrongbook', JSON.stringify([...fresh, ...wb].slice(0, 300))) } catch (e) {}
+      }
+    }
+    // 2) 未掌握词汇/句子 → 智能复习计划（遗忘曲线：1/2/4/7/15 天递进）
+    if (wl && wl.length) {
+      let rv = []
+      try { rv = JSON.parse(localStorage.getItem('rlearn_quest_review') || '[]') } catch (e) { rv = [] }
+      const seen = new Set(rv.map(x => x.id))
+      const stages = [1, 2, 4, 7, 15]
+      const add = []
+      for (const w of wl) {
+        const s = w.q.s
+        if (!s || seen.has(s.id)) continue
+        add.push({ id: s.id, text: s.russian, zh: s.chinese || '', due: now + stages[0] * 86400000, stage: 0, ts: now })
+      }
+      if (add.length) {
+        try { localStorage.setItem('rlearn_quest_review', JSON.stringify([...add, ...rv].slice(0, 500))) } catch (e) {}
+      }
+    }
+    // 3) 学习时长 / 累计积分 / 正确率 → 个人数据中心
+    let st = { sessions: 0, time: 0, score: 0, answered: 0, correct: 0 }
+    try { st = JSON.parse(localStorage.getItem('rlearn_quest_stats') || 'null') || st } catch (e) {}
+    st.sessions = (st.sessions || 0) + 1
+    st.time = (st.time || 0) + (el || 0)
+    st.score = (st.score || 0) + (sc || 0)
+    st.answered = (st.answered || 0) + ((ac && ac.answered) || 0)
+    st.correct = (st.correct || 0) + ((ac && ac.correct) || 0)
+    try { localStorage.setItem('rlearn_quest_stats', JSON.stringify(st)) } catch (e) {}
+  }
+  const runCloseLoop = () => collectCloseLoop(curLesson, wrongList, elapsed, score, acc)
+
+  // —— 再来一组：同难度、同主题拓展练习题 ——
+  const extraGroup = async () => {
+    if (!curLesson || !curLevel) return
+    sfxFunc()
+    const pool = poolOf(curLevel)
+    const usedIds = new Set(curLesson.sentences.map(s => s.id))
+    const fresh = pool.filter(s => !usedIds.has(s.id))
+    if (fresh.length < 5) { toast('题库剩余句子不足，无法生成拓展组'); return }
+    const group = shuffle(fresh).slice(0, 10)
+    const lesson = { id: curLesson.id + '_X' + String(Date.now()).slice(-4), idx: curLesson.idx, sentences: group }
+    toast('已生成同难度拓展组，共 10 句')
+    startLesson(lesson, false)
+  }
+  // —— 下一课：直接进入下一章节 ——
+  const nextLesson = () => {
+    if (!curLesson || !lessons.length) return
+    sfxFunc()
+    const idx = lessons.findIndex(l => l.id === curLesson.id)
+    const nx = lessons[idx + 1]
+    if (!nx) { toast('已经是最后一课了'); return }
+    toast('进入下一课 ' + nx.id)
+    startLesson(nx, false)
+  }
+
+  // 本课全部句子（整句题的题号 → 句子），供「本课内容」快速跳转
+  const sentenceEntries = useMemo(() => {
+    const map = []
+    questions.forEach((q, i) => { if (q.full) map.push({ qi: i, s: q.s }) })
+    return map
+  }, [questions])
+
+  // —— 口语评测（speaking 模式）：录音 → 后端转写+AI 比对 → 评分 ——
+  const gradeOfPct = (pct) => pct >= 95 ? 'SSS' : pct >= 88 ? 'SS' : pct >= 80 ? 'S' : pct >= 68 ? 'A' : pct >= 50 ? 'B' : 'C'
+  const scoreColor = (pct) => pct >= 80 ? '#22C55E' : pct >= 60 ? '#F59E0B' : '#EF4444'
+
+  const runSpeakEval = async (b64) => {
+    if (!cur) return
+    setSpeakLoading(true); setSpeakResult(null)
+    try {
+      const r = await fetch((API_BASE || '') + '/api/recite-compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standard: cur.answer, audio: 'data:audio/webm;base64,' + b64 }),
+      })
+      const j = await r.json()
+      if (j.ok && j.result) {
+        const user = (j.result.user_text || '').trim()
+        const std = cur.answer.trim().split(/\s+/).map(norm)
+        const usr = user.split(/\s+/).map(norm).filter(Boolean)
+        let hit = 0
+        usr.forEach(w => { if (std.includes(w)) hit++ })
+        const pct = Math.max(0, Math.min(100, Math.round(100 * hit / Math.max(1, std.length))))
+        setSpeakResult({ text: user, pct, errors: j.result.errors || [], tip: j.result.overall_tip || '' })
+        if (pct >= 80 && !done) {
+          // 达标视为通过：计入成绩并展示答案卡
+          setDone(true); setCombo(c => { const nc = c + 1; setMaxCombo(m => Math.max(m, nc)); return nc })
+          setScore(s => s + 500); setPerfect(p => p + 1)
+          setAcc(a => ({ ...a, answered: a.answered + 1, correct: a.correct + 1, firstHit: a.firstHit + 1 }))
+          sfxPerfect()
+          const p = pickPraise(); setPraise(p); speak(p)
+          fetchAnalysis(cur)
+        }
+      } else {
+        setSpeakResult({ err: j.error || '评分失败，请重试' })
+      }
+    } catch (e) {
+      setSpeakResult({ err: '网络错误：' + e.message })
+    } finally {
+      setSpeakLoading(false)
+    }
+  }
+
+  const startRec = async () => {
+    if (recording) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr = new MediaRecorder(stream)
+      mediaRecRef.current = mr; recChunks.current = []
+      mr.ondataavailable = e => { if (e.data && e.data.size) recChunks.current.push(e.data) }
+      mr.onstop = async () => {
+        try { stream.getTracks().forEach(t => t.stop()) } catch (e) { /* 忽略 */ }
+        const blob = new Blob(recChunks.current, { type: 'audio/webm' })
+        setRecordingUrl(URL.createObjectURL(blob))
+        const b64 = await new Promise((res, rej) => {
+          const fr = new FileReader()
+          fr.onload = () => res(String(fr.result).split(',')[1] || '')
+          fr.onerror = rej
+          fr.readAsDataURL(blob)
+        })
+        if (b64) runSpeakEval(b64)
+      }
+      mr.start()
+      setRecording(true); setRecDur(0)
+      recTimer.current = setInterval(() => setRecDur(d => d + 1), 1000)
+    } catch (e) {
+      toast('无法访问麦克风：' + (e.message || '请检查浏览器权限'))
+    }
+  }
+  const stopRec = () => {
+    clearInterval(recTimer.current)
+    setRecording(false)
+    try { mediaRecRef.current?.stop() } catch (e) { /* 忽略 */ }
+  }
+
+  // —— 乱序模式（scramble）：点击词块重组句子 ——
+  const scrambleOrder = useMemo(() => {
+    if (mode !== 'scramble' || !cur) return []
+    return shuffle(cur.answer.trim().split(/\s+/).map(cleanWord).map(norm))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, cur?.id])
+  const pickWord = (i) => {
+    if (scramblePicked.includes(i)) return
+    const np = [...scramblePicked, i]
+    setScramblePicked(np)
+    setTyped(np.map(p => scrambleOrder[p]).join(' '))
+    setWrong(false)
+  }
+  const unpickWord = (i) => {
+    const np = scramblePicked.filter(p => p !== i)
+    setScramblePicked(np)
+    setTyped(np.map(p => scrambleOrder[p]).join(' '))
+    setWrong(false)
+  }
+
+  // —— AI 助手 ——
+  const askAI = async (q0) => {
+    const q = (q0 || aiQ).trim()
     if (!q || aiBusy) return
     setAiBusy(true)
     const thread = [...aiThread, { role: 'user', text: q }]
     setAiThread(thread); setAiQ('')
+    const ctx = cur ? ('当前练习的句子是："' + cur.s.russian + '"（中文：' + (cur.zh || cur.s.chinese) + '）\n') : ''
     try {
       const content = await callAI([
-        { role: 'system', content: '你是俄语老师，回答要简洁、准确，用中文讲解，可以给出例句。' },
+        { role: 'system', content: '你是俄语老师。回答要简洁、准确，用中文讲解，可以给出例句。注意：用户可能是在做题，不要直接给出完整答案，先引导思考，除非用户明确要求看答案。' },
         ...thread.map(t => ({ role: t.role === 'user' ? 'user' : 'assistant', content: t.text })),
       ])
       setAiThread([...thread, { role: 'assistant', text: content }])
     } catch (e) {
-      setAiThread([...thread, { role: 'assistant', text: '（AI 助手暂时无法回答，请稍后再试）' }])
+      setAiThread([...thread, { role: 'assistant', text: '（AI 老师暂时无法回答，请稍后再试）' }])
     } finally {
       setAiBusy(false)
     }
   }
 
-  const result = useMemo(() => {
-    const correct = acc.correct
-    const firstRate = acc.answered ? Math.round((acc.firstHit / acc.answered) * 100) : 0
-    const correctRate = acc.answered ? Math.round((correct / acc.answered) * 100) : 0
-    const avgSec = acc.answered ? +(acc.usedMs / acc.answered / 1000).toFixed(1) : 0
-    const rating = ratingOf({ correct, answered: Math.max(1, acc.answered) })
-    return { firstRate, correctRate, avgSec, rating }
-  }, [acc])
+  const quickAsk = (q) => askAI(q)
 
-  // ============ 渲染 ============
-  return (
-    <div className="quest-root">
-      <style>{GLOBAL_CSS}</style>
+  // 答对后针对性追问
+  const followUp = useMemo(() => {
+    if (!cur) return []
+    const w = cleanWord(cur.full ? cur.answer.split(/\s+/)[0] : cur.answer)
+    const wText = stripStress(w)
+    return [
+      '“' + wText + '”这个词在句子里起什么作用？',
+      '“' + wText + '”还有哪些常见用法？',
+    ]
+  }, [cur])
 
-      {/* —— 落地页 —— */}
-      {phase === 'landing' && (
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px 18px 60px' }}>
-          <style>{`
-            .lp-hero{text-align:center;padding:34px 0 26px}
-            .lp-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,215,94,.1);border:1px solid rgba(255,215,94,.35);color:#FFD75E;font-size:13px;padding:6px 16px;border-radius:999px}
-            .lp-badge .dot{width:6px;height:6px;border-radius:50%;background:#FFD75E;animation:lpPulse 1.6s infinite}
-            @keyframes lpPulse{0%,100%{opacity:1}50%{opacity:.3}}
-            .lp-hero h1{font-size:clamp(32px,6vw,52px);margin:20px 0 8px;font-weight:900;letter-spacing:-1px}
-            .lp-hero h1 em{font-style:normal;color:#FFD75E}
-            .lp-hero .sub{color:#B9AC9B;font-size:15px;margin:0 0 20px}
-            .lp-hero .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-            .lp-hero .cta button{font-size:16px;padding:12px 30px;border-radius:999px;cursor:pointer;transition:.18s}
-            .lp-hero .cta .btn-play{background:linear-gradient(135deg,#FFD75E,#F0B83C);color:#17130E;font-weight:800;border:none;box-shadow:0 8px 26px rgba(255,215,94,.25)}
-            .lp-hero .cta .btn-play:hover{transform:translateY(-2px)}
-            .lp-hero .cta .btn-free{background:transparent;border:1px solid rgba(255,255,255,.22);color:#F5EDE2}
-            .lp-hero .cta .btn-free:hover{border-color:#FFD75E}
-            .lp-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:34px 0 10px}
-            .lp-stat{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px 10px;text-align:center}
-            .lp-stat b{display:block;font-size:24px;color:#FFD75E;font-weight:800}
-            .lp-stat span{font-size:12px;color:#A99C8B}
-            .lp-title{font-size:22px;font-weight:800;text-align:center;margin:44px 0 4px}
-            .lp-title small{display:block;font-size:13px;color:#A99C8B;font-weight:400;margin-top:4px}
-            .lp-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:22px}
-            .lp-card{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:20px 18px;transition:.18s}
-            .lp-card:hover{transform:translateY(-3px);border-color:rgba(255,215,94,.4)}
-            .lp-card .ic{font-size:26px}
-            .lp-card h3{font-size:16px;margin:10px 0 6px;color:#FFD75E}
-            .lp-card p{font-size:13px;color:#B9AC9B;line-height:1.7;margin:0}
-            .lp-faq{margin-top:22px}
-            .lp-faq details{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 18px;margin-bottom:8px}
-            .lp-faq summary{cursor:pointer;font-size:14px;font-weight:600;color:#F5EDE2}
-            .lp-faq details p{font-size:13px;color:#B9AC9B;line-height:1.8;margin:10px 0 0}
-            .lp-foot{text-align:center;margin-top:40px}
-          `}</style>
-          <div className="lp-hero">
-            <span className="lp-badge"><span className="dot" />像玩游戏一样，用句子学俄语</span>
-            <h1>Русский <em>Квест</em></h1>
-            <p className="sub">谨慎体验 · 小心上瘾</p>
-            <div className="cta">
-              <button className="btn-play" onClick={() => { setLevel('A1'); setPhase('review') }}>先玩一把</button>
-              <button className="btn-free" onClick={() => navigate('/')}>免费体验</button>
-            </div>
-          </div>
-
-          <div className="lp-stats">
-            <div className="lp-stat"><b>1000+</b><span>俄语学习句子</span></div>
-            <div className="lp-stat"><b>4</b><span>难度等级 A1-B2</span></div>
-            <div className="lp-stat"><b>∞</b><span>练习次数</span></div>
-            <div className="lp-stat"><b>10′</b><span>每局约 10 分钟</span></div>
-          </div>
-
-          <div className="lp-title">为什么选 Русский Квест<small>像玩游戏一样，把俄语练出来</small></div>
-          <div className="lp-cards">
-            <div className="lp-card">
-              <div className="ic">🎮</div>
-              <h3>连对越多，越想继续</h3>
-              <p>把练习变成连击游戏——节奏感、即时反馈、Perfect 评分，你的好胜心会驱动你一遍又一遍地练下去。每一遍都是有效训练，但你只会觉得"再来一局"。</p>
-            </div>
-            <div className="lp-card">
-              <div className="ic">🧠</div>
-              <h3>忘了的词，它比你先想起来</h3>
-              <p>练完了什么时候该复习？系统按艾宾浩斯遗忘曲线自动算好每个知识点的最佳复习时间——你不用管，到时候它会来找你。</p>
-            </div>
-            <div className="lp-card">
-              <div className="ic">🧑‍🏫</div>
-              <h3>随时有一个俄语老师</h3>
-              <p>为什么这里用变格不用变位？与其硬猜或跳过，不如直接问 AI 俄语老师。带着真实问题去学，比被动听课高效得多。</p>
-            </div>
-          </div>
-
-          <div className="lp-title">常见问题</div>
-          <div className="lp-faq">
-            <details open>
-              <summary>和背单词 App 有什么不同？</summary>
-              <p>背单词解决的是"认识"，Русский Квест 解决的是"会用"。你可能认识 яблоко 这个词，但你能脱口而出 "Я люблю яблоки" 吗？从句子出发，把单词放回真实语境里练，学的是真正能用出来的表达。</p>
-            </details>
-            <details>
-              <summary>适合什么俄语水平？</summary>
-              <p>零基础到中高级都可以——A1 从单词连句练起，B2 直接挑战整句。不管你现在什么水平，都能找到适合自己的节奏。</p>
-            </details>
-            <details>
-              <summary>为什么用键盘打字？</summary>
-              <p>核心玩法是用键盘打字造句——在电脑前专注练习，手感更爽，效率也更高。需要沉浸式的学习方式，PC 端体验远好于手机。</p>
-            </details>
-          </div>
-
-          <div className="lp-foot">
-            <button className="quest-btn primary" style={{ fontSize: 16, padding: '13px 34px' }} onClick={() => { setLevel('A1'); setPhase('review') }}>立马玩起来</button>
-          </div>
-        </div>
-      )}
-
-      {/* —— 复习本 · 今日推荐 —— */}
-      {phase === 'review' && (
-        <div style={{ maxWidth: 620, margin: '0 auto', padding: '48px 16px 60px' }}>
-          <style>{`
-            .rv-head{display:flex;align-items:center;gap:10px;font-size:13px;color:#A99C8B;margin-bottom:26px}
-            .rv-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:26px 24px;position:relative}
-            .rv-close{position:absolute;top:14px;right:18px;background:transparent;border:none;color:#8C7F6E;font-size:20px;cursor:pointer}
-            .rv-card h2{font-size:22px;margin:0 0 18px}
-            .rv-card h2 small{font-size:12px;color:#A99C8B;font-weight:400;margin-left:8px}
-            .rv-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-            .rv-mode{border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px 8px;text-align:center;cursor:pointer;transition:.15s;background:transparent;color:#F5EDE2}
-            .rv-mode:hover{border-color:rgba(255,215,94,.5)}
-            .rv-mode.on{background:rgba(255,215,94,.12);border-color:#FFD75E;color:#FFD75E}
-            .rv-mode b{display:block;font-size:15px;margin-bottom:4px}
-            .rv-mode span{font-size:11px;color:#A99C8B}
-            .rv-levels{display:flex;gap:8px;margin:18px 0 4px;flex-wrap:wrap}
-            .rv-lv{border:1px solid rgba(255,255,255,.14);background:transparent;color:#C9BCAB;border-radius:999px;padding:6px 16px;font-size:13px;cursor:pointer}
-            .rv-lv.on{background:#FFD75E;color:#17130E;border-color:#FFD75E;font-weight:700}
-            .rv-count{display:flex;align-items:center;gap:12px;margin:18px 0 6px;color:#C9BCAB;font-size:13px}
-            .rv-count .stepper{display:flex;align-items:center;gap:10px;margin-left:auto}
-            .rv-count .stepper button{width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:transparent;color:#F5EDE2;font-size:16px;cursor:pointer}
-            .rv-count .stepper b{font-size:16px;color:#FFD75E;min-width:22px;text-align:center}
-            .rv-note{font-size:12px;color:#8C7F6E;line-height:1.7;margin:10px 0 20px;border-top:1px dashed rgba(255,255,255,.1);padding-top:12px}
-            .rv-start{width:100%;padding:13px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;border:none;background:linear-gradient(135deg,#FFD75E,#F0B83C);color:#17130E}
-          `}</style>
-          <div className="rv-head">
-            <button className="quest-btn" style={{ padding: '6px 14px', fontSize: 12 }} onClick={() => setPhase('landing')}>← 返回</button>
-            <span>今日推荐 · 系统为你挑选</span>
-          </div>
-          <div className="rv-card">
-            <button className="rv-close" onClick={() => navigate('/')}>×</button>
-            <h2>今日推荐<small>基于艾宾浩斯遗忘曲线</small></h2>
-            <div className="rv-modes">
-              <button className={'rv-mode' + (mode === 'cn2ru' ? ' on' : '')} onClick={() => setMode('cn2ru')}>
-                <b>中译英</b><span>看中文拼俄语</span>
-              </button>
-              <button className={'rv-mode' + (mode === 'listen' ? ' on' : '')} onClick={() => setMode('listen')}>
-                <b>听写</b><span>盲听拼句子</span>
-              </button>
-              <button className={'rv-mode' + (mode === 'speak' ? ' on' : '')} onClick={() => setMode('speak')}>
-                <b>口语</b><span>跟读练习</span>
-              </button>
-            </div>
-            <div className="rv-levels">
-              {LEVELS.map(lv => (
-                <button key={lv} className={'rv-lv' + (level === lv ? ' on' : '')} onClick={() => setLevel(lv)}>{lv}</button>
-              ))}
-            </div>
-            <div className="rv-count">
-              <span>练习数量</span>
-              <div className="stepper">
-                <button onClick={() => setCount(c => Math.max(5, c - 5))}>−</button>
-                <b>{count} 题</b>
-                <button onClick={() => setCount(c => Math.min(20, c + 5))}>+</button>
-                <button className="quest-btn" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setCount(10)}>全部</button>
+  // —— 渲染：课程选择（商城） ——
+  if (phase === 'courses' || phase === 'lessons') {
+    return (
+      <div style={styles.coursesRoot}>
+        {phase === 'courses' && (
+          <>
+            <div style={styles.mallHeader}>
+              <div style={styles.mallTitle}>课程包商城</div>
+              <div style={styles.tabsWrap}>
+                {['推荐', '零基础', '初级', '中级', '高级', '全部'].map((t, i) => (
+                  <span key={t} style={{ ...styles.tab, ...(i === 0 ? styles.tabOn : {}) }}>{t}</span>
+                ))}
+                <span style={styles.tabSearch}>🔍 大家都在搜：A1</span>
               </div>
             </div>
-            <div className="rv-note">
-              基于艾宾浩斯遗忘曲线，系统会智能安排复习时间，让你用更少的时间，记住更多内容。掌握的词会自动进入你的复习本。
+            <div style={styles.mallBody}>
+              <div style={styles.sectionTitle}>本周主编精选</div>
+              <div style={styles.courseGrid}>
+                {LEVELS.map((lv, i) => {
+                  const m = COURSE_META[lv]
+                  const pool = poolOf(lv)
+                  return (
+                    <div key={lv} style={styles.courseCard} onClick={() => { setCurLevel(lv); setLessons(lessonsByLevel[lv]); setPhase('lessons') }}>
+                      <div style={{ ...styles.courseCover, background: `linear-gradient(135deg, ${['#8B5CF6,#6D28D9', '#3B82F6,#1D4ED8', '#10B981,#047857', '#F59E0B,#B45309'][i]})` }}>
+                        <span style={styles.courseEmoji}>{m.emoji}</span>
+                        <span style={styles.courseTag}>{m.tag}</span>
+                      </div>
+                      <div style={styles.courseInfo}>
+                        <div style={styles.courseName}>{m.title} <span style={styles.courseNew}>({lv})</span></div>
+                        <div style={styles.courseSub}>{m.subtitle}</div>
+                        <div style={styles.courseMeta}>{pool.length} 句 · {lessonsByLevel[lv].length} 课 · 逐词闯关</div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={{ ...styles.sectionTitle, marginTop: 34 }}>精选跟读素材</div>
+              <div style={styles.courseGrid}>
+                {LEVELS.map((lv, i) => (
+                  <div key={'s' + lv} style={{ ...styles.courseCard, opacity: 0.55, cursor: 'default' }}>
+                    <div style={{ ...styles.courseCover, background: `linear-gradient(135deg, ${['#A78BFA,#7C3AED', '#93C5FD,#2563EB', '#6EE7B7,#059669', '#FCD34D,#D97706'][i]})` }}>
+                      <span style={styles.courseEmoji}>🎧</span>
+                      <span style={styles.courseTag}>视频跟读</span>
+                    </div>
+                    <div style={styles.courseInfo}>
+                      <div style={styles.courseName}>{COURSE_META[lv].title} · 跟读</div>
+                      <div style={styles.courseSub}>进入尚雯婕学习法使用</div>
+                      <div style={styles.courseMeta}>在分级课程中使用</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <button className="rv-start" onClick={() => startRound(level, mode, count)}>开始复习</button>
+          </>
+        )}
+        {phase === 'lessons' && (
+          <>
+            <div style={styles.mallHeader}>
+              <div style={{ ...styles.mallTitle, cursor: 'pointer' }} onClick={() => setPhase('courses')}>← 课程包商城</div>
+              <div style={styles.tabsWrap}>
+                <span style={styles.tab}>全部</span><span style={styles.tabOn}>正序</span>
+                <span style={styles.tabSearch}>📌 {COURSE_META[curLevel]?.title}（{curLevel}）</span>
+              </div>
+            </div>
+            <div style={styles.lessonHead}>
+              <div style={styles.lessonCover}>{COURSE_META[curLevel]?.emoji}</div>
+              <div style={{ flex: 1 }}>
+                <div style={styles.lessonTitle}>{COURSE_META[curLevel]?.title}</div>
+                <div style={styles.lessonDesc}>{COURSE_META[curLevel]?.desc}</div>
+                <div style={styles.lessonTags}>
+                  {['基础', '句型', '词汇', '口语'].map(t => <span key={t} style={styles.tagPill}>{t}</span>)}
+                </div>
+                <div style={styles.lessonStat}>0/{lessons.length} 课 · 0% 完成</div>
+              </div>
+            </div>
+            <div style={styles.outline}>
+              <div style={styles.outlineTitle}>大纲 · 共{lessons.length}课 全部免费试学</div>
+              {lessons.map((l, i) => {
+                let hasProg = false
+                try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
+                return (
+                  <div key={l.id} style={styles.lessonRow} onClick={() => startLesson(l, true)}>
+                    <div style={styles.lessonNo}>{String(l.idx).padStart(2, '0')}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={styles.lessonRowName}>L{String(l.idx).padStart(2, '0')} {l.sentences[0]?.source || COURSE_META[curLevel]?.title} #{l.idx}</div>
+                      <div style={styles.lessonRowDesc}>{l.sentences.slice(0, 2).map(s => stripStress(s.russian)).join(' · ')}…</div>
+                    </div>
+                    <span style={{ ...styles.trial, ...(hasProg ? { background: '#DCFCE7', color: '#15803D' } : {}) }}>{hasProg ? '▶ 继续学习' : '可试学'}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+        <button style={styles.backHome} onClick={() => navigate('/')}>← 返回首页</button>
+      </div>
+    )
+  }
+
+  // —— 渲染：阅读模式预习（全文通读 + 逐句跟读） ——
+  if (phase === 'preview') {
+    const Tp = THEMES[uiCfg.theme]
+    return (
+      <div style={{ ...styles.previewRoot, background: Tp.grad, color: Tp.text, fontFamily: FONT_STACK[uiCfg.font], ...(bgImageStyle || {}) }}>
+        <div style={{ ...styles.previewCard, background: Tp.panel, borderColor: Tp.border, boxShadow: Tp.shadow }}>
+          <div style={{ ...styles.previewTitle, color: Tp.textStrong }}>{COURSE_META[curLevel]?.title} · 阅读预习</div>
+          <div style={{ ...styles.previewSub, color: Tp.sub }}>先通读全文，点击 🔊 逐句跟读，熟悉后再进入打字答题</div>
+          <div style={styles.previewList}>
+            {curLesson?.sentences?.map((s, i) => (
+              <div key={i} style={{ ...styles.previewLine, borderColor: Tp.border, background: Tp.bgSoft }}>
+                <span style={{ ...styles.previewNo, color: Tp.sub }}>{i + 1}</span>
+                <div style={styles.previewBody}>
+                  <div style={{ ...styles.previewRu, color: Tp.textStrong }}>{s.russian}</div>
+                  <div style={{ ...styles.previewZh, color: Tp.sub }}>{s.chinese}</div>
+                </div>
+                <button style={{ ...styles.previewPlay, color: Tp.brand, borderColor: Tp.brand, background: Tp.brandSoft }} onClick={() => speak(s.russian)}>🔊</button>
+              </div>
+            ))}
+          </div>
+          <div style={styles.previewFoot}>
+            <button style={{ ...styles.previewBack, color: Tp.sub, borderColor: Tp.border, background: 'transparent' }} onClick={() => setPhase('lessons')}>返回课表</button>
+            <button style={{ ...styles.previewStart, background: Tp.brand, color: '#fff' }} onClick={() => setPhase('game')}>开始练习 →</button>
           </div>
         </div>
-      )}
+      </div>
+    )
+  }
 
-      {/* —— 答题 —— */}
-      {phase === 'play' && cur && (
-        <div style={{ maxWidth: 880, margin: '0 auto', padding: '16px 16px 48px' }}>
-          <style>{`
-            .pg-top{display:flex;align-items:center;gap:10px;font-size:13px;color:#A99C8B;padding:2px 0 8px}
-            .pg-top .lv{background:rgba(255,215,94,.12);border:1px solid rgba(255,215,94,.3);color:#FFD75E;padding:3px 10px;border-radius:999px;font-weight:700}
-            .pg-top .prog{flex:1;text-align:center}
-            .pg-top .bar{height:5px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:4px}
-            .pg-top .bar i{display:block;height:100%;background:linear-gradient(90deg,#FFD75E,#F0B83C);transition:width .3s}
-            .pg-top .score{color:#FFD75E;font-weight:800;font-size:18px}
-            .pg-top .time{font-variant-numeric:tabular-nums}
-            .pg-combo{text-align:center;font-size:32px;font-weight:900;color:#FFD75E;min-height:48px;margin:6px 0 0;text-shadow:0 0 20px rgba(255,215,94,.45)}
-            .pg-modehint{text-align:center;font-size:12px;color:#8C7F6E;margin:2px 0 4px}
-            .pg-zh{text-align:center;font-size:clamp(19px,3.4vw,26px);color:#F5EDE2;font-weight:700;margin:4px 0 4px}
-            .pg-stage{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:22px 18px;min-height:140px;margin-top:10px}
-            .pg-picked{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:46px;align-items:center;margin-bottom:12px}
-            .pg-picked.empty::after{content:'按正确顺序点下面的单词，或键盘输入后回车';color:#6E6355;font-size:13px}
-            .pg-word{border-radius:10px;padding:7px 14px;font-size:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);color:#F5EDE2;cursor:pointer;transition:.15s;user-select:none}
-            .pg-word:hover{border-color:#FFD75E}
-            .pg-word.picked{background:rgba(255,215,94,.15);border-color:#FFD75E;color:#FFD75E}
-            .pg-word.correct{border-color:#4ADE80;color:#4ADE80}
-            .pg-word.wrong{border-color:#E5484D;color:#FF6B6B;text-decoration:line-through}
-            .pg-inputrow{display:flex;gap:8px;justify-content:center;margin-top:6px}
-            .pg-inputrow input{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);color:#F5EDE2;border-radius:10px;padding:9px 14px;font-size:17px;outline:none;width:min(320px,62%)}
-            .pg-inputrow input:focus{border-color:#FFD75E}
-            .pg-inputrow button{background:rgba(255,215,94,.14);border:1px solid rgba(255,215,94,.4);color:#FFD75E;border-radius:10px;padding:9px 16px;font-size:14px;cursor:pointer}
-            .pg-done{text-align:center;font-size:16px;font-weight:700;margin:8px 0 0}
-            .pg-done.ok{color:#4ADE80}
-            .pg-done.bad{color:#FF8A5C}
-            .pg-analysis{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.07);border-radius:14px;margin-top:12px;padding:14px 16px}
-            .pg-analysis h4{font-size:12px;color:#8C7F6E;margin:0 0 10px;font-weight:600}
-            .pg-awords{display:flex;flex-wrap:wrap;gap:16px;justify-content:center}
-            .pg-aword{text-align:center;min-width:52px}
-            .pg-aword .w{font-size:18px;color:#F5EDE2;font-weight:600}
-            .pg-aword .ph{font-size:11px;color:#FFD75E;margin-top:1px}
-            .pg-aword .pos{font-size:11px;color:#7ED6A5;margin-top:2px}
-            .pg-aword .zh{font-size:12px;color:#B9AC9B;margin-top:2px}
-            .pg-azh{text-align:center;color:#F5EDE2;font-size:15px;margin-top:12px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.1)}
-            .pg-gram{background:linear-gradient(135deg,rgba(126,214,165,.08),transparent);border:1px solid rgba(126,214,165,.2);border-radius:12px;margin-top:10px;padding:12px 14px;font-size:13px;color:#C9EAD9;line-height:1.7}
-            .pg-gram b{color:#7ED6A5}
-            .pg-hints{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px}
-            .pg-actions{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap}
-            .pg-ai-side{position:fixed;right:0;top:0;bottom:0;width:min(360px,92vw);background:#171310;border-left:1px solid rgba(255,255,255,.1);z-index:99;display:flex;flex-direction:column;box-shadow:-10px 0 40px rgba(0,0,0,.4)}
-            .pg-ai-side h3{padding:14px 16px;margin:0;font-size:15px;color:#FFD75E;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center}
-            .pg-ai-msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
-            .pg-ai-bubble{max-width:85%;padding:9px 12px;border-radius:14px;font-size:13px;line-height:1.7;white-space:pre-wrap}
-            .pg-ai-bubble.user{background:rgba(255,215,94,.15);color:#FFD75E;align-self:flex-end;border-bottom-right-radius:4px}
-            .pg-ai-bubble.ai{background:rgba(255,255,255,.07);color:#E8DFD2;align-self:flex-start;border-bottom-left-radius:4px}
-            .pg-ai-in{display:flex;gap:8px;padding:10px;border-top:1px solid rgba(255,255,255,.08)}
-            .pg-ai-in input{flex:1;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.14);color:#F5EDE2;border-radius:10px;padding:9px 12px;font-size:13px;outline:none}
-            .pg-ai-in button{background:#FFD75E;color:#17130E;border:none;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer}
-          `}</style>
+  // —— 渲染：加载页 ——
+  if (phase === 'loading') {
+    return (
+      <div style={styles.loadRoot}>
+        <div style={styles.loadLogo}>🇷🇺</div>
+        <div style={styles.loadText}>LOADING</div>
+        <div style={styles.loadBar}><div style={{ ...styles.loadFill, width: loadPct + '%' }} /></div>
+        <div style={styles.loadPct}>{loadPct}%</div>
+        <div style={styles.loadTip}>正在准备题目与逐词解析…</div>
+      </div>
+    )
+  }
 
-          <div className="pg-top">
-            <span className="lv">{level}</span>
-            <span>{mode === 'cn2ru' ? '中译英' : mode === 'listen' ? '听写' : '口语'} · 第 {qi + 1} 题 ({qi + (done ? 1 : 0)}/{round.length})</span>
-            <div className="prog"><div className="bar"><i style={{ width: Math.round(((qi + (done ? 1 : 0)) / round.length) * 100) + '%' }} /></div></div>
-            <span className="score">{score.toLocaleString()}</span>
-            <span className="time">{fmtTime(elapsed)}</span>
+  // —— 渲染：结算 ——
+  if (phase === 'result') {
+    const rt = ratingOf(acc)
+    const pct = Math.round(100 * acc.correct / Math.max(1, acc.answered))
+    const wrongN = Math.max(0, acc.answered - acc.correct)
+    const firstPct = Math.round(100 * acc.firstHit / Math.max(1, acc.answered))
+    const errPct = 100 - pct
+    const ring = (label, val, color) => {
+      const r = 42, C = 2 * Math.PI * r
+      const off = C * (1 - Math.max(0, Math.min(100, val)) / 100)
+      return (
+        <div style={styles.ringItem}>
+          <svg width="118" height="118" viewBox="0 0 118 118">
+            <circle cx="59" cy="59" r={r} fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="11" />
+            <circle cx="59" cy="59" r={r} fill="none" stroke={color} strokeWidth="11" strokeLinecap="round"
+              strokeDasharray={C} strokeDashoffset={off} transform="rotate(-90 59 59)"
+              style={{ transition: 'stroke-dashoffset 1s ease' }} />
+            <text x="59" y="56" textAnchor="middle" fill="#F5EDE2" fontSize="21" fontWeight="800">{val}%</text>
+            <text x="59" y="79" textAnchor="middle" fill="#8B7FA3" fontSize="11.5">{label}</text>
+          </svg>
+        </div>
+      )
+    }
+    return (
+      <div style={styles.resultRoot}>
+        <div style={styles.resultCard}>
+          <div style={{ ...styles.ratingBadge, color: rt.color }}>{rt.label}</div>
+          <div style={styles.resultTitle}>课程完成！</div>
+          <div style={styles.resultSub}>{curLesson?.sentences?.length || 0} 个句子 · {questions.length} 道题</div>
+          <div style={styles.resultScore}>{fmtScore(score)}</div>
+          <div style={styles.resultScoreLabel}>总得分</div>
+          <div style={styles.resultStats}>
+            <div style={styles.stat}><div style={styles.statNum}>{acc.answered}</div><div style={styles.statLabel}>答题总数</div></div>
+            <div style={styles.stat}><div style={{ ...styles.statNum, color: '#4ADE80' }}>{acc.correct}</div><div style={styles.statLabel}>正确</div></div>
+            <div style={styles.stat}><div style={{ ...styles.statNum, color: '#F87171' }}>{wrongN}</div><div style={styles.statLabel}>错误</div></div>
+            <div style={styles.stat}><div style={styles.statNum}>{maxCombo}</div><div style={styles.statLabel}>最高连击</div></div>
+            <div style={styles.stat}><div style={styles.statNum}>{fmtTime(elapsed)}</div><div style={styles.statLabel}>总用时</div></div>
           </div>
-
-          {combo >= 2 && <div className="pg-combo">Perfect × {combo}</div>}
-          <div className="pg-modehint">{mode === 'cn2ru' ? '用键盘输入俄语，按回车键确认' : mode === 'listen' ? '先听发音，再打出你听到的句子' : '听发音跟读，掌握语感'}</div>
-          <div className="pg-zh">{mode === 'listen' && !done ? '（先听发音，再写句子）' : (cur.chinese || '')}</div>
-
-          <div className="pg-stage">
-            <div className={'pg-picked' + (picked.length === 0 ? ' empty' : '')}>
-              {picked.map((w, i) => (
-                <span key={i} className={'pg-word picked' + (done ? (okSeq ? ' correct' : (norm(cleanWord(w)) === norm(cleanWord(words[i])) ? ' correct' : ' wrong')) : '')} onClick={undo}>{stripStress(w)}</span>
+          <div style={styles.ringRow}>
+            {ring('准确率', pct, '#4ADE80')}
+            {ring('一次答对率', firstPct, '#FFD75E')}
+            {ring('错误率', errPct, '#F87171')}
+          </div>
+          <div style={styles.resultTip}>{rt.label === 'SSS' ? '完美！你已经完全掌握这一课！' : rt.label === 'SS' ? '非常棒！继续保持！' : rt.label === 'S' ? '很好！再练一次会更稳。' : '继续加油，多练几遍就会了！'}</div>
+          <div style={styles.resultBtns}>
+            <button style={styles.btnGhost} onClick={() => setResultWrong(true)}>查看错题</button>
+            <button style={styles.btnGhost} onClick={() => startLesson(curLesson, false)}>再来一次</button>
+            <button style={styles.btnGhost} onClick={extraGroup}>再来一组</button>
+            <button style={styles.btnGhost} onClick={nextLesson}>下一课</button>
+            <button style={styles.btnPrimary} onClick={() => { setPhase('lessons'); setResultWrong(false) }}>返回</button>
+          </div>
+        </div>
+        {resultWrong && (
+          <div style={styles.wrongMask} onClick={() => setResultWrong(false)}>
+            <div style={styles.wrongPanel} onClick={e => e.stopPropagation()}>
+              <div style={styles.wrongTitle}>本次错题 · {wrongList.length} 道</div>
+              {wrongList.length === 0 ? (
+                <div style={styles.wrongNo}>全对！本次练习没有错题 🎉</div>
+              ) : wrongList.map(w => (
+                <div key={w.id} style={styles.wrongRow}>
+                  <div style={styles.wrongQ}>{w.q.s.russian}</div>
+                  <div style={styles.wrongZh}>{w.q.s.chinese || ''}</div>
+                  <div style={styles.wrongAns}>你的输入：<span style={{ color: '#F87171' }}>{w.user}</span></div>
+                  <div style={styles.wrongAns}>正确答案：<span style={{ color: '#4ADE80' }}>{w.q.answer}</span></div>
+                  <div style={styles.wrongReason}>错误原因：{w.reason}</div>
+                </div>
               ))}
+              <button style={{ ...styles.btnPrimary, marginTop: 16 }} onClick={() => setResultWrong(false)}>关闭</button>
             </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
-            {!done ? (
-              <>
-                <div className="pg-inputrow">
-                  <input
-                    ref={inputRef} placeholder="输入单词后回车（或点击下方词块）" autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        const v = e.target.value.trim()
-                        if (!v) return
-                        const hit = shuffled.find(w => norm(cleanWord(w)) === norm(v))
-                        if (hit) { pick(hit); e.target.value = '' }
-                        else toast('没找到这个词，试试下方词块')
-                      }
-                    }}
-                  />
-                  <button onClick={() => inputRef.current?.focus()}>输入</button>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 14 }}>
-                  {shuffled.map((w, i) => (
-                    <span key={i} className="pg-word" onClick={() => pick(w)}>{stripStress(w)}</span>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className={'pg-done ' + (okSeq ? 'ok' : 'bad')}>
-                  {okSeq ? '✓ Perfect！完全正确' : '✗ 正确答案：' + cur.russian}
-                </div>
-                {(analysis && analysis.words) ? (
-                  <div className="pg-analysis">
-                    <h4>单词拆解</h4>
-                    <div className="pg-awords">
-                      {analysis.words.map((aw, i) => (
-                        <div key={i} className="pg-aword">
-                          <div className="w">{stripStress(aw.word)}</div>
-                          <div className="ph">{aw.stress || aw.word}</div>
-                          <div className="pos">{aw.pos || ''}</div>
-                          <div className="zh">{aw.zh || ''}</div>
+  // —— 渲染：答题页 ——
+  if (!cur) return null
+  const T = THEMES[uiCfg.theme]
+  const expectChunks = cur.answer.trim().split(/\s+/).map(cleanWord).map(normFor)
+  // 输入框三样式（动态宽度默认 / 固定等宽 / 极简横线）+ 状态色（乱序模式词块用）
+  const chipBoxStyle = (i, ok) => {
+    const base = { ...styles.wordChip, fontSize: S_WORD[uiCfg.sSize], transition: 'all .45s ease' }
+    if (uiCfg.inputStyle === 'fixed') { base.minWidth = 96; base.display = 'inline-flex'; base.alignItems = 'center'; base.justifyContent = 'center'; base.flex = '0 0 96px' }
+    if (uiCfg.inputStyle === 'underline') { base.background = 'transparent'; base.border = 'none'; base.borderBottom = '2px solid ' + T.border; base.borderRadius = 0; base.padding = '4px 6px 2px' }
+    if (done) Object.assign(base, { color: T.sub, borderColor: T.ok, background: uiCfg.inputStyle === 'underline' ? 'transparent' : T.okSoft })
+    else if (wrong && !ok) Object.assign(base, { color: T.err, borderColor: T.err, background: uiCfg.inputStyle === 'underline' ? 'transparent' : T.errSoft })
+    else if (ok) Object.assign(base, { color: T.brand, borderColor: T.brand, background: uiCfg.inputStyle === 'underline' ? 'transparent' : T.brandSoft })
+    else Object.assign(base, { color: T.textStrong, borderColor: T.border, background: uiCfg.inputStyle === 'underline' ? 'transparent' : '#FFFFFF' })
+    return base
+  }
+
+  return (
+    <div style={{ ...styles.gameRoot, fontFamily: FONT_STACK[uiCfg.font], background: T.grad, color: T.text, ...(bgImageStyle || {}) }}>
+      <style>{`
+        @keyframes ruqShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
+        @keyframes ruqGrad { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        @keyframes ruqFadeUp { from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:translateY(0)} }
+        @keyframes ruqPop { 0%{transform:scale(.92); opacity:0} 60%{transform:scale(1.03)} 100%{transform:scale(1); opacity:1} }
+        @keyframes ruqPulse { 0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.65; transform:scale(.97)} }
+        @keyframes ruqComboPop { 0%{transform:translateX(-50%) scale(1.5); opacity:0} 25%{transform:translateX(-50%) scale(1.04); opacity:1} 100%{transform:translateX(-50%) scale(1) translateY(-46px); opacity:0} }
+        @keyframes ruqFlash { 0%{opacity:0} 30%{opacity:1} 100%{opacity:0} }
+        @keyframes ruqBreak { 0%{opacity:.85; transform:translateX(-50%) scale(1)} 100%{opacity:0; transform:translateX(-50%) scale(.92) translateY(14px)} }
+        @keyframes ruqFadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+      `}</style>
+      {/* 顶部工具栏：默认收起仅显示进度信息；hover 或点击 ⚙ 展开完整功能栏（左右分布，不遮挡中央答题区） */}
+      <div
+        style={{ ...styles.topBar, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderBottom: '1px solid ' + T.border, ...(aiOpen ? { paddingRight: 320 } : {}) }}
+        onMouseEnter={() => setTopExpanded(true)}
+        onMouseLeave={() => setTopExpanded(false)}
+      >
+        <div style={styles.topLeft}>
+          <span style={{ ...styles.topCourse, color: T.text }}>{curLesson?.sentences[0]?.source || COURSE_META[curLevel]?.title}</span>
+          {topExpanded && (
+            <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} onClick={() => { sfxFunc(); setContentOpen(true) }} title="本课内容：查看全部句子并快速跳转">📖 本课内容</button>
+          )}
+        </div>
+        <div style={styles.topRight}>
+          <div style={{ ...styles.progressTrack, background: T.bgSoft, borderColor: T.border }}>
+            <div style={{ ...styles.progressFill, width: Math.max(3, Math.round(100 * (qi + 1) / questions.length)) + '%', background: T.brand }} />
+          </div>
+          <span style={styles.topPart}>{uiCfg.showProgress !== false ? (qi + 1) + '/' + questions.length : ''}</span>
+          <span style={styles.topTime}>{fmtTime(elapsed)}</span>
+          {uiCfg.showScore !== false && <span style={{ ...styles.topScore, fontSize: AUX_SIZE[uiCfg.qSize] + 2, color: T.brand }}>{fmtScore(score)}</span>}
+          <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title={topExpanded ? '收起功能栏' : '展开功能栏'} onClick={() => { sfxFunc(); setTopExpanded(o => !o) }}>{topExpanded ? '✕' : '⚙'}</button>
+          {topExpanded && (
+            <>
+              <div style={styles.modeWrap}>
+                <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} onClick={() => setModeOpen(o => !o)} title="切换练习模式（保留学习进度）">{MODES.find(m => m.key === mode)?.name || '模式'}</button>
+                {modeOpen && (
+                  <div style={{ ...styles.modePop, background: T.panel, borderColor: T.border, boxShadow: T.shadow }}>
+                    {MODES.map(m => (
+                      <div key={m.key} style={{ ...styles.modePopItem, color: T.text, ...(mode === m.key ? { background: T.brandSoft, color: T.brand, fontWeight: 700 } : {}) }} onClick={() => { if (m.key !== mode) { setMode(m.key); try { localStorage.setItem('rlearn_quest_mode', m.key) } catch (e) { /* 忽略 */ } toast('已切换：' + m.name + '（进度已保留）') } setModeOpen(false) }}>
+                        {m.name}
+                        {m.key === mode && ' ✓'}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title={paused ? '继续练习' : '暂停练习（计时停止）'} onClick={togglePause}>{paused ? '▶' : '⏸'}</button>
+              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="重置本课进度，从头开始" onClick={resetLesson}>↺ 重置</button>
+              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="全屏沉浸练习" onClick={toggleFullscreen}>⛶ 全屏</button>
+              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="外观设置：字体/字号/配色/输入框/答案/词性/朗读" onClick={() => setUiOpen(o => !o)}>Aa</button>
+              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="设置：快捷键/播放/听力/外观等（Ctrl+, 快捷开关）" onClick={() => { sfxFunc(); setShowSettings(true) }}>⚙ 设置</button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={{ ...styles.gameMain, ...(aiOpen ? {} : { paddingRight: 0 }) }}>
+        {/* 中央题目区（切题时极简淡入，无闪烁） */}
+        <div key={qi} style={{ ...styles.center, animation: 'ruqFadeIn .3s ease' }} onClick={() => inputRef.current?.focus()}>
+          {done && (
+            <div style={{ ...styles.praise, ...(combo >= 2 ? { background: 'linear-gradient(90deg,' + T.brand + ',' + T.ok + ',' + T.brand + ')', backgroundSize: '200% auto', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', animation: 'ruqGrad 1.6s linear infinite' } : { color: T.ok }) }}>{praise}</div>
+          )}
+          {!done && (mode === 'dictation'
+            ? <div style={{ ...styles.dictHint, fontSize: Q_SIZE[uiCfg.qSize], color: T.brand }}>🎧 听写 · 请听音拼写</div>
+            : <div style={{ ...styles.zhText, fontSize: Q_SIZE[uiCfg.qSize], color: T.text, fontWeight: 500 }}>{cur.zh}</div>)}
+          {done ? (
+            /* 答案显示：浮层模式 / 内嵌模式 */
+            uiCfg.answerMode === 'float' ? (
+              <div style={styles.answerMask}>
+                <div style={{ ...styles.answerCard, background: T.panel, boxShadow: T.shadow, color: T.text, animation: 'ruqPop .3s ease' }}>
+                  {analysis?.roles ? (
+                    <div style={styles.rolesRow}>
+                      {analysis.roles.map((r, ri) => (
+                        <div key={ri} style={styles.roleCol}>
+                          <div style={{ ...styles.roleName, color: T.brand, background: T.brandSoft }}>{r.role}</div>
+                          {r.words.map((w, wi) => (
+                            <div key={wi} style={styles.roleWordWrap}>
+                              <div style={{ ...styles.roleWord, fontSize: S_ROLE[uiCfg.sSize], color: T.textStrong }}>{stripStress(w.word)}</div>
+                              <div style={{ ...styles.roleStress, fontSize: AUX_SIZE[uiCfg.qSize] - 1, color: T.sub }}>{w.stress || w.word}</div>
+                              {uiCfg.posMark ? (
+                                <div style={{ ...styles.rolePos, fontSize: AUX_SIZE[uiCfg.qSize], color: posColor(w.pos), borderBottom: '2px solid ' + posColor(w.pos) }}>{w.pos}</div>
+                              ) : <div style={styles.rolePosHidden} />}
+                              <div style={{ ...styles.roleZh, fontSize: AUX_SIZE[uiCfg.qSize] + 2, color: T.text }}>{w.zh}</div>
+                            </div>
+                          ))}
                         </div>
                       ))}
                     </div>
-                    <div className="pg-azh">{analysis.zh || cur.chinese}</div>
-                  </div>
-                ) : (analysing ? <div className="pg-done">AI 拆解生成中…</div> : (
-                  <div className="pg-analysis">
-                    <h4>单词拆解</h4>
-                    <div className="pg-awords">
-                      {words.map((w, i) => (
-                        <div key={i} className="pg-aword"><div className="w">{stripStress(w)}</div></div>
-                      ))}
+                  ) : analysis?.err ? (
+                    <div style={styles.answerFallback}>
+                      <div style={{ ...styles.answerBig, fontSize: S_BIG[uiCfg.sSize], color: T.textStrong }}>{cur.answer}</div>
+                      <div style={{ ...styles.answerZh, fontSize: AUX_SIZE[uiCfg.qSize] + 5, color: T.sub }}>{cur.zh}</div>
+                      <div style={{ ...styles.answerErr, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub }}>AI 拆解失败，点击 <span style={{ ...styles.retry, color: T.brand }} onClick={() => fetchAnalysis(cur)}>重试</span></div>
                     </div>
-                    <div className="pg-azh">{cur.chinese}</div>
+                  ) : (
+                    <div style={styles.answerFallback}>
+                      <div style={{ ...styles.answerBig, fontSize: S_BIG[uiCfg.sSize], color: T.textStrong }}>{cur.answer}</div>
+                      <div style={{ ...styles.answerZh, fontSize: AUX_SIZE[uiCfg.qSize] + 5, color: T.sub }}>{cur.zh}</div>
+                      {analysing && <div style={{ ...styles.answerErr, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub }}>正在解析…</div>}
+                    </div>
+                  )}
+                  <div style={{ ...styles.answerOk, color: T.ok }}>√ Perfect! 完全正确</div>
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 22 }}>
+                    {qi > 0 && <button style={styles.btnGhost} onClick={prevQ}>← 上一题</button>}
+                    <button style={{ ...styles.btnPrimary, padding: '10px 28px' }} onClick={nextQ}>{qi + 1 >= questions.length ? '完成本课 →' : '下一题 →'}</button>
                   </div>
-                ))}
-                {grammarTip && <div className="pg-gram"><b>语法点：</b>{grammarTip}</div>}
-              </>
-            )}
-          </div>
-
-          <div className="pg-actions">
-            {!done ? (
-              <>
-                <button className="quest-btn gold" onClick={() => playSound(cur.russian)}>🔊 播放发音</button>
-                <button className="quest-btn" onClick={undo}>撤销</button>
-                <button className="quest-btn" onClick={skip}>跳过</button>
-                <button className="quest-btn" onClick={() => { setAiOpen(true); setAiThread([{ role: 'assistant', text: '我是你的俄语 AI 老师，可以随时问我语法问题，比如：这里为什么用变格？' }]) }}>🧑‍🏫 AI 老师</button>
-              </>
+                </div>
+              </div>
             ) : (
-              <>
-                <button className="quest-btn gold" onClick={() => playSound(cur.russian)}>🔊 再听一遍</button>
-                <button className="quest-btn" onClick={toggleMastered}>{mastered.includes(cur.id + '_' + qi) ? '✓ 已掌握' : '掌握'}</button>
-                <button className="quest-btn" onClick={addVocab}>{vocabNote.includes(cur.id + '_' + qi) ? '✓ 已加生词' : '生词'}</button>
-                <button className="quest-btn primary" onClick={next}>{qi + 1 >= round.length ? '查看结算 →' : '下一题'}</button>
-              </>
-            )}
-          </div>
-
-          <div className="pg-hints">
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#8C7F6E' }}><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">Enter</kbd>播放发音</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#8C7F6E' }}><kbd className="kbd">Enter</kbd>下一题</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#8C7F6E' }}><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">;</kbd>再来一次</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#8C7F6E' }}><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">M</kbd>掌握</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#8C7F6E' }}><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">N</kbd>生词</span>
-          </div>
-
-          {aiOpen && (
-            <div className="pg-ai-side">
-              <h3>句乐部俄语智能助手 <button className="quest-btn" style={{ padding: '3px 10px', fontSize: 11 }} onClick={() => setAiOpen(false)}>收起</button></h3>
-              <div className="pg-ai-msgs">
-                {aiThread.map((t, i) => (
-                  <div key={i} className={'pg-ai-bubble ' + t.role}>{t.text}</div>
+              /* 内嵌模式：正确答案直接显示在基线上 + 紧凑语法行 */
+              <div style={{ ...styles.inlineWrap, animation: 'ruqFadeUp .35s ease' }}>
+                <div style={styles.wordRow}>
+                  {expectChunks.map((ec, i) => (
+                    <span key={i} style={{ ...chipBoxStyle(i, true), color: T.sub, borderColor: T.ok, background: 'transparent', transition: 'all .5s ease' }}>{ec}</span>
+                  ))}
+                </div>
+                <div style={{ ...styles.inlineMeta, color: T.sub, fontSize: AUX_SIZE[uiCfg.qSize] }}>
+                  {analysis?.roles ? analysis.roles.map((r, ri) => (
+                    <span key={ri} style={styles.inlineRole}>
+                      <b style={{ color: T.brand }}>{r.role}</b>
+                      {r.words.map((w, wi) => (
+                        <span key={wi} style={styles.inlineWord}>
+                          {stripStress(w.word)}
+                          {uiCfg.posMark && <i style={{ borderBottom: '2px solid ' + posColor(w.pos), ...styles.inlinePos, color: posColor(w.pos) }}>{w.pos}</i>}
+                          <em style={styles.inlineZh}>{w.zh}</em>
+                        </span>
+                      ))}
+                    </span>
+                  )) : <span>{cur.answer} · {cur.zh}</span>}
+                </div>
+              </div>
+            )
+          ) : mode === 'speaking' ? (
+            /* 口语评测模式：先听原句 → 跟读录音 → AI 实时评分 */
+            <div style={styles.speakWrap}>
+              <div style={{ ...styles.speakTip, fontSize: S_WORD[uiCfg.sSize], color: T.text }}>先听标准发音，再跟读录音</div>
+              <div style={styles.speakBtns}>
+                <button style={{ ...styles.speakBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} onClick={playCur}>🔊 听原句</button>
+                {recording
+                  ? <button style={{ ...styles.speakBtnRec, background: T.err }} onClick={stopRec}>⏹ 停止录音 {recDur}s</button>
+                  : <button style={{ ...styles.speakBtnMain, background: T.brand, color: '#fff' }} onClick={startRec}>🎙 开始录音</button>}
+              </div>
+              {speakLoading && <div style={{ ...styles.speakLoading, color: T.sub }}>AI 评测中…</div>}
+              {speakResult && (
+                <div style={{ ...styles.speakCard, background: T.panel, borderColor: T.border, boxShadow: T.shadow }}>
+                  {speakResult.err ? (
+                    <div style={{ ...styles.speakErr, color: T.err }}>{speakResult.err}</div>
+                  ) : (
+                    <>
+                      <div style={styles.speakScoreRow}>
+                        <span style={{ fontSize: 44, fontWeight: 800, color: scoreColor(speakResult.pct) }}>{speakResult.pct}</span>
+                        <span style={{ color: T.sub }}>/100</span>
+                        <span style={{ ...styles.speakGrade, color: scoreColor(speakResult.pct) }}>{gradeOfPct(speakResult.pct)}</span>
+                      </div>
+                      <div style={{ ...styles.speakText, color: T.textStrong }}>识别：{speakResult.text || '（未识别到内容，请再试一次）'}</div>
+                      {speakResult.errors && speakResult.errors.length > 0 && (
+                        <div style={{ ...styles.speakErrors, color: T.err }}>
+                          {speakResult.errors.map((e, i) => (
+                            <div key={i}>✗ {e.original || e.user} → {e.correct_reading || e.suggestion || ''}</div>
+                          ))}
+                        </div>
+                      )}
+                      {speakResult.tip && <div style={{ ...styles.speakTip2, color: T.sub }}>{speakResult.tip}</div>}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : mode === 'scramble' ? (
+            /* 乱序模式：点击词块按顺序重组句子（也可直接键盘输入） */
+            <div style={styles.scrambleWrap}>
+              <input ref={inputRef} readOnly tabIndex={-1} style={styles.scrambleHiddenInput} onKeyDown={onInputKey} autoFocus aria-hidden="true" />
+              <div style={{ ...styles.wordRow, ...(wrong ? { animation: 'ruqShake .4s ease' } : {}) }}>
+                {scramblePicked.map((pi, idx) => (
+                  <span key={idx} style={chipBoxStyle(idx, true)} onClick={() => unpickWord(pi)} title="点击撤销">
+                    {scrambleOrder[pi]}
+                  </span>
                 ))}
-                {aiBusy && <div className="pg-ai-bubble ai">思考中…</div>}
+                {scramblePicked.length === 0 && <span style={{ ...styles.wordPlaceholder, color: T.sub, fontSize: S_WORD[uiCfg.sSize] }}>点击下方单词按顺序组成句子</span>}
               </div>
-              <div className="pg-ai-in">
-                <input value={aiQ} placeholder="问问语法：为什么用这个变格？" onChange={e => setAiQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && askAI()} />
-                <button onClick={askAI}>发送</button>
+              <div style={styles.scramblePool}>
+                {scrambleOrder.map((w, i) => scramblePicked.includes(i) ? null : (
+                  <span key={i} style={{ ...styles.scrambleChip, color: T.textStrong, borderColor: T.border, background: T.bgSoft }} onClick={() => pickWord(i)}>{w}</span>
+                ))}
+                {scramblePicked.length === scrambleOrder.length && scrambleOrder.length > 0 && <div style={{ ...styles.scrambleDone, color: T.sub }}>句子已拼好，按 Enter 提交</div>}
               </div>
             </div>
+          ) : (
+            <>
+              {/* 官方连词成句：单词下划线槽（每词一个底部横线槽，光标所在词品牌紫，错误词红色抖动） */}
+              <div ref={inputRowRef} style={{ ...styles.slotRow, ...(wrong && fixMode === 'input' ? { animation: 'ruqShake .4s ease' } : {}) }}>
+                {expectChunks.map((text, i) => {
+                  const userInput = typed.split(' ')[i] !== undefined ? typed.split(' ')[i] : ''
+                  const editing = fixMode === 'fix_input' && i === editIdx
+                  const incorrect = !editing && slotState.incorrect.includes(i)
+                  const active = fixMode === 'input' && slotState.active === i
+                  const slotW = uiCfg.inputStyle === 'fixed' ? 96 : Math.max(2.4, (text?.length || 3) + 0.8)
+                  const borderC = incorrect ? T.err : (active ? T.brand : T.border)
+                  const slotBox = { ...styles.slotBox, minWidth: slotW + 'ch', borderBottom: '2px solid ' + borderC, fontSize: S_WORD[uiCfg.sSize], color: T.textStrong }
+                  if (incorrect && fixMode !== 'input') slotBox.animation = 'ruqShake .3s ease'
+                  return (
+                    <div key={i} style={slotBox}>
+                      {[...userInput].map((ch, ci) => {
+                        const good = ci < text.length && ch.toLowerCase() === text[ci]
+                        const col = (incorrect && !editing) ? T.err : (good ? T.brand : T.err)
+                        return <span key={ci} style={{ color: col, fontWeight: 600 }}>{ch}</span>
+                      })}
+                      {userInput === '' && <span style={{ color: 'transparent' }}>·</span>}
+                    </div>
+                  )
+                })}
+                {/* 官方透明输入框：覆盖整个词行，点击/光标定位激活词 */}
+                <input
+                  ref={inputRef}
+                  value={typed}
+                  onChange={onInputChange}
+                  onKeyDown={onInputKey}
+                  onSelect={e => { const pos = e.target.selectionStart ?? typed.length; setSlotState(s => ({ ...s, active: activeFromCursor(typed, pos) })) }}
+                  onFocus={() => { const pos = inputRef.current?.selectionStart ?? typed.length; setSlotState(s => ({ ...s, active: activeFromCursor(typed, pos) })) }}
+                  style={styles.slotInput}
+                  autoComplete="off" autoCorrect="off" spellCheck={false}
+                />
+              </div>
+              <div style={{ ...styles.inputHint, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub }}>
+                {fixMode === 'fix' ? '部分单词有误 — 直接输入字母修改第一个红色单词' : fixMode === 'fix_input' ? '正在修改错误单词 · 空格跳到下一个 · Enter 提交' : '直接在下方输入 · 空格分隔单词 · Enter 提交'}
+              </div>
+              {wrong && fixMode === 'input' && <div style={{ ...styles.wrongTip, fontSize: AUX_SIZE[uiCfg.qSize] + 3, color: T.err }}>再试一次</div>}
+              {stuckOpen && (
+                <div style={{ ...styles.stuckBox, background: T.brandSoft, borderColor: T.brand }}>
+                  <div style={{ ...styles.stuckTitle, color: T.brand }}>卡住了吗？</div>
+                  <div style={{ ...styles.stuckText, color: T.sub }}>这题已经连续错了 3 次，我可以先给一点提示。</div>
+                  <div style={styles.stuckBtns}>
+                    <button style={{ ...styles.stuckNo, color: T.sub, borderColor: T.border }} onClick={() => setStuckOpen(false)}>这题不用</button>
+                    <button style={{ ...styles.stuckYes, background: T.brand }} onClick={() => { setStuckOpen(false); quickAsk('这道题我应该从哪里入手？请先给一个提示，不要直接给完整答案。') }}>帮我看看</button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
+        </div>
+
+        {/* 底部快捷键 */}
+        <div style={{ ...styles.bottomBar, fontSize: AUX_SIZE[uiCfg.qSize], background: uiCfg.theme === 'light' ? 'rgba(255,255,255,.92)' : 'rgba(13,9,24,.88)', borderTop: '1px solid ' + T.border, ...(aiOpen ? {} : { right: 0 }) }}>
+          <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={() => setPhase('lessons')} title="返回课表（进度已自动保存）">↩ 课表</button>
+          <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={playCur}><b>Ctrl '</b> 播放发音</button>
+          <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={toggleMastered}><b>Ctrl M</b> 掌握</button>
+          <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={addVocab}><b>Ctrl N</b> 生词</button>
+          <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft, ...(!undoStack.current.length ? { opacity: .45, cursor: 'default' } : {}) }} onClick={undo} title="撤销上一步输入"><b>Ctrl Z</b> 撤销</button>
+          {done
+            ? <button style={{ ...styles.sKeyMain, fontSize: AUX_SIZE[uiCfg.qSize], background: T.brand }} onClick={nextQ}><b>Enter</b> 下一题</button>
+            : <button style={{ ...styles.sKeyMain, fontSize: AUX_SIZE[uiCfg.qSize], background: T.brand }} onClick={submit}><b>Enter</b> 提交</button>}
+          {done
+            ? <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={() => loadQuestion(qi)}><b>Ctrl ;</b> 再来一次</button>
+            : <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={showAnswerNow}><b>Ctrl ;</b> 显示答案</button>}
+          <span style={styles.navArrows}>
+            <span style={{ ...styles.navArrow, color: T.sub, background: T.bgSoft }} onClick={prevQ} title="上一题（←）">‹</span>
+            <span style={{ ...styles.navArrow, color: T.sub, background: T.bgSoft }} onClick={nextQ} title="下一题（→）">›</span>
+          </span>
+        </div>
+      </div>
+
+      {/* 连击动效：Perfect × N 浮动文字（3-9 基础 / 10+ 高亮发光+全屏闪效） */}
+      {comboPop && (
+        <div key={'cp' + comboPop.n} style={{ ...styles.comboPop, color: T.brand, ...(comboPop.high ? { textShadow: '0 0 16px ' + T.brand + ', 0 0 44px ' + T.brand } : {}) }}>
+          Perfect × {comboPop.n}
+        </div>
+      )}
+      {comboPop?.high && <div key={'cf' + comboPop.n} style={{ ...styles.comboFlash, background: 'radial-gradient(circle at 50% 40%, rgba(255,255,255,.5), rgba(255,255,255,0) 62%)' }} />}
+      {comboBreak && <div key={'cb' + Date.now()} style={styles.comboBreak}>连击中断</div>}
+
+      {/* 暂停弹窗：半透明蒙层 + 中央暂停卡片（计时已停止） */}
+      {paused && (
+        <div style={styles.pauseMask}>
+          <div style={{ ...styles.pauseCard, background: T.panel, borderColor: T.border, boxShadow: T.shadow }}>
+            <div style={{ ...styles.pauseTitle, color: T.text }}>练习已暂停</div>
+            <div style={{ ...styles.pauseTime, color: T.sub }}>已用时 {fmtTime(elapsed)} · 当前第 {qi + 1}/{questions.length} 题</div>
+            <div style={styles.pauseBtns}>
+              <button style={{ ...styles.btnGhost, color: T.sub, borderColor: T.border }} onClick={() => { if (paused) { setStartAt(Date.now() - elapsed * 1000); setPaused(false) } setPhase('lessons') }}>返回课表</button>
+              <button style={{ ...styles.btnPrimary, background: T.brand, color: '#fff' }} onClick={togglePause}>继续练习</button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* —— 结算 —— */}
-      {phase === 'result' && (
-        <div style={{ maxWidth: 620, margin: '0 auto', padding: '20px 16px 60px' }}>
-          <style>{`
-            .rs-top{display:flex;align-items:center;gap:8px;font-size:14px;color:#A99C8B;padding:6px 0 16px}
-            .rs-hero{text-align:center;padding:6px 0 14px}
-            .rs-grade{font-size:66px;font-weight:900;line-height:1;color:${result.rating.color};text-shadow:0 0 34px ${result.rating.color}55}
-            .rs-score{font-size:34px;font-weight:800;margin-top:2px}
-            .rs-perf{display:flex;gap:30px;justify-content:center;margin-top:12px;color:#C9BCAB;font-size:13px}
-            .rs-perf b{display:block;font-size:22px;color:#FFD75E}
-            .rs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
-            .rs-cell{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;text-align:center}
-            .rs-cell b{display:block;font-size:18px}
-            .rs-cell span{font-size:11px;color:#A99C8B}
-            .rs-ana{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin:12px 0}
-            .rs-ana h3{font-size:13px;color:#A99C8B;margin:0 0 12px;font-weight:600}
-            .rs-rings{display:flex;gap:6px;justify-content:space-between;flex-wrap:wrap}
-            .rs-quote{background:linear-gradient(135deg,rgba(255,215,94,.1),rgba(255,255,255,.03));border:1px solid rgba(255,215,94,.25);border-radius:14px;padding:14px 18px;margin:12px 0}
-            .rs-quote .t{font-size:12px;color:#FFD75E;margin-bottom:6px}
-            .rs-quote .ru{font-size:16px}
-            .rs-quote .zh{font-size:13px;color:#A99C8B;margin-top:4px}
-            .rs-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px}
-          `}</style>
-          <div className="rs-top">
-            <button className="quest-btn" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => navigate('/')}>回到首页</button>
-            <button className="quest-btn" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => navigate('/course')}>课程列表</button>
-            <button className="quest-btn" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => navigate('/profile')}>学习分析</button>
-          </div>
-          <div className="rs-hero">
-            <div className="rs-grade">{result.rating.label}</div>
-            <div className="rs-score">{score.toLocaleString()}</div>
-            <div className="rs-perf">
-              <div><b>{perfect}</b>完美</div>
-              <div><b>{good}</b>很好</div>
-              <div><b>{skipped}</b>跳过</div>
-            </div>
-          </div>
-          <div className="rs-grid">
-            <div className="rs-cell"><b>{fmtTime(elapsed)}</b><span>练习时长</span></div>
-            <div className="rs-cell"><b>{round.length}</b><span>答题数</span></div>
-            <div className="rs-cell"><b>{maxCombo}</b><span>最大连击</span></div>
-          </div>
-          <div className="rs-ana">
-            <h3>数据分析</h3>
-            <div className="rs-rings">
-              <Ring pct={result.firstRate} label="一次命中率" />
-              <Ring pct={result.correctRate} label="正确率" color="#7ED6A5" />
-              <Ring pct={0} label="查看答案" color="#FF8A5C" />
-              <Ring pct={Math.min(100, acc.listens * 10)} label="重听次数" color="#6FB7FF" />
-              <Ring pct={Math.min(100, result.avgSec * 20)} label="平均用时" color="#B7A8E8" />
-            </div>
-          </div>
-          {todayQuote && (
-            <div className="rs-quote">
-              <div className="t">今日金句</div>
-              <div className="ru">"{todayQuote.russian}"</div>
-              <div className="zh">{todayQuote.chinese}</div>
-            </div>
+      {/* AI 助手：右下角悬浮图标唤起（默认收起，不遮挡答题区；展开后自动识别当前句子） */}
+      <div style={{ ...styles.aiPanel, background: T.aiBg, borderLeft: '1px solid ' + T.aiBorder, ...(aiOpen ? { transform: 'translateX(0)' } : { transform: 'translateX(102%)', pointerEvents: 'none' }) }}>
+        <div style={{ ...styles.aiHead, color: T.text, borderBottom: '1px solid ' + T.aiBorder }}>
+          <span style={{ ...styles.aiDot, background: T.ok }} /> 智能助手
+          <span style={{ ...styles.aiClose, color: T.sub, borderColor: T.aiBorder, background: T.bgSoft }} onClick={() => { sfxFunc(); setAiOpen(false) }} title="收起 AI 助手">✕</span>
+        </div>
+        <div style={{ ...styles.aiStatus, color: T.sub }}>正在看当前练习</div>
+        <div style={styles.aiBody}>
+          {aiThread.length === 0 && (
+            <>
+              <div style={{ ...styles.aiIntro, color: T.sub }}>有关于当前练习的问题？随时问我！</div>
+              {[
+                '这道题我应该从哪里入手？请先给一个提示，不要直接给完整答案。',
+                '请解释这道题在考什么，以及我应该如何理解正确答案。',
+                '请拆一下这句话的语法结构，重点说明主干、修饰关系和词序。',
+                '请讲解这句话里的重点单词和短语。',
+              ].map(q => (
+                <div key={q} style={{ ...styles.aiQuick, color: T.text, background: T.brandSoft, borderColor: T.brand }} onClick={() => quickAsk(q)}>{q}</div>
+              ))}
+              {!done && (
+                <>
+                  <div style={{ ...styles.aiSection, color: T.sub }}>针对这题</div>
+                  {followUp.map(q => (
+                    <div key={q} style={{ ...styles.aiQuick, color: T.text, background: T.brandSoft, borderColor: T.brand }} onClick={() => quickAsk(q)}>{q}</div>
+                  ))}
+                </>
+              )}
+            </>
           )}
-          <div className="rs-actions">
-            <button className="quest-btn gold" onClick={() => {
-              const txt = `我在「Русский Квест」拿到 ${result.rating.label} 评级 · ${score} 分！一次命中率 ${result.firstRate}%，最大连击 ${maxCombo}。来挑战我！`
-              if (navigator.share) navigator.share({ text: txt }).catch(() => {})
-              else { navigator.clipboard?.writeText(txt); toast('战绩已复制') }
-            }}>炫耀战绩</button>
-            <button className="quest-btn" onClick={() => { setQi(0); setPhase('play'); loadQuestion(0) }}>{'<'} 上一课</button>
-            <button className="quest-btn primary" onClick={() => startRound(level, mode, count)}>再来一次</button>
-            <button className="quest-btn" onClick={() => setPhase('review')}>下一课 {'>'}</button>
+          {aiThread.map((m, i) => (
+            <div key={i} style={{ ...styles.aiMsg, ...(m.role === 'user' ? { ...styles.aiMsgUser, background: T.brandSoft, color: T.text } : { ...styles.aiMsgBot, background: T.bgSoft, color: T.text }) }}>
+              {m.text}
+            </div>
+          ))}
+          {aiBusy && <div style={{ ...styles.aiMsgBot, background: T.bgSoft, color: T.text }}>正在思考…</div>}
+        </div>
+        <div style={{ ...styles.aiFoot, borderTop: '1px solid ' + T.aiBorder }}>
+          <input
+            value={aiQ}
+            onChange={e => setAiQ(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') askAI() }}
+            placeholder="输入你的问题..."
+            style={{ ...styles.aiInput, background: T.bgSoft, borderColor: T.border, color: T.text }}
+          />
+          <button style={{ ...styles.aiSend, background: T.brand }} onClick={() => askAI()}>➤</button>
+        </div>
+      </div>
+
+      {/* 右下角悬浮 AI 对话图标（点击唤起侧边栏，不打断练习节奏） */}
+      {!aiOpen && (
+        <button style={{ ...styles.aiFab, background: T.brand, boxShadow: T.shadow }} onClick={() => { sfxFunc(); setAiOpen(true) }} title="打开 AI 助手（解答语法/词汇/搭配）">💬</button>
+      )}
+
+      {/* 本课内容：全部句子列表 + 快速跳转 */}
+      {contentOpen && (
+        <div style={styles.uiMask} onClick={() => setContentOpen(false)}>
+          <div style={{ ...styles.uiPanel, width: 520 }} onClick={e => e.stopPropagation()}>
+            <div style={styles.uiTitle}>本课内容 · {questions.length} 题</div>
+            <div style={styles.contentHint}>点击句子可跳转到对应题目（进度自动保存）</div>
+            <div style={styles.contentList}>
+              {sentenceEntries.map(({ qi: qIdx, s }, i) => {
+                const isCur = qIdx === qi
+                return (
+                  <div key={qIdx} style={{ ...styles.contentRow, background: isCur ? T.brandSoft : 'transparent', borderColor: isCur ? T.brand : 'transparent' }} onClick={() => { sfxScene(); setContentOpen(false); setQi(qIdx) }}>
+                    <span style={{ ...styles.contentNo, color: isCur ? T.brand : T.sub }}>{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ ...styles.contentRu, color: T.textStrong, fontWeight: isCur ? 700 : 500 }}>{s.russian}</div>
+                      <div style={{ ...styles.contentZh, color: T.sub }}>{s.chinese}</div>
+                    </div>
+                    <span style={{ ...styles.contentGo, color: isCur ? T.brand : T.sub }}>{isCur ? '当前' : '跳转 ›'}</span>
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ ...styles.uiHint, marginTop: 14 }}>点击任意句子立即跳转；跳转后当前做题进度自动保存。</div>
           </div>
         </div>
       )}
+
+      {/* 模块1.1 外观设置弹窗 */}
+      {uiOpen && (
+        <div style={styles.uiMask} onClick={() => setUiOpen(false)}>
+          <div style={styles.uiPanel} onClick={e => e.stopPropagation()}>
+            <div style={styles.uiTitle}>外观设置</div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>字体</div>
+              <div style={styles.uiOpts}>
+                {[['system', '系统默认'], ['fredoka', 'Fredoka 圆润']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(uiCfg.font === k ? styles.uiOptOn : {}) }} onClick={() => saveUi({ font: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>题干字号</div>
+              <div style={styles.uiOpts}>
+                {['小', '中', '大'].map(s => (
+                  <span key={s} style={{ ...styles.uiOpt, ...(uiCfg.qSize === s ? styles.uiOptOn : {}) }} onClick={() => saveUi({ qSize: s })}>{s}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>重音字号</div>
+              <div style={styles.uiOpts}>
+                {['小', '中', '大'].map(s => (
+                  <span key={s} style={{ ...styles.uiOpt, ...(uiCfg.sSize === s ? styles.uiOptOn : {}) }} onClick={() => saveUi({ sSize: s })}>{s}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>背景主题</div>
+              <div style={styles.uiOpts}>
+                {Object.entries(THEMES).map(([k, v]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(uiCfg.theme === k ? styles.uiOptOn : {}) }} onClick={() => saveUi({ theme: k })}>{v.name}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>输入框样式</div>
+              <div style={styles.uiOpts}>
+                {[['dynamic', '动态宽度'], ['fixed', '固定等宽'], ['underline', '极简横线']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(uiCfg.inputStyle === k ? styles.uiOptOn : {}) }} onClick={() => saveUi({ inputStyle: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>答案显示</div>
+              <div style={styles.uiOpts}>
+                {[['float', '浮层模式'], ['inline', '内嵌模式']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(uiCfg.answerMode === k ? styles.uiOptOn : {}) }} onClick={() => saveUi({ answerMode: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>词性标注</div>
+              <div style={styles.uiOpts}>
+                {[[true, '显示'], [false, '隐藏']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(uiCfg.posMark === k ? styles.uiOptOn : {}) }} onClick={() => saveUi({ posMark: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={{ ...styles.uiGroupTitle, color: T.text }}>朗读设置</div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>做题时自动播放声音</div>
+              <div style={styles.uiOpts}>
+                {[[true, '开'], [false, '关']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(uiCfg.autoSpeak === k ? styles.uiOptOn : {}) }} onClick={() => saveUi({ autoSpeak: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>朗读次数</div>
+              <div style={styles.uiOpts}>
+                {[1, 2, 3, 4, 5].map(n => (
+                  <span key={n} style={{ ...styles.uiOpt, ...(uiCfg.speakTimes === n ? styles.uiOptOn : {}) }} onClick={() => saveUi({ speakTimes: n })}>{n}遍</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>朗读速度</div>
+              <div style={styles.uiOpts}>
+                {SPEED_STEPS.map(v => (
+                  <span key={v} style={{ ...styles.uiOpt, ...(uiCfg.speakSpeed === v ? styles.uiOptOn : {}) }} onClick={() => saveUi({ speakSpeed: v })}>{v}x</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>遍间停顿</div>
+              <div style={styles.uiOpts}>
+                {GAP_STEPS.map(v => (
+                  <span key={v} style={{ ...styles.uiOpt, ...(uiCfg.speakGap === v ? styles.uiOptOn : {}) }} onClick={() => saveUi({ speakGap: v })}>{v}s</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>显示答案时自动朗读</div>
+              <div style={styles.uiOpts}>
+                {[[true, '开'], [false, '关']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(uiCfg.answerSpeak === k ? styles.uiOptOn : {}) }} onClick={() => saveUi({ answerSpeak: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiHint}>「做题时自动播放声音」开启后：每道题加载完成 → 自动朗读原句（可调次数/速度/停顿）→ 朗读结束后进入可输入状态。听写模式始终自动播放。</div>
+            <div style={{ ...styles.uiGroupTitle, color: T.text, marginTop: 18 }}>声音设置</div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>全局音效</div>
+              <div style={styles.uiOpts}>
+                {[[true, '开'], [false, '静音']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(SFX_CFG.enabled === k ? styles.uiOptOn : {}) }} onClick={() => saveSfxCfg({ enabled: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>音量</div>
+              <div style={styles.uiOpts}>
+                {[[0.25, '低'], [0.5, '中低'], [0.7, '中'], [0.9, '高'], [1, '最大']].map(([v, label]) => (
+                  <span key={v} style={{ ...styles.uiOpt, ...(SFX_CFG.vol === v ? styles.uiOptOn : {}) }} onClick={() => saveSfxCfg({ vol: v })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>按键音效</div>
+              <div style={styles.uiOpts}>
+                {[[true, '开'], [false, '关']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(SFX_CFG.keyOn === k ? styles.uiOptOn : {}) }} onClick={() => saveSfxCfg({ keyOn: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>按键音类型</div>
+              <div style={styles.uiOpts}></div>
+            </div>
+            <div style={{ ...styles.uiSfxGrid }}>
+              {[['soft', '轻柔'], ['drum', '鼓点'], ['bubble', '气泡'], ['typewriter', '打字机'], ['sword', '金属剑'], ['cherryBlue', '青轴'], ['cherryRed', '红轴']].map(([k, label]) => (
+                <span key={k} style={{ ...styles.uiSfxChip, ...(SFX_CFG.keyType === k ? styles.uiOptOn : {}) }} onClick={() => saveSfxCfg({ keyType: k })}>{label}</span>
+              ))}
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>答题反馈音</div>
+              <div style={styles.uiOpts}>
+                {[[true, '开'], [false, '关']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(SFX_CFG.answerOn === k ? styles.uiOptOn : {}) }} onClick={() => saveSfxCfg({ answerOn: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>连击动画</div>
+              <div style={styles.uiOpts}>
+                {[[true, '开'], [false, '关']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(SFX_CFG.comboAnim === k ? styles.uiOptOn : {}) }} onClick={() => saveSfxCfg({ comboAnim: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>连击激励音</div>
+              <div style={styles.uiOpts}>
+                {[[true, '开'], [false, '关']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(SFX_CFG.comboFx === k ? styles.uiOptOn : {}) }} onClick={() => saveSfxCfg({ comboFx: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiRow}>
+              <div style={styles.uiLabel}>场景功能音</div>
+              <div style={styles.uiOpts}>
+                {[[true, '开'], [false, '关']].map(([k, label]) => (
+                  <span key={k} style={{ ...styles.uiOpt, ...(SFX_CFG.sceneOn === k ? styles.uiOptOn : {}) }} onClick={() => saveSfxCfg({ sceneOn: k })}>{label}</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.uiHint}>连击激励需同时开启「连击动画」与「连击激励音」：3-5 连击轻快激励 / 6-10 递进节奏 / 10 连击以上高燃冲刺；断连播放回落音。全局静音一键关闭全部音效。</div>
+          </div>
+        </div>
+      )}
+
+      {/* 设置弹窗：快捷键/播放/听力/学习等配置（归属俄语闯关页，工具栏 ⚙ 设置 / Ctrl+, 打开） */}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </div>
   )
+}
+
+// ================= 样式 =================
+const styles = {
+  coursesRoot: { minHeight: '100vh', background: '#F6F1E8', color: '#3D2E1E', fontFamily: FONT_STACK.system, paddingBottom: 90 },
+  mallHeader: { background: '#FFFDF9', borderBottom: '1px solid #EAE0D2', padding: '14px 30px', position: 'sticky', top: 0, zIndex: 5 },
+  mallTitle: { fontSize: 20, fontWeight: 700, color: '#3D2E1E', marginBottom: 10 },
+  tabsWrap: { display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
+  tab: { padding: '4px 12px', borderRadius: 14, fontSize: 13, color: '#7A6A55', cursor: 'pointer' },
+  tabOn: { background: '#3D2E1E', color: '#F6F1E8', fontWeight: 600 },
+  tabSearch: { marginLeft: 'auto', fontSize: 12.5, color: '#A99C8B' },
+  mallBody: { maxWidth: 1120, margin: '0 auto', padding: '26px 30px' },
+  sectionTitle: { fontSize: 17, fontWeight: 700, color: '#3D2E1E', marginBottom: 16 },
+  courseGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(250px,1fr))', gap: 18 },
+  courseCard: { background: '#FFFDF9', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 14px rgba(61,46,30,.07)', cursor: 'pointer', transition: 'transform .18s, box-shadow .18s' },
+  courseCover: { height: 120, display: 'flex', alignItems: 'flex-end', padding: 12, position: 'relative' },
+  courseEmoji: { fontSize: 46, lineHeight: 1 },
+  courseTag: { position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,.35)', color: '#fff', fontSize: 11, padding: '2px 8px', borderRadius: 10 },
+  courseInfo: { padding: 13 },
+  courseName: { fontSize: 14.5, fontWeight: 700, color: '#3D2E1E' },
+  courseNew: { fontSize: 11, color: '#A99C8B', fontWeight: 400 },
+  courseSub: { fontSize: 12, color: '#8A7A66', margin: '4px 0 8px' },
+  courseMeta: { fontSize: 11.5, color: '#B3A692' },
+  backHome: { position: 'fixed', left: 18, bottom: 18, background: '#3D2E1E', color: '#F6F1E8', border: 'none', padding: '8px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer', zIndex: 10 },
+  lessonHead: { maxWidth: 900, margin: '20px auto 0', background: '#FFFDF9', borderRadius: 18, padding: 22, display: 'flex', gap: 20, boxShadow: '0 2px 14px rgba(61,46,30,.06)' },
+  lessonCover: { width: 90, height: 90, borderRadius: 14, background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, flexShrink: 0 },
+  lessonTitle: { fontSize: 19, fontWeight: 700, color: '#3D2E1E' },
+  lessonDesc: { fontSize: 12.5, color: '#8A7A66', margin: '6px 0', lineHeight: 1.6 },
+  lessonTags: { display: 'flex', gap: 6, margin: '6px 0' },
+  tagPill: { fontSize: 11, padding: '2px 10px', borderRadius: 10, background: '#F0E8DA', color: '#7A6A55' },
+  lessonStat: { fontSize: 12, color: '#B3A692', marginTop: 4 },
+  outline: { maxWidth: 900, margin: '20px auto 0', background: '#FFFDF9', borderRadius: 18, padding: 22, boxShadow: '0 2px 14px rgba(61,46,30,.06)' },
+  outlineTitle: { fontSize: 15, fontWeight: 700, color: '#3D2E1E', marginBottom: 10 },
+  lessonRow: { display: 'flex', gap: 14, alignItems: 'center', padding: '12px 4px', borderBottom: '1px solid #F0E8DA', cursor: 'pointer' },
+  lessonNo: { fontSize: 13, fontWeight: 700, color: '#B3A692', width: 28 },
+  lessonRowName: { fontSize: 13.5, fontWeight: 600, color: '#3D2E1E' },
+  lessonRowDesc: { fontSize: 11.5, color: '#A99C8B', marginTop: 3 },
+  trial: { fontSize: 11, color: '#8B5CF6', background: '#EDE9FE', padding: '2px 10px', borderRadius: 10, flexShrink: 0 },
+  modalRoot: { position: 'fixed', inset: 0, background: 'rgba(10,6,20,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, fontFamily: FONT_STACK.system },
+  modeModal: { width: 860, maxWidth: '92vw', background: '#FFFDF9', borderRadius: 20, padding: 28, boxShadow: '0 24px 80px rgba(0,0,0,.4)' },
+  modeModalTitle: { fontSize: 22, fontWeight: 800, color: '#1F1B2E' },
+  modeModalSub: { fontSize: 12, color: '#A99C8B', marginBottom: 20 },
+  modeBody: { display: 'flex', gap: 24 },
+  modeList: { width: 240, display: 'flex', flexDirection: 'column', gap: 4 },
+  modeItem: { padding: '12px 14px', borderRadius: 12, cursor: 'pointer', position: 'relative', border: '1px solid transparent' },
+  modeItemOn: { background: '#F3EFFC', borderColor: '#C4B5FD' },
+  modeItemName: { fontSize: 14.5, fontWeight: 600, color: '#1F1B2E' },
+  modeItemTag: { fontSize: 11, color: '#A99C8B', marginTop: 2 },
+  modeRec: { position: 'absolute', top: 8, right: 10, fontSize: 10, color: '#8B5CF6', background: '#EDE9FE', padding: '1px 8px', borderRadius: 8 },
+  modeDetail: { flex: 1, background: '#FAF7F2', borderRadius: 14, padding: 20 },
+  modeDetailTitle: { fontSize: 17, fontWeight: 700, color: '#1F1B2E' },
+  modeDetailDesc: { fontSize: 13, color: '#7A6A55', margin: '8px 0 18px', lineHeight: 1.7 },
+  diffLabel: { fontSize: 13, fontWeight: 600, color: '#1F1B2E', marginBottom: 8 },
+  diffRow: { display: 'flex', gap: 8 },
+  diffPill: { padding: '6px 16px', borderRadius: 18, border: '1px solid #E0D5C3', color: '#7A6A55', fontSize: 13, cursor: 'pointer', background: '#fff' },
+  diffOn: { background: '#1F1B2E', color: '#fff', borderColor: '#1F1B2E' },
+  diffHint: { fontSize: 11.5, color: '#B3A692', marginTop: 10 },
+  modeFoot: { display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 22 },
+  modeCancel: { padding: '9px 22px', borderRadius: 20, border: '1px solid #E0D5C3', background: '#fff', color: '#7A6A55', fontSize: 14, cursor: 'pointer' },
+  modeStart: { padding: '9px 26px', borderRadius: 20, border: 'none', background: '#DC2626', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  loadRoot: { position: 'fixed', inset: 0, background: '#0D0918', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 60, fontFamily: FONT_STACK.system },
+  loadLogo: { fontSize: 52 },
+  loadText: { fontSize: 13, letterSpacing: 3, color: '#9B8DB5' },
+  loadBar: { width: 260, height: 4, background: 'rgba(255,255,255,.12)', borderRadius: 2, overflow: 'hidden', marginTop: 8 },
+  loadFill: { height: '100%', background: '#8B5CF6', transition: 'width .2s' },
+  loadPct: { fontSize: 12, color: '#9B8DB5' },
+  loadTip: { fontSize: 11.5, color: '#6B5E85', marginTop: 8 },
+  resultRoot: { position: 'fixed', inset: 0, background: 'linear-gradient(160deg,#0D0918 0%,#1B1330 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT_STACK.system, overflowY: 'auto' },
+  resultCard: { width: 660, maxWidth: '94vw', background: '#171028', borderRadius: 24, padding: '34px 34px 30px', textAlign: 'center', border: '1px solid rgba(255,255,255,.08)', margin: '20px auto' },
+  ratingBadge: { fontSize: 56, fontWeight: 900, letterSpacing: 2 },
+  resultTitle: { fontSize: 24, fontWeight: 800, color: '#F5EDE2', margin: '4px 0 4px' },
+  resultSub: { fontSize: 13, color: '#8B7FA3' },
+  resultScore: { fontSize: 44, fontWeight: 900, color: '#FFD75E', marginTop: 14, textShadow: '0 0 34px rgba(255,215,94,.3)' },
+  resultScoreLabel: { fontSize: 12, color: '#8B7FA3', letterSpacing: 2, marginTop: 2 },
+  resultStats: { display: 'flex', justifyContent: 'space-between', gap: 4, margin: '22px 0 18px', padding: '16px 12px', background: 'rgba(255,255,255,.05)', borderRadius: 14 },
+  stat: { flex: 1, textAlign: 'center' },
+  statNum: { fontSize: 19, fontWeight: 800, color: '#FFD75E' },
+  statLabel: { fontSize: 11.5, color: '#8B7FA3', marginTop: 4 },
+  ringRow: { display: 'flex', justifyContent: 'center', gap: 14, margin: '2px 0 20px' },
+  ringItem: { width: 124, textAlign: 'center' },
+  resultTip: { fontSize: 14, color: '#C9BEE0', marginBottom: 24 },
+  resultBtns: { display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'nowrap' },
+  wrongMask: { position: 'fixed', inset: 0, background: 'rgba(10,6,20,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, backdropFilter: 'blur(2px)', padding: 20 },
+  wrongPanel: { width: 540, maxWidth: '94vw', maxHeight: '74vh', overflowY: 'auto', background: '#171028', borderRadius: 20, padding: 26, border: '1px solid rgba(255,255,255,.1)', textAlign: 'center' },
+  wrongTitle: { fontSize: 18, fontWeight: 800, color: '#F5EDE2', marginBottom: 14 },
+  wrongNo: { fontSize: 15, color: '#4ADE80', padding: '22px 0', textAlign: 'center' },
+  wrongRow: { background: 'rgba(255,255,255,.05)', borderRadius: 12, padding: '12px 14px', marginBottom: 10, textAlign: 'left' },
+  wrongQ: { fontSize: 15, fontWeight: 700, color: '#F5EDE2' },
+  wrongZh: { fontSize: 12.5, color: '#8B7FA3', margin: '3px 0 6px' },
+  wrongAns: { fontSize: 13, color: '#C9BEE0', marginTop: 2 },
+  wrongReason: { fontSize: 12, color: '#FFB347', marginTop: 6 },
+  btnGhost: { padding: '9px 18px', borderRadius: 22, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.2)', color: '#E5DDF5', fontSize: 14, cursor: 'pointer' },
+  btnPrimary: { padding: '9px 18px', borderRadius: 22, background: '#8B5CF6', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  gameRoot: { minHeight: '100vh', background: 'radial-gradient(ellipse at 50% -20%, #241A3D 0%, #0D0918 55%)', color: '#F5EDE2', position: 'relative', fontFamily: FONT_STACK.system, paddingBottom: 110 },
+  topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 26px', fontSize: 13, color: '#B9AFCB', gap: 12 },
+  topCourse: { fontWeight: 600, color: '#E5DDF5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  topRight: { display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 },
+  topTime: { fontVariantNumeric: 'tabular-nums' },
+  topPart: { fontVariantNumeric: 'tabular-nums' },
+  topScore: { fontSize: 15, fontWeight: 800, color: '#FFD75E', fontVariantNumeric: 'tabular-nums' },
+  gameMain: { display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 60px)', paddingRight: 300 },
+  center: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 30px' },
+  praise: { fontSize: 34, fontWeight: 900, color: '#FFD75E', marginBottom: 10, textShadow: '0 0 30px rgba(255,215,94,.35)' },
+  zhText: { fontSize: 30, fontWeight: 700, color: '#F5EDE2', marginBottom: 26, textAlign: 'center', lineHeight: 1.5 },
+  wordRow: { display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', minHeight: 62, alignItems: 'center', maxWidth: 640 },
+  wordChip: { padding: '8px 16px', borderRadius: 12, border: '1px solid', fontSize: 20, fontWeight: 700, minWidth: 40, textAlign: 'center', transition: 'all .15s' },
+  // 官方连词成句：单词下划线槽 + 透明覆盖输入框（1:1 复刻 earthworm QuestionInput）
+  slotRow: { display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center', alignItems: 'baseline', minHeight: 66, maxWidth: 680, position: 'relative', padding: '10px 4px' },
+  slotBox: { display: 'inline-flex', alignItems: 'baseline', justifyContent: 'center', borderRadius: 2, borderBottom: '2px solid', padding: '2px 7px 5px', minHeight: '1.5em', lineHeight: 1.35, textAlign: 'center', fontWeight: 600, transition: 'border-color .15s, color .15s' },
+  slotInput: { position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'text', border: 'none', outline: 'none', background: 'transparent', color: 'transparent', caretColor: 'transparent', zIndex: 1, fontSize: 16 },
+  hiddenInput: { width: 0, height: 0, opacity: 0, position: 'absolute', pointerEvents: 'none' },
+  inputHint: { fontSize: 12.5, color: '#8B7FA3', marginTop: 14 },
+  wrongTip: { fontSize: 16, fontWeight: 700, color: '#F87171', marginTop: 10 },
+  stuckBox: { marginTop: 18, background: 'rgba(139,92,246,.12)', border: '1px solid rgba(139,92,246,.4)', borderRadius: 14, padding: '14px 18px', maxWidth: 380, textAlign: 'center' },
+  stuckTitle: { fontSize: 15, fontWeight: 700, color: '#C4B5FD' },
+  stuckText: { fontSize: 12.5, color: '#B9AFCB', margin: '8px 0 12px' },
+  stuckBtns: { display: 'flex', gap: 10, justifyContent: 'center' },
+  stuckNo: { padding: '6px 16px', borderRadius: 16, background: 'transparent', border: '1px solid rgba(255,255,255,.25)', color: '#B9AFCB', fontSize: 12.5, cursor: 'pointer' },
+  stuckYes: { padding: '6px 16px', borderRadius: 16, background: '#8B5CF6', border: 'none', color: '#fff', fontSize: 12.5, cursor: 'pointer' },
+  answerCard: { width: 560, maxWidth: '94vw', textAlign: 'center', padding: 30, borderRadius: 20 },
+  answerMask: { position: 'fixed', inset: 0, background: 'rgba(10,8,20,.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 40, padding: 20 },
+  inlineWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, maxWidth: 640 },
+  inlineMeta: { display: 'flex', flexWrap: 'wrap', gap: '10px 18px', justifyContent: 'center', lineHeight: 1.9 },
+  inlineRole: { display: 'inline-flex', alignItems: 'baseline', gap: 8 },
+  inlineWord: { display: 'inline-flex', alignItems: 'baseline', gap: 4, marginRight: 6, fontWeight: 600 },
+  inlinePos: { fontStyle: 'normal', fontWeight: 600, paddingBottom: 1, marginLeft: 2, fontSize: 11 },
+  inlineZh: { fontStyle: 'normal', opacity: .75, marginLeft: 2, fontWeight: 400 },
+  wordPlaceholder: { letterSpacing: 6, opacity: .5, padding: '8px 4px' },
+  rolePosHidden: { height: 14 },
+  rolesRow: { display: 'flex', gap: 40, justifyContent: 'center', flexWrap: 'wrap' },
+  roleCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 },
+  roleName: { fontSize: 13, color: '#C4B5FD', background: 'rgba(139,92,246,.2)', padding: '3px 14px', borderRadius: 12 },
+  roleWordWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
+  roleWord: { fontSize: 30, fontWeight: 800, color: '#F5EDE2' },
+  roleStress: { fontSize: 12, color: '#8B7FA3' },
+  rolePos: { fontSize: 12, color: '#C4B5FD' },
+  roleZh: { fontSize: 14, color: '#E5DDF5' },
+  answerFallback: { textAlign: 'center' },
+  answerBig: { fontSize: 42, fontWeight: 800, color: '#F5EDE2', margin: '10px 0 6px' },
+  answerZh: { fontSize: 18, color: '#C9BEE0' },
+  answerErr: { fontSize: 12, color: '#8B7FA3', marginTop: 10 },
+  retry: { color: '#C4B5FD', cursor: 'pointer', textDecoration: 'underline' },
+  answerOk: { marginTop: 16, fontSize: 15, fontWeight: 700, color: '#34D399' },
+  bottomBar: { position: 'fixed', bottom: 0, left: 0, right: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 20px', background: 'rgba(13,9,24,.85)', backdropFilter: 'blur(6px)', borderTop: '1px solid rgba(255,255,255,.06)', zIndex: 5 },
+  sKey: { background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', color: '#C9BEE0', fontSize: 12, padding: '7px 12px', borderRadius: 12, cursor: 'pointer' },
+  sKeyMain: { background: '#8B5CF6', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, padding: '7px 16px', borderRadius: 12, cursor: 'pointer' },
+  navArrows: { display: 'flex', gap: 4, marginLeft: 4 },
+  navArrow: { width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, background: 'rgba(255,255,255,.06)', color: '#B9AFCB', cursor: 'pointer', fontSize: 16 },
+  aiPanel: { position: 'fixed', top: 0, right: 0, bottom: 0, width: 300, background: 'rgba(20,14,36,.92)', borderLeft: '1px solid rgba(255,255,255,.07)', display: 'flex', flexDirection: 'column', zIndex: 10, transition: 'transform .28s ease' },
+  aiClose: { float: 'right', padding: '2px 8px', borderRadius: 8, border: '1px solid', fontSize: 12, cursor: 'pointer' },
+  aiFab: { position: 'fixed', right: 22, bottom: 96, width: 54, height: 54, borderRadius: '50%', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer', zIndex: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .15s, box-shadow .15s' },
+  // 本课内容面板
+  contentHint: { fontSize: 12, color: '#8B7FA3', marginBottom: 12 },
+  contentList: { display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '52vh', overflowY: 'auto', paddingRight: 4 },
+  contentRow: { display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 12px', borderRadius: 12, border: '1px solid', cursor: 'pointer', transition: 'background .15s' },
+  contentNo: { fontSize: 12, fontWeight: 700, width: 22, flexShrink: 0, marginTop: 1 },
+  contentRu: { fontSize: 14.5, lineHeight: 1.5 },
+  contentZh: { fontSize: 12, marginTop: 2, opacity: .8 },
+  contentGo: { fontSize: 12, flexShrink: 0, marginTop: 2 },
+  aiHead: { padding: '16px 18px', fontSize: 15, fontWeight: 700, color: '#E5DDF5', borderBottom: '1px solid rgba(255,255,255,.07)' },
+  aiDot: { display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#34D399', marginRight: 8 },
+  aiStatus: { fontSize: 11.5, color: '#8B7FA3', padding: '4px 18px 8px' },
+  aiBody: { flex: 1, overflowY: 'auto', padding: '6px 14px', display: 'flex', flexDirection: 'column', gap: 8 },
+  aiIntro: { fontSize: 12.5, color: '#B9AFCB', margin: '6px 0 10px' },
+  aiQuick: { fontSize: 12, color: '#C9BEE0', background: 'rgba(139,92,246,.12)', border: '1px solid rgba(139,92,246,.25)', borderRadius: 12, padding: '8px 12px', cursor: 'pointer', lineHeight: 1.5 },
+  aiSection: { fontSize: 11.5, color: '#8B7FA3', marginTop: 8 },
+  aiMsg: { fontSize: 12.5, padding: '9px 12px', borderRadius: 12, lineHeight: 1.6, maxWidth: '92%' },
+  aiMsgUser: { background: 'rgba(139,92,246,.25)', color: '#E5DDF5', alignSelf: 'flex-end' },
+  aiMsgBot: { background: 'rgba(255,255,255,.07)', color: '#D8CFF0', alignSelf: 'flex-start' },
+  aiFoot: { display: 'flex', gap: 8, padding: 12, borderTop: '1px solid rgba(255,255,255,.07)' },
+  aiInput: { flex: 1, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 12, padding: '8px 12px', color: '#F5EDE2', fontSize: 12.5, outline: 'none' },
+  aiSend: { width: 36, height: 36, borderRadius: 12, background: '#8B5CF6', border: 'none', color: '#fff', fontSize: 15, cursor: 'pointer' },
+  // 模块1.1 外观设置
+  uiBtn: { background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', color: '#E5DDF5', fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 10, cursor: 'pointer', letterSpacing: 1 },
+  uiMask: { position: 'fixed', inset: 0, background: 'rgba(5,3,12,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, backdropFilter: 'blur(2px)' },
+  uiPanel: { width: 400, maxWidth: '92vw', background: '#1B1330', border: '1px solid rgba(255,255,255,.1)', borderRadius: 18, padding: 22, boxShadow: '0 18px 60px rgba(0,0,0,.5)', maxHeight: '86vh', overflowY: 'auto' },
+  uiTitle: { fontSize: 17, fontWeight: 800, color: '#F5EDE2', marginBottom: 16 },
+  uiRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 },
+  uiLabel: { fontSize: 13.5, color: '#C9BEE0', flexShrink: 0, width: 78 },
+  uiOpts: { display: 'flex', gap: 6 },
+  uiOpt: { padding: '5px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,.16)', color: '#B9AFCB', fontSize: 12.5, cursor: 'pointer', background: 'rgba(255,255,255,.05)' },
+  uiOptOn: { background: '#8B5CF6', borderColor: '#8B5CF6', color: '#fff', fontWeight: 600 },
+  uiHint: { fontSize: 11.5, color: '#8B7FA3', lineHeight: 1.7, marginTop: 6, borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: 12 },
+  uiGroupTitle: { fontSize: 12.5, fontWeight: 700, letterSpacing: 1, margin: '2px 0 12px', opacity: .85 },
+  uiSfxGrid: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
+  uiSfxChip: { padding: '5px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,.16)', color: '#B9AFCB', fontSize: 12, cursor: 'pointer', background: 'rgba(255,255,255,.05)' },
+  // 即时状态反馈：连击动效 + 暂停
+  comboPop: { position: 'fixed', left: '50%', top: '38%', transform: 'translateX(-50%)', fontSize: 36, fontWeight: 800, letterSpacing: 1, pointerEvents: 'none', zIndex: 60, animation: 'ruqComboPop .3s ease forwards' },
+  comboFlash: { position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 59, animation: 'ruqFlash .5s ease forwards' },
+  comboBreak: { position: 'fixed', left: '50%', top: '46%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600, letterSpacing: 2, opacity: .75, pointerEvents: 'none', zIndex: 58, animation: 'ruqBreak .55s ease forwards' },
+  pauseMask: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'ruqFadeIn .25s ease' },
+  pauseCard: { padding: '36px 48px', borderRadius: 20, border: '1px solid', textAlign: 'center', maxWidth: '88vw' },
+  pauseTitle: { fontSize: 23, fontWeight: 800, marginBottom: 8 },
+  pauseTime: { fontSize: 13, marginBottom: 24 },
+  pauseBtns: { display: 'flex', gap: 12, justifyContent: 'center' },
+  // 顶部总进度条 + 模式切换
+  progressTrack: { width: 120, height: 7, borderRadius: 4, border: '1px solid', overflow: 'hidden', flexShrink: 0 },
+  progressFill: { height: '100%', borderRadius: 3, transition: 'width .3s ease' },
+  modeWrap: { position: 'relative' },
+  modePop: { position: 'absolute', top: 30, right: 0, width: 176, borderRadius: 14, padding: 6, zIndex: 80 },
+  modePopItem: { padding: '8px 12px', borderRadius: 10, fontSize: 12.5, cursor: 'pointer' },
+  // 听写模式
+  dictHint: { fontWeight: 700, marginBottom: 26, textAlign: 'center', letterSpacing: 1 },
+  // 口语评测模式
+  speakWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, maxWidth: 520 },
+  speakTip: { fontWeight: 600, opacity: .9 },
+  speakBtns: { display: 'flex', gap: 12, marginTop: 4 },
+  speakBtn: { padding: '10px 22px', borderRadius: 14, border: '1px solid', fontSize: 14, cursor: 'pointer' },
+  speakBtnMain: { padding: '10px 22px', borderRadius: 14, border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
+  speakBtnRec: { padding: '10px 22px', borderRadius: 14, border: 'none', fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer', animation: 'ruqPulse 1s ease infinite' },
+  speakLoading: { fontSize: 13 },
+  speakCard: { width: '100%', maxWidth: 460, borderRadius: 16, padding: '18px 22px', border: '1px solid', textAlign: 'center' },
+  speakScoreRow: { display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8 },
+  speakGrade: { fontSize: 18, fontWeight: 800, letterSpacing: 1 },
+  speakText: { fontSize: 13.5, marginTop: 10, lineHeight: 1.6 },
+  speakErrors: { fontSize: 12.5, marginTop: 8, lineHeight: 1.8, textAlign: 'left' },
+  speakTip2: { fontSize: 12, marginTop: 8, lineHeight: 1.6 },
+  speakErr: { fontSize: 13.5 },
+  // 乱序模式
+  scrambleWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, maxWidth: 680 },
+  scramblePool: { display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', minHeight: 50, alignItems: 'center' },
+  scrambleChip: { padding: '9px 18px', borderRadius: 12, border: '1px solid', fontSize: 18, fontWeight: 600, cursor: 'pointer', transition: 'transform .12s, opacity .12s' },
+  scrambleDone: { fontSize: 12.5, marginTop: 4 },
+  scrambleHiddenInput: { position: 'absolute', opacity: 0, width: 1, height: 1, border: 'none', outline: 'none', pointerEvents: 'none' },
+  // 阅读预习
+  previewRoot: { minHeight: '100vh', padding: '30px 20px 90px', display: 'flex', justifyContent: 'center', fontFamily: FONT_STACK.system },
+  previewCard: { width: 760, maxWidth: '94vw', borderRadius: 22, padding: 26, border: '1px solid' },
+  previewTitle: { fontSize: 20, fontWeight: 800 },
+  previewSub: { fontSize: 12.5, margin: '6px 0 18px' },
+  previewList: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '56vh', overflowY: 'auto', paddingRight: 4 },
+  previewLine: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 14, border: '1px solid' },
+  previewNo: { fontSize: 13, fontWeight: 700, width: 22, flexShrink: 0, marginTop: 2 },
+  previewBody: { flex: 1 },
+  previewRu: { fontSize: 15.5, fontWeight: 600, cursor: 'pointer', lineHeight: 1.5 },
+  previewZh: { fontSize: 12.5, marginTop: 3, opacity: .8 },
+  previewPlay: { width: 40, height: 40, borderRadius: '50%', border: '1px solid', fontSize: 17, cursor: 'pointer', flexShrink: 0 },
+  previewFoot: { display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 22 },
+  previewBack: { padding: '9px 22px', borderRadius: 20, border: '1px solid', fontSize: 13.5, cursor: 'pointer' },
+  previewStart: { padding: '9px 26px', borderRadius: 20, border: 'none', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' },
 }
