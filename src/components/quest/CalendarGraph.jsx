@@ -17,13 +17,13 @@ function loadDaySeconds(date) {
   } catch { return 0 }
 }
 
-// 颜色等级（5档，从浅到深）
+// 颜色等级（GitHub 风格绿色系 4 档，对齐 Earthworm：#9be9a8 → #216e39）
 function getColor(seconds, theme) {
   if (seconds <= 0) return theme === 'dark' ? 'rgba(255,255,255,.06)' : '#ebedf0'
-  if (seconds < 300) return theme === 'dark' ? 'rgba(139,92,246,.25)' : '#e0d4f7'
-  if (seconds < 900) return theme === 'dark' ? 'rgba(139,92,246,.45)' : '#c4aaf0'
-  if (seconds < 1800) return theme === 'dark' ? 'rgba(139,92,246,.7)' : '#a78bfa'
-  return theme === 'dark' ? 'rgba(139,92,246,.95)' : '#8b5cf6'
+  if (seconds < 300) return theme === 'dark' ? '#0e4429' : '#9be9a8'
+  if (seconds < 900) return theme === 'dark' ? '#006d32' : '#40c463'
+  if (seconds < 1800) return theme === 'dark' ? '#26a641' : '#30a14e'
+  return theme === 'dark' ? '#39d353' : '#216e39'
 }
 
 function formatDuration(sec) {
@@ -131,7 +131,7 @@ export default function CalendarGraph({
     }}>
       <style>{`
         .cg-cell{ transition: transform .1s ease; cursor: pointer; }
-        .cg-cell:hover{ transform: scale(1.25); outline: 2px solid ${theme === 'dark' ? '#a78bfa' : '#7c3aed'}; outline-offset: 1px; }
+        .cg-cell:hover{ transform: scale(1.25); outline: 2px solid ${theme === 'dark' ? '#e879f9' : '#d946ef'}; outline-offset: 1px; }
         .cg-tooltip{ position: fixed; z-index: 9999; pointer-events: none;
           background: ${theme === 'dark' ? '#2d1f4e' : '#1a1a2e'}; color: #fff;
           padding: '8px 12px'; border-radius: 8px; font-size: 12px;
@@ -147,8 +147,8 @@ export default function CalendarGraph({
         <div style={{ display: 'flex', gap: 16, fontSize: 12, color: T.sub }}>
           <span>累计 <b style={{ color: T.text }}>{formatDuration(totalSeconds)}</b></span>
           <span>活跃 <b style={{ color: T.text }}>{activeDays}</b> 天</span>
-          <span>连续 <b style={{ color: '#8b5cf6' }}>{currentStreak}</b> 天</span>
-          <span>最长 <b style={{ color: '#8b5cf6' }}>{longestStreak}</b> 天</span>
+          <span>连续 <b style={{ color: '#d946ef' }}>{currentStreak}</b> 天</span>
+          <span>最长 <b style={{ color: '#d946ef' }}>{longestStreak}</b> 天</span>
         </div>
       </div>
 

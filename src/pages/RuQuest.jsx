@@ -234,6 +234,7 @@ export default function RuQuest() {
     try { return localStorage.getItem('rlearn_quest_mode') || 'chinese_to_english' } catch (e) { return 'chinese_to_english' }
   })
   const [modeOpen, setModeOpen] = useState(false)  // 答题页内模式切换面板
+  const [moreOpen, setMoreOpen] = useState(false)    // 工具栏「更多」溢出菜单（保留扩展功能入口）
 
   // 答题状态
   const [questions, setQuestions] = useState([])   // 本课全部题（每词一题 + 整句一题）
@@ -634,7 +635,6 @@ export default function RuQuest() {
         setTimeout(() => setComboBreak(false), 560)
       }
       setCombo(0)
-      shakeRow()
       sfxError()
       if (petVisible) { petSpeak('wrong', 4000); petSetMood('thinking') } // P6 宠物答错鼓励
       if (wc >= revealThreshold) showAnswerNow()    // 「自动显示答案」：错误 N 次后自动展示答案
@@ -674,12 +674,6 @@ export default function RuQuest() {
     setWrong(false)
     if (v.length > 0 && v[v.length - 1] !== ' ' && e.nativeEvent?.inputType === 'insertText') {
       sfxKey()
-      // 逐字实时校验：新输入字符与期望位置不一致 → 输入行轻微抖动（不打断输入）
-      const target = expectWordsOf(cur)
-      const ci = cs.length - 1
-      const exp = ci < target.length ? target[ci] : ''
-      const chIdx = (cs[ci] || '').length - 1
-      if (chIdx >= 0 && (chIdx >= exp.length || v[v.length - 1].toLowerCase() !== exp[chIdx])) shakeRow()
     }
     // 光标变化 → 更新激活词（官方：光标所在词高亮）
     const pos = e.target.selectionStart ?? v.length
@@ -755,6 +749,18 @@ export default function RuQuest() {
       }
       if (e.key === 'Enter' && !composing.current) { e.preventDefault(); submit(); return }
       return // 其余按键直接上屏（原生 input）
+    }
+    // 官方 useSpaceSubmitAnswer：输入焦点在最后一个词槽时按空格提交答案（IME 组合中跳过）；非末词空格仍分词跳格
+    if (fixMode === 'input' && e.key === ' ' && !composing.current) {
+      const exp = expectWordsOf(cur)
+      const lastIdx = exp.length - 1
+      const parts = typed.split(' ')
+      const activeText = (parts[slotState.active] || '').trim()
+      if (exp.length > 0 && slotState.active === lastIdx && activeText) {
+        e.preventDefault()
+        submit()
+        return
+      }
     }
     if (e.key === 'Enter' && !composing.current && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); submit() }
   }
@@ -1339,7 +1345,7 @@ export default function RuQuest() {
   }
 
   return (
-    <div style={{ ...styles.gameRoot, fontFamily: FONT_STACK[uiCfg.font], background: T.grad, color: T.text, ...(bgImageStyle || {}) }}>
+    <div style={{ ...styles.gameRoot, fontFamily: FONT_STACK[uiCfg.font], background: '#ffffff', color: '#3A3A3A' }}>
       <style>{`
         @keyframes ruqShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
         @keyframes ruqGrad { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
@@ -1350,69 +1356,80 @@ export default function RuQuest() {
         @keyframes ruqFlash { 0%{opacity:0} 30%{opacity:1} 100%{opacity:0} }
         @keyframes ruqBreak { 0%{opacity:.85; transform:translateX(-50%) scale(1)} 100%{opacity:0; transform:translateX(-50%) scale(.92) translateY(14px)} }
         @keyframes ruqFadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
-        .ruq-aw:hover{color:#E879F9 !important}
-        .ruq-as:hover{color:#E879F9 !important}
-        .ruq-awbtn:hover{border-color:#8B5CF6; color:#8B5CF6}
-        .ruq-mainbtn:hover{opacity:.85}
+        .ruq-aw:hover{color:#d946ef !important}
+        .ruq-as:hover{color:#d946ef !important}
+        .ruq-awbtn:hover{background:#f3f4f6; border-color:#9ca3af; color:#374151}
+        .ruq-toolbtn:hover{color:#d946ef !important}
+        .ruq-mobbar{display:none}
+        @media (max-width:768px){.ruq-mobbar{display:flex}}
       `}</style>
-      {/* 顶部工具栏：默认收起仅显示进度信息；hover 或点击 ⚙ 展开完整功能栏（左右分布，不遮挡中央答题区） */}
-      <div
-        style={{ ...styles.topBar, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderBottom: '1px solid ' + T.border, ...(aiOpen ? { paddingRight: 320 } : {}) }}
-        onMouseEnter={() => setTopExpanded(true)}
-        onMouseLeave={() => setTopExpanded(false)}
-      >
-        <div style={styles.topLeft}>
-          <span style={{ ...styles.topCourse, color: T.text }}>{curLesson?.sentences[0]?.source || COURSE_META[curLevel]?.title}</span>
-          {topExpanded && (
-            <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} onClick={() => { sfxFunc(); setContentOpen(true) }} title="本课内容：查看全部句子并快速跳转">📖 本课内容</button>
-          )}
-        </div>
-        <div style={styles.topRight}>
-          <div style={{ ...styles.progressTrack, background: T.bgSoft, borderColor: T.border }}>
-            <div style={{ ...styles.progressFill, width: Math.max(3, Math.round(100 * (qi + 1) / questions.length)) + '%', background: T.brand }} />
-          </div>
-          <span style={styles.topPart}>{uiCfg.showProgress !== false ? (qi + 1) + '/' + questions.length : ''}</span>
-          {/* P5 学习计时器：当前用时 + 今日累计学习时长 */}
+      {/* 顶部工具栏（对齐 Earthworm Tool.vue）：左侧返回+课程名(进度)+学习视频链接；右侧 4 常驻图标 + 溢出菜单 */}
+      <div style={styles.topBar}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button className="ruq-toolbtn" style={styles.toolIconBtn} onClick={() => { sfxScene(); setPhase('lessons') }} title="返回课程列表">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <span style={styles.topCourse}>{curLesson?.sentences[0]?.source || COURSE_META[curLevel]?.title}</span>
+          <span style={styles.topProgressText}>{(qi + 1)} / {questions.length}</span>
+          <button className="ruq-toolbtn" style={styles.studyVideoLink} onClick={playCur} title="播放当前句发音">▶ 学习视频</button>
           <LearningTimer
             elapsed={elapsed}
             paused={paused}
             active={phase === 'game' && !done}
             theme={T}
             dark={uiCfg.themeMode === 'dark' || uiCfg.theme === 'dark'}
-            showToday={topExpanded}
-            compact={!topExpanded}
+            showToday={false}
+            compact={true}
           />
-          {uiCfg.showScore !== false && <span style={{ ...styles.topScore, fontSize: AUX_SIZE[uiCfg.qSize] + 2, color: T.brand }}>{fmtScore(score)}</span>}
-          <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title={topExpanded ? '收起功能栏' : '展开功能栏'} onClick={() => { sfxFunc(); setTopExpanded(o => !o) }}>{topExpanded ? '✕' : '⚙'}</button>
-          {topExpanded && (
-            <>
-              <div style={styles.modeWrap}>
-                <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} onClick={() => setModeOpen(o => !o)} title="切换练习模式（保留学习进度）">{MODES.find(m => m.key === mode)?.name || '模式'}</button>
-                {modeOpen && (
-                  <div style={{ ...styles.modePop, background: T.panel, borderColor: T.border, boxShadow: T.shadow }}>
-                    {MODES.map(m => (
-                      <div key={m.key} style={{ ...styles.modePopItem, color: T.text, ...(mode === m.key ? { background: T.brandSoft, color: T.brand, fontWeight: 700 } : {}) }} onClick={() => { if (m.key !== mode) { setMode(m.key); try { localStorage.setItem('rlearn_quest_mode', m.key) } catch (e) { /* 忽略 */ } toast('已切换：' + m.name + '（进度已保留）') } setModeOpen(false) }}>
-                        {m.name}
-                        {m.key === mode && ' ✓'}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title={paused ? '继续练习' : '暂停练习（计时停止）'} onClick={togglePause}>{paused ? '▶' : '⏸'}</button>
-              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="重置本课进度，从头开始" onClick={resetLesson}>↺ 重置</button>
-              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="全屏沉浸练习" onClick={toggleFullscreen}>⛶ 全屏</button>
-              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="外观设置：字体/字号/配色/输入框/答案/词性/朗读" onClick={() => setUiOpen(o => !o)}>Aa</button>
-              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="游戏设置：倍速/播放次数/播放间隔（听写模式）" onClick={() => { sfxFunc(); setGameSettingOpen(true) }}>🎛 游戏设置</button>
-              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="错题本：查看历史错题、发音、标记已掌握" onClick={() => { sfxFunc(); setWrongBookOpen(true) }}>📕 错题本</button>
-              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title={petVisible ? '隐藏桌面宠物' : '显示桌面宠物'} onClick={() => { sfxFunc(); setPetVisible(v => !v) }}>{petVisible ? '🐱 宠物' : '🚫 宠物'}</button>
-              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="设置：快捷键/播放/听力/外观等（Ctrl+, 快捷开关）" onClick={() => { sfxFunc(); setShowSettings(true) }}>⚙ 设置</button>
-            </>
+        </div>
+        <div style={styles.topRight}>
+          {mode === 'dictation' && (
+            <button className="ruq-toolbtn" style={styles.toolIconBtn} title="游戏设置：倍速/播放次数/间隔（听写模式）" onClick={() => { sfxFunc(); setGameSettingOpen(true) }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
           )}
+          <button className="ruq-toolbtn" style={styles.toolIconBtn} title={paused ? '继续练习' : '暂停练习'} onClick={togglePause}>
+            {paused
+              ? <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              : <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg>}
+          </button>
+          <button className="ruq-toolbtn" style={styles.toolIconBtn} title="重置本课进度，从头开始" onClick={resetLesson}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
+          <button className="ruq-toolbtn" style={styles.toolIconBtn} title="排行榜（开发中）" onClick={() => toast('排行榜功能即将上线')}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a1 1 0 0 0-1 1c0 2 1.5 3 3 3M17 6h3a1 1 0 0 1 1 1c0 2-1.5 3-3 3"/></svg>
+          </button>
+          {/* 溢出菜单：保留模式切换/本课内容/错题本/宠物/外观/全屏/设置等扩展功能入口 */}
+          <div style={{ position: 'relative' }}>
+            <button className="ruq-toolbtn" style={styles.toolIconBtn} title="更多功能" onClick={() => setMoreOpen(o => !o)}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+            </button>
+            {moreOpen && (
+              <div style={styles.overflowPop}>
+                <div style={{ ...styles.overflowItem, color: '#94a3b8', fontSize: 11, padding: '4px 12px', cursor: 'default' }}>切换练习模式</div>
+                {MODES.map(m => (
+                  <div key={m.key} style={{ ...styles.overflowItem, ...(mode === m.key ? styles.overflowItemOn : {}) }} onClick={() => { if (m.key !== mode) { setMode(m.key); try { localStorage.setItem('rlearn_quest_mode', m.key) } catch (e) { /* 忽略 */ } toast('已切换：' + m.name + '（进度已保留）') } setMoreOpen(false) }}>
+                    {m.name}{m.key === mode && ' ✓'}
+                  </div>
+                ))}
+                <div style={{ height: 1, background: '#e2e8f0', margin: '6px 0' }} />
+                <div style={styles.overflowItem} onClick={() => { setMoreOpen(false); sfxFunc(); setContentOpen(true) }}>📖 本课内容</div>
+                <div style={styles.overflowItem} onClick={() => { setMoreOpen(false); sfxFunc(); setWrongBookOpen(true) }}>📕 错题本</div>
+                <div style={styles.overflowItem} onClick={() => { setMoreOpen(false); sfxFunc(); setPetVisible(v => !v) }}>{petVisible ? '🐱 隐藏宠物' : '🐾 显示宠物'}</div>
+                <div style={styles.overflowItem} onClick={() => { setMoreOpen(false); setUiOpen(o => !o) }}>Aa 外观设置</div>
+                <div style={styles.overflowItem} onClick={() => { setMoreOpen(false); toggleFullscreen() }}>⛶ 全屏</div>
+                <div style={styles.overflowItem} onClick={() => { setMoreOpen(false); sfxFunc(); setShowSettings(true) }}>⚙ 设置</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+      {/* 通宽进度条（对齐 Earthworm CommonProgressBar h-6）：百分比 = 当前题序/总题数 */}
+      <div style={styles.progressBarFull}>
+        <div style={{ ...styles.progressBarFill, width: Math.max(2, Math.round(100 * (qi + 1) / questions.length)) + '%' }} />
+      </div>
 
-      <div style={{ ...styles.gameMain, ...(aiOpen ? {} : { paddingRight: 0 }) }}>
+      <div style={styles.gameMain}>
         {/* 中央题目区（切题时极简淡入，无闪烁） */}
         <div key={qi} style={{ ...styles.center, animation: 'ruqFadeIn .3s ease' }} onClick={() => inputRef.current?.focus()}>
           {done && (
@@ -1451,76 +1468,48 @@ export default function RuQuest() {
               </>
             : <div style={{ ...styles.zhText, fontSize: Q_SIZE[uiCfg.qSize], color: T.text, fontWeight: 500 }}>{cur.zh}</div>)}
           {done ? (
-            /* 答案显示：浮层模式（官方 Answer.vue 样式：逐词可点击发音 + 音标 + 中文 + 再来一次/下一题；AI 拆解保留在下方） */
-            uiCfg.answerMode === 'float' ? (
-              <div style={styles.answerMask}>
-                <div style={{ ...styles.answerCard, background: T.panel, boxShadow: T.shadow, color: T.text, animation: 'ruqPop .3s ease', maxHeight: '88vh', overflowY: 'auto' }}>
-                  {/* 官方：整句逐词大字号展示，点击单词发音；右侧整句发音喇叭 */}
-                  <div style={styles.answerWords}>
-                    {cur.answer.trim().split(/\s+/).map((w, i) => (
-                      <span key={i} className="ruq-aw" style={styles.answerWord} onClick={() => speak(w)} title="点击发音">{w}</span>
-                    ))}
-                    <span className="ruq-as" style={styles.answerSpeaker} onClick={() => speak(cur.s.russian)} title="整句发音">🔊</span>
-                  </div>
-                  {cur.s.soundmark && <div style={{ ...styles.answerSoundmark, color: T.sub }}>{cur.s.soundmark}</div>}
-                  <div style={{ ...styles.answerZhLine, color: T.sub }}>{cur.zh || cur.s.chinese}</div>
-                  <div style={styles.answerBtns}>
-                    <button className="ruq-awbtn" style={styles.answerBtn} onClick={() => loadQuestion(qi)}>再来一次</button>
-                    <button className="ruq-mainbtn" style={styles.answerBtnMain} onClick={nextQ}>{qi + 1 >= questions.length ? '完成本课 →' : '下一题 →'}</button>
-                  </div>
-                  <div style={{ ...styles.answerOk, color: T.ok }}>√ Perfect! 完全正确</div>
-                  {/* 保留：AI 逐词拆解（词性/语法成分/释义，用户原有功能） */}
-                  {analysis?.roles ? (
-                    <div style={styles.rolesRow}>
-                      {analysis.roles.map((r, ri) => (
-                        <div key={ri} style={styles.roleCol}>
-                          <div style={{ ...styles.roleName, color: T.brand, background: T.brandSoft }}>{r.role}</div>
-                          {r.words.map((w, wi) => (
-                            <div key={wi} style={styles.roleWordWrap}>
-                              <div style={{ ...styles.roleWord, fontSize: S_ROLE[uiCfg.sSize], color: T.textStrong }}>{stripStress(w.word)}</div>
-                              <div style={{ ...styles.roleStress, fontSize: AUX_SIZE[uiCfg.qSize] - 1, color: T.sub }}>{w.stress || w.word}</div>
-                              {uiCfg.posMark ? (
-                                <div style={{ ...styles.rolePos, fontSize: AUX_SIZE[uiCfg.qSize], color: posColor(w.pos), borderBottom: '2px solid ' + posColor(w.pos) }}>{w.pos}</div>
-                              ) : <div style={styles.rolePosHidden} />}
-                              <div style={{ ...styles.roleZh, fontSize: AUX_SIZE[uiCfg.qSize] + 2, color: T.text }}>{w.zh}</div>
-                            </div>
-                          ))}
+            /* 答案显示：答题居中区内原地替换渲染（对齐 Earthworm Answer.vue：无全屏遮罩/卡片） */
+            <div style={{ animation: 'ruqFadeUp .35s ease', textAlign: 'center' }}>
+              {/* 官方：整句逐词大字号展示（text-5xl=48px，gap-1=4px），点击单词发音；右侧整句发音喇叭 */}
+              <div style={styles.answerWords}>
+                {cur.answer.trim().split(/\s+/).map((w, i) => (
+                  <span key={i} className="ruq-aw" style={styles.answerWord} onClick={() => speak(w)} title="点击发音">{w}</span>
+                ))}
+                <span className="ruq-as" style={styles.answerSpeaker} onClick={() => speak(cur.s.russian)} title="整句发音">🔊</span>
+              </div>
+              {cur.s.soundmark && <div style={styles.answerSoundmark}>{cur.s.soundmark}</div>}
+              <div style={styles.answerZhLine}>{cur.zh || cur.s.chinese}</div>
+              <div style={styles.answerBtns}>
+                <button className="ruq-awbtn" style={styles.answerBtn} onClick={() => loadQuestion(qi)}>再来一次</button>
+                <button className="ruq-awbtn" style={styles.answerBtnMain} onClick={nextQ}>{qi + 1 >= questions.length ? '完成本课 →' : '下一题 →'}</button>
+              </div>
+              {/* 保留：AI 逐词拆解（词性/语法成分/释义，俄语扩展功能） */}
+              {analysis?.roles ? (
+                <div style={styles.rolesRow}>
+                  {analysis.roles.map((r, ri) => (
+                    <div key={ri} style={styles.roleCol}>
+                      <div style={{ ...styles.roleName, color: T.brand, background: T.brandSoft }}>{r.role}</div>
+                      {r.words.map((w, wi) => (
+                        <div key={wi} style={styles.roleWordWrap}>
+                          <div style={{ ...styles.roleWord, fontSize: S_ROLE[uiCfg.sSize], color: T.textStrong }}>{stripStress(w.word)}</div>
+                          <div style={{ ...styles.roleStress, fontSize: AUX_SIZE[uiCfg.qSize] - 1, color: T.sub }}>{w.stress || w.word}</div>
+                          {uiCfg.posMark ? (
+                            <div style={{ ...styles.rolePos, fontSize: AUX_SIZE[uiCfg.qSize], color: posColor(w.pos), borderBottom: '2px solid ' + posColor(w.pos) }}>{w.pos}</div>
+                          ) : <div style={styles.rolePosHidden} />}
+                          <div style={{ ...styles.roleZh, fontSize: AUX_SIZE[uiCfg.qSize] + 2, color: T.text }}>{w.zh}</div>
                         </div>
                       ))}
                     </div>
-                  ) : analysis?.err ? (
-                    <div style={styles.answerFallback}>
-                      <div style={{ ...styles.answerErr, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub }}>AI 拆解失败，点击 <span style={{ ...styles.retry, color: T.brand }} onClick={() => fetchAnalysis(cur)}>重试</span></div>
-                    </div>
-                  ) : analysing && (
-                    <div style={{ ...styles.answerErr, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub }}>正在解析…</div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              /* 内嵌模式：正确答案直接显示在基线上 + 紧凑语法行 */
-              <div style={{ ...styles.inlineWrap, animation: 'ruqFadeUp .35s ease' }}>
-                <div style={styles.wordRow}>
-                  {expectChunks.map((ec, i) => (
-                    <span key={i} style={{ ...chipBoxStyle(i, true), color: T.sub, borderColor: T.ok, background: 'transparent', transition: 'all .5s ease' }}>{ec}</span>
                   ))}
                 </div>
-                <div style={{ ...styles.inlineMeta, color: T.sub, fontSize: AUX_SIZE[uiCfg.qSize] }}>
-                  {analysis?.roles ? analysis.roles.map((r, ri) => (
-                    <span key={ri} style={styles.inlineRole}>
-                      <b style={{ color: T.brand }}>{r.role}</b>
-                      {r.words.map((w, wi) => (
-                        <span key={wi} style={styles.inlineWord}>
-                          {stripStress(w.word)}
-                          {uiCfg.posMark && <i style={{ borderBottom: '2px solid ' + posColor(w.pos), ...styles.inlinePos, color: posColor(w.pos) }}>{w.pos}</i>}
-                          <em style={styles.inlineZh}>{w.zh}</em>
-                        </span>
-                      ))}
-                    </span>
-                  )) : <span>{cur.answer} · {cur.zh}</span>}
+              ) : analysis?.err ? (
+                <div style={styles.answerFallback}>
+                  <div style={{ ...styles.answerErr, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub }}>AI 拆解失败，点击 <span style={{ ...styles.retry, color: T.brand }} onClick={() => fetchAnalysis(cur)}>重试</span></div>
                 </div>
-              </div>
-            )
+              ) : analysing && (
+                <div style={{ ...styles.answerErr, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub }}>正在解析…</div>
+              )}
+            </div>
           ) : mode === 'speaking' ? (
             /* 口语评测模式：先听原句 → 跟读录音 → AI 实时评分 */
             <div style={styles.speakWrap}>
@@ -1578,8 +1567,8 @@ export default function RuQuest() {
             </div>
           ) : (
             <>
-              {/* 官方连词成句：单词下划线槽（QuestionInput.vue 1:1：激活整词 fuchsia / 错误整词 red+shake / 默认 #20202099；标点直接显示无槽） */}
-              <div ref={inputRowRef} style={{ ...styles.slotRow, ...(wrong && fixMode === 'input' ? { animation: 'ruqShake .4s ease' } : {}) }}>
+              {/* 官方连词成句：单词下划线槽（QuestionInput.vue 1:1：槽 64px / 字号 48px / 激活整词 #d946ef / 错误整词 red+shake(仅fix模式) / 默认 #20202099；标点直接显示无槽） */}
+              <div ref={inputRowRef} style={styles.slotRow}>
                 {expectChunks.map((text, i) => {
                   const userInput = typed.split(' ')[i] !== undefined ? typed.split(' ')[i] : ''
                   const editing = fixMode === 'fix_input' && i === editIdx
@@ -1589,14 +1578,15 @@ export default function RuQuest() {
                   // 官方三态词级高亮（getWordsClassNames）
                   let col = '#20202099', bcol = '#D1D5DB'
                   if (incorrect) { col = '#EF4444'; bcol = '#EF4444' }
-                  else if (active) { col = '#E879F9'; bcol = '#E879F9' }
-                  const slotW = uiCfg.inputStyle === 'fixed' ? 96 : Math.max(2.4, (text?.length || 3) + 0.8)
+                  else if (active) { col = '#d946ef'; bcol = '#d946ef' }
+                  // 官方：默认固定 4ch（isShowWordsWidth 关闭时），不按词长动态计算；外观「固定等宽」仍保留 96px
+                  const slotW = uiCfg.inputStyle === 'fixed' ? 96 : 4
                   if (!isWordChunk) {
-                    // 官方：非词（标点）无下划线槽，直接显示
-                    return <div key={i} style={{ ...styles.slotPunct, fontSize: S_WORD[uiCfg.sSize], color: '#20202099' }}>{text}</div>
+                    // 官方：非词（标点）无下划线槽，直接显示，同高 64px
+                    return <div key={i} style={{ ...styles.slotPunct, fontSize: 48, color: '#20202099' }}>{text}</div>
                   }
                   return (
-                    <div key={i} style={{ ...styles.slotBox, minWidth: slotW + 'ch', borderBottom: '2px solid ' + bcol, fontSize: S_WORD[uiCfg.sSize], color: col, ...(incorrect && fixMode !== 'input' ? { animation: 'ruqShake .3s ease' } : {}) }}>
+                    <div key={i} style={{ ...styles.slotBox, minWidth: slotW + 'ch', borderBottom: '2px solid ' + bcol, fontSize: 48, color: col, ...(incorrect && fixMode !== 'input' ? { animation: 'ruqShake .3s ease' } : {}) }}>
                       {userInput}
                     </div>
                   )
@@ -1621,6 +1611,14 @@ export default function RuQuest() {
               <div style={{ ...styles.inputHint, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub }}>
                 {fixMode === 'fix' ? '部分单词有误 — 直接输入字母修改第一个红色单词' : fixMode === 'fix_input' ? '正在修改错误单词 · 空格跳到下一个 · Enter 提交' : '直接在下方输入 · 空格分隔单词 · Enter 提交'}
               </div>
+              {/* 移动端按钮组（仅小屏显示，对齐 Earthworm QuestionInput md:hidden）：提交/显示答案/播放声音/掌握 */}
+              <div className="ruq-mobbar" style={styles.mobBar}>
+                {!done && <button style={styles.mobBtnMain} onClick={submit}>提交</button>}
+                {!done && <button style={styles.mobBtn} onClick={showAnswerNow}>显示答案</button>}
+                <button style={styles.mobBtn} onClick={playCur}>🔊 播放</button>
+                <button style={styles.mobBtn} onClick={toggleMastered}>✓ 掌握</button>
+                {done && <button style={styles.mobBtnMain} onClick={nextQ}>{qi + 1 >= questions.length ? '完成本课' : '下一题'}</button>}
+              </div>
               {wrong && fixMode === 'input' && <div style={{ ...styles.wrongTip, fontSize: AUX_SIZE[uiCfg.qSize] + 3, color: T.err }}>再试一次</div>}
               {stuckOpen && (
                 <div style={{ ...styles.stuckBox, background: T.brandSoft, borderColor: T.brand }}>
@@ -1634,25 +1632,6 @@ export default function RuQuest() {
               )}
             </>
           )}
-        </div>
-
-        {/* 底部快捷键 */}
-        <div style={{ ...styles.bottomBar, fontSize: AUX_SIZE[uiCfg.qSize], background: uiCfg.theme === 'light' ? 'rgba(255,255,255,.92)' : 'rgba(13,9,24,.88)', borderTop: '1px solid ' + T.border, ...(aiOpen ? {} : { right: 0 }) }}>
-          <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={() => setPhase('lessons')} title="返回课表（进度已自动保存）">↩ 课表</button>
-          <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={playCur}><b>Ctrl '</b> 播放发音</button>
-          <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={toggleMastered}><b>Ctrl M</b> 掌握</button>
-          <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={addVocab}><b>Ctrl N</b> 生词</button>
-          <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft, ...(!undoStack.current.length ? { opacity: .45, cursor: 'default' } : {}) }} onClick={undo} title="撤销上一步输入"><b>Ctrl Z</b> 撤销</button>
-          {done
-            ? <button style={{ ...styles.sKeyMain, fontSize: AUX_SIZE[uiCfg.qSize], background: T.brand }} onClick={nextQ}><b>Enter</b> 下一题</button>
-            : <button style={{ ...styles.sKeyMain, fontSize: AUX_SIZE[uiCfg.qSize], background: T.brand }} onClick={submit}><b>Enter</b> 提交</button>}
-          {done
-            ? <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={() => loadQuestion(qi)}><b>Ctrl ;</b> 再来一次</button>
-            : <button style={{ ...styles.sKey, fontSize: AUX_SIZE[uiCfg.qSize], color: T.sub, borderColor: T.border, background: T.bgSoft }} onClick={showAnswerNow}><b>Ctrl ;</b> 显示答案</button>}
-          <span style={styles.navArrows}>
-            <span style={{ ...styles.navArrow, color: T.sub, background: T.bgSoft }} onClick={prevQ} title="上一题（←）">‹</span>
-            <span style={{ ...styles.navArrow, color: T.sub, background: T.bgSoft }} onClick={nextQ} title="下一题（→）">›</span>
-          </span>
         </div>
       </div>
 
@@ -2044,23 +2023,32 @@ const styles = {
   wrongReason: { fontSize: 12, color: '#FFB347', marginTop: 6 },
   btnGhost: { padding: '9px 18px', borderRadius: 22, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.2)', color: '#E5DDF5', fontSize: 14, cursor: 'pointer' },
   btnPrimary: { padding: '9px 18px', borderRadius: 22, background: '#8B5CF6', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
-  gameRoot: { minHeight: '100vh', background: 'radial-gradient(ellipse at 50% -20%, #241A3D 0%, #0D0918 55%)', color: '#F5EDE2', position: 'relative', fontFamily: FONT_STACK.system, paddingBottom: 110 },
-  topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 26px', fontSize: 13, color: '#B9AFCB', gap: 12 },
-  topCourse: { fontWeight: 600, color: '#E5DDF5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  topRight: { display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 },
+  gameRoot: { minHeight: '100vh', background: '#ffffff', color: '#3A3A3A', position: 'relative', fontFamily: FONT_STACK.system, display: 'flex', flexDirection: 'column' },
+  topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', fontSize: 13, color: '#475569', gap: 16, borderTop: '1px solid #e2e8f0', borderBottom: 'none' },
+  toolIconBtn: { width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: 'transparent', color: '#475569', fontSize: 18, cursor: 'pointer', padding: 0, transition: 'color .12s, background .12s' },
+  topCourse: { fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14 },
+  topProgressText: { color: '#64748b', fontVariantNumeric: 'tabular-nums', fontSize: 13 },
+  studyVideoLink: { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: 'transparent', color: '#475569', fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' },
+  topRight: { display: 'flex', gap: 16, alignItems: 'center', flexShrink: 0 },
   topTime: { fontVariantNumeric: 'tabular-nums' },
   topPart: { fontVariantNumeric: 'tabular-nums' },
-  topScore: { fontSize: 15, fontWeight: 800, color: '#FFD75E', fontVariantNumeric: 'tabular-nums' },
-  gameMain: { display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 60px)', paddingRight: 300 },
-  center: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 30px' },
+  topScore: { display: 'none' },
+  overflowPop: { position: 'absolute', top: 40, right: 0, minWidth: 168, borderRadius: 12, padding: 6, zIndex: 80, background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 12px 32px rgba(15,23,42,.14)' },
+  overflowItem: { padding: '8px 12px', borderRadius: 8, fontSize: 13, cursor: 'pointer', color: '#334155', display: 'flex', alignItems: 'center', gap: 8 },
+  overflowItemOn: { background: '#f5f3ff', color: '#7c3aed', fontWeight: 600 },
+  progressBarFull: { height: 24, width: '100%', background: '#f1f5f9', padding: 2, boxSizing: 'border-box', borderBottom: '1px solid #e2e8f0' },
+  progressBarFill: { height: '100%', background: '#d946ef', borderRadius: 4, transition: 'width .3s ease' },
+  gameMain: { display: 'flex', flexDirection: 'column', flex: 1 },
+  center: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 30px' },
   praise: { fontSize: 34, fontWeight: 900, color: '#FFD75E', marginBottom: 10, textShadow: '0 0 30px rgba(255,215,94,.35)' },
   zhText: { fontSize: 30, fontWeight: 700, color: '#F5EDE2', marginBottom: 26, textAlign: 'center', lineHeight: 1.5 },
   wordRow: { display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', minHeight: 62, alignItems: 'center', maxWidth: 640 },
   wordChip: { padding: '8px 16px', borderRadius: 12, border: '1px solid', fontSize: 20, fontWeight: 700, minWidth: 40, textAlign: 'center', transition: 'all .15s' },
   // 官方连词成句：单词下划线槽 + 透明覆盖输入框（1:1 复刻 earthworm QuestionInput）
-  slotRow: { display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', alignItems: 'baseline', minHeight: 66, maxWidth: 680, position: 'relative', padding: '10px 4px' },
-  slotBox: { display: 'inline-flex', alignItems: 'baseline', justifyContent: 'center', borderRadius: 2, borderBottom: '2px solid', padding: '2px 7px 5px', minHeight: '1.5em', lineHeight: 1.35, textAlign: 'center', fontWeight: 600, transition: 'border-color .15s, color .15s' },
-  slotPunct: { display: 'inline-flex', alignItems: 'baseline', justifyContent: 'center', minHeight: '1.5em', lineHeight: 1.35, textAlign: 'center', fontWeight: 600, padding: '0 3px' },
+  // Earthworm: relative flex flex-wrap justify-center gap-2(8px) transition-all；槽 h-[4rem]=64px；text-[3em]=48px；leading-none；normal 字重
+  slotRow: { display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', alignItems: 'center', position: 'relative', padding: '0 4px' },
+  slotBox: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, borderBottom: '2px solid', padding: '0 6px', height: 64, lineHeight: 1, textAlign: 'center', fontWeight: 400, transition: 'border-color .15s, color .15s' },
+  slotPunct: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 64, lineHeight: 1, textAlign: 'center', fontWeight: 400, padding: '0 4px' },
   slotInput: { position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'text', border: 'none', outline: 'none', background: 'transparent', color: 'transparent', caretColor: 'transparent', zIndex: 1, fontSize: 16 },
   hiddenInput: { width: 0, height: 0, opacity: 0, position: 'absolute', pointerEvents: 'none' },
   inputHint: { fontSize: 12.5, color: '#8B7FA3', marginTop: 14 },
@@ -2071,17 +2059,15 @@ const styles = {
   stuckBtns: { display: 'flex', gap: 10, justifyContent: 'center' },
   stuckNo: { padding: '6px 16px', borderRadius: 16, background: 'transparent', border: '1px solid rgba(255,255,255,.25)', color: '#B9AFCB', fontSize: 12.5, cursor: 'pointer' },
   stuckYes: { padding: '6px 16px', borderRadius: 16, background: '#8B5CF6', border: 'none', color: '#fff', fontSize: 12.5, cursor: 'pointer' },
-  answerCard: { width: 560, maxWidth: '94vw', textAlign: 'center', padding: 30, borderRadius: 20 },
-  // 官方 Answer.vue：逐词大字号可点击发音 + 整句喇叭 + 音标 + 中文 + 再来一次/下一题
-  answerWords: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6, fontSize: 40, fontWeight: 600, lineHeight: 1.4, margin: '4px 0 8px' },
-  answerWord: { cursor: 'pointer', padding: '0 3px', transition: 'color .12s' },
-  answerSpeaker: { marginLeft: 8, fontSize: 24, cursor: 'pointer', color: '#9CA3AF', transition: 'color .12s' },
-  answerSoundmark: { fontSize: 20, margin: '10px 0 6px' },
-  answerZhLine: { fontSize: 20, margin: '6px 0 20px' },
-  answerBtns: { display: 'flex', gap: 12, justifyContent: 'center', margin: '6px 0 16px' },
-  answerBtn: { padding: '8px 20px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'transparent', color: '#4B5563', fontSize: 14, cursor: 'pointer', transition: 'border-color .12s,color .12s' },
-  answerBtnMain: { padding: '8px 20px', borderRadius: 8, border: 'none', background: '#8B5CF6', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'opacity .12s' },
-  answerMask: { position: 'fixed', inset: 0, background: 'rgba(10,8,20,.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 40, padding: 20 },
+  // 官方 Answer.vue：逐词大字号可点击发音 + 整句喇叭 + 音标 + 中文 + 再来一次/下一题（原地渲染，无遮罩卡片）
+  answerWords: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 4, fontSize: 48, fontWeight: 400, lineHeight: 1.2, margin: '0 0 4px' },
+  answerWord: { cursor: 'pointer', padding: 4, transition: 'color .12s' },
+  answerSpeaker: { marginLeft: 8, fontSize: 28, cursor: 'pointer', color: '#6b7280', transition: 'color .12s' },
+  answerSoundmark: { fontSize: 20, color: '#6b7280', margin: '24px 0 0' },
+  answerZhLine: { fontSize: 20, color: '#6b7280', margin: '24px 0 0' },
+  answerBtns: { display: 'flex', gap: 0, justifyContent: 'center', margin: '24px 0 8px' },
+  answerBtn: { padding: '8px 20px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'transparent', color: '#4B5563', fontSize: 14, cursor: 'pointer', transition: 'background .12s,border-color .12s,color .12s' },
+  answerBtnMain: { padding: '8px 20px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'transparent', color: '#4B5563', fontSize: 14, cursor: 'pointer', transition: 'background .12s,border-color .12s,color .12s', marginLeft: 24 },
   inlineWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, maxWidth: 640 },
   inlineMeta: { display: 'flex', flexWrap: 'wrap', gap: '10px 18px', justifyContent: 'center', lineHeight: 1.9 },
   inlineRole: { display: 'inline-flex', alignItems: 'baseline', gap: 8 },
@@ -2104,9 +2090,12 @@ const styles = {
   answerErr: { fontSize: 12, color: '#8B7FA3', marginTop: 10 },
   retry: { color: '#C4B5FD', cursor: 'pointer', textDecoration: 'underline' },
   answerOk: { marginTop: 16, fontSize: 15, fontWeight: 700, color: '#34D399' },
-  bottomBar: { position: 'fixed', bottom: 0, left: 0, right: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 20px', background: 'rgba(13,9,24,.85)', backdropFilter: 'blur(6px)', borderTop: '1px solid rgba(255,255,255,.06)', zIndex: 5 },
-  sKey: { background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', color: '#C9BEE0', fontSize: 12, padding: '7px 12px', borderRadius: 12, cursor: 'pointer' },
-  sKeyMain: { background: '#8B5CF6', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, padding: '7px 16px', borderRadius: 12, cursor: 'pointer' },
+  bottomBar: { display: 'none' },
+  sKey: { background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', fontSize: 12, padding: '8px 12px', borderRadius: 10, cursor: 'pointer' },
+  sKeyMain: { background: '#d946ef', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, padding: '8px 16px', borderRadius: 10, cursor: 'pointer' },
+  mobBar: { display: 'none', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 18 },
+  mobBtn: { padding: '9px 16px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontSize: 13, cursor: 'pointer' },
+  mobBtnMain: { padding: '9px 16px', borderRadius: 10, border: 'none', background: '#d946ef', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   navArrows: { display: 'flex', gap: 4, marginLeft: 4 },
   navArrow: { width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, background: 'rgba(255,255,255,.06)', color: '#B9AFCB', cursor: 'pointer', fontSize: 16 },
   aiPanel: { position: 'fixed', top: 0, right: 0, bottom: 0, width: 300, background: 'rgba(20,14,36,.92)', borderLeft: '1px solid rgba(255,255,255,.07)', display: 'flex', flexDirection: 'column', zIndex: 10, transition: 'transform .28s ease' },
