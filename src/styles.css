@@ -1423,3 +1423,13 @@ html,body{overflow-x:hidden;max-width:100vw}
   .dict-voice-switch{width:100%}
   .dict-voice-switch .btn{flex:1}
 }
+
+/* 商城卡片 hover 动效 */
+.mall-featured-card{transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s}
+.mall-featured-card:hover{transform:translateY(-5px);box-shadow:0 16px 40px rgba(0,0,0,.12)}
+.mall-list-card{transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s}
+.mall-list-card:hover{transform:translateY(-4px);box-shadow:0 10px 28px rgba(0,0,0,.1)}
+.mall-nav-tab{transition:color .2s}
+.mall-nav-tab:hover{color:#1a1a1a}
+.mall-section-more{transition:color .2s}
+.mall-section-more:hover{color:#1a1a1a}

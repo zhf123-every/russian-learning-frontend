@@ -1168,10 +1168,14 @@ export default function RuQuest() {
     ]
   }, [cur])
 
-  // —— 渲染：课程选择（商城风格，对齐句乐部课程包商城） ——
+  // —— 渲染：课程选择（高级质感商城风格） ——
   if (phase === 'courses' || phase === 'lessons') {
-    const gradients = ['linear-gradient(135deg,#8B5CF6,#6D28D9)', 'linear-gradient(135deg,#3B82F6,#1D4ED8)', 'linear-gradient(135deg,#10B981,#047857)', 'linear-gradient(135deg,#F59E0B,#B45309)']
-    const gradientsLight = ['linear-gradient(135deg,#A78BFA,#7C3AED)', 'linear-gradient(135deg,#93C5FD,#2563EB)', 'linear-gradient(135deg,#6EE7B7,#059669)', 'linear-gradient(135deg,#FCD34D,#D97706)']
+    const gradients = [
+      'linear-gradient(135deg,#667eea 0%,#764ba2 100%)',
+      'linear-gradient(135deg,#4facfe 0%,#00f2fe 100%)',
+      'linear-gradient(135deg,#43e97b 0%,#38f9d7 100%)',
+      'linear-gradient(135deg,#fa709a 0%,#fee140 100%)',
+    ]
     return (
       <div style={styles.coursesRoot}>
         {phase === 'courses' && (
@@ -1179,15 +1183,14 @@ export default function RuQuest() {
             {/* 顶部导航栏 */}
             <div style={styles.mallNav}>
               <div style={styles.mallNavLeft}>
-                <span style={styles.mallNavIcon}>📖</span>
                 <span style={styles.mallNavTitle}>课程包商城</span>
               </div>
               <div style={styles.mallNavTabs}>
                 {['推荐', '零基础', '初级', '中级', '高级', '全部'].map((t, i) => (
-                  <span key={t} style={{ ...styles.mallNavTab, ...(i === 0 ? styles.mallNavTabOn : {}) }}>{t}</span>
+                  <span key={t} className="mall-nav-tab" style={{ ...styles.mallNavTab, ...(i === 0 ? styles.mallNavTabOn : {}) }}>{t}</span>
                 ))}
               </div>
-              <div style={styles.mallNavSearch}>🔍 大家都在搜：A1</div>
+              <div style={styles.mallNavSearch}>搜索课程…</div>
             </div>
 
             {/* 内容区 */}
@@ -1200,17 +1203,16 @@ export default function RuQuest() {
                     const m = COURSE_META[lv]
                     const pool = poolOf(lv)
                     return (
-                      <div key={lv} style={styles.mallFeaturedCard} onClick={() => { setCurLevel(lv); setLessons(lessonsByLevel[lv]); setPhase('lessons') }}>
+                      <div key={lv} className="mall-featured-card" style={styles.mallFeaturedCard} onClick={() => { setCurLevel(lv); setLessons(lessonsByLevel[lv]); setPhase('lessons') }}>
                         <div style={{ ...styles.mallFeaturedCover, background: gradients[i] }}>
-                          <span style={styles.mallFeaturedEmoji}>{m.emoji}</span>
-                          <span style={styles.mallFeaturedTag}>{m.tag}</span>
+                          <span style={styles.mallFeaturedLevel}>{lv}</span>
+                          <div style={styles.mallFeaturedOverlay}>
+                            <span style={styles.mallFeaturedCoverTitle}>{m.title}</span>
+                          </div>
                         </div>
                         <div style={styles.mallFeaturedInfo}>
-                          <div style={styles.mallFeaturedName}>{m.title} ({lv})</div>
-                          <div style={styles.mallFeaturedMeta}>
-                            <span style={styles.mallMetaIcon}>📚</span>
-                            句乐部 · {lessonsByLevel[lv].length} 课 · {pool.length} 句
-                          </div>
+                          <div style={styles.mallFeaturedName}>{m.title}</div>
+                          <div style={styles.mallFeaturedMeta}>句乐部 · {lessonsByLevel[lv].length} 课 · {pool.length} 句</div>
                         </div>
                       </div>
                     )
@@ -1219,26 +1221,23 @@ export default function RuQuest() {
               </div>
 
               {/* 全部俄语课程 */}
-              <div style={{ ...styles.mallSection, marginTop: 36 }}>
+              <div style={{ ...styles.mallSection, marginTop: 40 }}>
                 <div style={styles.mallSectionHeader}>
                   <div style={styles.mallSectionTitle}>全部俄语课程</div>
-                  <div style={styles.mallSectionMore}>更多 {'>'}</div>
+                  <div style={styles.mallSectionMore} className="mall-section-more">查看全部</div>
                 </div>
                 <div style={styles.mallListGrid}>
                   {LEVELS.map((lv, i) => {
                     const m = COURSE_META[lv]
                     const pool = poolOf(lv)
                     return (
-                      <div key={lv} style={styles.mallListCard} onClick={() => { setCurLevel(lv); setLessons(lessonsByLevel[lv]); setPhase('lessons') }}>
-                        <div style={{ ...styles.mallListCover, background: gradientsLight[i] }}>
-                          <span style={styles.mallListEmoji}>{m.emoji}</span>
+                      <div key={lv} className="mall-list-card" style={styles.mallListCard} onClick={() => { setCurLevel(lv); setLessons(lessonsByLevel[lv]); setPhase('lessons') }}>
+                        <div style={{ ...styles.mallListCover, background: gradients[i] }}>
+                          <span style={styles.mallListLevel}>{lv}</span>
                         </div>
                         <div style={styles.mallListInfo}>
                           <div style={styles.mallListName}>{m.title}</div>
-                          <div style={styles.mallListMeta}>
-                            <span style={styles.mallMetaIcon}>👤</span>
-                            句乐部 · {lessonsByLevel[lv].length} 课 · {pool.length} 人在学
-                          </div>
+                          <div style={styles.mallListMeta}>{lessonsByLevel[lv].length} 课 · {pool.length} 句</div>
                         </div>
                       </div>
                     )
@@ -2002,36 +2001,35 @@ const styles = {
   courseNew: { fontSize: 11, color: '#9ca3af', fontWeight: 400 },
   courseSub: { fontSize: 14, color: '#6b7280', margin: '8px 0 0', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' },
   courseMeta: { fontSize: 12, color: '#9ca3af', marginTop: 8 },
-  // —— 商城风格（对齐句乐部课程包商城） ——
-  mallNav: { background: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '12px 32px', display: 'flex', alignItems: 'center', gap: 24, position: 'sticky', top: 0, zIndex: 10 },
-  mallNavLeft: { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 },
-  mallNavIcon: { fontSize: 22 },
-  mallNavTitle: { fontSize: 20, fontWeight: 700, color: '#1a1a1a' },
+  // —— 商城风格（高级质感） ——
+  mallNav: { background: '#ffffff', borderBottom: '1px solid #f0f0f0', padding: '0 40px', display: 'flex', alignItems: 'center', gap: 32, position: 'sticky', top: 0, zIndex: 10, height: 64 },
+  mallNavLeft: { display: 'flex', alignItems: 'center', flexShrink: 0 },
+  mallNavTitle: { fontSize: 18, fontWeight: 600, color: '#1a1a1a', letterSpacing: 1 },
   mallNavTabs: { display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', flex: 1 },
-  mallNavTab: { padding: '6px 14px', fontSize: 15, color: '#6b7280', cursor: 'pointer', borderRadius: 6, transition: 'color .15s' },
-  mallNavTabOn: { color: '#d946ef', fontWeight: 600 },
-  mallNavSearch: { marginLeft: 'auto', fontSize: 14, color: '#9ca3af', background: '#f3f4f6', padding: '8px 16px', borderRadius: 20, flexShrink: 0, whiteSpace: 'nowrap' },
-  mallContent: { maxWidth: 1200, margin: '0 auto', padding: '28px 32px' },
+  mallNavTab: { padding: '8px 16px', fontSize: 14, color: '#888', cursor: 'pointer', borderRadius: 6, transition: 'color .2s', fontWeight: 400 },
+  mallNavTabOn: { color: '#1a1a1a', fontWeight: 600 },
+  mallNavSearch: { fontSize: 13, color: '#bbb', background: '#f7f7f7', padding: '8px 18px', borderRadius: 20, flexShrink: 0, whiteSpace: 'nowrap', border: '1px solid #f0f0f0' },
+  mallContent: { maxWidth: 1280, margin: '0 auto', padding: '40px 40px 80px' },
   mallSection: { marginBottom: 8 },
-  mallSectionTitle: { fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 },
-  mallSectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  mallSectionMore: { fontSize: 14, color: '#d946ef', cursor: 'pointer', fontWeight: 500 },
-  mallFeaturedGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 16 },
-  mallFeaturedCard: { cursor: 'pointer', transition: 'transform .2s, box-shadow .2s', borderRadius: 8 },
-  mallFeaturedCover: { aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderRadius: 8 },
-  mallFeaturedEmoji: { fontSize: 64, lineHeight: 1 },
-  mallFeaturedTag: { position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,.3)', color: '#fff', fontSize: 11, padding: '2px 8px', borderRadius: 10 },
-  mallFeaturedInfo: { padding: '12px 4px' },
-  mallFeaturedName: { fontSize: 16, fontWeight: 600, color: '#1a1a1a', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  mallFeaturedMeta: { fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 },
-  mallMetaIcon: { fontSize: 12 },
-  mallListGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 16 },
-  mallListCard: { cursor: 'pointer', transition: 'transform .2s', borderRadius: 8 },
-  mallListCover: { aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, overflow: 'hidden' },
-  mallListEmoji: { fontSize: 40, lineHeight: 1 },
-  mallListInfo: { padding: '10px 2px' },
-  mallListName: { fontSize: 14, fontWeight: 600, color: '#1a1a1a', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  mallListMeta: { fontSize: 11, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 },
+  mallSectionTitle: { fontSize: 20, fontWeight: 600, color: '#1a1a1a', marginBottom: 20, letterSpacing: 0.5 },
+  mallSectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  mallSectionMore: { fontSize: 13, color: '#999', cursor: 'pointer', fontWeight: 400, transition: 'color .2s' },
+  mallFeaturedGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 20 },
+  mallFeaturedCard: { cursor: 'pointer', transition: 'transform .25s cubic-bezier(.4,0,.2,1), box-shadow .25s', borderRadius: 14, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,.06)' },
+  mallFeaturedCover: { aspectRatio: '16/10', position: 'relative', overflow: 'hidden', borderRadius: '14px 14px 0 0' },
+  mallFeaturedLevel: { position: 'absolute', left: 20, top: 18, fontSize: 26, fontWeight: 200, color: 'rgba(255,255,255,.9)', letterSpacing: 3, fontStyle: 'italic' },
+  mallFeaturedOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: '32px 20px 16px', background: 'linear-gradient(to top, rgba(0,0,0,.5), transparent)' },
+  mallFeaturedCoverTitle: { fontSize: 17, fontWeight: 500, color: '#fff', letterSpacing: 0.5 },
+  mallFeaturedInfo: { padding: '16px 18px 18px' },
+  mallFeaturedName: { fontSize: 15, fontWeight: 600, color: '#1a1a1a', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  mallFeaturedMeta: { fontSize: 12, color: '#aaa', fontWeight: 400 },
+  mallListGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 20 },
+  mallListCard: { cursor: 'pointer', transition: 'transform .25s cubic-bezier(.4,0,.2,1), box-shadow .25s', borderRadius: 12, background: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,.05)' },
+  mallListCover: { aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px 12px 0 0', overflow: 'hidden', position: 'relative' },
+  mallListLevel: { fontSize: 30, fontWeight: 200, color: 'rgba(255,255,255,.85)', letterSpacing: 2, fontStyle: 'italic' },
+  mallListInfo: { padding: '14px 16px 16px' },
+  mallListName: { fontSize: 14, fontWeight: 600, color: '#1a1a1a', marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  mallListMeta: { fontSize: 11.5, color: '#aaa', fontWeight: 400 },
   backHome: { position: 'fixed', left: 18, bottom: 18, background: '#3D2E1E', color: '#F6F1E8', border: 'none', padding: '8px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer', zIndex: 10 },
   lessonHead: { maxWidth: 900, margin: '20px auto 0', background: '#FFFDF9', borderRadius: 18, padding: 22, display: 'flex', gap: 20, boxShadow: '0 2px 14px rgba(61,46,30,.06)' },
   lessonCover: { width: 90, height: 90, borderRadius: 14, background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, flexShrink: 0 },
