@@ -229,6 +229,7 @@ export default function RuQuest() {
   const [phase, setPhase] = useState('courses')
   const [curLevel, setCurLevel] = useState('A1')
   const [lessons, setLessons] = useState([])       // 当前课程的全部课
+  const [detailTab, setDetailTab] = useState('route') // 课程详情页标签：route=学习路线，outline=大纲
   const [curLesson, setCurLesson] = useState(null) // 当前课
   const [mode, setMode] = useState(() => {
     try { return localStorage.getItem('rlearn_quest_mode') || 'chinese_to_english' } catch (e) { return 'chinese_to_english' }
@@ -1280,28 +1281,68 @@ export default function RuQuest() {
                 </div>
               </div>
 
-              {/* 大纲列表 */}
-              <div style={styles.detailOutline}>
-                <div style={styles.detailOutlineHeader}>
-                  <div style={styles.detailOutlineTitle}>大纲 <span style={styles.detailOutlineCount}>共 {lessons.length} 课</span> <span style={styles.detailOutlineTrial}>全部免费试学</span></div>
-                  <div style={styles.detailSortBtn}>⇅ 正序</div>
-                </div>
-                {lessons.map((l, i) => {
-                  let hasProg = false
-                  try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
-                  return (
-                    <div key={l.id} style={styles.detailLessonRow} onClick={() => startLesson(l, true)}>
-                      <div style={styles.detailLessonNo}>{String(i + 1).padStart(2, '0')}</div>
-                      <div style={styles.detailLessonIcon}>📄</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={styles.detailLessonName}>第{l.idx}课 · {l.sentences[0]?.source || COURSE_META[curLevel]?.title}</div>
-                        <div style={styles.detailLessonDesc}>{l.sentences.slice(0, 2).map(s => stripStress(s.russian)).join(' · ')}…</div>
-                      </div>
-                      <span style={{ ...styles.detailTrialTag, ...(hasProg ? styles.detailTrialActive : {}) }}>{hasProg ? '继续学习' : '可试学'}</span>
-                    </div>
-                  )
-                })}
+              {/* 标签页切换 */}
+              <div style={styles.detailTabs}>
+                <span style={{ ...styles.detailTabItem, ...(detailTab === 'route' ? styles.detailTabItemOn : {}) }} onClick={() => setDetailTab('route')}>学习路线</span>
+                <span style={{ ...styles.detailTabItem, ...(detailTab === 'outline' ? styles.detailTabItemOn : {}) }} onClick={() => setDetailTab('outline')}>大纲</span>
+                <span style={styles.detailTabItem}>评价</span>
               </div>
+
+              {/* 学习路线视图 */}
+              {detailTab === 'route' && (
+                <div style={styles.routeView}>
+                  <div style={styles.routeHeader}>
+                    <span style={styles.routeDifficulty}>P 高级</span>
+                    <span style={styles.routeSetting}>⚙ 路线设置</span>
+                  </div>
+                  <div style={styles.routeGraph}>
+                    {lessons.map((l, i) => {
+                      const isLeft = i % 2 === 0
+                      const difficulties = ['简单', '中等', '困难']
+                      const diff = difficulties[i % 3]
+                      let hasProg = false
+                      try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
+                      return (
+                        <div key={l.id} style={{ ...styles.routeRow, justifyContent: isLeft ? 'flex-start' : 'flex-end' }}>
+                          {i > 0 && <div style={{ ...styles.routeConnector, ...(isLeft ? styles.routeConnectorLeft : styles.routeConnectorRight) }} />}
+                          <div className="route-node-wrap" style={styles.routeNodeWrap} onClick={() => startLesson(l, true)}>
+                            <div className="route-node" style={{ ...styles.routeNode, ...(hasProg ? styles.routeNodeActive : {}) }}>
+                              <span className="route-node-icon" style={{ ...styles.routeNodeIcon, ...(hasProg ? { color: '#fff' } : {}) }}>文A</span>
+                            </div>
+                            <div style={styles.routeNodeLabel}>第{l.idx}课</div>
+                            <div style={styles.routeNodeDiff}>{diff}</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 大纲列表视图 */}
+              {detailTab === 'outline' && (
+                <div style={styles.detailOutline}>
+                  <div style={styles.detailOutlineHeader}>
+                    <div style={styles.detailOutlineTitle}>大纲 <span style={styles.detailOutlineCount}>共 {lessons.length} 课</span> <span style={styles.detailOutlineTrial}>全部免费试学</span></div>
+                    <div style={styles.detailSortBtn}>⇅ 正序</div>
+                  </div>
+                  {lessons.map((l, i) => {
+                    let hasProg = false
+                    try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
+                    return (
+                      <div key={l.id} style={styles.detailLessonRow} onClick={() => startLesson(l, true)}>
+                        <div style={styles.detailLessonNo}>{String(i + 1).padStart(2, '0')}</div>
+                        <div style={styles.detailLessonIcon}>📄</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={styles.detailLessonName}>第{l.idx}课 · {l.sentences[0]?.source || COURSE_META[curLevel]?.title}</div>
+                          <div style={styles.detailLessonDesc}>{l.sentences.slice(0, 2).map(s => stripStress(s.russian)).join(' · ')}…</div>
+                        </div>
+                        <span style={{ ...styles.detailTrialTag, ...(hasProg ? styles.detailTrialActive : {}) }}>{hasProg ? '继续学习' : '可试学'}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -2079,6 +2120,26 @@ const styles = {
   detailLessonDesc: { fontSize: 12.5, color: '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   detailTrialTag: { fontSize: 12, color: '#999', background: '#f7f7f7', padding: '4px 14px', borderRadius: 12, flexShrink: 0, fontWeight: 500 },
   detailTrialActive: { color: '#15803D', background: '#DCFCE7' },
+  // —— 课程详情页标签页 ——
+  detailTabs: { display: 'flex', gap: 28, borderBottom: '1px solid #f0f0f0', marginTop: 24 },
+  detailTabItem: { padding: '12px 0', fontSize: 15, color: '#888', cursor: 'pointer', borderBottom: '2px solid transparent', marginBottom: -1, transition: 'color .2s' },
+  detailTabItemOn: { color: '#1a1a1a', fontWeight: 600, borderBottom: '2px solid #8B5CF6' },
+  // —— 学习路线视图 ——
+  routeView: { marginTop: 24 },
+  routeHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  routeDifficulty: { fontSize: 13, color: '#8B5CF6', background: '#F3E8FF', padding: '5px 16px', borderRadius: 14, fontWeight: 500 },
+  routeSetting: { fontSize: 13, color: '#999', cursor: 'pointer' },
+  routeGraph: { position: 'relative', padding: '10px 0' },
+  routeRow: { display: 'flex', alignItems: 'center', position: 'relative', height: 96, marginBottom: 4 },
+  routeConnector: { position: 'absolute', top: 0, width: '50%', height: '100%', border: '2px dashed #e0e0e0', borderBottom: 'none', pointerEvents: 'none' },
+  routeConnectorLeft: { left: '50%', borderLeft: 'none', borderRadius: '0 48px 0 0' },
+  routeConnectorRight: { right: '50%', borderRight: 'none', borderRadius: '48px 0 0 0' },
+  routeNodeWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', zIndex: 1, position: 'relative', transition: 'transform .2s' },
+  routeNode: { width: 56, height: 56, borderRadius: '50%', background: '#f5f5f5', border: '2px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .2s' },
+  routeNodeActive: { background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', borderColor: '#8B5CF6', boxShadow: '0 4px 16px rgba(139,92,246,.35)' },
+  routeNodeIcon: { fontSize: 16, fontWeight: 700, color: '#aaa' },
+  routeNodeLabel: { fontSize: 13, color: '#555', marginTop: 8, fontWeight: 500 },
+  routeNodeDiff: { fontSize: 11, color: '#bbb', marginTop: 2 },
   backHome: { position: 'fixed', left: 18, bottom: 18, background: '#3D2E1E', color: '#F6F1E8', border: 'none', padding: '8px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer', zIndex: 10 },
   lessonHead: { maxWidth: 900, margin: '20px auto 0', background: '#FFFDF9', borderRadius: 18, padding: 22, display: 'flex', gap: 20, boxShadow: '0 2px 14px rgba(61,46,30,.06)' },
   lessonCover: { width: 90, height: 90, borderRadius: 14, background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, flexShrink: 0 },

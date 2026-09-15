@@ -1433,3 +1433,9 @@ html,body{overflow-x:hidden;max-width:100vw}
 .mall-nav-tab:hover{color:#1a1a1a}
 .mall-section-more{transition:color .2s}
 .mall-section-more:hover{color:#1a1a1a}
+
+/* 学习路线节点 hover */
+.route-node-wrap{transition:transform .2s}
+.route-node-wrap:hover{transform:scale(1.08)}
+.route-node-wrap:hover .route-node{border-color:#8B5CF6;box-shadow:0 4px 12px rgba(139,92,246,.2)}
+.route-node-wrap:hover .route-node-icon{color:#8B5CF6}
