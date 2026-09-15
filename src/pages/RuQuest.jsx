@@ -6,6 +6,10 @@ import { API_BASE } from '../lib/api'
 import { toast } from '../lib/toast'
 import { loadHotkeys, keysOfEvent } from '../components/SettingsModal'
 import SettingsModal from '../components/SettingsModal'
+import SummaryModal from '../components/quest/SummaryModal'           // P4 结算弹窗（评级+环形图+错题+撒花）
+import GameSettingModal from '../components/quest/GameSettingModal'   // P4 游戏内设置（倍速/播放次数/间隔）
+import GamePauseModal from '../components/quest/GamePauseModal'       // P4 暂停弹窗
+import CourseContentsModal from '../components/quest/CourseContentsModal' // P4 本课内容面板（筛选+发音+跳转）
 import * as questSounds from '../lib/questSounds' // 官方句乐部 mp3 原声音效（键盘/答对/答错）
 
 // ================= 工具 =================
@@ -235,6 +239,7 @@ export default function RuQuest() {
   const [maxCombo, setMaxCombo] = useState(0)
   const [paused, setPaused] = useState(false)            // 暂停状态
   const [showSettings, setShowSettings] = useState(false) // 设置弹窗（快捷键/播放/听力等配置，仅俄语闯关页内打开）
+  const [gameSettingOpen, setGameSettingOpen] = useState(false) // P4 游戏内设置弹窗（倍速/播放次数/间隔）
   const [comboPop, setComboPop] = useState(null)         // 连击浮动文字 {n, high}
   const [comboBreak, setComboBreak] = useState(false)    // 连击中断回落
   const [perfect, setPerfect] = useState(0)
@@ -760,6 +765,30 @@ export default function RuQuest() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, cur, qi, mode, done, paused, undo])
 
+  // —— P4 结算页 & 暂停弹窗快捷键 ——
+  useEffect(() => {
+    const h = (e) => {
+      // 结算页：Enter / 空格 → 下一课
+      if (phase === 'result') {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          nextLesson()
+        }
+        return
+      }
+      // 暂停弹窗：Esc / 空格 → 继续游戏
+      if (paused) {
+        if (e.key === 'Escape' || e.key === ' ') {
+          e.preventDefault()
+          togglePause()
+        }
+      }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, paused])
+
   // —— 可配置全局快捷键（设置弹窗内可改键位；输入框激活或设置弹窗打开时自动禁用） ——
   useEffect(() => {
     const h = (e) => {
@@ -1234,77 +1263,34 @@ export default function RuQuest() {
     )
   }
 
-  // —— 渲染：结算 ——
+  // —— 渲染：结算（P4 SummaryModal：评级+环形图+错题+撒花+每日一句） ——
   if (phase === 'result') {
-    const rt = ratingOf(acc)
-    const pct = Math.round(100 * acc.correct / Math.max(1, acc.answered))
-    const wrongN = Math.max(0, acc.answered - acc.correct)
-    const firstPct = Math.round(100 * acc.firstHit / Math.max(1, acc.answered))
-    const errPct = 100 - pct
-    const ring = (label, val, color) => {
-      const r = 42, C = 2 * Math.PI * r
-      const off = C * (1 - Math.max(0, Math.min(100, val)) / 100)
-      return (
-        <div style={styles.ringItem}>
-          <svg width="118" height="118" viewBox="0 0 118 118">
-            <circle cx="59" cy="59" r={r} fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="11" />
-            <circle cx="59" cy="59" r={r} fill="none" stroke={color} strokeWidth="11" strokeLinecap="round"
-              strokeDasharray={C} strokeDashoffset={off} transform="rotate(-90 59 59)"
-              style={{ transition: 'stroke-dashoffset 1s ease' }} />
-            <text x="59" y="56" textAnchor="middle" fill="#F5EDE2" fontSize="21" fontWeight="800">{val}%</text>
-            <text x="59" y="79" textAnchor="middle" fill="#8B7FA3" fontSize="11.5">{label}</text>
-          </svg>
-        </div>
-      )
-    }
+    const T = THEMES[uiCfg.theme]
+    const isDark = uiCfg.themeMode === 'dark' || uiCfg.theme === 'dark'
     return (
-      <div style={styles.resultRoot}>
-        <div style={styles.resultCard}>
-          <div style={{ ...styles.ratingBadge, color: rt.color }}>{rt.label}</div>
-          <div style={styles.resultTitle}>课程完成！</div>
-          <div style={styles.resultSub}>{curLesson?.sentences?.length || 0} 个句子 · {questions.length} 道题</div>
-          <div style={styles.resultScore}>{fmtScore(score)}</div>
-          <div style={styles.resultScoreLabel}>总得分</div>
-          <div style={styles.resultStats}>
-            <div style={styles.stat}><div style={styles.statNum}>{acc.answered}</div><div style={styles.statLabel}>答题总数</div></div>
-            <div style={styles.stat}><div style={{ ...styles.statNum, color: '#4ADE80' }}>{acc.correct}</div><div style={styles.statLabel}>正确</div></div>
-            <div style={styles.stat}><div style={{ ...styles.statNum, color: '#F87171' }}>{wrongN}</div><div style={styles.statLabel}>错误</div></div>
-            <div style={styles.stat}><div style={styles.statNum}>{maxCombo}</div><div style={styles.statLabel}>最高连击</div></div>
-            <div style={styles.stat}><div style={styles.statNum}>{fmtTime(elapsed)}</div><div style={styles.statLabel}>总用时</div></div>
-          </div>
-          <div style={styles.ringRow}>
-            {ring('准确率', pct, '#4ADE80')}
-            {ring('一次答对率', firstPct, '#FFD75E')}
-            {ring('错误率', errPct, '#F87171')}
-          </div>
-          <div style={styles.resultTip}>{rt.label === 'SSS' ? '完美！你已经完全掌握这一课！' : rt.label === 'SS' ? '非常棒！继续保持！' : rt.label === 'S' ? '很好！再练一次会更稳。' : '继续加油，多练几遍就会了！'}</div>
-          <div style={styles.resultBtns}>
-            <button style={styles.btnGhost} onClick={() => setResultWrong(true)}>查看错题</button>
-            <button style={styles.btnGhost} onClick={() => startLesson(curLesson, false)}>再来一次</button>
-            <button style={styles.btnGhost} onClick={extraGroup}>再来一组</button>
-            <button style={styles.btnGhost} onClick={nextLesson}>下一课</button>
-            <button style={styles.btnPrimary} onClick={() => { setPhase('lessons'); setResultWrong(false) }}>返回</button>
-          </div>
-        </div>
-        {resultWrong && (
-          <div style={styles.wrongMask} onClick={() => setResultWrong(false)}>
-            <div style={styles.wrongPanel} onClick={e => e.stopPropagation()}>
-              <div style={styles.wrongTitle}>本次错题 · {wrongList.length} 道</div>
-              {wrongList.length === 0 ? (
-                <div style={styles.wrongNo}>全对！本次练习没有错题 🎉</div>
-              ) : wrongList.map(w => (
-                <div key={w.id} style={styles.wrongRow}>
-                  <div style={styles.wrongQ}>{w.q.s.russian}</div>
-                  <div style={styles.wrongZh}>{w.q.s.chinese || ''}</div>
-                  <div style={styles.wrongAns}>你的输入：<span style={{ color: '#F87171' }}>{w.user}</span></div>
-                  <div style={styles.wrongAns}>正确答案：<span style={{ color: '#4ADE80' }}>{w.q.answer}</span></div>
-                  <div style={styles.wrongReason}>错误原因：{w.reason}</div>
-                </div>
-              ))}
-              <button style={{ ...styles.btnPrimary, marginTop: 16 }} onClick={() => setResultWrong(false)}>关闭</button>
-            </div>
-          </div>
-        )}
+      <div style={{
+        minHeight: '100vh', background: T.grad,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <SummaryModal
+          visible={true}
+          acc={acc}
+          score={score}
+          elapsed={elapsed}
+          maxCombo={maxCombo}
+          totalQuestions={questions.length}
+          totalSentences={curLesson?.sentences?.length || 0}
+          wrongList={wrongList}
+          lessonTitle={curLesson?.title || (curLesson?.sentences?.[0]?.source) || '本课练习'}
+          onClose={() => { setPhase('lessons'); setResultWrong(false) }}
+          onDoAgain={() => startLesson(curLesson, false)}
+          onExtraGroup={extraGroup}
+          onNextLesson={nextLesson}
+          onGoCourseList={() => { setPhase('lessons'); setResultWrong(false) }}
+          onShare={() => toast('📸 打卡分享图功能开发中，敬请期待！')}
+          theme={T}
+          dark={isDark}
+        />
       </div>
     )
   }
@@ -1381,6 +1367,7 @@ export default function RuQuest() {
               <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="重置本课进度，从头开始" onClick={resetLesson}>↺ 重置</button>
               <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="全屏沉浸练习" onClick={toggleFullscreen}>⛶ 全屏</button>
               <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="外观设置：字体/字号/配色/输入框/答案/词性/朗读" onClick={() => setUiOpen(o => !o)}>Aa</button>
+              <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="游戏设置：倍速/播放次数/播放间隔（听写模式）" onClick={() => { sfxFunc(); setGameSettingOpen(true) }}>🎛 游戏设置</button>
               <button style={{ ...styles.uiBtn, color: T.text, borderColor: T.border, background: T.bgSoft }} title="设置：快捷键/播放/听力/外观等（Ctrl+, 快捷开关）" onClick={() => { sfxFunc(); setShowSettings(true) }}>⚙ 设置</button>
             </>
           )}
@@ -1611,19 +1598,17 @@ export default function RuQuest() {
       {comboPop?.high && <div key={'cf' + comboPop.n} style={{ ...styles.comboFlash, background: 'radial-gradient(circle at 50% 40%, rgba(255,255,255,.5), rgba(255,255,255,0) 62%)' }} />}
       {comboBreak && <div key={'cb' + Date.now()} style={styles.comboBreak}>连击中断</div>}
 
-      {/* 暂停弹窗：半透明蒙层 + 中央暂停卡片（计时已停止） */}
-      {paused && (
-        <div style={styles.pauseMask}>
-          <div style={{ ...styles.pauseCard, background: T.panel, borderColor: T.border, boxShadow: T.shadow }}>
-            <div style={{ ...styles.pauseTitle, color: T.text }}>练习已暂停</div>
-            <div style={{ ...styles.pauseTime, color: T.sub }}>已用时 {fmtTime(elapsed)} · 当前第 {qi + 1}/{questions.length} 题</div>
-            <div style={styles.pauseBtns}>
-              <button style={{ ...styles.btnGhost, color: T.sub, borderColor: T.border }} onClick={() => { if (paused) { setStartAt(Date.now() - elapsed * 1000); setPaused(false) } setPhase('lessons') }}>返回课表</button>
-              <button style={{ ...styles.btnPrimary, background: T.brand, color: '#fff' }} onClick={togglePause}>继续练习</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* P4 暂停弹窗（对齐官方 GamePauseModal.vue：随机鼓励语 + 继续游戏） */}
+      <GamePauseModal
+        visible={paused}
+        elapsed={elapsed}
+        currentQi={qi}
+        totalQuestions={questions.length}
+        onResume={togglePause}
+        onGoCourseList={() => { if (paused) { setStartAt(Date.now() - elapsed * 1000); setPaused(false) } setPhase('lessons') }}
+        theme={T}
+        dark={uiCfg.themeMode === 'dark' || uiCfg.theme === 'dark'}
+      />
 
       {/* AI 助手：右下角悬浮图标唤起（默认收起，不遮挡答题区；展开后自动识别当前句子） */}
       <div style={{ ...styles.aiPanel, background: T.aiBg, borderLeft: '1px solid ' + T.aiBorder, ...(aiOpen ? { transform: 'translateX(0)' } : { transform: 'translateX(102%)', pointerEvents: 'none' }) }}>
@@ -1678,31 +1663,32 @@ export default function RuQuest() {
         <button style={{ ...styles.aiFab, background: T.brand, boxShadow: T.shadow }} onClick={() => { sfxFunc(); setAiOpen(true) }} title="打开 AI 助手（解答语法/词汇/搭配）">💬</button>
       )}
 
-      {/* 本课内容：全部句子列表 + 快速跳转 */}
-      {contentOpen && (
-        <div style={styles.uiMask} onClick={() => setContentOpen(false)}>
-          <div style={{ ...styles.uiPanel, width: 520 }} onClick={e => e.stopPropagation()}>
-            <div style={styles.uiTitle}>本课内容 · {questions.length} 题</div>
-            <div style={styles.contentHint}>点击句子可跳转到对应题目（进度自动保存）</div>
-            <div style={styles.contentList}>
-              {sentenceEntries.map(({ qi: qIdx, s }, i) => {
-                const isCur = qIdx === qi
-                return (
-                  <div key={qIdx} style={{ ...styles.contentRow, background: isCur ? T.brandSoft : 'transparent', borderColor: isCur ? T.brand : 'transparent' }} onClick={() => { sfxScene(); setContentOpen(false); setQi(qIdx) }}>
-                    <span style={{ ...styles.contentNo, color: isCur ? T.brand : T.sub }}>{i + 1}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ ...styles.contentRu, color: T.textStrong, fontWeight: isCur ? 700 : 500 }}>{s.russian}</div>
-                      <div style={{ ...styles.contentZh, color: T.sub }}>{s.chinese}</div>
-                    </div>
-                    <span style={{ ...styles.contentGo, color: isCur ? T.brand : T.sub }}>{isCur ? '当前' : '跳转 ›'}</span>
-                  </div>
-                )
-              })}
-            </div>
-            <div style={{ ...styles.uiHint, marginTop: 14 }}>点击任意句子立即跳转；跳转后当前做题进度自动保存。</div>
-          </div>
-        </div>
-      )}
+      {/* P4 本课内容面板（对齐官方 CourseContents.vue：筛选+发音+掌握标记+跳转） */}
+      <CourseContentsModal
+        visible={contentOpen}
+        sentences={sentenceEntries.map(({ qi: qIdx, s }) => ({
+          russian: s.russian,
+          chinese: s.chinese,
+          soundmark: s.soundmark,
+          qi: qIdx,
+          isMastered: mastered.includes((cur?.id || '') + '_' + qIdx),
+        }))}
+        currentQi={qi}
+        onJump={qIdx => { sfxScene(); setQi(qIdx) }}
+        onPlaySound={text => speak(text)}
+        onClose={() => setContentOpen(false)}
+        theme={T}
+        dark={uiCfg.themeMode === 'dark' || uiCfg.theme === 'dark'}
+      />
+
+      {/* P4 游戏内设置弹窗（倍速/播放次数/播放间隔，服务听写模式） */}
+      <GameSettingModal
+        visible={gameSettingOpen}
+        onClose={() => setGameSettingOpen(false)}
+        onChange={data => { /* 设置已自动保存到 localStorage，听写模式读取时生效 */ }}
+        theme={T}
+        dark={uiCfg.themeMode === 'dark' || uiCfg.theme === 'dark'}
+      />
 
       {/* 模块1.1 外观设置弹窗 */}
       {uiOpen && (
