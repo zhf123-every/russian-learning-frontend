@@ -387,17 +387,13 @@ export default function RuQuest() {
     } catch (e) { return null }
   }, [])
 
-  // 生成课内题目（每词一题 + 整句一题），逐词题提示 = 词 + 整句中文作参考
+  // 生成课内题目（每句话 = 一道连词造句题，对齐 Earthworm：无逐词拆分）
   const buildQuestions = useCallback(async (lesson) => {
     const qs = []
     for (const s of lesson.sentences) {
       const ws = s.russian.trim().split(/\s+/).filter(Boolean)
-      // 逐词题：中文整句 + 该词高亮位置提示；答案 = 该词
-      ws.forEach((w, i) => {
-        qs.push({ s, partIdx: i, partTotal: ws.length, full: false, zh: s.chinese || '', answer: w, wordCount: 1, id: s.id + '_w' + i })
-      })
-      // 整句题
-      qs.push({ s, partIdx: ws.length, partTotal: ws.length, full: true, zh: s.chinese || '', answer: s.russian, wordCount: ws.length, id: s.id + '_full' })
+      // 整句连词造句题：中文提示 + 整句俄语答案，单词槽 = 整句所有词
+      qs.push({ s, partIdx: 0, partTotal: 1, full: true, zh: s.chinese || '', answer: s.russian, wordCount: ws.length, id: s.id + '_full' })
     }
     return qs
   }, [])
@@ -455,10 +451,6 @@ export default function RuQuest() {
     setStuckOpen(false)
     setScramblePicked([])          // 乱序模式：重置已选
     setSpeakResult(null); setSpeakLoading(false); setRecording(false) // 口语模式：重置
-    if (q.full) {
-      // 整句题：预填已答过的词（前 partIdx 个词）？julebu 不预填，用户重输整句。
-      setTyped('')
-    }
   }, [questions])
 
   useEffect(() => {
@@ -604,14 +596,14 @@ export default function RuQuest() {
       const isPerfect = wrongCount === 0 // 无修改全对 = Perfect；有修改后答对 = Great
       const nc = combo + 1
       setCombo(nc); setMaxCombo(m => Math.max(m, nc))
-      const base = cur.full ? 700 : (cur.wordCount > 1 ? 500 : 300)
+      const base = 700  // 每句话 = 一道整句连词造句题（对齐 Earthworm），基础分 700
       setScore(s => s + base + Math.min(500, combo * 50))
       setPerfect(p => p + 1)
       setAcc(a => ({ ...a, answered: a.answered + 1, correct: a.correct + 1, firstHit: a.firstHit + (isPerfect ? 1 : 0) }))
       if (wrongCount > 0 && wrongCount >= recThreshold) recordWrong(cur, parts.slice(0, exp.length).join(' ') || '（有修改后答对）', wrongReasonOf(cur, parts.slice(0, exp.length).map(cleanWord).map(normFor)))
       if (isPerfect) sfxPerfect(); else sfxGreat()          // 答对反馈：Perfect 清亮 / Great 柔和
       if (petVisible) { petSpeak('correct', 4000); petSetMood(isPerfect ? 'excited' : 'happy') } // P6 宠物答对互动
-      if (cur.full) sfxSentence()                            // 整句完成收尾音
+      sfxSentence()                                            // 整句完成收尾音
       if (nc >= 3 && isPerfect) sfxCombo(nc)                 // 连击激励（3-5 / 6-10 / 10+）
       if (nc >= 3 && SFX_CFG.comboAnim) {                    // 连击动效：Perfect × N 浮动文字（10+ 高亮发光+全屏闪效）
         setComboPop({ n: nc, high: nc >= 10 })
@@ -1024,7 +1016,7 @@ export default function RuQuest() {
   // 本课全部句子（整句题的题号 → 句子），供「本课内容」快速跳转
   const sentenceEntries = useMemo(() => {
     const map = []
-    questions.forEach((q, i) => { if (q.full) map.push({ qi: i, s: q.s }) })
+    questions.forEach((q, i) => { map.push({ qi: i, s: q.s }) })  // 每句话 = 一道题，全部展示
     return map
   }, [questions])
 
@@ -1147,7 +1139,7 @@ export default function RuQuest() {
   // 答对后针对性追问
   const followUp = useMemo(() => {
     if (!cur) return []
-    const w = cleanWord(cur.full ? cur.answer.split(/\s+/)[0] : cur.answer)
+    const w = cleanWord(cur.answer.split(/\s+/)[0])  // 每句话都是整句题，取首词
     const wText = stripStress(w)
     return [
       '“' + wText + '”这个词在句子里起什么作用？',
@@ -1185,7 +1177,7 @@ export default function RuQuest() {
                       <div style={styles.courseInfo}>
                         <div style={styles.courseName}>{m.title} <span style={styles.courseNew}>({lv})</span></div>
                         <div style={styles.courseSub}>{m.subtitle}</div>
-                        <div style={styles.courseMeta}>{pool.length} 句 · {lessonsByLevel[lv].length} 课 · 逐词闯关</div>
+                        <div style={styles.courseMeta}>{pool.length} 句 · {lessonsByLevel[lv].length} 课 · 连词造句</div>
                       </div>
                     </div>
                   )
