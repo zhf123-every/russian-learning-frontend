@@ -11,13 +11,16 @@ import Profile from './pages/Profile'
 import Dictionary from './pages/Dictionary'
 import TutorChat from './pages/TutorChat'
 import RuQuest from './pages/RuQuest'
+import TestPractice from './pages/TestPractice'
+import QuestPractice from './pages/QuestPractice'
+import QuestDictation from './pages/QuestDictation'
 
 export default function App() {
   const loc = useLocation()
 
   return (
     <>
-      {loc.pathname !== '/quest' && (
+      {loc.pathname !== '/quest' && loc.pathname !== '/test-practice' && !loc.pathname.startsWith('/quest-practice') && !loc.pathname.startsWith('/quest-dictation') && (
       <div className="topbar">
         <div className="brand">
           <span className="logo">📖</span>
@@ -43,6 +46,11 @@ export default function App() {
         <Route path="/dictionary" element={<Dictionary />} />
         <Route path="/tutor" element={<TutorChat />} />
         <Route path="/quest" element={<RuQuest />} />
+        <Route path="/test-practice" element={<TestPractice />} />
+        <Route path="/quest-practice" element={<QuestPractice />} />
+        <Route path="/quest-practice/:courseId" element={<QuestPractice />} />
+        <Route path="/quest-dictation" element={<QuestDictation />} />
+        <Route path="/quest-dictation/:courseId" element={<QuestDictation />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
     </>
