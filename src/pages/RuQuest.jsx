@@ -387,13 +387,32 @@ export default function RuQuest() {
     } catch (e) { return null }
   }, [])
 
-  // 生成课内题目（每句话 = 一道连词造句题，对齐 Earthworm：无逐词拆分）
+  // 生成课内题目（前缀累加渐进式：逐词打基础 → 每2词前缀累加 → 整句收尾）
   const buildQuestions = useCallback(async (lesson) => {
     const qs = []
     for (const s of lesson.sentences) {
       const ws = s.russian.trim().split(/\s+/).filter(Boolean)
-      // 整句连词造句题：中文提示 + 整句俄语答案，单词槽 = 整句所有词
-      qs.push({ s, partIdx: 0, partTotal: 1, full: true, zh: s.chinese || '', answer: s.russian, wordCount: ws.length, id: s.id + '_full' })
+      if (ws.length === 0) continue
+      // 单词句：直接一道整句题，避免重复
+      if (ws.length === 1) {
+        qs.push({ s, partIdx: 1, partTotal: 1, full: true, zh: s.chinese || '', answer: s.russian, wordCount: 1, id: s.id + '_full' })
+        continue
+      }
+      let lastPrefixEnd = 0
+      for (let i = 0; i < ws.length; i++) {
+        // ① 逐词题：每个词单独一题，打好基础
+        qs.push({ s, partIdx: i + 1, partTotal: ws.length, full: false, zh: s.chinese || '', answer: ws[i], wordCount: 1, id: s.id + '_w' + i })
+        // ② 前缀累加题：每学完2个词（且非最后一词），用前面所有词组合检验
+        if ((i + 1) % 2 === 0 && i < ws.length - 1) {
+          const prefix = ws.slice(0, i + 1).join(' ')
+          qs.push({ s, partIdx: i + 1, partTotal: ws.length, full: true, zh: s.chinese || '', answer: prefix, wordCount: i + 1, id: s.id + '_p' + (i + 1) })
+          lastPrefixEnd = i + 1
+        }
+      }
+      // ③ 整句题：最后收尾（若上一次累加未覆盖整句）
+      if (lastPrefixEnd < ws.length) {
+        qs.push({ s, partIdx: ws.length, partTotal: ws.length, full: true, zh: s.chinese || '', answer: s.russian, wordCount: ws.length, id: s.id + '_full' })
+      }
     }
     return qs
   }, [])
@@ -596,14 +615,16 @@ export default function RuQuest() {
       const isPerfect = wrongCount === 0 // 无修改全对 = Perfect；有修改后答对 = Great
       const nc = combo + 1
       setCombo(nc); setMaxCombo(m => Math.max(m, nc))
-      const base = 700  // 每句话 = 一道整句连词造句题（对齐 Earthworm），基础分 700
+      // 渐进式三档分值：逐词题300 / 前缀累加题500 / 整句题700
+      const isSentenceFinal = cur.partIdx === cur.partTotal
+      const base = !cur.full ? 300 : (isSentenceFinal ? 700 : 500)
       setScore(s => s + base + Math.min(500, combo * 50))
       setPerfect(p => p + 1)
       setAcc(a => ({ ...a, answered: a.answered + 1, correct: a.correct + 1, firstHit: a.firstHit + (isPerfect ? 1 : 0) }))
       if (wrongCount > 0 && wrongCount >= recThreshold) recordWrong(cur, parts.slice(0, exp.length).join(' ') || '（有修改后答对）', wrongReasonOf(cur, parts.slice(0, exp.length).map(cleanWord).map(normFor)))
       if (isPerfect) sfxPerfect(); else sfxGreat()          // 答对反馈：Perfect 清亮 / Great 柔和
       if (petVisible) { petSpeak('correct', 4000); petSetMood(isPerfect ? 'excited' : 'happy') } // P6 宠物答对互动
-      sfxSentence()                                            // 整句完成收尾音
+      if (isSentenceFinal) sfxSentence()                     // 仅整句题播放收尾音
       if (nc >= 3 && isPerfect) sfxCombo(nc)                 // 连击激励（3-5 / 6-10 / 10+）
       if (nc >= 3 && SFX_CFG.comboAnim) {                    // 连击动效：Perfect × N 浮动文字（10+ 高亮发光+全屏闪效）
         setComboPop({ n: nc, high: nc >= 10 })
@@ -1016,7 +1037,7 @@ export default function RuQuest() {
   // 本课全部句子（整句题的题号 → 句子），供「本课内容」快速跳转
   const sentenceEntries = useMemo(() => {
     const map = []
-    questions.forEach((q, i) => { map.push({ qi: i, s: q.s }) })  // 每句话 = 一道题，全部展示
+    questions.forEach((q, i) => { if (q.partIdx === q.partTotal) map.push({ qi: i, s: q.s }) })  // 课程目录只展示整句题
     return map
   }, [questions])
 
@@ -1177,7 +1198,7 @@ export default function RuQuest() {
                       <div style={styles.courseInfo}>
                         <div style={styles.courseName}>{m.title} <span style={styles.courseNew}>({lv})</span></div>
                         <div style={styles.courseSub}>{m.subtitle}</div>
-                        <div style={styles.courseMeta}>{pool.length} 句 · {lessonsByLevel[lv].length} 课 · 连词造句</div>
+                        <div style={styles.courseMeta}>{pool.length} 句 · {lessonsByLevel[lv].length} 课 · 渐进式造句</div>
                       </div>
                     </div>
                   )
@@ -1458,7 +1479,17 @@ export default function RuQuest() {
                   </div>
                 )}
               </>
-            : <div style={{ ...styles.zhText, fontSize: Q_SIZE[uiCfg.qSize], color: T.text, fontWeight: 500 }}>{cur.zh}</div>)}
+            : <>
+              {/* 渐进式阶段标签：逐词 / 前缀累加 / 整句 */}
+              {!cur.full ? (
+                <div style={{ fontSize: 13, color: T.sub, marginBottom: 6, letterSpacing: 1 }}>📝 逐词练习 · 第 {cur.partIdx} / {cur.partTotal} 词</div>
+              ) : cur.partIdx < cur.partTotal ? (
+                <div style={{ fontSize: 13, color: T.brand, marginBottom: 6, letterSpacing: 1 }}>🔗 前缀累加 · 前 {cur.partIdx} 词组合</div>
+              ) : (
+                <div style={{ fontSize: 13, color: T.ok, marginBottom: 6, letterSpacing: 1 }}>✨ 整句连词造句</div>
+              )}
+              <div style={{ ...styles.zhText, fontSize: Q_SIZE[uiCfg.qSize], color: T.text, fontWeight: 500 }}>{cur.zh}</div>
+            </>)}
           {done ? (
             /* 答案显示：答题居中区内原地替换渲染（对齐 Earthworm Answer.vue：无全屏遮罩/卡片） */
             <div style={{ animation: 'ruqFadeUp .35s ease', textAlign: 'center' }}>
