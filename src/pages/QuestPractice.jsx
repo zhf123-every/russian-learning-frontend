@@ -22,6 +22,7 @@ import QuestionInput from "../components/quest/QuestionInput";
 import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
 import ModeTabs from "../components/quest/ModeTabs";
+import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 const DEFAULT_COURSE_ID = "b7254aa773f74a315211bd37";
@@ -82,10 +83,10 @@ export default function QuestPractice() {
     inputValue,
     userInputWords,
     handleChange,
-    handleInputKeyDown,
     isFixMode,
     isFixInputMode,
     reset,
+    handleInputKeyDown: _rawHandleInputKeyDown,
   } = useQuestionInput({
     answerText: currentStatement?.russian || "",
     statementId: currentStatement?.id || "",
@@ -96,15 +97,26 @@ export default function QuestPractice() {
       setCurrentErrors([]);
       setShowAnswerPanel(true);
       recordCorrect();
+      playRightSound();
     },
     onWrong: (result) => {
       setCurrentErrors(result.errors || []);
       recordWrong();
+      playErrorSound();
     },
   });
 
+  // 包装键盘事件：播放打字音
+  const handleInputKeyDown = (e) => {
+    if (checkPlayTypingSound(e)) {
+      playTypingSound();
+    }
+    _rawHandleInputKeyDown(e);
+  };
+
   // ---- 加载课程 ----
   useEffect(() => {
+    ensureTypingSound();
     let cancelled = false;
     async function loadCourse() {
       setLoading(true);
