@@ -26,7 +26,7 @@ import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
 import ModeTabs from "../components/quest/ModeTabs";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 const DEFAULT_COURSE_ID = "b7254aa773f74a315211bd37";
 
 export default function QuestDictation() {
