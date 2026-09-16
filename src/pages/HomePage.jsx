@@ -26,7 +26,7 @@ export default function HomePage() {
       title: '俄语闯关',
       sub: '连词成句 · 连击评分 · 句子拆解',
       desc: '像玩游戏一样用句子学俄语：打乱单词连成句，Perfect 连击评分，逐词拆解语法，SSS 评级等你拿。',
-      route: '/quest',
+      route: '/quest-practice',
       icon: '🎯',
       tint: '#1C1814',
       tag: '游戏化闯关',
