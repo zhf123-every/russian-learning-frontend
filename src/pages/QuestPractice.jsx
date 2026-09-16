@@ -54,6 +54,7 @@ export default function QuestPractice() {
   const [showAnswerPanel, setShowAnswerPanel] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackKey, setFeedbackKey] = useState(0); // 每次答对递增，强制触发音效
 
   // ---- 游戏化统计（抽离到独立 Hook）----
   const {
@@ -136,6 +137,7 @@ export default function QuestPractice() {
   // ---- 监听连击变化，自动显示反馈弹窗 ----
   useEffect(() => {
     if (combo > 0) {
+      setFeedbackKey((k) => k + 1); // 每次答对递增，强制触发音效
       setShowFeedback(true);
     }
   }, [combo]);
@@ -475,6 +477,7 @@ export default function QuestPractice() {
         type={feedbackType || "good"}
         comboNumber={levelCombo}
         visible={showFeedback}
+        feedbackKey={feedbackKey}
         onDone={() => setShowFeedback(false)}
       />
 
