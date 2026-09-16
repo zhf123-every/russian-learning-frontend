@@ -22,6 +22,8 @@ import QuestionInput from "../components/quest/QuestionInput";
 import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
 import ModeTabs from "../components/quest/ModeTabs";
+import ShortcutTips from "../components/quest/ShortcutTips";
+;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -86,6 +88,7 @@ export default function QuestPractice() {
     isFixMode,
     isFixInputMode,
     reset,
+    submitAnswer,
     handleInputKeyDown: _rawHandleInputKeyDown,
   } = useQuestionInput({
     answerText: currentStatement?.russian || "",
@@ -369,6 +372,17 @@ export default function QuestPractice() {
         </div>
       </div>
 
+      {/* 底部快捷键提示栏 */}
+      <ShortcutTips
+        mode="question"
+        inputRef={inputRef}
+        onSubmit={submitAnswer}
+        onNext={handleNextFromAnswer}
+        onRetry={handleRetry}
+        onPlaySound={playSentenceSound}
+        onShowAnswer={() => setShowAnswer((v) => !v)}
+      />
+
       {/* 结算页弹窗 */}
       <SummaryPanel
         visible={showSummary}
@@ -428,39 +442,45 @@ const styles = {
   toolbar: {
     display: "flex",
     alignItems: "center",
-    gap: 16,
-    padding: "14px 24px",
-    background: "rgba(255,255,255,0.92)",
-    backdropFilter: "blur(12px)",
-    borderBottom: "1px solid #E8E1D9",
+    justifyContent: "space-between",
+    padding: "12px 24px",
+    background: "#FFFFFF",
+    borderBottom: "1px solid #E5E7EB",
+  },
+  toolbarLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  toolbarRight: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
   },
   iconBtn: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 8,
     border: "none",
     background: "transparent",
-    color: "#5C4D3F",
+    color: "#4B5563",
     fontSize: 18,
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    transition: "background 0.2s",
+    transition: "color 0.15s ease",
   },
   progress: {
-    flex: 1,
-    textAlign: "center",
     fontSize: 15,
     fontWeight: 600,
-    color: "#3D332C",
+    color: "#374151",
     whiteSpace: "nowrap",
-    minWidth: 80,
   },
   timer: {
     fontSize: 15,
     fontWeight: 500,
-    color: "#86796D",
+    color: "#6B7280",
     fontVariantNumeric: "tabular-nums",
     minWidth: 50,
     textAlign: "center",
@@ -476,11 +496,11 @@ const styles = {
   },
   progressBarBg: {
     height: 3,
-    background: "#E8E1D9",
+    background: "#E5E7EB",
   },
   progressBarFill: {
     height: "100%",
-    background: "linear-gradient(90deg, #9B7B5E, #B08A5A)",
+    background: "linear-gradient(90deg, #E879F9, #A855F7)",
     transition: "width 0.3s ease",
   },
   mainContent: {
@@ -489,7 +509,7 @@ const styles = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    padding: "32px 24px",
+    padding: "32px 24px 24px",
     gap: 24,
     maxWidth: 800,
     margin: "0 auto",

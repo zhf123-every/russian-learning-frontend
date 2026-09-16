@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useCallback } from "react";
+import WordGrammarCard from "./WordGrammarCard";
 
 export default function AnswerPanel({
   statement,
@@ -136,6 +137,19 @@ export default function AnswerPanel({
           {statement.chinese}
         </div>
 
+        {/* 语法拆解卡片（按词性上色） */}
+        {statement.words && statement.words.length > 0 && (
+          <div style={styles.grammarCardsRow}>
+            {statement.words.map((w, i) => (
+              <WordGrammarCard
+                key={i}
+                word={w}
+                onPlaySound={(text) => speakRussian(text)}
+              />
+            ))}
+          </div>
+        )}
+
         {/* 语法要点 */}
         {statement.grammaticalNote && (
           <div style={styles.grammarNote}>
@@ -223,6 +237,19 @@ const styles = {
     color: "#6B7280",
     margin: "24px 0",
     lineHeight: 1.5,
+  },
+  grammarCardsRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    gap: 4,
+    marginTop: 20,
+    marginBottom: 8,
+    padding: "12px 8px",
+    background: "#FAFAFA",
+    borderRadius: 12,
+    border: "1px solid #F0F0F0",
   },
   grammarNote: {
     fontSize: 14,
