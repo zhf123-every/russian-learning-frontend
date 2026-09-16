@@ -27,7 +27,7 @@ import SummaryPanel from "../components/quest/SummaryPanel";
 import ModeTabs from "../components/quest/ModeTabs";
 
 const API_BASE = "http://localhost:8000";
-const DEFAULT_COURSE_ID = "b279608b55334688515ebade";
+const DEFAULT_COURSE_ID = "b7254aa773f74a315211bd37";
 
 export default function QuestDictation() {
   const navigate = useNavigate();
