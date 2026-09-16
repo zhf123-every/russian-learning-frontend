@@ -15,11 +15,15 @@
  *  - predicative 表语 → 青 #14B8A6
  *  - complement 补语 → 粉 #EC4899
  *
- * 发音：Web Speech API (speechSynthesis)，俄语 lang='ru-RU'
+ * 发音：Yandex SpeechKit 真人俄语发音（后端 TTS），优先 audio_url 缓存
  */
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { getPosLabel } from "../../constants/posColors";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+// 内存缓存：text -> audio_url，避免重复请求
+const ttsCache = new Map();
 
 // 句法角色 → 颜色映射
 const ROLE_COLORS = {
@@ -74,28 +78,60 @@ export default function AnswerPanel({
 }) {
   const [copied, setCopied] = useState(false);
 
-  // ---- 俄语发音 ----
-  const speakRussian = useCallback((text) => {
-    if (!text || typeof window === "undefined" || !window.speechSynthesis) return;
+  // ---- 俄语发音（Yandex 真人发音）----
+  const audioRef = useRef(null);
+
+  const speakRussian = useCallback(async (text, audioUrl = null, itemId = null, itemType = null) => {
+    if (!text) return;
     try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "ru-RU";
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      window.speechSynthesis.speak(utterance);
+      // 停止当前播放
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+
+      let url = audioUrl;
+
+      // 没有缓存的 audio_url，调用后端 TTS 合成
+      if (!url) {
+        // 先查内存缓存
+        if (ttsCache.has(text)) {
+          url = ttsCache.get(text);
+        } else {
+          const res = await fetch(`${API_BASE}/api/tts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text, voice: "alena", id: itemId, type: itemType }),
+          });
+          const data = await res.json();
+          if (data.ok && data.audio_url) {
+            url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
+            ttsCache.set(text, url);
+          }
+        }
+      } else if (!url.startsWith("http")) {
+        url = `${API_BASE}${url}`;
+      }
+
+      if (url) {
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.play().catch((e) => console.warn("播放失败:", e));
+      }
     } catch (e) {
       console.warn("发音失败:", e);
     }
   }, []);
 
-  // 进入页面自动播放整句发音
+  // 进入页面自动播放整句发音（Yandex 真人发音）
   useEffect(() => {
     if (statement?.russian) {
-      const timer = setTimeout(() => speakRussian(statement.russian), 400);
+      const timer = setTimeout(() => {
+        speakRussian(statement.russian, statement.audio_url, statement.id, "statement");
+      }, 400);
       return () => clearTimeout(timer);
     }
-  }, [statement?.russian, speakRussian]);
+  }, [statement?.russian, statement?.audio_url, statement?.id, speakRussian]);
 
   // 空格 / Enter 快捷键 → 下一题
   useEffect(() => {
@@ -164,7 +200,7 @@ export default function AnswerPanel({
                     ...styles.wordCard,
                     borderColor: `${color}60`,
                   }}
-                  onClick={() => speakRussian(displayWord)}
+                  onClick={() => speakRussian(displayWord, w.audio_url, w.id, "word")}
                   title="点击发音"
                 >
                   {/* 顶部：句法角色标签 */}

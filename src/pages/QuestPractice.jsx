@@ -199,10 +199,39 @@ export default function QuestPractice() {
     }
   }, [questionIndex, statements.length]);
 
-  // ---- 发音（简单实现，后续接入 TTS）----
-  const playSentenceSound = () => {
-    // TODO: 接入俄语 TTS
-  };
+  // ---- 发音（Yandex 真人俄语发音）----
+  const ttsAudioRef = useRef(null);
+  const playSentenceSound = useCallback(async () => {
+    const stmt = statements[questionIndex];
+    if (!stmt?.russian) return;
+    try {
+      if (ttsAudioRef.current) {
+        ttsAudioRef.current.pause();
+        ttsAudioRef.current.currentTime = 0;
+      }
+      let url = stmt.audio_url;
+      if (!url) {
+        const res = await fetch(`${API_BASE}/api/tts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: stmt.russian, voice: "alena", id: stmt.id, type: "statement" }),
+        });
+        const data = await res.json();
+        if (data.ok && data.audio_url) {
+          url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
+        }
+      } else if (!url.startsWith("http")) {
+        url = `${API_BASE}${url}`;
+      }
+      if (url) {
+        const audio = new Audio(url);
+        ttsAudioRef.current = audio;
+        audio.play().catch((e) => console.warn("播放失败:", e));
+      }
+    } catch (e) {
+      console.warn("发音失败:", e);
+    }
+  }, [statements, questionIndex]);
 
   // ---- 格式化时间 ----
   const formatTime = (seconds) => {
