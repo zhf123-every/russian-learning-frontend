@@ -1,29 +1,22 @@
 /**
- * QuestionInput.jsx —— 连词成句输入组件（句乐部白底紫色风格）
+ * QuestionInput.jsx —— 连词成句输入组件（句乐部极简风格）
  *
- * 结构：隐藏的 <input> + 覆盖层单词卡片
- * 视觉：白底紫色，激活词 fuchsia #E879F9，默认词半透明深灰
- * 错误类型区分（仅文字颜色变化，下划线统一灰色）：
- *   - case_error       → 橙色 #F59E0B + 抖动
- *   - spelling_error   → 红色 #EF4444 + 抖动
- *   - conjugation_error → 蓝色 #3B82F6 + 抖动
+ * 结构：隐藏的 <input> + 下划线单词槽
+ * 视觉：纯白背景，无卡片，只有 border-bottom 下划线
+ *   - 默认词：半透明深灰文字 + 灰色下划线 #D1D5DB
+ *   - 激活词：紫色文字 #E879F9 + 紫色下划线
+ *   - 错误词：文字颜色按错误类型（橙/红/蓝）+ 同色下划线 + 抖动
  * 字体：默认词系统字重400，激活/错误词 Nunito Bold 700
- * 字号：桌面端 3em，移动端 1.8em（CSS变量 --ew-word-size）
+ * 字号：桌面端 3em，移动端 1.8em
  */
 
 import { useMemo } from "react";
 
-// 错误类型 → 文字颜色映射（下划线统一灰色，只有文字变色）
+// 错误类型 → 文字颜色映射（下划线同色）
 const ERROR_COLORS = {
   case_error: "#F59E0B",        // 橙色（变格错误）
   spelling_error: "#EF4444",    // 红色（拼写错误）
   conjugation_error: "#3B82F6", // 蓝色（变位错误）
-};
-
-const ERROR_LABELS = {
-  case_error: "变格",
-  spelling_error: "拼写",
-  conjugation_error: "变位",
 };
 
 // 判断是否为纯标点符号（不生成下划线）
@@ -37,9 +30,10 @@ export default function QuestionInput({
   onChange,
   onKeyDown,
   errors = [],
+  isJudging = false,
   placeholder = "输入俄语句子，按 Enter 提交",
 }) {
-  // 构建 wordIndex → error 的映射，方便渲染时查找
+  // 构建 wordIndex → error 的映射
   const errorMap = useMemo(() => {
     const map = {};
     (errors || []).forEach((err) => {
@@ -50,18 +44,71 @@ export default function QuestionInput({
 
   return (
     <div className="quest-input-wrapper">
-      {/* 组件专属样式 —— 句乐部白底紫色风格 */}
       <style>{`
+        /* 外层：无卡片，纯文本居中 */
         .quest-input-wrapper {
           position: relative;
           width: 100%;
-          min-height: 120px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          text-align: center;
         }
 
-        /* 隐藏的真实输入框 —— 核心底线：position/z-index/opacity/font-size 完全不动 */
+        /* 单词行：flex 居中换行 */
+        .quest-input-row {
+          position: relative;
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          align-items: flex-end;
+          gap: 8px;
+          min-height: 4rem;
+        }
+
+        /* 单词槽：只有底部下划线，无背景无边框无圆角 */
+        .quest-word {
+          height: 4rem;
+          border-bottom: 2px solid #D1D5DB;
+          font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          font-size: 3em;
+          line-height: 1;
+          font-weight: 400;
+          color: rgba(32, 32, 32, 0.6);
+          min-width: 4ch;
+          text-align: center;
+          transition: color 0.15s ease, border-color 0.15s ease;
+          display: inline-flex;
+          align-items: flex-end;
+          justify-content: center;
+          padding-bottom: 2px;
+        }
+
+        /* 激活词：紫色文字 + 紫色下划线 + Bold */
+        .quest-word-active {
+          color: #E879F9;
+          border-bottom-color: #E879F9;
+          font-weight: 700;
+        }
+
+        /* 错误词：抖动 + Bold */
+        .quest-word-error {
+          animation: ew-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+          font-weight: 700;
+        }
+
+        /* 标点符号：无下划线，直接显示 */
+        .quest-word-punct {
+          height: 4rem;
+          font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          font-size: 3em;
+          line-height: 1;
+          font-weight: 400;
+          color: rgba(32, 32, 32, 0.6);
+          display: inline-flex;
+          align-items: flex-end;
+          justify-content: center;
+          padding-bottom: 2px;
+        }
+
+        /* 隐藏的真实输入框 —— 绝对定位覆盖在单词行上方 */
         .quest-input-real {
           position: absolute;
           top: 0;
@@ -79,122 +126,29 @@ export default function QuestionInput({
           z-index: 2;
         }
 
-        /* 覆盖层：单词卡片容器 */
-        .quest-input-overlay {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 16px;
-          min-height: 80px;
-          width: 100%;
-        }
-
-        /* 单词卡片（有下划线） */
-        .quest-word {
-          position: relative;
-          display: inline-flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 0 2px;
-          height: var(--ew-word-height, 4rem);
-          justify-content: flex-end;
-          transition: color 0.15s ease;
-        }
-
-        /* 纯标点符号（无下划线） */
-        .quest-word-punct {
-          position: relative;
-          display: inline-flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 0 2px;
-          height: var(--ew-word-height, 4rem);
-          justify-content: flex-end;
-        }
-
-        /* 单词文字 —— 默认：系统字重400，半透明深灰 */
-        .quest-word-text {
-          font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          font-size: var(--ew-word-size, 3em);
-          line-height: 1;
-          font-weight: 400;
-          color: rgba(32, 32, 32, 0.6);
-          min-width: 1ch;
-          text-align: center;
-          transition: color 0.15s ease;
-        }
-
-        /* 标点文字 —— 无下划线，默认色 */
-        .quest-word-punct .quest-word-text {
-          color: rgba(32, 32, 32, 0.6);
-        }
-
-        /* 空词占位（下划线）—— 统一灰色 */
-        .quest-word-empty {
-          display: inline-block;
-          min-width: 2ch;
-          border-bottom: 2px solid var(--ew-border, #D1D5DB);
-          margin-bottom: 2px;
-        }
-
-        /* 激活词：紫色文字 + 紫色下划线 + Nunito Bold */
-        .quest-word-active .quest-word-text {
-          color: var(--ew-accent, #E879F9);
-          font-weight: 700;
-        }
-        .quest-word-active .quest-word-empty {
-          border-bottom-color: var(--ew-accent, #E879F9);
-        }
-
-        /* 错误词：抖动 + Nunito Bold（下划线保持灰色，文字颜色由内联style控制） */
-        .quest-word-error {
-          animation: ew-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
-        }
-        .quest-word-error .quest-word-text {
-          font-weight: 700;
-        }
-        /* 错误词下划线保持灰色 —— 不覆盖 border-color */
-
-        /* 错误提示（suggestion） */
-        .quest-word-suggestion {
-          font-size: 11px;
-          margin-top: 6px;
-          padding: 4px 10px;
-          border-radius: 6px;
-          white-space: normal;
-          line-height: 1.5;
-          max-width: 220px;
-          text-align: center;
-          word-break: break-word;
-          font-weight: 500;
-        }
-
         /* 占位提示 */
         .quest-placeholder {
-          color: var(--ew-text-faint, #9CA3AF);
+          color: #9CA3AF;
           font-size: 18px;
           padding: 24px;
         }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+          .quest-word,
+          .quest-word-punct {
+            font-size: 1.8em;
+            height: 2.5rem;
+            min-width: 2ch;
+          }
+          .quest-input-row {
+            min-height: 2.5rem;
+            gap: 6px;
+          }
+        }
       `}</style>
 
-      {/* 隐藏的真实输入框 —— 完全保持原样 */}
-      <input
-        ref={inputRef}
-        className="quest-input-real"
-        value={value}
-        onChange={onChange}
-        onKeyDown={onKeyDown}
-        aria-label={placeholder}
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        spellCheck={false}
-      />
-
-      {/* 覆盖层：单词卡片 */}
-      <div className={`quest-input-overlay quest-mode-${mode}`}>
+      <div className="quest-input-row">
         {userInputWords.length === 0 ? (
           <span className="quest-placeholder">{placeholder}</span>
         ) : (
@@ -204,42 +158,36 @@ export default function QuestionInput({
             const isError = word.incorrect && error;
             const isPunct = isPunctuation(word.text);
 
-            let wordClass = isPunct ? "quest-word-punct" : "quest-word";
-            if (word.isActive) wordClass += " quest-word-active";
-            if (isError) wordClass += " quest-word-error";
+            let className = isPunct ? "quest-word-punct" : "quest-word";
+            if (word.isActive) className += " quest-word-active";
+            if (isError) className += " quest-word-error";
 
             return (
-              <div key={word.id} className={wordClass}>
-                <span
-                  className="quest-word-text"
-                  style={isError ? { color: errorColor } : undefined}
-                >
-                  {word.userInput ? (
-                    word.userInput
-                  ) : isPunct ? (
-                    word.text
-                  ) : (
-                    <span className="quest-word-empty">&nbsp;</span>
-                  )}
-                </span>
-
-                {/* 错误提示：仅在有错误且有 suggestion 时显示 */}
-                {isError && error.suggestion && (
-                  <span
-                    className="quest-word-suggestion"
-                    style={{
-                      color: errorColor,
-                      background: `${errorColor}14`,
-                      border: `1px solid ${errorColor}30`,
-                    }}
-                  >
-                    {error.suggestion}
-                  </span>
-                )}
+              <div
+                key={word.id}
+                className={className}
+                style={isError ? { color: errorColor, borderBottomColor: errorColor } : undefined}
+              >
+                {/* 已输入的文字显示在下划线上方；未输入时为空（只显示下划线） */}
+                {word.userInput ? word.userInput : isPunct ? word.text : ""}
               </div>
             );
           })
         )}
+
+        {/* 隐藏的真实输入框 —— 保持绝对定位覆盖，保证点击和光标 */}
+        <input
+          ref={inputRef}
+          className="quest-input-real"
+          value={value}
+          onChange={onChange}
+          onKeyDown={onKeyDown}
+          aria-label={placeholder}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+        />
       </div>
     </div>
   );

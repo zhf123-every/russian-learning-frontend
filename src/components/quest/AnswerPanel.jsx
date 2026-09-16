@@ -1,18 +1,70 @@
 /**
- * AnswerPanel.jsx —— 答对详情页（句乐部白底紫色风格）
+ * AnswerPanel.jsx —— 答对详情页（句乐部完整复刻版）
  *
- * 功能：
- *  - 大字号逐词渲染，hover 变紫色，点击单词发音
- *  - 整句发音喇叭按钮
- *  - 展示重音标注、中文释义、语法要点
- *  - 按钮：再来一次 / 下一题
- *  - 空格、Enter 快捷键跳转下一题
+ * 布局：
+ *  - 单词卡片行（顶部标签→重音符→大字→彩色下划线→中文→词性）
+ *  - 整句中文释义 + 复制图标
+ *  - 底部快捷键提示栏（无按钮，空格/Enter直接下一题）
+ *
+ * 颜色规则（按句法角色 syntacticRole）：
+ *  - subject 主语 → 红 #EF4444
+ *  - predicate 谓语 → 绿 #22C55E
+ *  - object 宾语 → 蓝 #3B82F6
+ *  - adverbial 状语 → 橙 #F59E0B
+ *  - attribute 定语 → 紫 #A855F7
+ *  - predicative 表语 → 青 #14B8A6
+ *  - complement 补语 → 粉 #EC4899
  *
  * 发音：Web Speech API (speechSynthesis)，俄语 lang='ru-RU'
  */
 
-import { useEffect, useCallback } from "react";
-import WordGrammarCard from "./WordGrammarCard";
+import { useEffect, useCallback, useState } from "react";
+import { getPosLabel } from "../../constants/posColors";
+
+// 句法角色 → 颜色映射
+const ROLE_COLORS = {
+  subject: "#EF4444",
+  predicate: "#22C55E",
+  object: "#3B82F6",
+  adverbial: "#F59E0B",
+  attribute: "#A855F7",
+  predicative: "#14B8A6",
+  complement: "#EC4899",
+  default: "#9CA3AF",
+};
+
+// 句法角色 → 中文标签（兼容各种写法）
+const ROLE_LABELS_MAP = {
+  subject: "主语",
+  predicate: "谓语",
+  object: "宾语",
+  attribute: "定语",
+  adverbial: "状语",
+  predicative: "表语",
+  complement: "补语",
+  // 兼容带后缀的写法
+  predicate_noun: "表语",
+  predicate_adjective: "表语",
+  predicate_verb: "谓语",
+  direct_object: "宾语",
+  indirect_object: "宾语",
+  prepositional_object: "宾语",
+};
+
+function getRoleColor(role) {
+  if (!role) return ROLE_COLORS.default;
+  // 先精确匹配，再尝试去掉后缀
+  if (ROLE_COLORS[role]) return ROLE_COLORS[role];
+  const base = role.split("_")[0];
+  return ROLE_COLORS[base] || ROLE_COLORS.default;
+}
+
+function getRoleLabel(role) {
+  if (!role) return "";
+  if (ROLE_LABELS_MAP[role]) return ROLE_LABELS_MAP[role];
+  const base = role.split("_")[0];
+  return ROLE_LABELS_MAP[base] || role;
+}
 
 export default function AnswerPanel({
   statement,
@@ -20,6 +72,8 @@ export default function AnswerPanel({
   onNext,
   isLast = false,
 }) {
+  const [copied, setCopied] = useState(false);
+
   // ---- 俄语发音 ----
   const speakRussian = useCallback((text) => {
     if (!text || typeof window === "undefined" || !window.speechSynthesis) return;
@@ -55,10 +109,18 @@ export default function AnswerPanel({
     return () => window.removeEventListener("keydown", handleKey);
   }, [onNext]);
 
+  // 复制整句中文
+  const handleCopy = useCallback(() => {
+    if (!statement?.chinese) return;
+    navigator.clipboard?.writeText(statement.chinese).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [statement?.chinese]);
+
   if (!statement) return null;
 
-  // 按空格拆分单词（过滤标点）
-  const words = (statement.russian || "").split(" ").filter((w) => /[а-яА-ЯёЁa-zA-Z0-9]/.test(w));
+  const words = statement.words || [];
 
   return (
     <div style={styles.wrapper}>
@@ -67,231 +129,219 @@ export default function AnswerPanel({
           from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        /* 单词 hover：紫色，无位移 */
-        .answer-word {
-          transition: color 0.15s ease;
+        .word-card {
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
           cursor: pointer;
-          padding: 4px;
-          color: #202020;
         }
-        .answer-word:hover {
-          color: var(--ew-accent, #E879F9);
+        .word-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
-        /* 喇叭按钮 hover：变紫 */
-        .answer-speak-btn {
-          transition: color 0.15s ease, border-color 0.15s ease;
-        }
-        .answer-speak-btn:hover {
-          color: var(--ew-accent, #E879F9);
-          border-color: var(--ew-accent, #E879F9);
-        }
-        /* 按钮 hover：边框变紫 */
-        .answer-btn {
-          transition: border-color 0.15s ease, color 0.15s ease;
-        }
-        .answer-btn:hover {
-          border-color: var(--ew-accent, #E879F9);
-          color: var(--ew-accent, #E879F9);
+        @media (max-width: 640px) {
+          .word-card-bigword {
+            font-size: 1.8rem !important;
+          }
         }
       `}</style>
 
-      {/* 主卡片 */}
       <div style={{ ...styles.card, animation: "answer-fadeIn 0.4s ease" }}>
-        {/* 单词逐词渲染 */}
-        <div style={styles.wordsRow}>
-          {words.map((word, index) => (
+        {/* 单词卡片行 */}
+        {words.length > 0 ? (
+          <div style={styles.cardsRow}>
+            {words.map((w, i) => {
+              const color = getRoleColor(w.syntacticRole);
+              const roleLabel = getRoleLabel(w.syntacticRole);
+              // 显示带重音符的词形：优先 form（带重音），其次 lemma
+              const displayWord = w.form || w.lemma || "";
+              const posLabel = getPosLabel(w.pos);
+              const chinese = w.chinese || w.meaning || w.translation || "";
+
+              return (
+                <div
+                  key={i}
+                  className="word-card"
+                  style={{
+                    ...styles.wordCard,
+                    borderColor: `${color}60`,
+                  }}
+                  onClick={() => speakRussian(displayWord)}
+                  title="点击发音"
+                >
+                  {/* 顶部：句法角色标签 */}
+                  {roleLabel && (
+                    <span style={{ ...styles.roleTag, background: color }}>
+                      {roleLabel}
+                    </span>
+                  )}
+
+                  {/* 重音符/音标（灰色小字） */}
+                  <div style={styles.phonetic}>{displayWord}</div>
+
+                  {/* 大字单词 */}
+                  <div className="word-card-bigword" style={styles.bigWord}>
+                    {displayWord}
+                  </div>
+
+                  {/* 彩色下划线 */}
+                  <div style={{ ...styles.underline, background: color }} />
+
+                  {/* 中文释义 */}
+                  {chinese && <div style={styles.chinese}>{chinese}</div>}
+
+                  {/* 词性 */}
+                  {posLabel && <div style={styles.pos}>{posLabel}</div>}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={styles.fallbackRow}>
+            <span style={styles.fallbackWord}>{statement.russian}</span>
+          </div>
+        )}
+
+        {/* 整句中文释义 + 复制图标 */}
+        {statement.chinese && (
+          <div style={styles.sentenceChinese}>
+            <span>{statement.chinese}</span>
             <span
-              key={index}
-              className="answer-word"
-              style={styles.wordText}
-              onClick={() => speakRussian(word)}
-              title="点击发音"
+              style={styles.copyIcon}
+              onClick={handleCopy}
+              title="复制"
             >
-              {word}
+              {copied ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              )}
             </span>
-          ))}
-          {/* 整句发音按钮 */}
-          <button
-            className="answer-speak-btn"
-            style={styles.speakBtn}
-            onClick={() => speakRussian(statement.russian)}
-            title="播放整句发音"
-          >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-            </svg>
-          </button>
-        </div>
-
-        {/* 重音标注 */}
-        {statement.stressMarked && (
-          <div style={styles.stressMark}>
-            {statement.stressMarked}
           </div>
         )}
 
-        {/* 中文释义 */}
-        <div style={styles.chinese}>
-          {statement.chinese}
-        </div>
-
-        {/* 语法拆解卡片（按词性上色） */}
-        {statement.words && statement.words.length > 0 && (
-          <div style={styles.grammarCardsRow}>
-            {statement.words.map((w, i) => (
-              <WordGrammarCard
-                key={i}
-                word={w}
-                onPlaySound={(text) => speakRussian(text)}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* 语法要点 */}
-        {statement.grammaticalNote && (
-          <div style={styles.grammarNote}>
-            <span style={{ fontWeight: 600, marginRight: 4 }}>语法：</span>
-            {statement.grammaticalNote}
-          </div>
-        )}
-
-        {/* 操作按钮 */}
-        <div style={styles.btnRow}>
-          <button className="answer-btn" style={styles.btn} onClick={onRetry}>
-            再来一次
-          </button>
-          <button className="answer-btn" style={styles.btn} onClick={onNext}>
-            {isLast ? "完成课程" : "下一题"}
-            <span style={styles.kbdHint}>↵</span>
-          </button>
-        </div>
-
-        {/* 快捷键提示 */}
-        <div style={styles.hint}>
-          按 空格 / Enter 快速进入下一题 · 点击单词可单独发音
-        </div>
       </div>
     </div>
   );
 }
 
 // ==========================================================
-// 样式（句乐部白底紫色风格）
+// 样式
 // ==========================================================
 const styles = {
   wrapper: {
-    minHeight: "100vh",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "24px",
+    padding: "24px 24px 100px",
     background: "#FFFFFF",
+    minHeight: "calc(100vh - 80px)",
   },
   card: {
     width: "100%",
-    maxWidth: 640,
+    maxWidth: 960,
     background: "#fff",
     borderRadius: 16,
-    padding: "48px 36px 32px",
+    padding: "48px 24px 32px",
     textAlign: "center",
-  },
-  wordsRow: {
     display: "flex",
-    flexWrap: "wrap",
+    flexDirection: "column",
     alignItems: "center",
-    justifyContent: "center",
-    gap: "4px",
-    marginBottom: 24,
-    minHeight: 60,
   },
-  wordText: {
-    fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    fontSize: "3rem",
-    fontWeight: 700,
-    lineHeight: 1.2,
-  },
-  speakBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: "50%",
-    border: "1px solid #D1D5DB",
-    background: "#fff",
-    color: "#6B7280",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 8,
-  },
-  stressMark: {
-    fontSize: "1.25rem",
-    color: "#6B7280",
-    margin: "24px 0",
-    letterSpacing: "0.5px",
-  },
-  chinese: {
-    fontSize: "1.25rem",
-    color: "#6B7280",
-    margin: "24px 0",
-    lineHeight: 1.5,
-  },
-  grammarCardsRow: {
+  cardsRow: {
     display: "flex",
     flexWrap: "wrap",
     justifyContent: "center",
     alignItems: "flex-start",
-    gap: 4,
-    marginTop: 20,
-    marginBottom: 8,
-    padding: "12px 8px",
-    background: "#FAFAFA",
-    borderRadius: 12,
-    border: "1px solid #F0F0F0",
+    gap: 16,
+    marginBottom: 40,
   },
-  grammarNote: {
+  wordCard: {
+    position: "relative",
+    display: "inline-flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: "20px 16px 14px",
+    minWidth: 100,
+    border: "1px solid #E5E7EB",
+    borderRadius: 12,
+    background: "#fff",
+  },
+  roleTag: {
+    position: "absolute",
+    top: -10,
+    left: "50%",
+    transform: "translateX(-50%)",
+    padding: "2px 10px",
+    borderRadius: 10,
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#fff",
+    whiteSpace: "nowrap",
+    letterSpacing: 0.5,
+  },
+  phonetic: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    marginBottom: 4,
+    marginTop: 4,
+    fontFamily: '"PT Serif", Georgia, serif',
+    minHeight: 18,
+  },
+  bigWord: {
+    fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontSize: "2.5rem",
+    fontWeight: 700,
+    color: "#1F2937",
+    lineHeight: 1.2,
+    marginBottom: 6,
+  },
+  underline: {
+    width: "100%",
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 8,
+    minWidth: 50,
+  },
+  chinese: {
     fontSize: 14,
     color: "#4B5563",
-    background: "#F9FAFB",
-    padding: "12px 20px",
-    borderRadius: 8,
-    marginBottom: 28,
-    lineHeight: 1.6,
-    display: "inline-block",
-    maxWidth: "100%",
-  },
-  btnRow: {
-    display: "flex",
-    gap: 12,
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  btn: {
-    padding: "10px 28px",
-    background: "#fff",
-    color: "#374151",
-    border: "1px solid #D1D5DB",
-    borderRadius: 6,
-    fontSize: 15,
     fontWeight: 500,
-    cursor: "pointer",
-    display: "inline-flex",
+    marginBottom: 2,
+  },
+  pos: {
+    fontSize: 12,
+    color: "#9CA3AF",
+  },
+  fallbackRow: {
+    display: "flex",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  fallbackWord: {
+    fontFamily: '"Nunito", sans-serif',
+    fontSize: "2.5rem",
+    fontWeight: 700,
+    color: "#1F2937",
+  },
+  sentenceChinese: {
+    fontSize: "1.75rem",
+    color: "#374151",
+    fontWeight: 600,
+    marginBottom: 48,
+    lineHeight: 1.4,
+    display: "flex",
     alignItems: "center",
     gap: 8,
   },
-  kbdHint: {
-    display: "inline-block",
-    padding: "1px 6px",
-    background: "#F3F4F6",
-    borderRadius: 4,
-    fontSize: 12,
-    fontWeight: 400,
+  copyIcon: {
+    cursor: "pointer",
     color: "#9CA3AF",
-  },
-  hint: {
-    fontSize: 12,
-    color: "#9CA3AF",
+    display: "inline-flex",
+    alignItems: "center",
+    transition: "color 0.15s",
   },
 };

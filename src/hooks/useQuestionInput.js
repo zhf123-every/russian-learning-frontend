@@ -74,6 +74,7 @@ export function useQuestionInput({
   const [mode, setMode] = useState(MODES.INPUT);
   const [inputValue, setInputValue] = useState("");
   const [userInputWords, setUserInputWords] = useState([]);
+  const [isJudging, setIsJudging] = useState(false); // 判题中状态，用于立即隐藏输入框
 
   // 当前正在修正的词 id（Fix_Input 模式下）
   const currentEditWordIdRef = useRef(null);
@@ -124,9 +125,9 @@ export function useQuestionInput({
    * 计算每个词的 userInput / start / end
    * 保留 incorrect 状态（提交标记的错误不因输入变化而重置）
    */
-  const syncFromInput = useCallback((value) => {
+  const syncFromInput = useCallback((value, cursorPos) => {
     setUserInputWords((prevWords) => {
-      const newWords = prevWords.map((w) => ({ ...w }));
+      const newWords = prevWords.map((w) => ({ ...w, isActive: false }));
       let position = 0;
       const parts = value.split(" ");
       newWords.forEach((word, index) => {
@@ -135,7 +136,15 @@ export function useQuestionInput({
         word.start = position;
         word.end = position + input.length;
         position += input.length + 1; // +1 是词间空格
+        // 根据光标位置判断当前激活词（句乐部逻辑）
+        if (cursorPos !== undefined && cursorPos >= word.start && cursorPos <= word.end) {
+          word.isActive = true;
+        }
       });
+      // 如果光标在最后一个词后面，激活最后一个词
+      if (cursorPos !== undefined && !newWords.some(w => w.isActive) && newWords.length > 0) {
+        newWords[newWords.length - 1].isActive = true;
+      }
       return newWords;
     });
   }, []);
@@ -162,10 +171,8 @@ export function useQuestionInput({
 
   const setCursorPosition = useCallback((pos) => {
     if (inputRef.current) {
-      // 用 requestAnimationFrame 确保 DOM 更新后再设置
-      requestAnimationFrame(() => {
-        inputRef.current?.setSelectionRange(pos, pos);
-      });
+      // 直接设置，避免一帧延迟
+      inputRef.current.setSelectionRange(pos, pos);
     }
   }, [inputRef]);
 
@@ -191,8 +198,9 @@ export function useQuestionInput({
   const handleChange = useCallback(
     (e) => {
       const value = e.target.value;
+      const cursorPos = e.target.selectionStart ?? value.length;
       setInputValue(value);
-      syncFromInput(value);
+      syncFromInput(value, cursorPos);
     },
     [syncFromInput]
   );
@@ -258,29 +266,39 @@ export function useQuestionInput({
     (word) => {
       if (!word) return;
       currentEditWordIdRef.current = word.id;
+
+      // 先计算新的单词数组和输入框值（不在 setState 回调中调用另一个 setState）
+      let newCursorPos = 0;
       setUserInputWords((prevWords) => {
-        const newWords = prevWords.map((w) =>
-          w.id === word.id ? { ...w, userInput: "" } : w
-        );
-        // 同步计算 start/end
+        const newWords = prevWords.map((w) => {
+          if (w.id === word.id) {
+            // 清空当前错词，清除 incorrect 标记，激活
+            return { ...w, userInput: "", incorrect: false, isActive: true };
+          }
+          return { ...w, isActive: false };
+        });
+
+        // 重新计算 start/end
         let position = 0;
         newWords.forEach((w) => {
           w.start = position;
           w.end = position + w.userInput.length;
           position += w.userInput.length + 1;
         });
-        // 更新激活词
-        newWords.forEach((w) => (w.isActive = w.id === word.id));
+
+        // 记录当前词的新 start 位置，用于设置光标
+        const targetWord = newWords.find((w) => w.id === word.id);
+        if (targetWord) newCursorPos = targetWord.start;
+
+        // 同步输入框值
+        const newValue = newWords.map((w) => w.userInput).join(" ");
+        setInputValue(newValue);
+
         return newWords;
       });
-      // 同步输入框值
-      setUserInputWords((prevWords) => {
-        const newValue = prevWords.map((w) => w.userInput).join(" ");
-        setInputValue(newValue);
-        return prevWords;
-      });
+
       // 光标移到该词起始位置
-      setCursorPosition(word.start);
+      setTimeout(() => setCursorPosition(newCursorPos), 0);
     },
     [setCursorPosition]
   );
@@ -381,28 +399,58 @@ export function useQuestionInput({
    */
   const submitAnswer = useCallback(async () => {
     if (mode === MODES.FIX) return;
+    if (isJudging) return;
 
-    const result = await submitToBackend(inputValue);
+    // ===== 前端快速判题：词集合匹配（忽略语序），瞬间出结果 =====
+    // 去掉词首尾的标点符号，避免 "друг." != "друг" 的误判
+    const stripPunct = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, '');
+    const userWords = inputValue.toLowerCase().trim().split(/\s+/).filter(Boolean).map(stripPunct).filter(Boolean);
+    const answerWords = (answerText || "").toLowerCase().trim().split(/\s+/).filter(Boolean).map(stripPunct).filter(Boolean);
 
-    if (result === null) return;
-
-    if (result && result.errors && result.errors.length > 0) {
-      markIncorrectFromErrors(result.errors);
+    // 词数不同 → 立即判定错误
+    if (userWords.length !== answerWords.length) {
+      setUserInputWords((prevWords) => prevWords.map((w) => ({ ...w, incorrect: true })));
       enteredFixModeRef.current = true;
       setMode(MODES.FIX);
-      onWrong?.(result);
-    } else {
-      // 全部正确
+      submitToBackend(inputValue).then((result) => {
+        if (result && result.errors) { markIncorrectFromErrors(result.errors); onWrong?.(result); }
+      });
+      return;
+    }
+
+    // 词数相同 → 排序后比较词集合（忽略语序）
+    const sortedUser = [...userWords].sort();
+    const sortedAnswer = [...answerWords].sort();
+    const setMatch = sortedUser.every((w, i) => w === sortedAnswer[i]);
+
+    if (setMatch) {
+      // 词集合匹配（包括灵活语序）→ 立即跳转正确答案页
       setMode(MODES.INPUT);
       setInputValue("");
-      setUserInputWords((prevWords) =>
-        prevWords.map((w) => ({ ...w, userInput: "", incorrect: false, isActive: false }))
-      );
+      setUserInputWords((prevWords) => prevWords.map((w) => ({ ...w, userInput: "", incorrect: false, isActive: false })));
       currentEditWordIdRef.current = null;
       const resultType = computeResultType();
-      onCorrect?.(result, resultType);
+      onCorrect?.({ correct: true, errors: [], wordAnalysis: [] }, resultType);
+      submitToBackend(inputValue).catch(() => {});
+      return;
     }
-  }, [mode, inputValue, submitToBackend, markIncorrectFromErrors, onCorrect, onWrong]);
+
+    // 词数相同但词不匹配 → 立即标记错误
+    setUserInputWords((prevWords) => {
+      const newWords = prevWords.map((w) => ({ ...w }));
+      const answerSet = new Set(answerWords);
+      newWords.forEach((w, i) => {
+        const userWord = userWords[i] || "";
+        if (!answerSet.has(userWord.toLowerCase())) w.incorrect = true;
+      });
+      return newWords;
+    });
+    enteredFixModeRef.current = true;
+    setMode(MODES.FIX);
+    submitToBackend(inputValue).then((result) => {
+      if (result && result.errors) { markIncorrectFromErrors(result.errors); onWrong?.(result); }
+    });
+  }, [mode, inputValue, answerText, isJudging, submitToBackend, markIncorrectFromErrors, onCorrect, onWrong, computeResultType]);
 
   // ==========================================================
   // 键盘事件处理（绑定在 input 元素的 onKeyDown 上）
@@ -567,6 +615,7 @@ export function useQuestionInput({
     mode,
     inputValue,
     userInputWords,
+    isJudging,
     // 事件
     handleChange,
     handleInputKeyDown,

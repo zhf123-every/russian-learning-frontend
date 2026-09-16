@@ -103,6 +103,7 @@ export default function QuestPractice() {
     mode,
     inputValue,
     userInputWords,
+    isJudging,
     handleChange,
     isFixMode,
     isFixInputMode,
@@ -268,18 +269,6 @@ export default function QuestPractice() {
     );
   }
 
-  // 答对详情页
-  if (showAnswerPanel) {
-    return (
-      <AnswerPanel
-        statement={currentStatement}
-        onRetry={handleRetry}
-        onNext={handleNextFromAnswer}
-        isLast={questionIndex === statements.length - 1}
-      />
-    );
-  }
-
   return (
     <div
       style={{
@@ -374,13 +363,19 @@ export default function QuestPractice() {
           </div>
         )}
 
+        {/* 答对详情页 */}
+        {showAnswerPanel ? (
+          <AnswerPanel
+            statement={currentStatement}
+            onRetry={handleRetry}
+            onNext={handleNextFromAnswer}
+            isLast={questionIndex === statements.length - 1}
+          />
+        ) : (
+        <>
         {/* 中文释义 */}
         <div style={styles.hintCard}>
-          <div style={styles.hintLabel}>中文释义</div>
           <div style={styles.hintText}>{currentStatement?.chinese}</div>
-          {currentStatement?.grammaticalNote && (
-            <div style={styles.grammarNote}>{currentStatement.grammaticalNote}</div>
-          )}
           {showAnswer && currentStatement?.stressMarked && (
             <div style={styles.answerReveal}>
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.stressMarked}</span>
@@ -392,6 +387,7 @@ export default function QuestPractice() {
         <div style={styles.inputCard}>
           <QuestionInput
             userInputWords={userInputWords}
+          isJudging={isJudging}
             mode={mode}
             inputRef={inputRef}
             value={inputValue}
@@ -419,11 +415,13 @@ export default function QuestPractice() {
             </span>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* 底部快捷键提示栏 */}
       <ShortcutTips
-        mode="question"
+        mode={showAnswerPanel ? "answer" : "question"}
         inputRef={inputRef}
         onSubmit={submitAnswer}
         onNext={handleNextFromAnswer}
@@ -616,24 +614,18 @@ const styles = {
   },
   hintCard: {
     width: "100%",
-    padding: "20px 24px",
-    background: "#fff",
-    borderRadius: 16,
-    boxShadow: "0 2px 12px rgba(155,123,94,0.06)",
     textAlign: "center",
+    marginBottom: 32,
   },
   hintLabel: {
-    fontSize: 12,
-    color: "#B4A79C",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 6,
+    display: "none",
   },
   hintText: {
-    fontSize: 20,
-    fontWeight: 600,
+    fontSize: "2.5rem",
+    fontWeight: 700,
+    fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     color: "#3D332C",
-    lineHeight: 1.5,
+    lineHeight: 1.3,
   },
   grammarNote: {
     marginTop: 10,
@@ -652,9 +644,6 @@ const styles = {
   },
   inputCard: {
     width: "100%",
-    background: "#fff",
-    borderRadius: 16,
-    boxShadow: "0 4px 16px rgba(155,123,94,0.10)",
     minHeight: 140,
     display: "flex",
     alignItems: "center",

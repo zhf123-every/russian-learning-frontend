@@ -13,6 +13,7 @@ import TutorChat from './pages/TutorChat'
 import RuQuest from './pages/RuQuest'
 import TestPractice from './pages/TestPractice'
 import QuestPractice from './pages/QuestPractice'
+import CourseStore from './pages/CourseStore'
 import QuestDictation from './pages/QuestDictation'
 
 export default function App() {
@@ -20,7 +21,7 @@ export default function App() {
 
   return (
     <>
-      {loc.pathname !== '/quest' && loc.pathname !== '/test-practice' && !loc.pathname.startsWith('/quest-practice') && !loc.pathname.startsWith('/quest-dictation') && (
+      {loc.pathname !== '/quest' && loc.pathname !== '/test-practice' && !loc.pathname.startsWith('/quest-practice') && !loc.pathname.startsWith('/quest-dictation') && !loc.pathname.startsWith('/quest-store') && (
       <div className="topbar">
         <div className="brand">
           <span className="logo">📖</span>
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/tutor" element={<TutorChat />} />
         <Route path="/quest" element={<RuQuest />} />
         <Route path="/test-practice" element={<TestPractice />} />
+        <Route path="/quest-store" element={<CourseStore />} />
         <Route path="/quest-practice" element={<QuestPractice />} />
         <Route path="/quest-practice/:courseId" element={<QuestPractice />} />
         <Route path="/quest-dictation" element={<QuestDictation />} />

@@ -1,137 +1,174 @@
 /**
- * ShortcutTips.jsx —— 底部快捷键提示栏
+ * ShortcutTips.jsx —— 底部固定快捷键栏（句乐部风格）
  *
- * 根据当前状态（输入模式 / 答对模式）动态切换按钮：
- * - 输入模式：Enter 提交、Ctrl+' 播放发音、Ctrl+; 显示答案
- * - 答对模式：Enter 下一题、Ctrl+' 播放发音、Ctrl+; 再来一次
+ * 全局固定在页面底部，输入模式和答对模式都显示。
+ * 动态变化的只有两个按钮：
+ *   - 输入模式：Enter 提交、Ctrl+; 显示答案
+ *   - 答对模式：Enter 下一题、Ctrl+; 再来一次
  *
- * 样式：灰色边框按键 + 文字说明，hover 变紫
+ * 完整布局（从句乐部截图1:1对齐）：
+ *   ←  Ctrl+' 播放发音  Ctrl+M 掌握  Ctrl+N 生词  Enter 提交/下一题  Ctrl+; 显示答案/再来一次  →
  */
 
 export default function ShortcutTips({
   mode = "question", // "question" | "answer"
-  variant = "practice", // "practice" | "dictation"
-  inputRef = null, // 可选：点击按钮后自动聚焦回输入框
-  onSubmit,
-  onNext,
-  onRetry,
-  onPlaySound,
-  onShowAnswer,
+  onSubmit,       // 输入模式：提交
+  onNext,         // 答对模式：下一题
+  onRetry,        // 答对模式：再来一次
+  onPlaySound,    // 播放发音
+  onShowAnswer,   // 输入模式：显示答案
+  onPrev,         // 上一题（左箭头）
+  inputRef = null,
 }) {
-  // 包装点击事件：执行回调后自动聚焦输入框
+  // 包装点击：执行后自动聚焦输入框
   const handleClick = (callback) => (e) => {
     e.preventDefault();
     callback?.();
-    // 延迟聚焦，确保回调执行完
     setTimeout(() => inputRef?.current?.focus(), 0);
   };
-  // 根据模式和变体构建按钮列表
-  const buttons = mode === "question"
-    ? variant === "dictation"
-      ? [
-          { keys: ["Enter"], text: "提交", onClick: onSubmit },
-          { keys: ["Space"], text: "重播发音", onClick: onPlaySound },
-          { keys: ["Ctrl", ";"], text: "看字幕", onClick: onShowAnswer },
-        ]
-      : [
-          { keys: ["Enter"], text: "提交", onClick: onSubmit },
-          { keys: ["Ctrl", "'"], text: "播放发音", onClick: onPlaySound },
-          { keys: ["Ctrl", ";"], text: "显示答案", onClick: onShowAnswer },
-        ]
-    : [
-        { keys: ["Enter"], text: "下一题", onClick: onNext },
-        { keys: ["Ctrl", "'"], text: "播放发音", onClick: onPlaySound },
-        { keys: ["Ctrl", ";"], text: "再来一次", onClick: onRetry },
-      ];
+
+  // 动态按钮文字
+  const enterBtn = mode === "question"
+    ? { keys: ["Enter"], text: "提交", onClick: onSubmit }
+    : { keys: ["Enter"], text: "下一题", onClick: onNext };
+
+  const ctrlSemicolonBtn = mode === "question"
+    ? { keys: ["Ctrl", ";"], text: "显示答案", onClick: onShowAnswer }
+    : { keys: ["Ctrl", ";"], text: "再来一次", onClick: onRetry };
+
+  const buttons = [
+    { keys: ["Ctrl", "'"], text: "播放发音", onClick: onPlaySound },
+    { keys: ["Ctrl", "M"], text: "掌握", onClick: null },
+    { keys: ["Ctrl", "N"], text: "生词", onClick: null },
+    enterBtn,
+    ctrlSemicolonBtn,
+  ];
 
   return (
-    <div className="shortcut-tips">
+    <div className="ew-shortcut-bar">
       <style>{`
-        .shortcut-tips {
+        .ew-shortcut-bar {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 16px;
-          padding: 16px 24px;
-          border-top: 1px solid #E5E7EB;
+          gap: 20px;
+          padding: 14px 24px;
           background: #FFFFFF;
-          min-height: 64px;
+          z-index: 50;
         }
-        .shortcut-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 14px;
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          font-size: 14px;
-          color: #6B7280;
-          transition: color 0.15s ease;
-          font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        }
-        .shortcut-btn:hover {
-          color: var(--ew-accent, #E879F9);
-        }
-        .shortcut-btn:active {
-          opacity: 0.6;
-          transform: scale(0.96);
-        }
-        .shortcut-btn:hover .shortcut-key {
-          border-color: var(--ew-accent, #E879F9);
-          color: var(--ew-accent, #E879F9);
-        }
-        .shortcut-key {
+        .ew-nav-arrow {
+          width: 32px;
+          height: 32px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-width: 24px;
-          height: 24px;
-          padding: 0 6px;
-          border: 1px solid #D1D5DB;
-          border-radius: 4px;
-          font-size: 12px;
-          font-weight: 600;
-          color: #4B5563;
+          color: #D1D5DB;
+          cursor: pointer;
+          border-radius: 6px;
+          transition: color 0.15s, background 0.15s;
+          flex-shrink: 0;
+        }
+        .ew-nav-arrow:hover {
+          color: #6B7280;
           background: #F9FAFB;
-          transition: border-color 0.15s ease, color 0.15s ease;
         }
-        .shortcut-key-sep {
-          color: #9CA3AF;
-          font-size: 12px;
-          margin: 0 2px;
+        .ew-shortcut-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border: 1px solid #E5E7EB;
+          border-radius: 8px;
+          background: #fff;
+          font-size: 13px;
+          color: #6B7280;
+          white-space: nowrap;
+          cursor: pointer;
+          transition: border-color 0.15s, color 0.15s;
+          font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
-        @media (max-width: 640px) {
-          .shortcut-tips {
+        .ew-shortcut-item:hover {
+          border-color: var(--ew-accent, #E879F9);
+          color: var(--ew-accent, #E879F9);
+        }
+        .ew-shortcut-item.disabled {
+          opacity: 0.5;
+          cursor: default;
+        }
+        .ew-shortcut-item.disabled:hover {
+          border-color: #E5E7EB;
+          color: #6B7280;
+        }
+        .ew-shortcut-item kbd {
+          display: inline-block;
+          padding: 1px 6px;
+          background: #F3F4F6;
+          border: 1px solid #E5E7EB;
+          border-radius: 4px;
+          font-size: 11px;
+          font-family: inherit;
+          color: #374151;
+          font-weight: 600;
+        }
+        @media (max-width: 768px) {
+          .ew-shortcut-bar {
             gap: 8px;
-            padding: 12px 16px;
+            padding: 10px 12px;
             flex-wrap: wrap;
           }
-          .shortcut-btn {
-            padding: 4px 10px;
-            font-size: 13px;
+          .ew-shortcut-item {
+            padding: 4px 8px;
+            font-size: 12px;
+          }
+          .ew-nav-arrow {
+            display: none;
           }
         }
       `}</style>
 
+      {/* 左箭头 */}
+      <span
+        className="ew-nav-arrow"
+        onClick={handleClick(onPrev)}
+        title="上一题"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </span>
+
+      {/* 快捷键按钮 */}
       {buttons.map((btn, i) => (
-        <button
+        <span
           key={i}
-          type="button"
-          className="shortcut-btn"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={handleClick(btn.onClick)}
-          title={`${btn.keys.join(" + ")} ${btn.text}`}
+          className={`ew-shortcut-item${btn.onClick ? "" : " disabled"}`}
+          onClick={btn.onClick ? handleClick(btn.onClick) : undefined}
+          title={btn.onClick ? `${btn.keys.join(" + ")} ${btn.text}` : "功能开发中"}
         >
           {btn.keys.map((key, j) => (
             <span key={j}>
-              {j > 0 && <span className="shortcut-key-sep">+</span>}
-              <span className="shortcut-key">{key}</span>
+              {j > 0 && <span style={{ color: "#9CA3AF", fontSize: 11 }}> </span>}
+              <kbd>{key}</kbd>
             </span>
           ))}
           <span>{btn.text}</span>
-        </button>
+        </span>
       ))}
+
+      {/* 右箭头 */}
+      <span
+        className="ew-nav-arrow"
+        onClick={handleClick(mode === "question" ? onSubmit : onNext)}
+        title={mode === "question" ? "提交" : "下一题"}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </span>
     </div>
   );
 }
