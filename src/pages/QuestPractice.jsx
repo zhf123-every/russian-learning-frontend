@@ -1,5 +1,5 @@
 /**
- * QuestPractice.jsx —— 俄语连词成句正式答题页
+ * QuestPractice.jsx —— 俄语连词成句正式答题页（逐级累加模式）
  *
  * 整合：
  *  - useQuestionInput（三态状态机）
@@ -7,10 +7,10 @@
  *  - QuestionInput（单词卡片渲染）
  *
  * 功能：
- *  - 从后端加载课程句子
+ *  - 从后端加载课程句子（按 sequence_id 分组）
+ *  - 逐级累加答题流：unit → sequence → 下一个sequence
  *  - 顶部工具栏（进度、计时器、返回）
- *  - 中文释义提示
- *  - 答对后自动跳转下一题（AnswerPanel 后续迭代）
+ *  - 答对后自动跳转下一题
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -28,18 +28,19 @@ import FeedbackPopup from "../components/quest/FeedbackPopup";
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
-const DEFAULT_COURSE_ID = "b7254aa773f74a315211bd37";
+const DEFAULT_COURSE_ID = "181cfa7e-61d1-4920-b150-3e908aec4cd3";
 
 export default function QuestPractice() {
   const navigate = useNavigate();
   const { courseId } = useParams();
   const effectiveCourseId = courseId || DEFAULT_COURSE_ID;
 
-  // ---- 课程数据 ----
-  const [statements, setStatements] = useState([]);
+  // ---- 课程数据（按 sequence 分组）----
+  const [sequences, setSequences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [questionIndex, setQuestionIndex] = useState(0);
+  const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
+  const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
 
   // ---- 计时器 ----
   const [elapsed, setElapsed] = useState(0);
@@ -60,7 +61,7 @@ export default function QuestPractice() {
     maxCombo,
     correctCount,
     comboEffect,
-    feedbackType, // 根据连击数自动计算的反馈类型
+    feedbackType,
     recordCorrect,
     recordWrong,
     resetStats,
@@ -68,20 +69,13 @@ export default function QuestPractice() {
     getGrade,
   } = useGameStats();
 
-  const currentStatement = statements[questionIndex];
+  // ---- 当前题目计算（双层索引）----
+  const currentSequence = sequences[currentSequenceIndex];
+  const currentStatement = currentSequence?.units?.[currentUnitIndex];
+  const totalUnits = sequences.reduce((sum, s) => sum + (s.totalUnits || s.units?.length || 0), 0);
+  const currentGlobalUnitIndex = sequences.slice(0, currentSequenceIndex).reduce((sum, s) => sum + (s.totalUnits || s.units?.length || 0), 0) + currentUnitIndex;
+  const isLastUnit = currentSequenceIndex === sequences.length - 1 && currentUnitIndex === (currentSequence?.units?.length || 1) - 1;
 
-
-  // ---- 渐进式累加序列计算 ----
-  const currentSeqId = currentStatement?.sequenceId || currentStatement?.sequence_id;
-  const sequenceStatements = currentSeqId
-    ? statements.filter((s) => (s.sequenceId || s.sequence_id) === currentSeqId)
-    : [];
-  const currentSeqOrder = currentStatement?.sequenceOrder || currentStatement?.sequence_order || 0;
-  const seqCompleted = sequenceStatements.filter(
-    (s) => (s.sequenceOrder || s.sequence_order || 0) < currentSeqOrder
-  );
-  const isInSequence = sequenceStatements.length > 1;
-  const isSequenceComplete = isInSequence && currentSeqOrder === sequenceStatements.length;
   const inputRef = useRef(null);
 
   // ---- 全局快捷键 ----
@@ -120,7 +114,7 @@ export default function QuestPractice() {
     onCorrect: (result, resultType) => {
       setCurrentErrors([]);
       setShowAnswerPanel(true);
-      recordCorrect(); // 更新连击数，useEffect 会自动根据 combo 显示反馈
+      recordCorrect();
       playRightSound();
     },
     onWrong: (result) => {
@@ -145,7 +139,7 @@ export default function QuestPractice() {
     }
   }, [combo]);
 
-  // ---- 加载课程 ----
+  // ---- 加载课程（按 sequence 分组）----
   useEffect(() => {
     ensureTypingSound();
     let cancelled = false;
@@ -153,11 +147,22 @@ export default function QuestPractice() {
       setLoading(true);
       setLoadError(null);
       try {
-        const res = await fetch(`${API_BASE}/api/courses/${effectiveCourseId}/statements`);
+        const res = await fetch(`${API_BASE}/api/courses/${effectiveCourseId}/statements?group_by=sequence`);
         const json = await res.json();
         if (!cancelled) {
-          if (json.ok && json.data && json.data.statements) {
-            setStatements(json.data.statements);
+          if (json.ok && json.data && json.data.sequences) {
+            // 临时过滤：意群拆分有问题的句子，只保留完整句（最后一个unit）
+            const BAD_SPLIT_SENTENCES = ["Рад вас видеть!", "Рада вас видеть!"];
+            const filteredSeqs = json.data.sequences.map((seq) => {
+              if (BAD_SPLIT_SENTENCES.includes(seq.fullRussian)) {
+                const fullUnit = seq.units[seq.units.length - 1];
+                return { ...seq, totalUnits: 1, units: [fullUnit] };
+              }
+              return seq;
+            });
+            setSequences(filteredSeqs);
+            setCurrentSequenceIndex(0);
+            setCurrentUnitIndex(0);
           } else {
             setLoadError("课程数据格式异常");
           }
@@ -185,24 +190,33 @@ export default function QuestPractice() {
     if (!loading && !loadError && currentStatement) {
       setTimeout(() => inputRef.current?.focus(), 200);
     }
-  }, [loading, loadError, questionIndex, currentStatement]);
+  }, [loading, loadError, currentSequenceIndex, currentUnitIndex, currentStatement]);
 
-  // ---- 跳转下一题 ----
+  // ---- 跳转下一题（双层索引：先unit后sequence）----
   const goToNext = useCallback(() => {
-    if (questionIndex < statements.length - 1) {
-      setQuestionIndex((i) => i + 1);
+    const seq = sequences[currentSequenceIndex];
+    const unitsLen = seq?.units?.length || 1;
+    if (currentUnitIndex < unitsLen - 1) {
+      // 同 sequence 内下一个 unit
+      setCurrentUnitIndex((i) => i + 1);
+      setCurrentErrors([]);
+      setShowAnswer(false);
+    } else if (currentSequenceIndex < sequences.length - 1) {
+      // 进入下一个 sequence 的 unit 1
+      setCurrentSequenceIndex((i) => i + 1);
+      setCurrentUnitIndex(0);
       setCurrentErrors([]);
       setShowAnswer(false);
     } else {
       // 全部完成，显示结算页
       setShowSummary(true);
     }
-  }, [questionIndex, statements.length]);
+  }, [currentSequenceIndex, currentUnitIndex, sequences]);
 
   // ---- 发音（Yandex 真人俄语发音）----
   const ttsAudioRef = useRef(null);
   const playSentenceSound = useCallback(async (times = 1) => {
-    const stmt = statements[questionIndex];
+    const stmt = currentStatement;
     if (!stmt?.russian) return;
     try {
       if (ttsAudioRef.current) {
@@ -239,7 +253,7 @@ export default function QuestPractice() {
     } catch (e) {
       console.warn("发音失败:", e);
     }
-  }, [statements, questionIndex]);
+  }, [currentStatement]);
 
   // ---- 题目出现时自动播放两遍发音 ----
   useEffect(() => {
@@ -247,7 +261,7 @@ export default function QuestPractice() {
       const timer = setTimeout(() => playSentenceSound(2), 500);
       return () => clearTimeout(timer);
     }
-  }, [loading, loadError, questionIndex, currentStatement, playSentenceSound]);
+  }, [loading, loadError, currentSequenceIndex, currentUnitIndex, currentStatement, playSentenceSound]);
 
   // ---- 格式化时间 ----
   const formatTime = (seconds) => {
@@ -274,7 +288,8 @@ export default function QuestPractice() {
   // ---- SummaryPanel 操作 ----
   const handleRetryFromSummary = () => {
     setShowSummary(false);
-    setQuestionIndex(0);
+    setCurrentSequenceIndex(0);
+    setCurrentUnitIndex(0);
     reset();
     setCurrentErrors([]);
     setElapsed(0);
@@ -353,7 +368,7 @@ export default function QuestPractice() {
         </button>
         <ModeTabs currentMode="practice" courseId={effectiveCourseId} />
         <div style={styles.progress}>
-          第 {questionIndex + 1} / {statements.length} 题
+          第 {currentSequenceIndex + 1} / {sequences.length} 课
         </div>
         {/* Combo 连击显示 */}
         {combo > 0 && (
@@ -364,7 +379,7 @@ export default function QuestPractice() {
               animation: combo >= 5 ? "combo-pulse 0.6s ease infinite" : "none",
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Combo</span>
+            <span style={{ fontSize: 13, fontWeight: 50 }}>Combo</span>
             <span style={{ fontSize: 20, fontWeight: 800, marginLeft: 4 }}>×{combo}</span>
           </div>
         )}
@@ -379,34 +394,13 @@ export default function QuestPractice() {
         <div
           style={{
             ...styles.progressBarFill,
-            width: `${((questionIndex + 1) / statements.length) * 100}%`,
+            width: `${((currentGlobalUnitIndex + 1) / totalUnits) * 100}%`,
           }}
         />
       </div>
 
       {/* 主内容区 */}
       <div style={styles.mainContent}>
-        {/* 渐进式累加：正在搭建 */}
-        {isInSequence && (
-          <div style={styles.seqBuilder}>
-            <div style={styles.seqLabel}>
-              正在搭建（{currentSeqOrder}/{sequenceStatements.length}）
-            </div>
-            <div style={styles.seqParts}>
-              {seqCompleted.map((s, i) => (
-                <span key={i} style={styles.seqPartDone}>
-                  {s.chinese.replace(/[。！？.]/g, "")}
-                </span>
-              ))}
-              <span style={styles.seqPartCurrent}>
-                {currentStatement?.chinese?.replace(/[。！？.]/g, "")}
-              </span>
-              {isSequenceComplete && (
-                <span style={styles.seqDoneBadge}>✓ 序列完成</span>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* 答对详情页 */}
         {showAnswerPanel ? (
@@ -414,7 +408,7 @@ export default function QuestPractice() {
             statement={currentStatement}
             onRetry={handleRetry}
             onNext={handleNextFromAnswer}
-            isLast={questionIndex === statements.length - 1}
+            isLast={isLastUnit}
           />
         ) : (
         <>
@@ -487,11 +481,11 @@ export default function QuestPractice() {
       <SummaryPanel
         visible={showSummary}
         onShow={() => {}}
-        totalQuestions={statements.length}
+        totalQuestions={totalUnits}
         totalTime={elapsed}
-        accuracy={getAccuracy(statements.length)}
+        accuracy={getAccuracy(totalUnits)}
         maxCombo={maxCombo}
-        grade={getGrade(statements.length)}
+        grade={getGrade(totalUnits)}
         courseId={effectiveCourseId}
         onRetry={handleRetryFromSummary}
         onGoCourseList={handleGoCourseList}
@@ -616,47 +610,7 @@ const styles = {
     margin: "0 auto",
     width: "100%",
   },
-  seqBuilder: {
-    marginBottom: 16,
-    padding: "12px 16px",
-    background: "linear-gradient(135deg, #FDF4FF 0%, #F5F3FF 100%)",
-    borderRadius: 12,
-    border: "1px solid #E9D5FF",
-  },
-  seqLabel: {
-    fontSize: 11,
-    color: "#7C3AED",
-    fontWeight: 600,
-    marginBottom: 6,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  seqParts: {
-    display: "flex",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: 6,
-  },
-  seqPartDone: {
-    fontSize: 15,
-    color: "#9CA3AF",
-    textDecoration: "line-through",
-    textDecorationColor: "#D1D5DB",
-  },
-  seqPartCurrent: {
-    fontSize: 16,
-    fontWeight: 700,
-    color: "#7C3AED",
-    padding: "2px 10px",
-    background: "#EDE9FE",
-    borderRadius: 6,
-  },
-  seqDoneBadge: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: "#22C55E",
-    marginLeft: 8,
-  },
+
   hintCard: {
     width: "100%",
     textAlign: "center",
