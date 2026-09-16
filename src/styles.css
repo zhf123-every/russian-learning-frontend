@@ -62,7 +62,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .brand .logo{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;
 display:flex;align-items:center;justify-content:center;font-size:16px}
 .brand-logo{width:34px;height:34px;object-fit:contain}
-  display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(155,123,94,0.25)}
 .topbar .spacer{flex:1}
 .topbar select{
   max-width:220px;padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:#fff;font-size:14px;
@@ -1439,3 +1438,19 @@ html,body{overflow-x:hidden;max-width:100vw}
 .route-node-wrap:hover{transform:scale(1.08)}
 .route-node-wrap:hover .route-node{border-color:#8B5CF6;box-shadow:0 4px 12px rgba(139,92,246,.2)}
 .route-node-wrap:hover .route-node-icon{color:#8B5CF6}
+
+/* ===== Earthworm style global config ===== */
+@font-face{font-family:"Nunito";font-weight:700;font-display:swap;src:url("/fonts/Nunito-Bold.ttf") format("truetype")}
+:root{
+--ew-accent:#E879F9;--ew-accent-dark:#7C3EED;--ew-accent-mid:#A855F7;--ew-accent-light:#C084FC;
+--ew-error:#EF4444;--ew-case:#F59E0B;--ew-conj:#3B82F6;
+--ew-text:#202020;--ew-text-muted:#6B7280;--ew-text-faint:#9CA3AF;
+--ew-border:#D1D5DB;--ew-bg:#FFFFFF;--ew-bg-soft:#F9FAFB;
+--ew-word-size:3em;--ew-word-height:4rem;
+}
+@media(max-width:768px){:root{--ew-word-size:1.8em;--ew-word-height:2.5rem}}
+.ew-page{background:var(--ew-bg)!important;font-family:"Nunito",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+@keyframes ew-shake{10%,90%{transform:translate3d(-1px,0,0)}20%,80%{transform:translate3d(2px,0,0)}30%,50%,70%{transform:translate3d(-4px,0,0)}40%,60%{transform:translate3d(4px,0,0)}}
+.animate-ew-shake{animation:ew-shake .5s cubic-bezier(0.36,0.07,0.19,0.97)}
+@keyframes ew-wink{0%,100%{opacity:1}50%{opacity:0}}
+.animate-ew-wink{animation:ew-wink 1s cubic-bezier(0.4,0,0.6,1) infinite}

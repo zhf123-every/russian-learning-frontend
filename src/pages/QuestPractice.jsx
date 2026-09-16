@@ -394,7 +394,7 @@ const styles = {
     minHeight: "100vh",
     display: "flex",
     flexDirection: "column",
-    background: "#F5F0EB",
+    background: "#FFFFFF",
   },
   loading: {
     flex: 1,
@@ -454,6 +454,8 @@ const styles = {
     fontSize: 15,
     fontWeight: 600,
     color: "#3D332C",
+    whiteSpace: "nowrap",
+    minWidth: 80,
   },
   timer: {
     fontSize: 15,
