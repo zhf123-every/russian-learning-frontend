@@ -78,6 +78,24 @@ export function useQuestionInput({
   // 当前正在修正的词 id（Fix_Input 模式下）
   const currentEditWordIdRef = useRef(null);
 
+  // ---- 四级反馈追踪（Good/Great/Perfect/Amazing）----
+  const usedHintRef = useRef(false);        // 是否使用过提示（Ctrl+;）
+  const enteredFixModeRef = useRef(false);  // 是否进入过 Fix 模式
+  const questionStartTimeRef = useRef(Date.now()); // 本题开始时间
+
+  /** 标记使用了提示（Ctrl+; 时调用） */
+  const markHintUsed = useCallback(() => {
+    usedHintRef.current = true;
+  }, []);
+
+  /** 计算本题的反馈类型 */
+  const computeResultType = useCallback(() => {
+    const elapsed = (Date.now() - questionStartTimeRef.current) / 1000;
+    if (usedHintRef.current || elapsed > 30) return "good";
+    if (enteredFixModeRef.current) return "great";
+    return "perfect";
+  }, []);
+
   // ==========================================================
   // 初始化：根据标准答案拆分单词
   // ==========================================================
@@ -370,6 +388,7 @@ export function useQuestionInput({
 
     if (result && result.errors && result.errors.length > 0) {
       markIncorrectFromErrors(result.errors);
+      enteredFixModeRef.current = true;
       setMode(MODES.FIX);
       onWrong?.(result);
     } else {
@@ -380,7 +399,8 @@ export function useQuestionInput({
         prevWords.map((w) => ({ ...w, userInput: "", incorrect: false, isActive: false }))
       );
       currentEditWordIdRef.current = null;
-      onCorrect?.(result);
+      const resultType = computeResultType();
+      onCorrect?.(result, resultType);
     }
   }, [mode, inputValue, submitToBackend, markIncorrectFromErrors, onCorrect, onWrong]);
 
@@ -534,6 +554,9 @@ export function useQuestionInput({
       prevWords.map((w) => ({ ...w, userInput: "", incorrect: false, isActive: false }))
     );
     currentEditWordIdRef.current = null;
+    usedHintRef.current = false;
+    enteredFixModeRef.current = false;
+    questionStartTimeRef.current = Date.now();
   }, []);
 
   // ==========================================================
@@ -554,6 +577,7 @@ export function useQuestionInput({
     fixIncorrectWord,
     fixFirstIncorrectWord,
     reset,
+    markHintUsed,
     // 工具
     getCursorPosition,
     setCursorPosition,

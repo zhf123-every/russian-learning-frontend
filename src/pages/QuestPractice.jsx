@@ -23,6 +23,7 @@ import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
 import ModeTabs from "../components/quest/ModeTabs";
 import ShortcutTips from "../components/quest/ShortcutTips";
+import FeedbackPopup from "../components/quest/FeedbackPopup";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 
@@ -51,6 +52,7 @@ export default function QuestPractice() {
   const [showCorrect, setShowCorrect] = useState(false);
   const [showAnswerPanel, setShowAnswerPanel] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   // ---- 游戏化统计（抽离到独立 Hook）----
   const {
@@ -58,6 +60,7 @@ export default function QuestPractice() {
     maxCombo,
     correctCount,
     comboEffect,
+    feedbackType, // 根据连击数自动计算的反馈类型
     recordCorrect,
     recordWrong,
     resetStats,
@@ -66,12 +69,28 @@ export default function QuestPractice() {
   } = useGameStats();
 
   const currentStatement = statements[questionIndex];
+
+
+  // ---- 渐进式累加序列计算 ----
+  const currentSeqId = currentStatement?.sequenceId || currentStatement?.sequence_id;
+  const sequenceStatements = currentSeqId
+    ? statements.filter((s) => (s.sequenceId || s.sequence_id) === currentSeqId)
+    : [];
+  const currentSeqOrder = currentStatement?.sequenceOrder || currentStatement?.sequence_order || 0;
+  const seqCompleted = sequenceStatements.filter(
+    (s) => (s.sequenceOrder || s.sequence_order || 0) < currentSeqOrder
+  );
+  const isInSequence = sequenceStatements.length > 1;
+  const isSequenceComplete = isInSequence && currentSeqOrder === sequenceStatements.length;
   const inputRef = useRef(null);
 
   // ---- 全局快捷键 ----
   const { isComposingRef } = useKeyboardShortcuts({
     onSound: () => playSentenceSound(),
-    onShowAnswer: () => setShowAnswer((v) => !v),
+    onShowAnswer: () => {
+      setShowAnswer((v) => !v);
+      markHintUsed?.();
+    },
     onMastered: () => {},
     onAddWord: () => {},
     enabled: !loading && !loadError,
@@ -89,6 +108,7 @@ export default function QuestPractice() {
     isFixInputMode,
     reset,
     submitAnswer,
+    markHintUsed,
     handleInputKeyDown: _rawHandleInputKeyDown,
   } = useQuestionInput({
     answerText: currentStatement?.russian || "",
@@ -96,10 +116,10 @@ export default function QuestPractice() {
     apiBaseUrl: API_BASE,
     inputRef,
     isComposingRef,
-    onCorrect: (result) => {
+    onCorrect: (result, resultType) => {
       setCurrentErrors([]);
       setShowAnswerPanel(true);
-      recordCorrect();
+      recordCorrect(); // 更新连击数，useEffect 会自动根据 combo 显示反馈
       playRightSound();
     },
     onWrong: (result) => {
@@ -116,6 +136,13 @@ export default function QuestPractice() {
     }
     _rawHandleInputKeyDown(e);
   };
+
+  // ---- 监听连击变化，自动显示反馈弹窗 ----
+  useEffect(() => {
+    if (combo > 0) {
+      setShowFeedback(true);
+    }
+  }, [combo]);
 
   // ---- 加载课程 ----
   useEffect(() => {
@@ -325,6 +352,28 @@ export default function QuestPractice() {
 
       {/* 主内容区 */}
       <div style={styles.mainContent}>
+        {/* 渐进式累加：正在搭建 */}
+        {isInSequence && (
+          <div style={styles.seqBuilder}>
+            <div style={styles.seqLabel}>
+              正在搭建（{currentSeqOrder}/{sequenceStatements.length}）
+            </div>
+            <div style={styles.seqParts}>
+              {seqCompleted.map((s, i) => (
+                <span key={i} style={styles.seqPartDone}>
+                  {s.chinese.replace(/[。！？.]/g, "")}
+                </span>
+              ))}
+              <span style={styles.seqPartCurrent}>
+                {currentStatement?.chinese?.replace(/[。！？.]/g, "")}
+              </span>
+              {isSequenceComplete && (
+                <span style={styles.seqDoneBadge}>✓ 序列完成</span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 中文释义 */}
         <div style={styles.hintCard}>
           <div style={styles.hintLabel}>中文释义</div>
@@ -383,9 +432,18 @@ export default function QuestPractice() {
         onShowAnswer={() => setShowAnswer((v) => !v)}
       />
 
+      {/* 四级反馈弹窗 */}
+      <FeedbackPopup
+        type={feedbackType || "good"}
+        comboNumber={combo}
+        visible={showFeedback}
+        onDone={() => setShowFeedback(false)}
+      />
+
       {/* 结算页弹窗 */}
       <SummaryPanel
         visible={showSummary}
+        onShow={() => {}}
         totalQuestions={statements.length}
         totalTime={elapsed}
         accuracy={getAccuracy(statements.length)}
@@ -514,6 +572,47 @@ const styles = {
     maxWidth: 800,
     margin: "0 auto",
     width: "100%",
+  },
+  seqBuilder: {
+    marginBottom: 16,
+    padding: "12px 16px",
+    background: "linear-gradient(135deg, #FDF4FF 0%, #F5F3FF 100%)",
+    borderRadius: 12,
+    border: "1px solid #E9D5FF",
+  },
+  seqLabel: {
+    fontSize: 11,
+    color: "#7C3AED",
+    fontWeight: 600,
+    marginBottom: 6,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  seqParts: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 6,
+  },
+  seqPartDone: {
+    fontSize: 15,
+    color: "#9CA3AF",
+    textDecoration: "line-through",
+    textDecorationColor: "#D1D5DB",
+  },
+  seqPartCurrent: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: "#7C3AED",
+    padding: "2px 10px",
+    background: "#EDE9FE",
+    borderRadius: 6,
+  },
+  seqDoneBadge: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#22C55E",
+    marginLeft: 8,
   },
   hintCard: {
     width: "100%",
