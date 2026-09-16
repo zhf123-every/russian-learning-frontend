@@ -201,7 +201,7 @@ export default function QuestPractice() {
 
   // ---- 发音（Yandex 真人俄语发音）----
   const ttsAudioRef = useRef(null);
-  const playSentenceSound = useCallback(async () => {
+  const playSentenceSound = useCallback(async (times = 1) => {
     const stmt = statements[questionIndex];
     if (!stmt?.russian) return;
     try {
@@ -224,14 +224,30 @@ export default function QuestPractice() {
         url = `${API_BASE}${url}`;
       }
       if (url) {
-        const audio = new Audio(url);
-        ttsAudioRef.current = audio;
-        audio.play().catch((e) => console.warn("播放失败:", e));
+        const playOnce = (remaining) => {
+          const audio = new Audio(url);
+          ttsAudioRef.current = audio;
+          audio.play().catch((e) => console.warn("播放失败:", e));
+          if (remaining > 1) {
+            audio.onended = () => {
+              setTimeout(() => playOnce(remaining - 1), 600);
+            };
+          }
+        };
+        playOnce(times);
       }
     } catch (e) {
       console.warn("发音失败:", e);
     }
   }, [statements, questionIndex]);
+
+  // ---- 题目出现时自动播放两遍发音 ----
+  useEffect(() => {
+    if (!loading && !loadError && currentStatement) {
+      const timer = setTimeout(() => playSentenceSound(2), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, loadError, questionIndex, currentStatement, playSentenceSound]);
 
   // ---- 格式化时间 ----
   const formatTime = (seconds) => {
