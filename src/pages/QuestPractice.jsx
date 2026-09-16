@@ -62,6 +62,7 @@ export default function QuestPractice() {
     correctCount,
     comboEffect,
     feedbackType,
+    levelCombo,
     recordCorrect,
     recordWrong,
     resetStats,
@@ -472,7 +473,7 @@ export default function QuestPractice() {
       {/* 四级反馈弹窗 */}
       <FeedbackPopup
         type={feedbackType || "good"}
-        comboNumber={combo}
+        comboNumber={levelCombo}
         visible={showFeedback}
         onDone={() => setShowFeedback(false)}
       />
