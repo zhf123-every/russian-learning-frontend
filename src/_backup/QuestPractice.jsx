@@ -1,0 +1,713 @@
+/**
+ * QuestPractice.jsx —— 俄语连词成句正式答题页
+ *
+ * 整合：
+ *  - useQuestionInput（三态状态机）
+ *  - useKeyboardShortcuts（全局快捷键）
+ *  - QuestionInput（单词卡片渲染）
+ *
+ * 功能：
+ *  - 从后端加载课程句子
+ *  - 顶部工具栏（进度、计时器、返回）
+ *  - 中文释义提示
+ *  - 答对后自动跳转下一题（AnswerPanel 后续迭代）
+ */
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useQuestionInput } from "../hooks/useQuestionInput";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { useGameStats } from "../hooks/useGameStats";
+import QuestionInput from "../components/quest/QuestionInput";
+import AnswerPanel from "../components/quest/AnswerPanel";
+import SummaryPanel from "../components/quest/SummaryPanel";
+import ModeTabs from "../components/quest/ModeTabs";
+import ShortcutTips from "../components/quest/ShortcutTips";
+import FeedbackPopup from "../components/quest/FeedbackPopup";
+;
+import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const DEFAULT_COURSE_ID = "b7254aa773f74a315211bd37";
+
+export default function QuestPractice() {
+  const navigate = useNavigate();
+  const { courseId } = useParams();
+  const effectiveCourseId = courseId || DEFAULT_COURSE_ID;
+
+  // ---- 课程数据 ----
+  const [statements, setStatements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [questionIndex, setQuestionIndex] = useState(0);
+
+  // ---- 计时器 ----
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef(null);
+
+  // ---- 后端返回的错误详情（传给 QuestionInput 显示 suggestion）----
+  const [currentErrors, setCurrentErrors] = useState([]);
+
+  // ---- 答对提示 ----
+  const [showCorrect, setShowCorrect] = useState(false);
+  const [showAnswerPanel, setShowAnswerPanel] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  // ---- 游戏化统计（抽离到独立 Hook）----
+  const {
+    combo,
+    maxCombo,
+    correctCount,
+    comboEffect,
+    feedbackType, // 根据连击数自动计算的反馈类型
+    recordCorrect,
+    recordWrong,
+    resetStats,
+    getAccuracy,
+    getGrade,
+  } = useGameStats();
+
+  const currentStatement = statements[questionIndex];
+
+
+  // ---- 渐进式累加序列计算 ----
+  const currentSeqId = currentStatement?.sequenceId || currentStatement?.sequence_id;
+  const sequenceStatements = currentSeqId
+    ? statements.filter((s) => (s.sequenceId || s.sequence_id) === currentSeqId)
+    : [];
+  const currentSeqOrder = currentStatement?.sequenceOrder || currentStatement?.sequence_order || 0;
+  const seqCompleted = sequenceStatements.filter(
+    (s) => (s.sequenceOrder || s.sequence_order || 0) < currentSeqOrder
+  );
+  const isInSequence = sequenceStatements.length > 1;
+  const isSequenceComplete = isInSequence && currentSeqOrder === sequenceStatements.length;
+  const inputRef = useRef(null);
+
+  // ---- 全局快捷键 ----
+  const { isComposingRef } = useKeyboardShortcuts({
+    onSound: () => playSentenceSound(),
+    onShowAnswer: () => {
+      setShowAnswer((v) => !v);
+      markHintUsed?.();
+    },
+    onMastered: () => {},
+    onAddWord: () => {},
+    enabled: !loading && !loadError,
+  });
+
+  const [showAnswer, setShowAnswer] = useState(false);
+
+  // ---- 输入状态机 ----
+  const {
+    mode,
+    inputValue,
+    userInputWords,
+    isJudging,
+    handleChange,
+    isFixMode,
+    isFixInputMode,
+    reset,
+    submitAnswer,
+    markHintUsed,
+    handleInputKeyDown: _rawHandleInputKeyDown,
+  } = useQuestionInput({
+    answerText: currentStatement?.russian || "",
+    statementId: currentStatement?.id || "",
+    apiBaseUrl: API_BASE,
+    inputRef,
+    isComposingRef,
+    onCorrect: (result, resultType) => {
+      setCurrentErrors([]);
+      setShowAnswerPanel(true);
+      recordCorrect(); // 更新连击数，useEffect 会自动根据 combo 显示反馈
+      playRightSound();
+    },
+    onWrong: (result) => {
+      setCurrentErrors(result.errors || []);
+      recordWrong();
+      playErrorSound();
+    },
+  });
+
+  // 包装键盘事件：播放打字音
+  const handleInputKeyDown = (e) => {
+    if (checkPlayTypingSound(e)) {
+      playTypingSound();
+    }
+    _rawHandleInputKeyDown(e);
+  };
+
+  // ---- 监听连击变化，自动显示反馈弹窗 ----
+  useEffect(() => {
+    if (combo > 0) {
+      setShowFeedback(true);
+    }
+  }, [combo]);
+
+  // ---- 加载课程 ----
+  useEffect(() => {
+    ensureTypingSound();
+    let cancelled = false;
+    async function loadCourse() {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const res = await fetch(`${API_BASE}/api/courses/${effectiveCourseId}/statements`);
+        const json = await res.json();
+        if (!cancelled) {
+          if (json.ok && json.data && json.data.statements) {
+            setStatements(json.data.statements);
+          } else {
+            setLoadError("课程数据格式异常");
+          }
+        }
+      } catch (e) {
+        if (!cancelled) setLoadError(`无法连接后端: ${e.message}`);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadCourse();
+    return () => { cancelled = true; };
+  }, [effectiveCourseId]);
+
+  // ---- 计时器 ----
+  useEffect(() => {
+    if (!loading && !loadError) {
+      timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [loading, loadError]);
+
+  // ---- 自动聚焦输入框 ----
+  useEffect(() => {
+    if (!loading && !loadError && currentStatement) {
+      setTimeout(() => inputRef.current?.focus(), 200);
+    }
+  }, [loading, loadError, questionIndex, currentStatement]);
+
+  // ---- 跳转下一题 ----
+  const goToNext = useCallback(() => {
+    if (questionIndex < statements.length - 1) {
+      setQuestionIndex((i) => i + 1);
+      setCurrentErrors([]);
+      setShowAnswer(false);
+    } else {
+      // 全部完成，显示结算页
+      setShowSummary(true);
+    }
+  }, [questionIndex, statements.length]);
+
+  // ---- 发音（Yandex 真人俄语发音）----
+  const ttsAudioRef = useRef(null);
+  const playSentenceSound = useCallback(async (times = 1) => {
+    const stmt = statements[questionIndex];
+    if (!stmt?.russian) return;
+    try {
+      if (ttsAudioRef.current) {
+        ttsAudioRef.current.pause();
+        ttsAudioRef.current.currentTime = 0;
+      }
+      let url = stmt.audio_url;
+      if (!url) {
+        const res = await fetch(`${API_BASE}/api/tts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: stmt.russian, voice: "alena", id: stmt.id, type: "statement" }),
+        });
+        const data = await res.json();
+        if (data.ok && data.audio_url) {
+          url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
+        }
+      } else if (!url.startsWith("http")) {
+        url = `${API_BASE}${url}`;
+      }
+      if (url) {
+        const playOnce = (remaining) => {
+          const audio = new Audio(url);
+          ttsAudioRef.current = audio;
+          audio.play().catch((e) => console.warn("播放失败:", e));
+          if (remaining > 1) {
+            audio.onended = () => {
+              setTimeout(() => playOnce(remaining - 1), 600);
+            };
+          }
+        };
+        playOnce(times);
+      }
+    } catch (e) {
+      console.warn("发音失败:", e);
+    }
+  }, [statements, questionIndex]);
+
+  // ---- 题目出现时自动播放两遍发音 ----
+  useEffect(() => {
+    if (!loading && !loadError && currentStatement) {
+      const timer = setTimeout(() => playSentenceSound(2), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, loadError, questionIndex, currentStatement, playSentenceSound]);
+
+  // ---- 格式化时间 ----
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  // ---- AnswerPanel 操作 ----
+  const handleRetry = () => {
+    setShowAnswerPanel(false);
+    reset();
+    setCurrentErrors([]);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const handleNextFromAnswer = () => {
+    setShowAnswerPanel(false);
+    reset();
+    setCurrentErrors([]);
+    goToNext();
+  };
+
+  // ---- SummaryPanel 操作 ----
+  const handleRetryFromSummary = () => {
+    setShowSummary(false);
+    setQuestionIndex(0);
+    reset();
+    setCurrentErrors([]);
+    setElapsed(0);
+    resetStats();
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const handleGoCourseList = () => {
+    setShowSummary(false);
+    navigate(-1);
+  };
+
+  // ==========================================================
+  // 渲染
+  // ==========================================================
+  if (loading) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.loading}>加载课程中...</div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.errorCard}>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "#A86454", marginBottom: 8 }}>
+            加载失败
+          </div>
+          <div style={{ color: "#86796D", marginBottom: 16 }}>{loadError}</div>
+          <button style={styles.primaryBtn} onClick={() => navigate(-1)}>
+            返回
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        ...styles.page,
+        animation: comboEffect === "shake" ? "quest-shake 0.4s ease-in-out" : "none",
+        boxShadow: comboEffect?.startsWith("flash")
+          ? `inset 0 0 60px ${comboEffect === "flash20" ? "rgba(168,100,84,0.4)" : comboEffect === "flash10" ? "rgba(176,138,90,0.35)" : "rgba(212,168,83,0.3)"}`
+          : "none",
+        transition: "box-shadow 0.3s ease",
+      }}
+    >
+      <style>{`
+        @keyframes combo-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.08); }
+        }
+        @keyframes quest-shake {
+          0%, 100% { transform: translateX(0); }
+          20% { transform: translateX(-6px); }
+          40% { transform: translateX(6px); }
+          60% { transform: translateX(-4px); }
+          80% { transform: translateX(4px); }
+        }
+      `}</style>
+      {/* 答对提示遮罩 */}
+      {showCorrect && (
+        <div style={styles.correctOverlay}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: "#6E8F7E" }}>正确</div>
+        </div>
+      )}
+
+      {/* 顶部工具栏 */}
+      <div style={styles.toolbar}>
+        <button style={styles.iconBtn} onClick={() => navigate(-1)} title="返回">
+          ←
+        </button>
+        <ModeTabs currentMode="practice" courseId={effectiveCourseId} />
+        <div style={styles.progress}>
+          第 {questionIndex + 1} / {statements.length} 题
+        </div>
+        {/* Combo 连击显示 */}
+        {combo > 0 && (
+          <div
+            style={{
+              ...styles.comboBadge,
+              color: combo >= 20 ? "#A86454" : combo >= 10 ? "#B08A5A" : combo >= 5 ? "#D4A853" : "#9B7B5E",
+              animation: combo >= 5 ? "combo-pulse 0.6s ease infinite" : "none",
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Combo</span>
+            <span style={{ fontSize: 20, fontWeight: 800, marginLeft: 4 }}>×{combo}</span>
+          </div>
+        )}
+        <div style={styles.timer}>{formatTime(elapsed)}</div>
+        <button style={styles.iconBtn} title="设置">
+          ⚙
+        </button>
+      </div>
+
+      {/* 进度条 */}
+      <div style={styles.progressBarBg}>
+        <div
+          style={{
+            ...styles.progressBarFill,
+            width: `${((questionIndex + 1) / statements.length) * 100}%`,
+          }}
+        />
+      </div>
+
+      {/* 主内容区 */}
+      <div style={styles.mainContent}>
+        {/* 渐进式累加：正在搭建 */}
+        {isInSequence && (
+          <div style={styles.seqBuilder}>
+            <div style={styles.seqLabel}>
+              正在搭建（{currentSeqOrder}/{sequenceStatements.length}）
+            </div>
+            <div style={styles.seqParts}>
+              {seqCompleted.map((s, i) => (
+                <span key={i} style={styles.seqPartDone}>
+                  {s.chinese.replace(/[。！？.]/g, "")}
+                </span>
+              ))}
+              <span style={styles.seqPartCurrent}>
+                {currentStatement?.chinese?.replace(/[。！？.]/g, "")}
+              </span>
+              {isSequenceComplete && (
+                <span style={styles.seqDoneBadge}>✓ 序列完成</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 答对详情页 */}
+        {showAnswerPanel ? (
+          <AnswerPanel
+            statement={currentStatement}
+            onRetry={handleRetry}
+            onNext={handleNextFromAnswer}
+            isLast={questionIndex === statements.length - 1}
+          />
+        ) : (
+        <>
+        {/* 中文释义 */}
+        <div style={styles.hintCard}>
+          <div style={styles.hintText}>{currentStatement?.chinese}</div>
+          {showAnswer && currentStatement?.stressMarked && (
+            <div style={styles.answerReveal}>
+              答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.stressMarked}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 输入组件 */}
+        <div style={styles.inputCard}>
+          <QuestionInput
+            userInputWords={userInputWords}
+          isJudging={isJudging}
+            mode={mode}
+            inputRef={inputRef}
+            value={inputValue}
+            onChange={handleChange}
+            onKeyDown={handleInputKeyDown}
+            errors={currentErrors}
+          />
+        </div>
+
+        {/* 模式提示 */}
+        <div style={styles.modeHint}>
+          {isFixMode && (
+            <span style={{ color: "#A86454" }}>
+              按任意键开始修正错误词
+            </span>
+          )}
+          {isFixInputMode && (
+            <span style={{ color: "#B08A5A" }}>
+              修正当前词 · 空格跳下一个错词 · Backspace 回退
+            </span>
+          )}
+          {!isFixMode && !isFixInputMode && (
+            <span style={{ color: "#86796D" }}>
+              Enter 提交 · Ctrl+' 发音 · Ctrl+; 看答案
+            </span>
+          )}
+        </div>
+        </>
+        )}
+      </div>
+
+      {/* 底部快捷键提示栏 */}
+      <ShortcutTips
+        mode={showAnswerPanel ? "answer" : "question"}
+        inputRef={inputRef}
+        onSubmit={submitAnswer}
+        onNext={handleNextFromAnswer}
+        onRetry={handleRetry}
+        onPlaySound={playSentenceSound}
+        onShowAnswer={() => setShowAnswer((v) => !v)}
+      />
+
+      {/* 四级反馈弹窗 */}
+      <FeedbackPopup
+        type={feedbackType || "good"}
+        comboNumber={combo}
+        visible={showFeedback}
+        onDone={() => setShowFeedback(false)}
+      />
+
+      {/* 结算页弹窗 */}
+      <SummaryPanel
+        visible={showSummary}
+        onShow={() => {}}
+        totalQuestions={statements.length}
+        totalTime={elapsed}
+        accuracy={getAccuracy(statements.length)}
+        maxCombo={maxCombo}
+        grade={getGrade(statements.length)}
+        courseId={effectiveCourseId}
+        onRetry={handleRetryFromSummary}
+        onGoCourseList={handleGoCourseList}
+        hasNextCourse={false}
+      />
+    </div>
+  );
+}
+
+// ==========================================================
+// 样式（奶咖燕麦轻奢风）
+// ==========================================================
+const styles = {
+  page: {
+    minHeight: "100vh",
+    display: "flex",
+    flexDirection: "column",
+    background: "#FFFFFF",
+  },
+  loading: {
+    flex: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 18,
+    color: "#86796D",
+  },
+  errorCard: {
+    margin: "80px auto",
+    padding: 32,
+    background: "#fff",
+    borderRadius: 16,
+    boxShadow: "0 4px 16px rgba(155,123,94,0.10)",
+    textAlign: "center",
+    maxWidth: 400,
+  },
+  correctOverlay: {
+    position: "fixed",
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: "rgba(245,240,235,0.92)",
+    backdropFilter: "blur(8px)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 100,
+    animation: "fadeIn 0.3s ease",
+  },
+  toolbar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "12px 24px",
+    background: "#FFFFFF",
+    borderBottom: "1px solid #E5E7EB",
+  },
+  toolbarLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  toolbarRight: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    border: "none",
+    background: "transparent",
+    color: "#4B5563",
+    fontSize: 18,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "color 0.15s ease",
+  },
+  progress: {
+    fontSize: 15,
+    fontWeight: 600,
+    color: "#374151",
+    whiteSpace: "nowrap",
+  },
+  timer: {
+    fontSize: 15,
+    fontWeight: 500,
+    color: "#6B7280",
+    fontVariantNumeric: "tabular-nums",
+    minWidth: 50,
+    textAlign: "center",
+  },
+  comboBadge: {
+    display: "flex",
+    alignItems: "baseline",
+    padding: "4px 12px",
+    background: "rgba(255,255,255,0.7)",
+    borderRadius: 20,
+    border: "1px solid #E8E1D9",
+    marginRight: 4,
+  },
+  progressBarBg: {
+    height: 3,
+    background: "#E5E7EB",
+  },
+  progressBarFill: {
+    height: "100%",
+    background: "linear-gradient(90deg, #E879F9, #A855F7)",
+    transition: "width 0.3s ease",
+  },
+  mainContent: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "32px 24px 24px",
+    gap: 24,
+    maxWidth: 800,
+    margin: "0 auto",
+    width: "100%",
+  },
+  seqBuilder: {
+    marginBottom: 16,
+    padding: "12px 16px",
+    background: "linear-gradient(135deg, #FDF4FF 0%, #F5F3FF 100%)",
+    borderRadius: 12,
+    border: "1px solid #E9D5FF",
+  },
+  seqLabel: {
+    fontSize: 11,
+    color: "#7C3AED",
+    fontWeight: 600,
+    marginBottom: 6,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  seqParts: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 6,
+  },
+  seqPartDone: {
+    fontSize: 15,
+    color: "#9CA3AF",
+    textDecoration: "line-through",
+    textDecorationColor: "#D1D5DB",
+  },
+  seqPartCurrent: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: "#7C3AED",
+    padding: "2px 10px",
+    background: "#EDE9FE",
+    borderRadius: 6,
+  },
+  seqDoneBadge: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#22C55E",
+    marginLeft: 8,
+  },
+  hintCard: {
+    width: "100%",
+    textAlign: "center",
+    marginBottom: 32,
+  },
+  hintLabel: {
+    display: "none",
+  },
+  hintText: {
+    fontSize: "2.5rem",
+    fontWeight: 700,
+    fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    color: "#3D332C",
+    lineHeight: 1.3,
+  },
+  grammarNote: {
+    marginTop: 10,
+    fontSize: 13,
+    color: "#9B7B5E",
+    background: "#F5EFE7",
+    padding: "8px 14px",
+    borderRadius: 8,
+    display: "inline-block",
+  },
+  answerReveal: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#6E8F7E",
+    fontWeight: 500,
+  },
+  inputCard: {
+    width: "100%",
+    minHeight: 140,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modeHint: {
+    fontSize: 13,
+    textAlign: "center",
+    minHeight: 20,
+  },
+  primaryBtn: {
+    padding: "10px 24px",
+    background: "linear-gradient(135deg, #9B7B5E, #856849)",
+    color: "#fff",
+    border: "none",
+    borderRadius: 10,
+    fontSize: 15,
+    fontWeight: 500,
+    cursor: "pointer",
+    transition: "transform 0.2s, box-shadow 0.2s",
+  },
+};
