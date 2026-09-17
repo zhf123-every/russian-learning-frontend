@@ -353,7 +353,8 @@ export default function QuestPractice() {
         boxShadow: comboEffect?.startsWith("milestone") || comboEffect?.startsWith("levelup")
           ? `inset 0 0 80px ${combo >= 20 ? "rgba(245,158,11,0.4)" : combo >= 10 ? "rgba(168,85,247,0.35)" : "rgba(59,130,246,0.3)"}`
           : "none",
-        background: combo >= 9
+        background: "#FFFFFF",
+        backgroundImage: combo >= 9
           ? `radial-gradient(ellipse at center, rgba(245,158,11,${0.05 + Math.min(combo, 30) * 0.005}) 0%, transparent 70%)`
           : combo >= 6
           ? `radial-gradient(ellipse at center, rgba(34,197,94,${0.03 + Math.min(combo, 15) * 0.004}) 0%, transparent 70%)`
