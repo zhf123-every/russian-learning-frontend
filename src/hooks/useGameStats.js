@@ -23,6 +23,7 @@
  */
 
 import { useState, useRef, useCallback } from "react";
+import { playComboSound, playMissSound, playSuccessChord } from "../lib/questSounds";
 
 // 评级配置（颜色、发光、标签）
 export const GRADE_CONFIG = {
@@ -94,6 +95,9 @@ export function useGameStats() {
       setMaxCombo((max) => Math.max(max, next));
       setCorrectCount((c) => c + 1);
 
+      // 播放连击音效（音高随连击数升高）
+      playComboSound(next);
+
       // 里程碑光效：进入 Great/Perfect/Amazing 时触发
       if (next === 4 || next === 6 || next === 9) {
         setComboEffect(`flash${next}`);
@@ -107,6 +111,9 @@ export function useGameStats() {
 
   // ---- 答错：回退到上一级从×1开始 + 页面震动 ----
   const recordWrong = useCallback(() => {
+    // 播放答错 MISS 音效
+    playMissSound();
+
     setCombo((prev) => {
       if (prev === 0) return 0;
       // 回退到上一级从×1开始
@@ -158,6 +165,11 @@ export function useGameStats() {
   // 当前等级内的倍数（每个等级从×1开始）
   const levelCombo = getLevelCombo(combo);
 
+  // ---- 整句答对通关：播放通关和弦 ----
+  const recordSentenceComplete = useCallback(() => {
+    playSuccessChord();
+  }, []);
+
   return {
     // 状态
     combo,
@@ -169,6 +181,7 @@ export function useGameStats() {
     // 操作
     recordCorrect,
     recordWrong,
+    recordSentenceComplete, // 整句答对通关音效
     resetStats,
     // 计算
     getAccuracy,
