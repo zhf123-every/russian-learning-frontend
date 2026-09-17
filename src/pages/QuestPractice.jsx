@@ -150,20 +150,33 @@ export default function QuestPractice() {
       setLoading(true);
       setLoadError(null);
       try {
-        const res = await fetch(`${API_BASE}/api/courses/${effectiveCourseId}/statements?group_by=sequence`);
+        const res = await fetch(`${API_BASE}/api/courses/${effectiveCourseId}/build-steps`);
         const json = await res.json();
         if (!cancelled) {
           if (json.ok && json.data && json.data.sequences) {
-            // 临时过滤：意群拆分有问题的句子，只保留完整句（最后一个unit）
-            const BAD_SPLIT_SENTENCES = ["Рад вас видеть!", "Рада вас видеть!"];
-            const filteredSeqs = json.data.sequences.map((seq) => {
-              if (BAD_SPLIT_SENTENCES.includes(seq.fullRussian)) {
-                const fullUnit = seq.units[seq.units.length - 1];
-                return { ...seq, totalUnits: 1, units: [fullUnit] };
-              }
-              return seq;
+            // 为每个渐进构建步骤动态生成 words 和 acceptableAnswers
+            const adaptedSeqs = json.data.sequences.map((seq) => {
+              const adaptedUnits = seq.units.map((unit) => {
+                const words = unit.russian
+                  .replace(/[.,!?;:]/g, "")
+                  .trim()
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .map((w, wIdx) => ({
+                    order: wIdx, lemma: w.toLowerCase(), form: w, pos: "",
+                    grammaticalCase: "", number: "", gender: "", person: "",
+                    tense: "", aspect: "", stressPosition: -1, syntacticRole: "",
+                    isFixedPosition: false, chunkType: "",
+                  }));
+                const wordOrder = words.map((_, i) => i);
+                return {
+                  ...unit, sequenceOrder: unit.stepOrder, words,
+                  acceptableAnswers: [{ wordOrder, wordVariants: {}, isDefault: true, note: "" }],
+                };
+              });
+              return { ...seq, units: adaptedUnits, totalUnits: adaptedUnits.length };
             });
-            setSequences(filteredSeqs);
+            setSequences(adaptedSeqs);
             setCurrentSequenceIndex(0);
             setCurrentUnitIndex(0);
           } else {
