@@ -274,6 +274,7 @@ const styles = {
     justifyContent: "center",
     padding: "24px 24px 100px",
     background: "#FFFFFF",
+    backgroundImage: "none",
     minHeight: "calc(100vh - 80px)",
   },
   card: {

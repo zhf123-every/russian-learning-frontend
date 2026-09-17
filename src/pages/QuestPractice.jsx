@@ -528,6 +528,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     background: "#FFFFFF",
+    backgroundImage: "none",
   },
   loading: {
     flex: 1,
