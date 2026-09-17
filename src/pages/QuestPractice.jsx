@@ -350,10 +350,15 @@ export default function QuestPractice() {
       style={{
         ...styles.page,
         animation: comboEffect === "shake" ? "quest-shake 0.4s ease-in-out" : "none",
-        boxShadow: comboEffect?.startsWith("flash")
-          ? `inset 0 0 60px ${comboEffect === "flash20" ? "rgba(168,100,84,0.4)" : comboEffect === "flash10" ? "rgba(176,138,90,0.35)" : "rgba(212,168,83,0.3)"}`
+        boxShadow: comboEffect?.startsWith("milestone") || comboEffect?.startsWith("levelup")
+          ? `inset 0 0 80px ${combo >= 20 ? "rgba(245,158,11,0.4)" : combo >= 10 ? "rgba(168,85,247,0.35)" : "rgba(59,130,246,0.3)"}`
           : "none",
-        transition: "box-shadow 0.3s ease",
+        background: combo >= 9
+          ? `radial-gradient(ellipse at center, rgba(245,158,11,${0.05 + Math.min(combo, 30) * 0.005}) 0%, transparent 70%)`
+          : combo >= 6
+          ? `radial-gradient(ellipse at center, rgba(34,197,94,${0.03 + Math.min(combo, 15) * 0.004}) 0%, transparent 70%)`
+          : "none",
+        transition: "box-shadow 0.3s ease, background 0.5s ease",
       }}
     >
       <style>{`
@@ -489,8 +494,10 @@ export default function QuestPractice() {
       <FeedbackPopup
         type={feedbackType || "good"}
         comboNumber={levelCombo}
+        totalCombo={combo}
         visible={showFeedback}
         feedbackKey={feedbackKey}
+        isMilestone={[5, 10, 20, 50].includes(combo)}
         onDone={() => setShowFeedback(false)}
       />
 

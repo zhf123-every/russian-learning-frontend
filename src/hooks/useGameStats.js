@@ -23,7 +23,7 @@
  */
 
 import { useState, useRef, useCallback } from "react";
-import { playComboSound, playMissSound, playSuccessChord } from "../lib/questSounds";
+import { playComboSound, playMissSound, playSuccessChord, playFeedbackSound, playComboMilestone } from "../lib/questSounds";
 
 // 评级配置（颜色、发光、标签）
 export const GRADE_CONFIG = {
@@ -95,14 +95,23 @@ export function useGameStats() {
       setMaxCombo((max) => Math.max(max, next));
       setCorrectCount((c) => c + 1);
 
-      // 播放连击音效（音高随连击数升高）
-      playComboSound(next);
+      // 计算反馈类型
+      const fbType = getFeedbackType(next);
+      const isMilestone = [5, 10, 20, 50].includes(next);
 
-      // 里程碑光效：进入 Great/Perfect/Amazing 时触发
-      if (next === 4 || next === 6 || next === 9) {
-        setComboEffect(`flash${next}`);
+      // 播放四级判定音效（含连击音+里程碑）
+      playFeedbackSound(fbType, next);
+
+      // 里程碑光效
+      if (isMilestone) {
+        setComboEffect(`milestone${next}`);
         if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
-        comboTimerRef.current = setTimeout(() => setComboEffect(null), 800);
+        comboTimerRef.current = setTimeout(() => setComboEffect(null), 1000);
+      } else if (next === 4 || next === 6 || next === 9) {
+        // 等级升级光效
+        setComboEffect(`levelup${next}`);
+        if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
+        comboTimerRef.current = setTimeout(() => setComboEffect(null), 600);
       }
 
       return next;
