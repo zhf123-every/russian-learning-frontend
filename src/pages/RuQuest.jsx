@@ -230,6 +230,8 @@ export default function RuQuest() {
   const [curLevel, setCurLevel] = useState('A1')
   const [lessons, setLessons] = useState([])       // 当前课程的全部课
   const [detailTab, setDetailTab] = useState('route') // 课程详情页标签：route=学习路线，outline=大纲
+  const [showModeModal, setShowModeModal] = useState(false) // 练习模式选择弹窗
+  const [selectedLesson, setSelectedLesson] = useState(null) // 选中的单元
   const [curLesson, setCurLesson] = useState(null) // 当前课
   const [mode, setMode] = useState(() => {
     try { return localStorage.getItem('rlearn_quest_mode') || 'chinese_to_english' } catch (e) { return 'chinese_to_english' }
@@ -1305,7 +1307,7 @@ export default function RuQuest() {
                       return (
                         <div key={l.id} style={{ ...styles.routeRow, justifyContent: isLeft ? 'flex-start' : 'flex-end' }}>
                           {i > 0 && <div style={{ ...styles.routeConnector, ...(isLeft ? styles.routeConnectorLeft : styles.routeConnectorRight) }} />}
-                          <div className="route-node-wrap" style={styles.routeNodeWrap} onClick={() => startLesson(l, true)}>
+                          <div className="route-node-wrap" style={styles.routeNodeWrap} onClick={() => { setSelectedLesson(l); setShowModeModal(true) }}>
                             <div className="route-node" style={{ ...styles.routeNode, ...(hasProg ? styles.routeNodeActive : {}) }}>
                               <span className="route-node-icon" style={{ ...styles.routeNodeIcon, ...(hasProg ? { color: '#fff' } : {}) }}>文A</span>
                             </div>
@@ -1330,7 +1332,7 @@ export default function RuQuest() {
                     let hasProg = false
                     try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
                     return (
-                      <div key={l.id} style={styles.detailLessonRow} onClick={() => startLesson(l, true)}>
+                      <div key={l.id} style={styles.detailLessonRow} onClick={() => { setSelectedLesson(l); setShowModeModal(true) }}>
                         <div style={styles.detailLessonNo}>{String(i + 1).padStart(2, '0')}</div>
                         <div style={styles.detailLessonIcon}>📄</div>
                         <div style={{ flex: 1 }}>
