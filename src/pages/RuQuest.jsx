@@ -1304,7 +1304,8 @@ export default function RuQuest() {
                       const diffColor = { easy: '#52c41a', medium: '#faad14', hard: '#ff4d4f' }
                       const diff = diffMap[i + 1] || 'easy'
                       let hasProg = false
-                      try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
+                      let sp = null
+                      try { sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
                       const isLocked = i > 0 && !hasProg && !(sp && sp.completedLessons && sp.completedLessons.includes(lessons[i-1].id))
                       return (
                         <div key={l.id} style={{
