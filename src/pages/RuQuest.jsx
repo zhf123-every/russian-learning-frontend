@@ -354,15 +354,19 @@ export default function RuQuest() {
     return sents
   }, [])
 
-  // 生成课程（每课 10 句）
+  // 生成课程（直接从 courseLibrary 读取单元）
   const buildLessons = useCallback((lv) => {
-    const pool = shuffle(poolOf(lv))
-    const list = []
-    for (let i = 0; i < pool.length; i += 10) {
-      list.push({ id: lv + '_L' + String(list.length + 1).padStart(2, '0'), idx: list.length + 1, sentences: pool.slice(i, i + 10) })
-    }
-    return list.slice(0, 8)
-  }, [poolOf])
+    const videos = getLevelVideos(lv)
+    return videos.map((v, i) => ({
+      id: v.id,
+      idx: i + 1,
+      title: v.title,
+      description: v.description,
+      duration: v.duration,
+      words: v.words,
+      sentences: v.sentences || []
+    }))
+  }, [])
 
   const lessonsByLevel = useMemo(() => {
     const m = {}
