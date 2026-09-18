@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useCallback, useState, useRef } from "react";
-import { getPosLabel } from "../../constants/posColors";
+import { getPosLabel, buildGrammarLabel } from "../../constants/posColors";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 内存缓存：text -> audio_url，避免重复请求
@@ -46,6 +46,7 @@ const ROLE_LABELS_MAP = {
   adverbial: "状语",
   predicative: "表语",
   complement: "补语",
+  negation: "否定",
   // 兼容带后缀的写法
   predicate_noun: "表语",
   predicate_adjective: "表语",
@@ -190,6 +191,7 @@ export default function AnswerPanel({
               // 显示带重音符的词形：优先 form（带重音），其次 lemma
               const displayWord = w.form || w.lemma || "";
               const posLabel = getPosLabel(w.pos);
+              const grammarLabel = buildGrammarLabel(w);
               const chinese = w.chinese || w.meaning || w.translation || "";
 
               return (
@@ -223,6 +225,9 @@ export default function AnswerPanel({
 
                   {/* 中文释义 */}
                   {chinese && <div style={styles.chinese}>{chinese}</div>}
+
+                  {/* 语法标注（性数格） */}
+                  {grammarLabel && <div style={{ ...styles.pos, fontSize: "10px", color: "#9CA3AF", marginTop: "2px" }}>{grammarLabel}</div>}
 
                   {/* 词性 */}
                   {posLabel && <div style={styles.pos}>{posLabel}</div>}
