@@ -385,7 +385,7 @@ export default function CourseStore() {
                 key={unit.id}
                 className="cs-card"
                 style={{ width: 'auto', flexShrink: '1' }}
-                onClick={() => navigate(`/quest-practice/${unit.id}`)}
+                onClick={() => navigate(`/quest`)}
               >
                 <div className="cs-card-body">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
