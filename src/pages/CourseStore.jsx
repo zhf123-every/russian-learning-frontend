@@ -14,59 +14,37 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://russian-learning-jetq.onrender.com";
+// 分类 Tab
+const CATEGORIES = ["全部", "零基础", "考试备考", "教材同步", "高频词汇"];
 
-// 分类 Tab（前端写死，后端返回的 categories 用于过滤）
-const CATEGORIES = ["推荐", "零基础", "考试备考", "教材同步", "高频词汇"];
+// 我们的课程数据（1个课程包，12个单元）
+const COURSE_PACK = {
+  id: "privet_rossiya_a1",
+  title: "Привет, Россия! A1",
+  description: "A1 级别俄语入门课程，12 个单元，覆盖问候、地点、拥有、运动、数量、喜好、必须、过去时、将来时、从句等核心语法。",
+  cover: "linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)",
+  author: "句乐部",
+  learners: 12800,
+  units: [
+    { id: "u1", title: "Урок 1", subtitle: "A1基础句子学习", difficulty: "easy", steps: 87, duration: "15:00" },
+    { id: "u2", title: "Урок 2", subtitle: "A1基础句子学习", difficulty: "easy", steps: 51, duration: "12:00" },
+    { id: "u3", title: "Урок 3", subtitle: "A1基础句子学习", difficulty: "easy", steps: 12, duration: "8:00" },
+    { id: "u4", title: "Урок 4", subtitle: "A1基础句子学习", difficulty: "medium", steps: 56, duration: "14:00" },
+    { id: "u5", title: "Урок 5", subtitle: "A1基础句子学习", difficulty: "medium", steps: 62, duration: "16:00" },
+    { id: "u6", title: "Урок 6", subtitle: "A1基础句子学习", difficulty: "medium", steps: 15, duration: "10:00" },
+    { id: "u7", title: "Урок 7", subtitle: "A1基础句子学习", difficulty: "medium", steps: 17, duration: "9:00" },
+    { id: "u8", title: "Урок 8", subtitle: "A1基础句子学习", difficulty: "hard", steps: 34, duration: "13:00" },
+    { id: "u9", title: "Урок 9", subtitle: "A1基础句子学习", difficulty: "hard", steps: 17, duration: "11:00" },
+    { id: "u10", title: "Урок 10", subtitle: "A1基础句子学习", difficulty: "medium", steps: 21, duration: "12:00" },
+    { id: "u11", title: "Урок 11", subtitle: "A1基础句子学习", difficulty: "hard", steps: 21, duration: "14:00" },
+    { id: "u12", title: "Урок 12", subtitle: "A1基础句子学习", difficulty: "medium", steps: 36, duration: "20:00" },
+  ]
+};
 
 export default function CourseStore() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [storeData, setStoreData] = useState({ banners: [], categories: [], sections: [] });
-  const [activeCategory, setActiveCategory] = useState("推荐");
+  const [activeCategory, setActiveCategory] = useState("全部");
   const [searchQuery, setSearchQuery] = useState("");
-
-  // 获取商城数据
-  const fetchStore = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch(`${API_BASE}/api/store/courses`);
-      const json = await res.json();
-      if (json.ok) {
-        setStoreData(json.data);
-      } else {
-        setError(json.error || "加载失败");
-      }
-    } catch (e) {
-      setError("网络错误：" + e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchStore();
-  }, [fetchStore]);
-
-  // 过滤课程：按分类 + 搜索词
-  const filterCourses = useCallback((courses) => {
-    let result = courses;
-    if (activeCategory !== "推荐") {
-      result = result.filter((c) => c.category === activeCategory);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (c) =>
-          c.title.toLowerCase().includes(q) ||
-          (c.description || "").toLowerCase().includes(q) ||
-          (c.author || "").toLowerCase().includes(q)
-      );
-    }
-    return result;
-  }, [activeCategory, searchQuery]);
 
   // 格式化学习人数
   const formatLearners = (n) => {
@@ -74,6 +52,9 @@ export default function CourseStore() {
     if (n >= 1000) return (n / 1000).toFixed(1) + "k";
     return String(n);
   };
+
+  const diffLabel = { easy: "简单", medium: "中等", hard: "困难" };
+  const diffColor = { easy: "#52c41a", medium: "#faad14", hard: "#ff4d4f" };
 
   return (
     <div className="course-store">
@@ -364,101 +345,74 @@ export default function CourseStore() {
 
       {/* 主体 */}
       <div className="cs-body">
-        {loading ? (
-          <div className="cs-loading">加载中...</div>
-        ) : error ? (
-          <div className="cs-empty">
-            {error}
-            <div style={{ marginTop: 12 }}>
-              <button
-                onClick={fetchStore}
-                style={{
-                  padding: "8px 20px",
-                  border: "1px solid #E879F9",
-                  borderRadius: 8,
-                  background: "#fff",
-                  color: "#E879F9",
-                  cursor: "pointer",
-                  fontSize: 13,
-                }}
-              >
-                重试
-              </button>
-            </div>
+        {/* Banner - 课程包 */}
+        <div 
+          className="cs-banner" 
+          style={{ background: COURSE_PACK.cover }}
+          onClick={() => navigate(`/quest`)}
+        >
+          <div className="cs-banner-overlay">
+            <span className="cs-banner-tag">新手推荐</span>
+            <div className="cs-banner-title">{COURSE_PACK.title}</div>
           </div>
-        ) : (
-          <>
-            {/* Banner */}
-            {storeData.banners.length > 0 && (
-              <div
-                className="cs-banner"
-                onClick={() => navigate(`/quest-practice/${storeData.banners[0].id}`)}
-              >
-                {storeData.banners[0].cover_url ? (
-                  <img src={storeData.banners[0].cover_url} alt={storeData.banners[0].title} />
-                ) : null}
-                <div className="cs-banner-overlay">
-                  {storeData.banners[0].tag && (
-                    <span className="cs-banner-tag">{storeData.banners[0].tag}</span>
-                  )}
-                  <div className="cs-banner-title">{storeData.banners[0].title}</div>
-                </div>
-              </div>
-            )}
+        </div>
 
-            {/* 课程分节 */}
-            {storeData.sections.map((section, si) => {
-              const courses = filterCourses(section.courses);
-              if (courses.length === 0) return null;
-              return (
-                <div key={si} className="cs-section">
-                  <div className="cs-section-title">{section.title}</div>
-                  <div className="cs-scroll">
-                    {courses.map((course) => (
-                      <div
-                        key={course.id}
-                        className="cs-card"
-                        onClick={() => navigate(`/quest-practice/${course.id}`)}
-                      >
-                        {course.cover_url ? (
-                          <img className="cs-card-cover" src={course.cover_url} alt={course.title} />
-                        ) : (
-                          <div className="cs-card-cover" />
-                        )}
-                        <div className="cs-card-body">
-                          {course.tag && (
-                            <span className="cs-card-tag">{course.tag}</span>
-                          )}
-                          <div className="cs-card-title">{course.title}</div>
-                          {course.description && (
-                            <div className="cs-card-desc">{course.description}</div>
-                          )}
-                          <div className="cs-card-meta">
-                            <span className="cs-card-author">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                              </svg>
-                              {course.author || "句乐部"}
-                            </span>
-                            <span className="cs-card-stats">
-                              <span>{course.lesson_count}课</span>
-                              <span>{formatLearners(course.learner_count)}人学</span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+        {/* 课程包信息 */}
+        <div className="cs-section">
+          <div className="cs-section-title">{COURSE_PACK.title}</div>
+          <div style={{ color: '#6B7280', fontSize: '14px', marginBottom: '16px', lineHeight: '1.6' }}>
+            {COURSE_PACK.description}
+          </div>
+          <div style={{ display: 'flex', gap: '16px', color: '#9CA3AF', fontSize: '13px', marginBottom: '24px' }}>
+            <span>{COURSE_PACK.author}</span>
+            <span>·</span>
+            <span>{COURSE_PACK.units.length} 个单元</span>
+            <span>·</span>
+            <span>{formatLearners(COURSE_PACK.learners)}人学</span>
+          </div>
+        </div>
+
+        {/* 单元网格 */}
+        <div className="cs-section">
+          <div className="cs-section-title">单元大纲</div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: '16px',
+          }}>
+            {COURSE_PACK.units.map((unit, i) => (
+              <div 
+                key={unit.id}
+                className="cs-card"
+                style={{ width: 'auto', flexShrink: '1' }}
+                onClick={() => navigate(`/quest-practice/${unit.id}`)}
+              >
+                <div className="cs-card-body">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <div className="cs-card-title" style={{ marginBottom: '0' }}>{unit.title}</div>
+                    <span style={{ 
+                      fontSize: '11px', 
+                      color: diffColor[unit.difficulty], 
+                      background: unit.difficulty === 'easy' ? '#f6ffed' : unit.difficulty === 'medium' ? '#fffbe6' : '#fff2f0',
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      fontWeight: 500
+                    }}>
+                      {diffLabel[unit.difficulty]}
+                    </span>
+                  </div>
+                  <div className="cs-card-desc">{unit.subtitle}</div>
+                  <div className="cs-card-meta">
+                    <span className="cs-card-stats">
+                      <span>{unit.steps}步</span>
+                      <span>{unit.duration}</span>
+                    </span>
                   </div>
                 </div>
-              );
-            })}
-
-            {storeData.sections.every((s) => filterCourses(s.courses).length === 0) && (
-              <div className="cs-empty">没有找到相关课程</div>
-            )}
-          </>
-        )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
