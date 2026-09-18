@@ -226,7 +226,7 @@ const GAP_STEPS = [0.3, 0.5, 0.8, 1]
 export default function RuQuest() {
   const navigate = useNavigate()
   // 阶段：courses 课程选择 / lessons 课列表 / preview 阅读预习 / loading 准备 / game 答题 / result 结算
-  const [phase, setPhase] = useState('courses')
+  const [phase, setPhase] = useState('lessons')
   const [curLevel, setCurLevel] = useState('A1')
   const [lessons, setLessons] = useState([])       // 当前课程的全部课
   const [detailTab, setDetailTab] = useState('route') // 课程详情页标签：route=学习路线，outline=大纲
@@ -349,7 +349,7 @@ export default function RuQuest() {
   // —— 课程/题库 ——
   const poolOf = useCallback((lv) => {
     const sents = []
-    for (const { video } of getLevelVideos(lv)) {
+    for (const video of getLevelVideos(lv)) {
       for (const s of video.sentences || []) {
         if (s.russian && s.russian.trim()) sents.push({ ...s, source: video.title })
       }
