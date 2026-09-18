@@ -36,10 +36,7 @@ const fmtScore = n => n.toLocaleString('en-US')
 
 // ================= 课程库（俄语闯关课程，基于分级句子） =================
 const COURSE_META = {
-  A1: { title: '零基础生存俄语', subtitle: '打招呼 · 自我介绍 · 日常需求', emoji: '🌱', tag: '新手推荐', desc: '从最基础的词汇和短句开始，掌握打招呼、自我介绍、买东西等真实场景表达。' },
-  A2: { title: '初级日常俄语', subtitle: '生活场景 · 购物 · 出行', emoji: '🚶', tag: '初级', desc: '围绕日常生活的真实场景，积累常用句型，学会表达时间、地点、喜好和需求。' },
-  B1: { title: '中级进阶表达', subtitle: '观点 · 经历 · 社会话题', emoji: '💬', tag: '中级', desc: '能谈论自己的经历和观点，掌握更复杂的句型结构，表达更自然流畅。' },
-  B2: { title: '高级流利输出', subtitle: '深度话题 · 复杂句型', emoji: '🎓', tag: '高级', desc: '挑战长句和复杂表达，掌握高级语法结构，能够就深度话题展开讨论。' },
+  A1: { title: 'Привет, Россия! A1', subtitle: '12个单元 · 核心句型 · 渐进构建', emoji: '🇷🇺', tag: '新手推荐', desc: 'A1 级别俄语入门课程，12 个单元，覆盖问候、地点、拥有、运动、数量、喜好、必须、过去时、将来时、从句等核心语法。' },
 }
 const MODES = [
   { key: 'chinese_to_english', name: '中译俄模式', tag: '初级', rec: '新手推荐', desc: '看到中文提示，尝试用俄语表达。练习运用所学词汇和语法。' },
@@ -1292,25 +1289,89 @@ export default function RuQuest() {
               {detailTab === 'route' && (
                 <div style={styles.routeView}>
                   <div style={styles.routeHeader}>
-                    <span style={styles.routeDifficulty}>P 高级</span>
+                    <span style={styles.routeDifficulty}>学习路线</span>
                     <span style={styles.routeSetting}>⚙ 路线设置</span>
                   </div>
-                  <div style={styles.routeGraph}>
+                  <div style={{
+                    position: 'relative',
+                    padding: '40px 20px',
+                    minHeight: '600px'
+                  }}>
                     {lessons.map((l, i) => {
                       const isLeft = i % 2 === 0
-                      const difficulties = ['简单', '中等', '困难']
-                      const diff = difficulties[i % 3]
+                      const diffMap = { 1: 'easy', 2: 'easy', 3: 'easy', 4: 'medium', 5: 'medium', 6: 'medium', 7: 'medium', 8: 'hard', 9: 'hard', 10: 'medium', 11: 'hard', 12: 'medium' }
+                      const diffLabel = { easy: '简单', medium: '中等', hard: '困难' }
+                      const diffColor = { easy: '#52c41a', medium: '#faad14', hard: '#ff4d4f' }
+                      const diff = diffMap[i + 1] || 'easy'
                       let hasProg = false
                       try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
+                      const isLocked = i > 0 && !hasProg && !(sp && sp.completedLessons && sp.completedLessons.includes(lessons[i-1].id))
                       return (
-                        <div key={l.id} style={{ ...styles.routeRow, justifyContent: isLeft ? 'flex-start' : 'flex-end' }}>
-                          {i > 0 && <div style={{ ...styles.routeConnector, ...(isLeft ? styles.routeConnectorLeft : styles.routeConnectorRight) }} />}
-                          <div className="route-node-wrap" style={styles.routeNodeWrap} onClick={() => startLesson(l, true)}>
-                            <div className="route-node" style={{ ...styles.routeNode, ...(hasProg ? styles.routeNodeActive : {}) }}>
-                              <span className="route-node-icon" style={{ ...styles.routeNodeIcon, ...(hasProg ? { color: '#fff' } : {}) }}>文A</span>
+                        <div key={l.id} style={{
+                          position: 'relative',
+                          display: 'flex',
+                          justifyContent: isLeft ? 'flex-start' : 'flex-end',
+                          marginBottom: '60px'
+                        }}>
+                          {/* 连接线 */}
+                          {i > 0 && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '50%',
+                              left: isLeft ? '25%' : '50%',
+                              width: isLeft ? '50%' : '50%',
+                              height: '3px',
+                              background: hasProg ? 'linear-gradient(90deg, #7c3aed, #a78bfa)' : '#e5e7eb',
+                              borderRadius: '2px',
+                              transform: 'translateY(-50%)',
+                              zIndex: 0
+                            }} />
+                          )}
+                          {/* 节点 */}
+                          <div 
+                            className="route-node-wrap" 
+                            style={{ 
+                              position: 'relative',
+                              zIndex: 1,
+                              textAlign: 'center',
+                              cursor: isLocked ? 'not-allowed' : 'pointer'
+                            }} 
+                            onClick={() => !isLocked && startLesson(l, true)}
+                          >
+                            <div style={{
+                              width: '80px',
+                              height: '80px',
+                              borderRadius: '50%',
+                              background: hasProg ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : '#f3f4f6',
+                              border: hasProg ? '3px solid #7c3aed' : '3px solid #e5e7eb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '24px',
+                              fontWeight: 700,
+                              color: hasProg ? '#fff' : '#9ca3af',
+                              boxShadow: hasProg ? '0 8px 24px rgba(124, 58, 237, 0.3)' : '0 2px 8px rgba(0,0,0,0.05)',
+                              transition: 'all 0.3s'
+                            }}>
+                              {isLocked ? '🔒' : `У${i + 1}`}
                             </div>
-                            <div style={styles.routeNodeLabel}>第{l.idx}课</div>
-                            <div style={styles.routeNodeDiff}>{diff}</div>
+                            <div style={{
+                              marginTop: '12px',
+                              fontSize: '14px',
+                              fontWeight: 600,
+                              color: '#1f2937'
+                            }}>Урок {i + 1}</div>
+                            <div style={{
+                              fontSize: '12px',
+                              color: diffColor[diff],
+                              marginTop: '4px',
+                              background: diff === 'easy' ? '#f6ffed' : diff === 'medium' ? '#fffbe6' : '#fff2f0',
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              display: 'inline-block'
+                            }}>
+                              {diffLabel[diff]}
+                            </div>
                           </div>
                         </div>
                       )
@@ -1319,28 +1380,79 @@ export default function RuQuest() {
                 </div>
               )}
 
-              {/* 大纲列表视图 */}
+              {/* 大纲列表视图 - 卡片网格布局 */}
               {detailTab === 'outline' && (
                 <div style={styles.detailOutline}>
                   <div style={styles.detailOutlineHeader}>
-                    <div style={styles.detailOutlineTitle}>大纲 <span style={styles.detailOutlineCount}>共 {lessons.length} 课</span> <span style={styles.detailOutlineTrial}>全部免费试学</span></div>
+                    <div style={styles.detailOutlineTitle}>大纲 <span style={styles.detailOutlineCount}>共 {lessons.length} 单元</span></div>
                     <div style={styles.detailSortBtn}>⇅ 正序</div>
                   </div>
-                  {lessons.map((l, i) => {
-                    let hasProg = false
-                    try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
-                    return (
-                      <div key={l.id} style={styles.detailLessonRow} onClick={() => startLesson(l, true)}>
-                        <div style={styles.detailLessonNo}>{String(i + 1).padStart(2, '0')}</div>
-                        <div style={styles.detailLessonIcon}>📄</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={styles.detailLessonName}>第{l.idx}课 · {l.sentences[0]?.source || COURSE_META[curLevel]?.title}</div>
-                          <div style={styles.detailLessonDesc}>{l.sentences.slice(0, 2).map(s => stripStress(s.russian)).join(' · ')}…</div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                    gap: '16px',
+                    padding: '8px 0'
+                  }}>
+                    {lessons.map((l, i) => {
+                      let hasProg = false
+                      try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
+                      const diffMap = { 1: 'easy', 2: 'easy', 3: 'easy', 4: 'medium', 5: 'medium', 6: 'medium', 7: 'medium', 8: 'hard', 9: 'hard', 10: 'medium', 11: 'hard', 12: 'medium' }
+                      const diffLabel = { easy: '简单', medium: '中等', hard: '困难' }
+                      const diffColor = { easy: '#52c41a', medium: '#faad14', hard: '#ff4d4f' }
+                      const diff = diffMap[i + 1] || 'easy'
+                      return (
+                        <div 
+                          key={l.id} 
+                          onClick={() => startLesson(l, true)}
+                          style={{
+                            border: hasProg ? '2px solid #7c3aed' : '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            cursor: 'pointer',
+                            background: hasProg ? '#faf5ff' : '#fff',
+                            transition: 'all 0.2s',
+                            boxShadow: hasProg ? '0 4px 12px rgba(124, 58, 237, 0.15)' : '0 1px 3px rgba(0,0,0,0.05)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px)'
+                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)'
+                            e.currentTarget.style.boxShadow = hasProg ? '0 4px 12px rgba(124, 58, 237, 0.15)' : '0 1px 3px rgba(0,0,0,0.05)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: '#1f2937' }}>Урок {i + 1}</div>
+                            <div style={{ 
+                              fontSize: '11px', 
+                              color: diffColor[diff], 
+                              background: diff === 'easy' ? '#f6ffed' : diff === 'medium' ? '#fffbe6' : '#fff2f0',
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              fontWeight: 500
+                            }}>
+                              {diffLabel[diff]}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px' }}>A1基础句子学习</div>
+                          <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+                            {l.words || 0} 步 · {l.duration || '10:00'}
+                          </div>
+                          {hasProg && (
+                            <div style={{ 
+                              marginTop: '12px', 
+                              fontSize: '12px', 
+                              color: '#7c3aed', 
+                              fontWeight: 500 
+                            }}>
+                              继续学习 →
+                            </div>
+                          )}
                         </div>
-                        <span style={{ ...styles.detailTrialTag, ...(hasProg ? styles.detailTrialActive : {}) }}>{hasProg ? '继续学习' : '可试学'}</span>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </div>
