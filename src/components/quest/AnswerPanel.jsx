@@ -186,12 +186,14 @@ export default function AnswerPanel({
         {words.length > 0 ? (
           <div style={styles.cardsRow}>
             {words.map((w, i) => {
-              const color = getRoleColor(w.syntacticRole);
-              const roleLabel = getRoleLabel(w.syntacticRole);
-              // 显示带重音符的词形：优先 form（带重音），其次 lemma
-              const displayWord = w.form || w.lemma || "";
+              // 颜色：优先数据给定的词性色（新 build-steps），否则按句法角色（旧数据/听写页）
+              const color = w.posColor || getRoleColor(w.syntacticRole);
+              const roleLabel = w.roleLabel || getRoleLabel(w.syntacticRole);
+              // 显示带重音符的词形：优先 form（带重音），其次 stress_marked / lemma
+              const displayWord = w.form || w.stress_marked || w.lemma || "";
               const posLabel = getPosLabel(w.pos);
-              const grammarLabel = buildGrammarLabel(w);
+              // 语法标注：优先数据预组装的中文（新 build-steps），否则按英文枚举构建（旧数据）
+              const grammarLabel = w.grammarLabel || buildGrammarLabel(w);
               const chinese = w.chinese || w.meaning || w.translation || "";
 
               return (

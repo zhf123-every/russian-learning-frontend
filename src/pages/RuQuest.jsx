@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { getLevelVideos, LEVELS } from '../data/courseLibrary'
 import { callAI } from '../lib/ai'
 import { API_BASE } from '../lib/api'
@@ -41,14 +41,26 @@ const COURSE_META = {
   B1: { title: '中级进阶表达', subtitle: '观点 · 经历 · 社会话题', emoji: '💬', tag: '中级', desc: '能谈论自己的经历和观点，掌握更复杂的句型结构，表达更自然流畅。' },
   B2: { title: '高级流利输出', subtitle: '深度话题 · 复杂句型', emoji: '🎓', tag: '高级', desc: '挑战长句和复杂表达，掌握高级语法结构，能够就深度话题展开讨论。' },
 }
+// 练习模式：当前只上线「中译俄」「听写」两种（口语评测/乱序/阅读未上线，不在弹窗出现）
 const MODES = [
-  { key: 'chinese_to_english', name: '中译俄模式', tag: '初级', rec: '新手推荐', desc: '看到中文提示，尝试用俄语表达。练习运用所学词汇和语法。' },
-  { key: 'dictation', name: '听写模式', tag: '初级', desc: '听俄语原声，把听到的句子写下来。锻炼听力与拼写。' },
-  { key: 'speaking', name: '口语评测模式', tag: '初级', desc: '先听标准发音，跟读录音，AI 实时评分并纠正发音。' },
-  { key: 'scramble', name: '乱序模式', tag: '中级', desc: '句子单词顺序打乱，通过点击或键盘重组完整句子。' },
-  { key: 'reading', name: '阅读模式', tag: '初级', desc: '先全文通读 + 逐句跟读预习，再开始打字答题。' },
+  { key: 'chinese_to_english', name: '中译俄模式', tag: '初级', rec: '新手推荐', desc: '看到中文提示，按句型家族的渐进步骤，逐词到整句用俄语表达。' },
+  { key: 'dictation', name: '听写模式', tag: '初级', desc: '听俄语原声，把听到的句子逐词写下来。锻炼听力与拼写。' },
 ]
+const ACTIVE_MODE_KEYS = MODES.map(m => m.key)
 const DIFFS = ['自定义', '初级', '中级', '高级']
+
+// 单元难度（与后端 quest_courses.difficulty 对齐）
+const DIFF_META = {
+  easy: { label: '简单', color: '#16a34a', bg: '#DCFCE7' },
+  medium: { label: '中等', color: '#d97706', bg: '#FEF3C7' },
+  hard: { label: '困难', color: '#dc2626', bg: '#FEE2E2' },
+}
+// 单元学习状态（后端按学习记录判定：未开始/进行中/已完成）
+const STATUS_META = {
+  '未开始': { label: '未开始', color: '#9ca3af', bg: '#F3F4F6' },
+  '进行中': { label: '进行中', color: '#7c3aed', bg: '#EDE9FE' },
+  '已完成': { label: '已完成 ✓', color: '#16a34a', bg: '#DCFCE7' },
+}
 
 // ================= 俄语鼓励词 =================
 const PRAISE = ['Молодец!', 'Отлично!', 'Супер!', 'Прекрасно!', 'Великолепно!', 'Так держать!', 'Замечательно!', 'Браво!']
@@ -225,6 +237,7 @@ const GAP_STEPS = [0.3, 0.5, 0.8, 1]
 // ================= 主组件 =================
 export default function RuQuest() {
   const navigate = useNavigate()
+  const { packId: routePackId } = useParams()
   // 阶段：courses 课程选择 / lessons 课列表 / preview 阅读预习 / loading 准备 / game 答题 / result 结算
   const [phase, setPhase] = useState('lessons')
   const [curLevel, setCurLevel] = useState('A1')
@@ -232,6 +245,11 @@ export default function RuQuest() {
   const [detailTab, setDetailTab] = useState('route') // 课程详情页标签：route=学习路线，outline=大纲
   const [showModeModal, setShowModeModal] = useState(false) // 练习模式选择弹窗
   const [selectedLesson, setSelectedLesson] = useState(null) // 选中的单元
+  const [pack, setPack] = useState(null)                     // 当前课程包（来自后端）
+  const [units, setUnits] = useState([])                     // 课程包下的单元列表
+  const [catalogLoading, setCatalogLoading] = useState(true) // 课程目录加载中
+  const [catalogError, setCatalogError] = useState('')       // 课程目录加载错误
+  const [draftMode, setDraftMode] = useState('chinese_to_english') // 弹窗内暂选的练习模式
   const [curLesson, setCurLesson] = useState(null) // 当前课
   const [mode, setMode] = useState(() => {
     try { return localStorage.getItem('rlearn_quest_mode') || 'chinese_to_english' } catch (e) { return 'chinese_to_english' }
@@ -347,6 +365,73 @@ export default function RuQuest() {
   useEffect(() => () => { mounted.current = false }, [])
 
   const cur = questions[qi] || null
+
+  // —— 课程目录：从后端加载「课程包 + 单元」（数据驱动，替代写死 courseLibrary） ——
+  const fetchJsonRetry = useCallback(async (url, tries = 4) => {
+    let last = null
+    for (let i = 0; i < tries; i++) {
+      try {
+        const r = await fetch(url)
+        if (!r.ok) throw new Error('HTTP ' + r.status)
+        const j = await r.json()
+        if (j && j.ok) return j.data
+        throw new Error((j && j.error) || '返回数据格式异常')
+      } catch (e) {
+        last = e
+        // Render 免费实例冷启动/边缘抖动，退避后重试
+        await new Promise(res => setTimeout(res, 1200 * (i + 1)))
+      }
+    }
+    throw last || new Error('网络错误')
+  }, [])
+
+  const loadCatalog = useCallback(async () => {
+    setCatalogLoading(true)
+    setCatalogError('')
+    try {
+      const base = API_BASE || ''
+      let packId = routePackId || null
+      if (!packId) { try { packId = new URLSearchParams(window.location.search).get('pack') } catch (e) { packId = null } }
+      const packs = await fetchJsonRetry(base + '/api/course-packs')
+      const thePack = packs.find(p => p.id === packId) || packs[0]
+      if (!thePack) throw new Error('暂无课程包')
+      setPack(thePack)
+      const data = await fetchJsonRetry(base + '/api/course-packs/' + encodeURIComponent(thePack.id) + '/units')
+      setUnits((data && data.units) || [])
+      setCatalogLoading(false)
+    } catch (e) {
+      setCatalogError((e && e.message) || '加载失败')
+      setCatalogLoading(false)
+    }
+  }, [fetchJsonRetry, routePackId])
+
+  useEffect(() => { loadCatalog() }, [loadCatalog])
+
+  // 历史版本可能在本地存过已下线模式（口语/乱序/阅读），统一回落到中译俄
+  useEffect(() => {
+    if (mode && !ACTIVE_MODE_KEYS.includes(mode)) {
+      setMode('chinese_to_english')
+      try { localStorage.setItem('rlearn_quest_mode', 'chinese_to_english') } catch (e) { /* 忽略 */ }
+    }
+  }, [mode])
+
+  // 点击单元：打开练习模式弹窗
+  const openUnit = (u) => {
+    setSelectedLesson(u)
+    setDraftMode(ACTIVE_MODE_KEYS.includes(mode) ? mode : 'chinese_to_english')
+    setShowModeModal(true)
+  }
+
+  // 弹窗确认：进入对应学习页（中译俄 /quest-practice，听写 /quest-dictation）
+  const startUnit = (mk) => {
+    const u = selectedLesson
+    if (!u) return
+    setMode(mk)
+    try { localStorage.setItem('rlearn_quest_mode', mk) } catch (e) { /* 忽略 */ }
+    setShowModeModal(false)
+    if (mk === 'dictation') navigate('/quest-dictation/' + encodeURIComponent(u.id))
+    else navigate('/quest-practice/' + encodeURIComponent(u.id))
+  }
 
   // —— 课程/题库 ——
   const poolOf = useCallback((lv) => {
@@ -1252,100 +1337,159 @@ export default function RuQuest() {
         )}
         {phase === 'lessons' && (
           <>
+            <style>{`
+              .unit-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+              @media(max-width:1024px){.unit-grid{grid-template-columns:repeat(3,1fr)}}
+              @media(max-width:760px){.unit-grid{grid-template-columns:repeat(2,1fr)}}
+              .unit-card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;cursor:pointer}
+              .unit-card:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(124,58,237,.18)!important;border-color:#C4B5FD!important}
+              .route-node-wrap:hover .route-node{transform:scale(1.08);border-color:#8B5CF6}
+              @keyframes ruModalPop{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+              .modal-pop{animation:ruModalPop .22s ease}
+              @keyframes ruSpin{to{transform:rotate(360deg)}}
+              .ru-spin{width:38px;height:38px;border-radius:50%;border:3px solid #EDE9FE;border-top-color:#8B5CF6;animation:ruSpin .8s linear infinite}
+            `}</style>
+
             {/* 顶部导航 */}
             <div style={styles.detailNav}>
-              <span style={styles.detailBack} onClick={() => setPhase('courses')}>←</span>
-              <span style={styles.detailNavTitle}>课程详情</span>
+              <span style={styles.detailBack} onClick={() => navigate('/quest-store')}>←</span>
+              <span style={styles.detailNavTitle}>{pack ? pack.title : '课程详情'}</span>
             </div>
 
-            {/* 课程信息头部 */}
             <div style={styles.detailContent}>
-              <div style={styles.detailHead}>
-                <div style={{ ...styles.detailCover, background: gradients[LEVELS.indexOf(curLevel)] }}>
-                  <span style={styles.detailCoverLevel}>{curLevel}</span>
+              {catalogLoading ? (
+                <div style={styles.catalogState}>
+                  <div className="ru-spin" />
+                  <div style={styles.catalogStateText}>正在加载课程…</div>
                 </div>
-                <div style={styles.detailHeadInfo}>
-                  <div style={styles.detailTitle}>{COURSE_META[curLevel]?.title}</div>
-                  <div style={styles.detailDesc}>{COURSE_META[curLevel]?.desc}</div>
-                  <div style={styles.detailTags}>
-                    {['基础', '句型', '词汇', '口语'].map(t => <span key={t} style={styles.detailTag}>{t}</span>)}
-                  </div>
-                  <div style={styles.detailMeta}>
-                    <span style={styles.detailMetaItem}>句乐部</span>
-                    <span style={styles.detailMetaDot}>·</span>
-                    <span style={styles.detailMetaItem}>{lessons.length} 课</span>
-                    <span style={styles.detailMetaDot}>·</span>
-                    <span style={styles.detailMetaItem}>{poolOf(curLevel).length} 句</span>
-                  </div>
+              ) : catalogError ? (
+                <div style={styles.catalogState}>
+                  <div style={{ ...styles.catalogStateText, color: '#dc2626' }}>课程加载失败：{catalogError}</div>
+                  <button style={styles.catalogRetry} onClick={loadCatalog}>重新加载</button>
                 </div>
-                <div style={styles.detailHeadRight}>
-                  <button style={styles.detailStartBtn} onClick={() => lessons.length > 0 && startLesson(lessons[0], false)}>开始学习</button>
-                </div>
-              </div>
-
-              {/* 标签页切换 */}
-              <div style={styles.detailTabs}>
-                <span style={{ ...styles.detailTabItem, ...(detailTab === 'route' ? styles.detailTabItemOn : {}) }} onClick={() => setDetailTab('route')}>学习路线</span>
-                <span style={{ ...styles.detailTabItem, ...(detailTab === 'outline' ? styles.detailTabItemOn : {}) }} onClick={() => setDetailTab('outline')}>大纲</span>
-                <span style={styles.detailTabItem}>评价</span>
-              </div>
-
-              {/* 学习路线视图 */}
-              {detailTab === 'route' && (
-                <div style={styles.routeView}>
-                  <div style={styles.routeHeader}>
-                    <span style={styles.routeDifficulty}>P 高级</span>
-                    <span style={styles.routeSetting}>⚙ 路线设置</span>
-                  </div>
-                  <div style={styles.routeGraph}>
-                    {lessons.map((l, i) => {
-                      const isLeft = i % 2 === 0
-                      const difficulties = ['简单', '中等', '困难']
-                      const diff = difficulties[i % 3]
-                      let hasProg = false
-                      try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
-                      return (
-                        <div key={l.id} style={{ ...styles.routeRow, justifyContent: isLeft ? 'flex-start' : 'flex-end' }}>
-                          {i > 0 && <div style={{ ...styles.routeConnector, ...(isLeft ? styles.routeConnectorLeft : styles.routeConnectorRight) }} />}
-                          <div className="route-node-wrap" style={styles.routeNodeWrap} onClick={() => { setSelectedLesson(l); setShowModeModal(true) }}>
-                            <div className="route-node" style={{ ...styles.routeNode, ...(hasProg ? styles.routeNodeActive : {}) }}>
-                              <span className="route-node-icon" style={{ ...styles.routeNodeIcon, ...(hasProg ? { color: '#fff' } : {}) }}>文A</span>
-                            </div>
-                            <div style={styles.routeNodeLabel}>第{l.idx}课</div>
-                            <div style={styles.routeNodeDiff}>{diff}</div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 大纲列表视图 */}
-              {detailTab === 'outline' && (
-                <div style={styles.detailOutline}>
-                  <div style={styles.detailOutlineHeader}>
-                    <div style={styles.detailOutlineTitle}>大纲 <span style={styles.detailOutlineCount}>共 {lessons.length} 课</span> <span style={styles.detailOutlineTrial}>全部免费试学</span></div>
-                    <div style={styles.detailSortBtn}>⇅ 正序</div>
-                  </div>
-                  {lessons.map((l, i) => {
-                    let hasProg = false
-                    try { const sp = JSON.parse(localStorage.getItem('rlearn_quest_progress') || 'null'); hasProg = !!(sp && sp.lessonId === l.id) } catch (e) { hasProg = false }
-                    return (
-                      <div key={l.id} style={styles.detailLessonRow} onClick={() => { setSelectedLesson(l); setShowModeModal(true) }}>
-                        <div style={styles.detailLessonNo}>{String(i + 1).padStart(2, '0')}</div>
-                        <div style={styles.detailLessonIcon}>📄</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={styles.detailLessonName}>第{l.idx}课 · {l.sentences[0]?.source || COURSE_META[curLevel]?.title}</div>
-                          <div style={styles.detailLessonDesc}>{l.sentences.slice(0, 2).map(s => stripStress(s.russian)).join(' · ')}…</div>
-                        </div>
-                        <span style={{ ...styles.detailTrialTag, ...(hasProg ? styles.detailTrialActive : {}) }}>{hasProg ? '继续学习' : '可试学'}</span>
+              ) : (
+                <>
+                  {/* 课程信息头部 */}
+                  <div style={styles.detailHead}>
+                    <div style={{ ...styles.detailCover, background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)' }}>
+                      <span style={styles.detailCoverLevel}>{pack?.level || 'A1'}</span>
+                    </div>
+                    <div style={styles.detailHeadInfo}>
+                      <div style={styles.detailTitle}>{pack?.title}</div>
+                      <div style={styles.detailDesc}>{pack?.description}</div>
+                      <div style={styles.detailTags}>
+                        {[pack?.level, pack?.category, pack?.tag].filter(Boolean).map(t => <span key={t} style={styles.detailTag}>{t}</span>)}
                       </div>
-                    )
-                  })}
-                </div>
+                      <div style={styles.detailMeta}>
+                        <span style={styles.detailMetaItem}>{pack?.author || '句乐部'}</span>
+                        <span style={styles.detailMetaDot}>·</span>
+                        <span style={styles.detailMetaItem}>{units.length} 个单元</span>
+                        <span style={styles.detailMetaDot}>·</span>
+                        <span style={styles.detailMetaItem}>{units.reduce((n, u) => n + (u.step_count || 0), 0)} 步</span>
+                        <span style={styles.detailMetaDot}>·</span>
+                        <span style={styles.detailMetaItem}>{Number(pack?.learner_count || 0).toLocaleString()} 人在学</span>
+                      </div>
+                    </div>
+                    <div style={styles.detailHeadRight}>
+                      <button style={styles.detailStartBtn} onClick={() => units[0] && openUnit(units[0])}>开始学习</button>
+                    </div>
+                  </div>
+
+                  {/* 标签页：学习路线 / 大纲 */}
+                  <div style={styles.detailTabs}>
+                    <span style={{ ...styles.detailTabItem, ...(detailTab === 'route' ? styles.detailTabItemOn : {}) }} onClick={() => setDetailTab('route')}>学习路线</span>
+                    <span style={{ ...styles.detailTabItem, ...(detailTab === 'outline' ? styles.detailTabItemOn : {}) }} onClick={() => setDetailTab('outline')}>大纲</span>
+                  </div>
+
+                  {/* 学习路线视图（蛇形闯关） */}
+                  {detailTab === 'route' && (
+                    <div style={styles.routeView}>
+                      <div style={styles.routeHeader}>
+                        <span style={styles.routeDifficulty}>循序渐进 · {units.length} 个单元</span>
+                      </div>
+                      <div style={styles.routeGraph}>
+                        {units.map((u, i) => {
+                          const isLeft = i % 2 === 0
+                          const dm = DIFF_META[u.difficulty] || DIFF_META.medium
+                          const done = u.status === '已完成'
+                          const doing = u.status === '进行中'
+                          return (
+                            <div key={u.id} style={{ ...styles.routeRow, justifyContent: isLeft ? 'flex-start' : 'flex-end' }}>
+                              {i > 0 && <div style={{ ...styles.routeConnector, ...(isLeft ? styles.routeConnectorLeft : styles.routeConnectorRight) }} />}
+                              <div className="route-node-wrap" style={styles.routeNodeWrap} onClick={() => openUnit(u)}>
+                                <div className="route-node" style={{
+                                  ...styles.routeNode,
+                                  ...(done ? styles.routeNodeActive : {}),
+                                  ...(doing ? { borderColor: '#8B5CF6', background: '#F3EFFC' } : {}),
+                                }}>
+                                  <span className="route-node-icon" style={{ ...styles.routeNodeIcon, ...((done || doing) ? { color: done ? '#fff' : '#7c3aed' } : {}) }}>{done ? '✓' : u.order}</span>
+                                </div>
+                                <div style={styles.routeNodeLabel}>{u.title}</div>
+                                <div style={{ ...styles.routeNodeDiff, color: dm.color }}>{dm.label}</div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 大纲视图（单元网格） */}
+                  {detailTab === 'outline' && (
+                    <div style={styles.unitOutline}>
+                      <div style={styles.detailOutlineHeader}>
+                        <div style={styles.detailOutlineTitle}>大纲 <span style={styles.detailOutlineCount}>共 {units.length} 个单元</span></div>
+                      </div>
+                      <div className="unit-grid">
+                        {units.map(u => {
+                          const dm = DIFF_META[u.difficulty] || DIFF_META.medium
+                          const st = STATUS_META[u.status] || STATUS_META['未开始']
+                          return (
+                            <div key={u.id} className="unit-card" style={styles.unitCard} onClick={() => openUnit(u)}>
+                              <div style={styles.unitCardTop}>
+                                <span style={styles.unitNo}>{u.title}</span>
+                                <span style={{ ...styles.unitBadge, color: dm.color, background: dm.bg }}>{dm.label}</span>
+                              </div>
+                              <div style={styles.unitSub}>{u.subtitle}</div>
+                              <div style={styles.unitMeta}>{u.family_count} 个家族 · {u.step_count} 步</div>
+                              <span style={{ ...styles.unitStatus, color: st.color, background: st.bg }}>{st.label}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
+
+            {/* 练习模式选择弹窗（仅中译俄 / 听写） */}
+            {showModeModal && selectedLesson && (
+              <div style={styles.modalRoot} onClick={() => setShowModeModal(false)}>
+                <div className="modal-pop" style={styles.modeModal} onClick={e => e.stopPropagation()}>
+                  <div style={styles.modeModalTitle}>选择练习模式</div>
+                  <div style={styles.modeModalSub}>
+                    {selectedLesson.title} · {selectedLesson.subtitle} · {selectedLesson.family_count} 个家族 · {selectedLesson.step_count} 步
+                  </div>
+                  <div style={styles.modeCardRow}>
+                    {MODES.map(m => (
+                      <div key={m.key} className="unit-card" style={{ ...styles.modeCard, ...(draftMode === m.key ? styles.modeCardOn : {}) }} onClick={() => setDraftMode(m.key)}>
+                        <div style={styles.modeCardHead}>
+                          <span style={styles.modeCardName}>{m.name}</span>
+                          {m.rec && <span style={styles.modeRec}>{m.rec}</span>}
+                        </div>
+                        <div style={styles.modeCardDesc}>{m.desc}</div>
+                        <span style={styles.modeCardTag}>{draftMode === m.key ? '✓ 已选择' : m.tag}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={styles.modeFoot}>
+                    <button style={styles.modeCancel} onClick={() => setShowModeModal(false)}>取消</button>
+                    <button style={styles.modeStart} onClick={() => startUnit(draftMode)}>开始学习</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -2183,6 +2327,24 @@ const styles = {
   modeFoot: { display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 22 },
   modeCancel: { padding: '9px 22px', borderRadius: 20, border: '1px solid #E0D5C3', background: '#fff', color: '#7A6A55', fontSize: 14, cursor: 'pointer' },
   modeStart: { padding: '9px 26px', borderRadius: 20, border: 'none', background: '#DC2626', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  catalogState: { minHeight: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginTop: 24 },
+  catalogStateText: { fontSize: 14, color: '#888' },
+  catalogRetry: { padding: '9px 26px', borderRadius: 20, border: 'none', background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  unitOutline: { background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginTop: 24, padding: '24px 28px 28px' },
+  unitCard: { position: 'relative', background: '#FBFAFF', border: '1px solid #EEE9F9', borderRadius: 16, padding: '18px 16px 16px', minHeight: 132, display: 'flex', flexDirection: 'column' },
+  unitCardTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  unitNo: { fontSize: 15, fontWeight: 800, color: '#6D28D9', letterSpacing: 0.3 },
+  unitBadge: { fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 999 },
+  unitSub: { fontSize: 14, fontWeight: 600, color: '#1F1B2E', marginBottom: 6, lineHeight: 1.4 },
+  unitMeta: { fontSize: 12, color: '#9A90B0', marginBottom: 14 },
+  unitStatus: { marginTop: 'auto', alignSelf: 'flex-start', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 999 },
+  modeCardRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
+  modeCard: { position: 'relative', background: '#FAF7F2', border: '2px solid #ECE4D8', borderRadius: 16, padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 8 },
+  modeCardOn: { background: '#F3EFFC', borderColor: '#8B5CF6', boxShadow: '0 8px 24px rgba(139,92,246,.18)' },
+  modeCardHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  modeCardName: { fontSize: 17, fontWeight: 800, color: '#1F1B2E' },
+  modeCardDesc: { fontSize: 13, color: '#7A6A55', lineHeight: 1.7, minHeight: 44 },
+  modeCardTag: { alignSelf: 'flex-start', fontSize: 11, color: '#8B5CF6', background: '#EDE9FE', padding: '2px 10px', borderRadius: 999, marginTop: 2 },
   loadRoot: { position: 'fixed', inset: 0, background: '#0a0a0a', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 60, fontFamily: FONT_STACK.system },
   loadLogo: { width: 280, height: 'auto', filter: 'invert(1)', marginBottom: 70, opacity: 0.95 },
   loadTip: { fontSize: 14, color: '#777', marginBottom: 90, textAlign: 'center', letterSpacing: 0.5, maxWidth: 500 },

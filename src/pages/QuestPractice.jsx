@@ -19,6 +19,7 @@ import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
 import QuestionInput from "../components/quest/QuestionInput";
+import { getPosColor } from "../constants/posColors";
 import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
 import ModeTabs from "../components/quest/ModeTabs";
@@ -29,6 +30,56 @@ import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, che
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 const DEFAULT_COURSE_ID = "181cfa7e-61d1-4920-b150-3e908aec4cd3";
+
+// 把 /api/units/:id/build-steps 的 family/step 适配成答题引擎使用的 sequence/unit 结构
+// family -> sequence；step -> unit；答题状态机/判题/连击/结算完全复用，不感知数据来源
+function adaptBuildSteps(data) {
+  const families = Array.isArray(data?.families) ? data.families : [];
+  return families.map((fam) => {
+    const units = (fam.steps || []).map((step, idx) => {
+      const rawWords = Array.isArray(step.words) ? step.words : [];
+      const words = rawWords.map((w, i) => {
+        const isPlural = w.number === "复数" || w.number === "plural";
+        // 业务规则：第一格不标；二~六格直接显示中文；性直接显示；单数不标、复数标“复数”
+        const grammarLabel = [w.gender, w.grammar_case, isPlural ? "复数" : ""]
+          .filter(Boolean).join("·");
+        return {
+          ...w,
+          order: i,
+          form: w.stress_marked || w.word || w.lemma || "",
+          lemma: w.lemma || w.word || "",
+          pos: w.pos || "",
+          posColor: w.pos ? getPosColor(w.pos) : "",
+          grammarLabel,
+          roleLabel: w.syntactic_role || "",
+        };
+      });
+      const wordOrder = words.map((_, i) => i);
+      const stressMarked = words.map((w) => w.form).filter(Boolean).join(" ");
+      return {
+        id: `${fam.sequence_id}_${step.step_order ?? idx + 1}`,
+        sequenceId: fam.sequence_id,
+        sequenceOrder: step.step_order ?? idx + 1,
+        russian: step.target_sentence || "",
+        stressMarked,
+        chinese: step.chinese || "",
+        action: step.action || "",
+        grammarNote: step.grammar_note || "",
+        newElement: step.new_element || "",
+        words,
+        acceptableAnswers: [{ wordOrder, wordVariants: {}, isDefault: true, note: "" }],
+      };
+    });
+    return {
+      id: fam.sequence_id,
+      name: fam.family_name || fam.sequence_id,
+      familyName: fam.family_name || fam.sequence_id,
+      units,
+      totalUnits: units.length,
+      fullSentence: fam.full_sentence || "",
+    };
+  });
+}
 
 export default function QuestPractice() {
   const navigate = useNavigate();
@@ -41,6 +92,8 @@ export default function QuestPractice() {
   const [loadError, setLoadError] = useState(null);
   const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
   const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
+  const [unitMeta, setUnitMeta] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // ---- 计时器 ----
   const [elapsed, setElapsed] = useState(0);
@@ -142,50 +195,42 @@ export default function QuestPractice() {
     }
   }, [combo]);
 
-  // ---- 加载课程（按 sequence 分组）----
+  // ---- 加载单元的渐进构建步骤（按 family 分组，带冷启动重试）----
   useEffect(() => {
     ensureTypingSound();
     let cancelled = false;
-    async function loadCourse() {
+    async function fetchJsonRetry(url, tries = 4) {
+      let last = null;
+      for (let i = 0; i < tries; i++) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const json = await res.json();
+          if (json.ok && json.data) return json.data;
+          throw new Error(json.error || "数据格式异常");
+        } catch (e) {
+          last = e;
+          await new Promise((r) => setTimeout(r, 900 * (i + 1)));
+        }
+      }
+      throw last || new Error("网络错误");
+    }
+    async function loadUnit() {
       setLoading(true);
       setLoadError(null);
       try {
-        const res = await fetch(`${API_BASE}/api/courses/${effectiveCourseId}/build-steps`);
-        const json = await res.json();
+        const data = await fetchJsonRetry(
+          `${API_BASE}/api/units/${effectiveCourseId}/build-steps`
+        );
+        const adapted = adaptBuildSteps(data);
         if (!cancelled) {
-          if (json.ok && json.data && json.data.sequences) {
-            // 为每个渐进构建步骤生成 words 和 acceptableAnswers
-            const adaptedSeqs = json.data.sequences.map((seq) => {
-              const adaptedUnits = seq.units.map((unit) => {
-                // 优先使用后端返回的 words（包含 syntacticRole 等语法标注）
-                let words = unit.words && unit.words.length > 0 ? unit.words : null;
-                // 兜底：如果后端没有返回 words，动态生成
-                if (!words) {
-                  words = unit.russian
-                    .replace(/[.,!?;:]/g, "")
-                    .trim()
-                    .split(/\s+/)
-                    .filter(Boolean)
-                    .map((w, wIdx) => ({
-                      order: wIdx, lemma: w.toLowerCase(), form: w, pos: "",
-                      grammaticalCase: "", number: "", gender: "", person: "",
-                      tense: "", aspect: "", stressPosition: -1, syntacticRole: "",
-                      isFixedPosition: false, chunkType: "",
-                    }));
-                }
-                const wordOrder = words.map((_, i) => i);
-                return {
-                  ...unit, sequenceOrder: unit.stepOrder, words,
-                  acceptableAnswers: [{ wordOrder, wordVariants: {}, isDefault: true, note: "" }],
-                };
-              });
-              return { ...seq, units: adaptedUnits, totalUnits: adaptedUnits.length };
-            });
-            setSequences(adaptedSeqs);
+          if (adapted.length === 0) {
+            setLoadError("该单元没有可学习的步骤");
+          } else {
+            setUnitMeta(data.unit || null);
+            setSequences(adapted);
             setCurrentSequenceIndex(0);
             setCurrentUnitIndex(0);
-          } else {
-            setLoadError("课程数据格式异常");
           }
         }
       } catch (e) {
@@ -194,9 +239,9 @@ export default function QuestPractice() {
         if (!cancelled) setLoading(false);
       }
     }
-    loadCourse();
+    loadUnit();
     return () => { cancelled = true; };
-  }, [effectiveCourseId]);
+  }, [effectiveCourseId, reloadKey]);
 
   // ---- 计时器 ----
   useEffect(() => {
@@ -329,7 +374,11 @@ export default function QuestPractice() {
   if (loading) {
     return (
       <div style={styles.page}>
-        <div style={styles.loading}>加载课程中...</div>
+        <div style={{ ...styles.loading, flexDirection: "column", gap: 16 }}>
+          <style>{"@keyframes qp-spin{to{transform:rotate(360deg)}}"}</style>
+          <div style={{ width: 38, height: 38, borderRadius: "50%", border: "3px solid #EDE9FE", borderTopColor: "#8B5CF6", animation: "qp-spin .8s linear infinite" }} />
+          <span>正在加载课程…</span>
+        </div>
       </div>
     );
   }
@@ -342,9 +391,14 @@ export default function QuestPractice() {
             加载失败
           </div>
           <div style={{ color: "#86796D", marginBottom: 16 }}>{loadError}</div>
-          <button style={styles.primaryBtn} onClick={() => navigate(-1)}>
-            返回
-          </button>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+            <button style={{ ...styles.primaryBtn, background: "#fff", color: "#856849", border: "1px solid #D8CDBF" }} onClick={() => setReloadKey((k) => k + 1)}>
+              重新加载
+            </button>
+            <button style={styles.primaryBtn} onClick={() => navigate(-1)}>
+              返回
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -395,7 +449,7 @@ export default function QuestPractice() {
         </button>
         <ModeTabs currentMode="practice" courseId={effectiveCourseId} />
         <div style={styles.progress}>
-          第 {currentSequenceIndex + 1} / {sequences.length} 课
+          {unitMeta?.title || "练习"} ({currentSequenceIndex + 1}/{sequences.length})
         </div>
         {/* Combo 连击显示 */}
         {combo > 0 && (
@@ -416,7 +470,7 @@ export default function QuestPractice() {
         </button>
       </div>
 
-      {/* 进度条 */}
+      {/* 全局进度条 */}
       <div style={styles.progressBarBg}>
         <div
           style={{
@@ -424,6 +478,14 @@ export default function QuestPractice() {
             width: `${((currentGlobalUnitIndex + 1) / totalUnits) * 100}%`,
           }}
         />
+      </div>
+
+      {/* 家族内进度：家族名 + 步骤 x/y */}
+      <div style={styles.familyBar}>
+        <span style={styles.familyName}>{currentSequence?.familyName || ""}</span>
+        <span style={styles.familyStep}>
+          步骤 {currentUnitIndex + 1}/{currentSequence?.units?.length || 0}
+        </span>
       </div>
 
       {/* 主内容区 */}
@@ -629,6 +691,16 @@ const styles = {
     background: "linear-gradient(90deg, #E879F9, #A855F7)",
     transition: "width 0.3s ease",
   },
+  familyBar: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "6px 24px",
+    fontSize: 12,
+    background: "#FFFFFF",
+  },
+  familyName: { fontWeight: 600, color: "#6D5C4E" },
+  familyStep: { color: "#A99B8C", fontVariantNumeric: "tabular-nums" },
   mainContent: {
     flex: 1,
     display: "flex",

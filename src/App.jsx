@@ -47,6 +47,7 @@ export default function App() {
         <Route path="/dictionary" element={<Dictionary />} />
         <Route path="/tutor" element={<TutorChat />} />
         <Route path="/quest" element={<RuQuest />} />
+        <Route path="/quest/:packId" element={<RuQuest />} />
         <Route path="/test-practice" element={<TestPractice />} />
         <Route path="/quest-store" element={<CourseStore />} />
         <Route path="/quest-practice" element={<QuestPractice />} />

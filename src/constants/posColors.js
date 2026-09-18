@@ -16,7 +16,7 @@ export const POS_COLORS = {
   conjunction: "#EC4899",  // 连词 - 粉
   interjection: "#F97316", // 感叹词 - 橙
   numeral: "#A855F7",      // 数词 - 紫（同形容词）
-  particle: "#64748B",     // 助词 - 深灰
+  particle: "#06B6D4",     // 助词 - 青（高亮，区别于其他词性）
   default: "#9CA3AF",      // 其他 - 浅灰
 };
 
