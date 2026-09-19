@@ -120,7 +120,7 @@
 
 .db-grid{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
 .db-col-main{display:flex;flex-direction:column;gap:16px;min-width:0}
-.db-col-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.db-col-side{display:flex;flex-direction:column;gap:16px;min-width:0;position:sticky;top:84px;align-self:start}
 .db-card .pad{padding:16px 18px}
 .db-sec-title{font-size:14.5px;font-weight:700;color:var(--db-text)}
 .db-sec-cap{font-size:11.5px;color:var(--db-text-3);margin-top:1px}
@@ -337,3 +337,15 @@
   .tf-done-tag{padding:6px 11px;font-size:12px}
   .tf-celebrate{flex-direction:column;align-items:flex-start;gap:8px}
 }
+
+/* ============ 学习舱 · 六维雷达 Pro 围栏 ============ */
+.pro-badge{display:inline-block;background:var(--db-brand);color:#fff;font-size:10px;font-weight:800;
+  letter-spacing:.5px;border-radius:6px;padding:1px 7px;margin-left:8px;vertical-align:middle}
+.db-pro-unlock{border:none;background:var(--db-brand-soft);color:var(--db-brand);font-size:11.5px;
+  font-weight:700;border-radius:999px;padding:4px 11px;cursor:pointer;font-family:var(--db-font)}
+.db-pro-unlock:hover{background:var(--db-brand);color:#fff}
+.db-pro-card{position:relative}
+/* 侧栏较窄：雷达在上、进度条在下，避免两列挤出右边 */
+.db-pro-card .db-ability{grid-template-columns:1fr;gap:12px;padding:14px 16px}
+.db-pro-card .db-radar-wrap{order:-1}
+.db-pro-card .db-bars{min-width:0}

@@ -39,3 +39,13 @@ export const RECENT_ACTIVITY = [
   { thumb: '🎧', thumbTone: 'brandSoft', title: '精听《A Glass of Water》', time: '昨天 21:05' },
   { thumb: 'У2', thumbTone: 'brand', title: '完成 Урок 2 全部 3 个家族', time: '3 天前' },
 ]
+
+// 六维语言能力雷达（占位，0-100）：词汇/听力/阅读/语法/口语/写作
+export const SKILL_ABILITIES = [
+  { label: '词汇', value: 78 },
+  { label: '听力', value: 62 },
+  { label: '阅读', value: 70 },
+  { label: '语法', value: 55 },
+  { label: '口语', value: 40 },
+  { label: '写作', value: 48 },
+]

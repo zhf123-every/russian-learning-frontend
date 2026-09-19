@@ -3,7 +3,10 @@ import GreetingHeader from '../components/dashboard/GreetingHeader'
 import ContinueLearningCard from '../components/dashboard/ContinueLearningCard'
 import TodayFlow from '../components/dashboard/TodayFlow'
 import QuickTools from '../components/dashboard/QuickTools'
+import RightRail from '../components/dashboard/RightRail'
+import GrammarAbilitySection from '../components/dashboard/GrammarAbilitySection'
 import LearningLoopCard from '../components/dashboard/LearningLoopCard'
+import { SKILL_ABILITIES } from '../data/dashboardPlaceholder'
 import '../styles/dashboard.css'
 
 export default function Dashboard() {
@@ -24,6 +27,10 @@ export default function Dashboard() {
           </main>
           <aside className="db-col-side">
             <QuickTools />
+            {/* 复盘统计：打卡日历 / 学习热力 / 最近学习 */}
+            <RightRail />
+            {/* 六维能力雷达（Pro） */}
+            <GrammarAbilitySection abilities={SKILL_ABILITIES} />
           </aside>
         </div>
       </div>
