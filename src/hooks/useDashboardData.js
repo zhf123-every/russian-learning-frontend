@@ -2,18 +2,24 @@ import { useEffect, useState, useCallback } from 'react'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://russian-learning-jetq.onrender.com'
 
-async function fetchJsonRetry(url, tries = 4) {
+// 带超时与重试的 JSON 请求。
+// Render 免费版冷启动可能 20s+，单次给 20s 超时；失败重试 3 次（冷启动唤醒后第二次通常很快）。
+async function fetchJsonRetry(url, tries = 3) {
   let lastErr
   for (let i = 0; i < tries; i++) {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 20000)
     try {
-      const res = await fetch(url)
+      const res = await fetch(url, { signal: ctrl.signal })
       if (!res.ok) throw new Error('HTTP ' + res.status)
       const j = await res.json()
       if (j && j.ok) return j.data
       throw new Error(j && j.error ? j.error : 'bad payload')
     } catch (e) {
       lastErr = e
-      await new Promise((r) => setTimeout(r, 500 * (i + 1)))
+      await new Promise((r) => setTimeout(r, 600 * (i + 1)))
+    } finally {
+      clearTimeout(timer)
     }
   }
   throw lastErr
