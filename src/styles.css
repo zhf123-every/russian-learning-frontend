@@ -89,7 +89,7 @@ display:flex;align-items:center;justify-content:center;font-size:16px}
 .home-card .icon,.home-card .sub,.home-card p{display:none}
 .home-card h2{font-size:15px;font-weight:500;letter-spacing:.5px;color:#fff;margin:0}
 /* ---------- 课程库 ---------- */
-.course{max-width:820px;margin:0 auto;padding:32px 24px}
+.course{margin:0 auto;padding:32px 24px}
 .course h2{font-size:20px;margin:0 0 16px;font-weight:600}
 .course-levels{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
 .course-item{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border:1px solid var(--border);border-radius:14px;margin-bottom:8px;cursor:pointer;background:var(--card)}
@@ -643,7 +643,7 @@ box-shadow:0 4px 16px rgba(155,123,94,0.20)}
 .cat.active{color:var(--accent-dark);font-weight:600;border-color:var(--accent);background:var(--accent-lighter);box-shadow:0 2px 8px rgba(155,123,94,0.10)}
 
 /* ---------- 课程库 ---------- */
-.course{max-width:860px;margin:0 auto;padding:36px 24px}
+.course{margin:0 auto;padding:36px 24px}
 .course h2{font-size:22px;margin:0 0 18px;font-weight:700;color:var(--text)}
 .course-levels{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
 .course-level{

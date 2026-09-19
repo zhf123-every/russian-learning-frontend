@@ -170,7 +170,7 @@ export default function CourseStore() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))",
               gap: 24,
             }}
           >

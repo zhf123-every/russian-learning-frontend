@@ -285,7 +285,7 @@ export default function Dictionary() {
               </div>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                 gap: 8,
               }}>
                 {group.items.map(item => (

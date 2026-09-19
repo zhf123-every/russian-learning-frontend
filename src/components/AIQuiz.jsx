@@ -437,7 +437,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                   <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: '#3D332C' }}>各题型得分</div>
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
                     gap: 8,
                   }}>
                     {Object.entries(result.breakdown).map(([type, val]) => (
