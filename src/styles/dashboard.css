@@ -23,7 +23,7 @@
 .app-shell{display:grid;grid-template-columns:var(--db-sidenav-w) 1fr;height:100vh;overflow:hidden;background:var(--bg);font-family:var(--db-font)}
 .shell-main{min-width:0;height:100vh;overflow-y:auto;overflow-x:hidden}
 .db-page{background:var(--db-bg);color:var(--db-text);font-family:var(--db-font);min-height:100%}
-.db-container{max-width:1360px;margin:0 auto;padding:26px 28px 56px}
+.db-container{width:100%;max-width:none;margin:0 auto;padding:26px 28px 56px}
 
 /* ============ 桌面侧边导航 ============ */
 .db-sidenav{
