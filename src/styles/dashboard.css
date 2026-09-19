@@ -249,3 +249,91 @@
   .db-page .sq-tab{padding:8px 14px;font-size:13.5px}
   .db-page .sq-head{align-items:flex-start}
 }
+
+/* ============ 学习舱 · 今日训练流 ============ */
+.tf-card{background:var(--db-card);border:1px solid var(--db-border);border-radius:var(--db-r-modal);box-shadow:var(--db-shadow);padding:22px 24px;margin-bottom:18px}
+.tf-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.tf-title{font-size:18px;font-weight:800;letter-spacing:-.3px;color:var(--db-text)}
+.tf-sub{font-size:12.5px;color:var(--db-text-2);margin-top:3px}
+.tf-ring{flex:none;display:block}
+.tf-ring text{font-family:var(--db-font)}
+
+.tf-list{display:flex;flex-direction:column}
+.tf-step{position:relative;display:flex;align-items:center;gap:14px;padding:15px 12px;border-radius:12px;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;text-align:left;font-family:var(--db-font)}
+.tf-step:hover{background:var(--db-card-2)}
+/* 时间线竖线：从本步节点中点连到下一步节点中点 */
+.tf-step:not(.last)::before{content:'';position:absolute;left:34px;top:50%;height:100%;width:2px;background:var(--db-border);z-index:0}
+.tf-check{position:relative;z-index:1;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:19px;flex:none;border:2px solid;cursor:pointer;background:#fff;transition:background .15s,border-color .15s,color .15s,transform .1s}
+.tf-check:active{transform:scale(.92)}
+.tf-check.tf-brand{color:var(--db-brand);background:var(--db-brand-soft);border-color:#C7D2FE}
+.tf-check.tf-amber{color:var(--db-amber);background:var(--db-amber-soft);border-color:var(--db-amber-border)}
+.tf-check.tf-ok{color:var(--db-ok);background:var(--db-ok-soft);border-color:#A7F3D0}
+.tf-check.on{background:var(--db-brand)!important;border-color:var(--db-brand)!important;color:#fff!important}
+.tf-body{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.tf-kicker{align-self:flex-start;font-size:10.5px;font-weight:700;letter-spacing:.5px;border-radius:999px;padding:1px 8px;margin-bottom:1px}
+.tf-kicker.k-brand{background:var(--db-brand-soft);color:var(--db-brand)}
+.tf-kicker.k-amber{background:var(--db-amber-soft);color:var(--db-amber-h)}
+.tf-kicker.k-ok{background:var(--db-ok-soft);color:var(--db-ok)}
+.tf-name{font-size:15px;font-weight:700;color:var(--db-text);line-height:1.3}
+.tf-desc{font-size:12.5px;color:var(--db-text-3);line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.tf-right{flex:none;margin-left:auto}
+.tf-go-btn{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--db-brand);background:#fff;border:1px solid var(--db-brand);border-radius:999px;padding:8px 15px;white-space:nowrap;transition:background .15s,color .15s}
+.tf-step:hover .tf-go-btn{background:var(--db-brand);color:#fff}
+.tf-done-tag{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:var(--db-ok);background:var(--db-ok-soft);border-radius:999px;padding:7px 13px;white-space:nowrap}
+.tf-step.done .tf-name{color:var(--db-text-2)}
+.tf-step.done .tf-desc{color:var(--db-text-3)}
+
+.tf-cta{width:100%;margin-top:16px;border:none;cursor:pointer;font-family:var(--db-font);
+  background:linear-gradient(120deg,#3730A3,#4F46E5);color:#fff;font-size:15px;font-weight:700;
+  border-radius:12px;padding:15px;display:flex;align-items:center;justify-content:center;gap:9px;
+  box-shadow:0 6px 18px rgba(79,70,229,.25);transition:filter .15s}
+.tf-cta:hover{filter:brightness(1.06)}
+.tf-cta b{font-size:17px}
+.tf-celebrate{margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  background:var(--db-ok-soft);border:1px solid #A7F3D0;border-radius:12px;padding:14px 16px;
+  color:#065F46;font-size:13.5px;font-weight:700}
+.tf-extra{border:none;background:none;color:var(--db-ok);font-weight:800;font-size:13.5px;cursor:pointer;font-family:var(--db-font);white-space:nowrap}
+
+/* ============ 学习舱 · 侧栏工具入口 ============ */
+.qt-list{display:flex;flex-direction:column;gap:4px}
+.qt-row{display:flex;align-items:center;gap:11px;padding:9px 8px;border-radius:10px;text-decoration:none;color:var(--db-text);transition:background .15s}
+.qt-row:hover{background:var(--db-card-2)}
+.qt-ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:18px;flex:none}
+.qt-brand .qt-ic{background:var(--db-brand-soft);color:var(--db-brand)}
+.qt-amber .qt-ic{background:var(--db-amber-soft);color:var(--db-amber)}
+.qt-ok .qt-ic{background:var(--db-ok-soft);color:var(--db-ok)}
+.qt-txt{min-width:0;flex:1}
+.qt-t{display:block;font-size:13.5px;font-weight:700}
+.qt-s{display:block;font-size:11.5px;color:var(--db-text-3);margin-top:1px}
+.qt-arrow{color:var(--db-text-3);font-size:14px;flex:none}
+.qt-row:hover .qt-arrow{color:var(--db-brand)}
+
+/* ============ 学习舱 · 闭环导览卡 ============ */
+.ll-list{display:flex;flex-direction:column;gap:10px}
+.ll-item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--db-card);border:1px solid var(--db-border);
+  border-radius:var(--db-r-card);padding:13px 15px;cursor:pointer;font-family:var(--db-font);transition:border-color .15s,box-shadow .15s,transform .15s}
+.ll-item:hover{border-color:var(--db-border-strong);box-shadow:var(--db-shadow);transform:translateY(-1px)}
+.ll-ic{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;font-size:20px;flex:none;background:var(--db-brand-soft)}
+.ll-ok .ll-ic{background:var(--db-ok-soft)}
+.ll-body{min-width:0;flex:1}
+.ll-h{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700;color:var(--db-text)}
+.ll-tag{font-size:10.5px;font-weight:700;border-radius:999px;padding:1px 8px}
+.ll-tag.k-brand{background:var(--db-brand-soft);color:var(--db-brand)}
+.ll-tag.k-ok{background:var(--db-ok-soft);color:var(--db-ok)}
+.ll-d{display:block;font-size:12.5px;color:var(--db-text-2);line-height:1.5;margin-top:3px}
+.ll-arrow{color:var(--db-brand);font-size:15px;flex:none}
+
+@media(max-width:900px){
+  .tf-card{padding:18px 15px;border-radius:var(--db-r-card)}
+  .tf-head{margin-bottom:12px}
+  .tf-title{font-size:16.5px}
+  .tf-ring{width:58px;height:58px}
+  .tf-step{padding:12px 6px;gap:11px}
+  .tf-step:not(.last)::before{left:28px}
+  .tf-check{width:40px;height:40px;font-size:17px}
+  .tf-name{font-size:14px}
+  .tf-desc{white-space:normal}
+  .tf-go-btn{padding:7px 12px;font-size:12.5px}
+  .tf-done-tag{padding:6px 11px;font-size:12px}
+  .tf-celebrate{flex-direction:column;align-items:flex-start;gap:8px}
+}

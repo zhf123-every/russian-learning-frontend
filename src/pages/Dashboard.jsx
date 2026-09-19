@@ -1,10 +1,9 @@
 import { useDashboardData } from '../hooks/useDashboardData'
-import { CASE_ABILITIES, STREAK_DAYS } from '../data/dashboardPlaceholder'
 import GreetingHeader from '../components/dashboard/GreetingHeader'
 import ContinueLearningCard from '../components/dashboard/ContinueLearningCard'
-import GrammarAbilitySection from '../components/dashboard/GrammarAbilitySection'
-import TodayActions from '../components/dashboard/TodayActions'
-import RightRail from '../components/dashboard/RightRail'
+import TodayFlow from '../components/dashboard/TodayFlow'
+import QuickTools from '../components/dashboard/QuickTools'
+import LearningLoopCard from '../components/dashboard/LearningLoopCard'
 import '../styles/dashboard.css'
 
 export default function Dashboard() {
@@ -13,15 +12,18 @@ export default function Dashboard() {
   return (
     <div className="db-page">
       <div className="db-container">
-        <GreetingHeader streakDays={STREAK_DAYS} />
-        <ContinueLearningCard {...dash} />
+        <GreetingHeader />
+
+        {/* 今日训练流：复习 → 精听 → 闯关 → 口语，一条线串起三大学习模式 */}
+        <TodayFlow pack={dash.pack} target={dash.target} loading={dash.loading} />
+
         <div className="db-grid">
           <main className="db-col-main">
-            <GrammarAbilitySection abilities={CASE_ABILITIES} />
-            <TodayActions />
+            <ContinueLearningCard {...dash} />
+            <LearningLoopCard />
           </main>
           <aside className="db-col-side">
-            <RightRail />
+            <QuickTools />
           </aside>
         </div>
       </div>
