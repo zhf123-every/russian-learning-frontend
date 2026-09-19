@@ -15,6 +15,15 @@ import LearningTimer from '../components/quest/LearningTimer'                 //
 import DesktopPet, { petSpeak, petSetMood } from '../components/quest/DesktopPet' // P6 桌面宠物
 import WrongBookModal from '../components/quest/WrongBookModal'               // P6 错题本独立弹窗
 import * as questSounds from '../lib/questSounds' // 官方句乐部 mp3 原声音效（键盘/答对/答错）
+import PurchaseModal from '../components/PurchaseModal' // 课程解锁购买弹窗（前端模拟支付）
+import {
+  getCourseMeta as getAccessMeta,
+  isUnitUnlocked,
+  getPurchasedMap,
+  isCourseFullyOpen,
+  priceLabel as accessPriceLabel,
+  isFreeCourse,
+} from '../lib/courseAccess'
 
 // ================= 工具 =================
 const stripStress = s => (s || '').replace(/[\u0300-\u036f]/g, '')
@@ -256,6 +265,9 @@ export default function RuQuest() {
   })
   const [modeOpen, setModeOpen] = useState(false)  // 答题页内模式切换面板
   const [moreOpen, setMoreOpen] = useState(false)    // 工具栏「更多」溢出菜单（保留扩展功能入口）
+  const [showPayModal, setShowPayModal] = useState(false) // 课程解锁购买弹窗
+  const [lockedUnit, setLockedUnit] = useState(null)       // 被锁定、点击后触发购买的单元
+  const [purchasedMap, setPurchasedMap] = useState({})    // 已购买课程映射（localStorage）
 
   // 答题状态
   const [questions, setQuestions] = useState([])   // 本课全部题（每词一题 + 整句一题）
@@ -407,6 +419,27 @@ export default function RuQuest() {
 
   useEffect(() => { loadCatalog() }, [loadCatalog])
 
+  // 购买状态变化时刷新（模拟支付成功 / 跨页面购买）
+  useEffect(() => {
+    setPurchasedMap(getPurchasedMap())
+    const onChange = () => setPurchasedMap(getPurchasedMap())
+    window.addEventListener('rlearn:purchase-changed', onChange)
+    return () => window.removeEventListener('rlearn:purchase-changed', onChange)
+  }, [])
+
+  // 从锁定单元直链被守卫跳回时，自动弹出购买窗（?locked=unitId）
+  useEffect(() => {
+    if (!units.length || !pack) return
+    try {
+      const lockedId = new URLSearchParams(window.location.search).get('locked')
+      if (lockedId) {
+        const lu = units.find(u => u.id === lockedId)
+        if (lu && unitLocked(lu)) { setLockedUnit(lu); setShowPayModal(true) }
+      }
+    } catch (e) { /* 忽略 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [units, pack, purchasedMap])
+
   // 历史版本可能在本地存过已下线模式（口语/乱序/阅读），统一回落到中译俄
   useEffect(() => {
     if (mode && !ACTIVE_MODE_KEYS.includes(mode)) {
@@ -415,8 +448,19 @@ export default function RuQuest() {
     }
   }, [mode])
 
-  // 点击单元：打开练习模式弹窗
+  // 单元是否锁定（按单元在课程中的顺序索引判断）
+  const unitLocked = (u) => {
+    const idx = units.findIndex(x => x.id === u.id)
+    return !isUnitUnlocked({ pack, unitIndex: idx, purchasedMap })
+  }
+
+  // 点击单元：锁定 → 购买弹窗；已解锁 → 练习模式弹窗
   const openUnit = (u) => {
+    if (unitLocked(u)) {
+      setLockedUnit(u)
+      setShowPayModal(true)
+      return
+    }
     setSelectedLesson(u)
     setDraftMode(ACTIVE_MODE_KEYS.includes(mode) ? mode : 'chinese_to_english')
     setShowModeModal(true)
@@ -429,8 +473,9 @@ export default function RuQuest() {
     setMode(mk)
     try { localStorage.setItem('rlearn_quest_mode', mk) } catch (e) { /* 忽略 */ }
     setShowModeModal(false)
-    if (mk === 'dictation') navigate('/quest-dictation/' + encodeURIComponent(u.id))
-    else navigate('/quest-practice/' + encodeURIComponent(u.id))
+    const packQ = pack ? '?pack=' + encodeURIComponent(pack.id) : ''
+    if (mk === 'dictation') navigate('/quest-dictation/' + encodeURIComponent(u.id) + packQ)
+    else navigate('/quest-practice/' + encodeURIComponent(u.id) + packQ)
   }
 
   // —— 课程/题库 ——
@@ -1391,7 +1436,27 @@ export default function RuQuest() {
                       </div>
                     </div>
                     <div style={styles.detailHeadRight}>
-                      <button style={styles.detailStartBtn} onClick={() => units[0] && openUnit(units[0])}>开始学习</button>
+                      {(() => {
+                        const am = getAccessMeta(pack)
+                        const fullyOpen = isCourseFullyOpen(pack, purchasedMap)
+                        const firstOpen = units.find((u, idx) => isUnitUnlocked({ pack, unitIndex: idx, purchasedMap })) || units[0]
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            {!fullyOpen && (
+                              <span style={{ fontSize: 16, fontWeight: 800, color: '#4F46E5' }}>{accessPriceLabel(am)}</span>
+                            )}
+                            <button style={styles.detailStartBtn} onClick={() => firstOpen && openUnit(firstOpen)}>
+                              {fullyOpen ? '开始学习' : '免费试学'}
+                            </button>
+                            {!fullyOpen && (
+                              <button
+                                style={{ ...styles.detailStartBtn, background: '#fff', color: '#4F46E5', border: '1.5px solid #4F46E5', boxShadow: 'none' }}
+                                onClick={() => { setLockedUnit(null); setShowPayModal(true) }}
+                              >解锁全部</button>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
 
@@ -1413,19 +1478,21 @@ export default function RuQuest() {
                           const dm = DIFF_META[u.difficulty] || DIFF_META.medium
                           const done = u.status === '已完成'
                           const doing = u.status === '进行中'
+                          const locked = !isUnitUnlocked({ pack, unitIndex: i, purchasedMap })
                           return (
                             <div key={u.id} style={{ ...styles.routeRow, justifyContent: isLeft ? 'flex-start' : 'flex-end' }}>
                               {i > 0 && <div style={{ ...styles.routeConnector, ...(isLeft ? styles.routeConnectorLeft : styles.routeConnectorRight) }} />}
-                              <div className="route-node-wrap" style={styles.routeNodeWrap} onClick={() => openUnit(u)}>
+                              <div className="route-node-wrap" style={{ ...styles.routeNodeWrap, ...(locked ? { opacity: .6, cursor: 'not-allowed' } : {}) }} onClick={() => openUnit(u)}>
                                 <div className="route-node" style={{
                                   ...styles.routeNode,
                                   ...(done ? styles.routeNodeActive : {}),
                                   ...(doing ? { borderColor: '#6366F1', background: '#F3EFFC' } : {}),
+                                  ...(locked ? { background: '#F3F4F6', borderColor: '#E5E7EB' } : {}),
                                 }}>
-                                  <span className="route-node-icon" style={{ ...styles.routeNodeIcon, ...((done || doing) ? { color: done ? '#fff' : '#7c3aed' } : {}) }}>{done ? '✓' : u.order}</span>
+                                  <span className="route-node-icon" style={{ ...styles.routeNodeIcon, ...((done || doing) ? { color: done ? '#fff' : '#7c3aed' } : {}), ...(locked ? { color: '#9CA3AF' } : {}) }}>{locked ? '🔒' : (done ? '✓' : u.order)}</span>
                                 </div>
-                                <div style={styles.routeNodeLabel}>{u.title}</div>
-                                <div style={{ ...styles.routeNodeDiff, color: dm.color }}>{dm.label}</div>
+                                <div style={{ ...styles.routeNodeLabel, ...(locked ? { color: '#9CA3AF' } : {}) }}>{u.title}</div>
+                                <div style={{ ...styles.routeNodeDiff, color: locked ? '#9CA3AF' : dm.color }}>{locked ? '未解锁' : dm.label}</div>
                               </div>
                             </div>
                           )
@@ -1441,18 +1508,23 @@ export default function RuQuest() {
                         <div style={styles.detailOutlineTitle}>大纲 <span style={styles.detailOutlineCount}>共 {units.length} 个单元</span></div>
                       </div>
                       <div className="unit-grid">
-                        {units.map(u => {
+                        {units.map((u, idx) => {
                           const dm = DIFF_META[u.difficulty] || DIFF_META.medium
                           const st = STATUS_META[u.status] || STATUS_META['未开始']
+                          const locked = !isUnitUnlocked({ pack, unitIndex: idx, purchasedMap })
                           return (
-                            <div key={u.id} className="unit-card" style={styles.unitCard} onClick={() => openUnit(u)}>
+                            <div key={u.id} className="unit-card" style={{ ...styles.unitCard, ...(locked ? { opacity: .6, cursor: 'not-allowed' } : {}) }} onClick={() => openUnit(u)}>
                               <div style={styles.unitCardTop}>
                                 <span style={styles.unitNo}>{u.title}</span>
-                                <span style={{ ...styles.unitBadge, color: dm.color, background: dm.bg }}>{dm.label}</span>
+                                {locked
+                                  ? <span style={{ ...styles.unitBadge, color: '#6B7280', background: '#F3F4F6' }}>🔒 未解锁</span>
+                                  : <span style={{ ...styles.unitBadge, color: dm.color, background: dm.bg }}>{dm.label}</span>}
                               </div>
                               <div style={styles.unitSub}>{u.subtitle}</div>
                               <div style={styles.unitMeta}>{u.family_count} 个家族 · {u.step_count} 步</div>
-                              <span style={{ ...styles.unitStatus, color: st.color, background: st.bg }}>{st.label}</span>
+                              {locked
+                                ? <span style={{ ...styles.unitStatus, color: '#6B7280', background: '#F3F4F6' }}>购买后解锁</span>
+                                : <span style={{ ...styles.unitStatus, color: st.color, background: st.bg }}>{st.label}</span>}
                             </div>
                           )
                         })}
@@ -1464,6 +1536,23 @@ export default function RuQuest() {
             </div>
 
             {/* 练习模式选择弹窗（仅中译俄 / 听写） */}
+            {showPayModal && pack && (
+              <PurchaseModal
+                pack={pack}
+                units={units}
+                onClose={() => setShowPayModal(false)}
+                onPurchased={() => {
+                  setPurchasedMap(getPurchasedMap())
+                  setShowPayModal(false)
+                  const target = lockedUnit || units[0]
+                  if (target) {
+                    setSelectedLesson(target)
+                    setDraftMode(ACTIVE_MODE_KEYS.includes(mode) ? mode : 'chinese_to_english')
+                    setShowModeModal(true)
+                  }
+                }}
+              />
+            )}
             {showModeModal && selectedLesson && (
               <div style={styles.modalRoot} onClick={() => setShowModeModal(false)}>
                 <div className="modal-pop" style={styles.modeModal} onClick={e => e.stopPropagation()}>

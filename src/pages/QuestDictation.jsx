@@ -18,6 +18,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { checkUnitAccess } from "../lib/courseAccess";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -156,6 +157,21 @@ export default function QuestDictation() {
     },
     [inputValue, isComposingRef, playAudio, handleInputKeyDown]
   );
+
+  // ---- 付费单元守卫：带 ?pack= 进入时校验是否解锁，锁定则回课程详情并弹购买窗 ----
+  useEffect(() => {
+    let packId = null
+    try { packId = new URLSearchParams(window.location.search).get("pack") } catch (e) { packId = null }
+    if (!packId || !effectiveCourseId) return
+    let cancelled = false
+    ;(async () => {
+      const r = await checkUnitAccess(API_BASE, packId, effectiveCourseId)
+      if (!cancelled && !r.allowed) {
+        navigate('/quest/' + encodeURIComponent(packId) + '?locked=' + encodeURIComponent(effectiveCourseId), { replace: true })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [effectiveCourseId])
 
   // ---- 加载课程 ----
   useEffect(() => {
