@@ -4,11 +4,11 @@ import { toast } from '../lib/toast'
 import { mdToHtml } from '../lib/md'
 
 const STAGE_NAMES = {
-  1: '整体盲听',
-  2: '逐句听写',
-  3: '对照精读',
-  4: '跟读模仿',
-  5: '脱稿背诵',
+  1: '盲听',
+  2: '听写',
+  3: '精读',
+  4: '跟读',
+  5: '复述',
 }
 
 export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
@@ -35,9 +35,9 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
   useEffect(() => {
     if (!stage || lastStageRef.current === stage) return
     lastStageRef.current = stage
-    const stageName = STAGE_NAMES[stage] || `阶段${stage}`
-    const guidePrompt = `你是俄语学习助教，正在引导用户进行尚雯婕五阶段学习法。当前阶段是第${stage}阶段（${stageName}）。
-请用2-3句话给出本阶段的学习目标、方法和注意事项。用简洁中文，语气鼓励友好。`
+    const stageName = STAGE_NAMES[stage] || `第${stage}步`
+    const guidePrompt = `你是俄语学习助教，正在引导用户进行五步精听学习法。当前是第${stage}步（${stageName}）。
+请用2-3句话给出本步骤的学习目标、方法和注意事项。用简洁中文，语气鼓励友好。`
 
     setLoading(true)
     callAI([{ role: 'system', content: guidePrompt }])
@@ -58,9 +58,9 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
     setMessages(prev => [...prev, { role: 'user', content: text }])
     setLoading(true)
 
-    const stageName = STAGE_NAMES[stage] || `阶段${stage}`
-    const systemPrompt = `你是俄语学习助教，正在引导用户进行尚雯婕五阶段学习法。
-当前阶段：第${stage}阶段（${stageName}）
+    const stageName = STAGE_NAMES[stage] || `第${stage}步`
+    const systemPrompt = `你是俄语学习助教，正在引导用户进行五步精听学习法。
+当前阶段：第${stage}步（${stageName}）
 当前句子：${curSentence?.russian || '无'} — ${curSentence?.chinese || '无'}
 文章标题：${videoTitle || '未命名'}
 请用简洁中文回答用户的问题，必要时给出俄语例句和中文翻译。如果用户问的是当前句子相关的问题，结合句子内容解答。`
@@ -173,7 +173,7 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 14, color: '#3D332C' }}>俄语助教</div>
           <div style={{ fontSize: 11, color: 'var(--muted, #86796D)' }}>
-            阶段{stage} · {STAGE_NAMES[stage] || '未知'}
+            第{stage}步 · {STAGE_NAMES[stage] || '未知'}
           </div>
         </div>
         <button

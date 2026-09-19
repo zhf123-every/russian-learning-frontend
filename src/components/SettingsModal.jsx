@@ -817,7 +817,7 @@ export default function SettingsModal({ onClose }) {
                       </div>
                     </div>
                     <div className="qs-item">
-                      <div className="qs-item-left"><div className="qs-item-label">尚雯婕模式循环遍数</div></div>
+                      <div className="qs-item-left"><div className="qs-item-label">五步精听循环遍数</div></div>
                       <div className="qs-item-right"><input type="number" min="1" max="10" style={{ width: 90 }} value={s.loopTimes} onChange={e => set('loopTimes', parseInt(e.target.value) || 3)} /></div>
                     </div>
                     <div className="qs-item">

@@ -119,8 +119,8 @@ export default function AddMaterialModal({ onClose }) {
       level: '自定义',
       ...(hasVideo ? { videoUrl: videoUrl.trim() } : {}),
     })
-    toast(sentences.length ? '已保存，开始学习' : '已保存视频（暂无字幕，仅可观看）')
-    navigate('/study/' + id)
+    toast(sentences.length ? '已保存，开始五步精听' : '已保存视频（暂无字幕，仅可观看）')
+    navigate(sentences.length ? `/square/${id}?mode=shang` : `/square/${id}`)
   }
 
   return (

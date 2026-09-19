@@ -7,9 +7,6 @@ import ToolsHub from './pages/ToolsHub'
 import ProfileHub from './pages/ProfileHub'
 import AppShell from './components/layout/AppShell'
 
-import CoursePage from './pages/CoursePage'
-import CustomMaterials from './pages/CustomMaterials'
-import ShangMethod from './pages/ShangMethod'
 import SquarePage from './pages/SquarePage'
 import Study from './pages/Study'
 import Vocab from './pages/Vocab'
@@ -53,11 +50,11 @@ export default function App() {
         <Route path="/dictionary" element={<Dictionary />} />
         <Route path="/profile" element={<Profile />} />
 
-        {/* 旧入口：导航已移除，路由暂留防死链，第二批整合后重定向 */}
-        <Route path="/course" element={<CoursePage />} />
-        <Route path="/custom" element={<CustomMaterials />} />
-        <Route path="/method" element={<ShangMethod />} />
-        <Route path="/method/:level" element={<ShangMethod />} />
+        {/* 旧入口：自定义素材 / 分级课程 / 学习法介绍，统一并入「精听学习」/square */}
+        <Route path="/course" element={<Navigate to="/square" replace />} />
+        <Route path="/custom" element={<Navigate to="/square" replace />} />
+        <Route path="/method" element={<Navigate to="/square" replace />} />
+        <Route path="/method/:level" element={<Navigate to="/square" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

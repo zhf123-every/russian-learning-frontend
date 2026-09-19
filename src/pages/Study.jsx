@@ -18,18 +18,18 @@ import AIQuiz from '../components/AIQuiz'
 
 // 5 个阶段提示文案
 const STAGE_HINTS = {
- [STAGES.LISTEN]: '阶段 1 · 整体盲听：反复听完整篇素材，视频与字幕已隐藏，目标是感受整体语境主旨。',
- [STAGES.DICTATE]: '阶段 2 · 逐句盲听听写（核心）：单句循环播放，字幕已隐藏；把听到的敲入输入框，听不出可点「跳过」。',
- [STAGES.CORRECT]: '阶段 3 · 对照精读纠错：现在显示原文。逐句对比自己的听写文本，查生词、语法、连读弱读差异。',
- [STAGES.RECITE]: '阶段 4 · 跟读模仿训练：原文已显示，单句循环，影子跟读，模仿重音、语调与语速。',
- [STAGES.RECITE_OUT]: '阶段 5 · 脱稿背诵输出（最重要）：再次隐藏全部字幕，听一句复述一句，语速尽量对齐原声。',
+ [STAGES.LISTEN]: '第1步 · 盲听：反复听完整篇素材，视频与字幕已隐藏，目标是感受整体语境主旨。',
+ [STAGES.DICTATE]: '第2步 · 听写（核心）：单句循环播放，字幕已隐藏；把听到的敲入输入框，听不出可点「跳过」。',
+ [STAGES.CORRECT]: '第3步 · 精读纠错：现在显示原文。逐句对比自己的听写文本，查生词、语法、连读弱读差异。',
+ [STAGES.RECITE]: '第4步 · 跟读：原文已显示，单句循环，影子跟读，模仿重音、语调与语速。',
+ [STAGES.RECITE_OUT]: '第5步 · 复述（最重要）：再次隐藏全部字幕，听一句复述一句，语速尽量对齐原声。',
 }
 const STAGE_LABELS = {
- [STAGES.LISTEN]: '阶段1 整体盲听',
- [STAGES.DICTATE]: '阶段2 逐句盲听听写',
- [STAGES.CORRECT]: '阶段3 对照精读纠错',
- [STAGES.RECITE]: '阶段4 影子跟读',
- [STAGES.RECITE_OUT]: '阶段5 脱稿背诵输出',
+ [STAGES.LISTEN]: '第1步 盲听',
+ [STAGES.DICTATE]: '第2步 听写',
+ [STAGES.CORRECT]: '第3步 精读',
+ [STAGES.RECITE]: '第4步 跟读',
+ [STAGES.RECITE_OUT]: '第5步 复述',
 }
 const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
 
@@ -578,7 +578,7 @@ export default function Study() {
 
  const shangFinish = () =>{
  shang.finish(videoId)
- toast('尚雯婕训练完成！')
+ toast('五步精听完成！')
  }
 
  // —— 阶段5 录音背诵功能 ——
@@ -751,7 +751,7 @@ export default function Study() {
 </div>
  {!play && (
 <div className="card" style={{ padding: '10px 14px', background: '#FDF2E9', border: '1px solid #E8C9A0', color: '#A86454', fontSize: 13, lineHeight: 1.6 }}>
- 该素材没有视频地址（videoUrl），按钮无法控制视频播放。请在「自定义素材」中填写 mp4 视频链接后重新学习。
+ 该素材没有视频地址（videoUrl），按钮无法控制视频播放。请在「精听学习 · 我的素材」中填写 mp4 视频链接后重新学习。
 </div>
  )}
  {!(shangMode && (curStage === STAGES.LISTEN || curStage === STAGES.DICTATE)) && (
@@ -782,7 +782,7 @@ export default function Study() {
 <div className="row mode-row" style={{ marginBottom: 10, justifyContent: 'space-between' }}>
 <div className="stages">
  {shangMode ? (
-<span className="stage active shang-active">尚雯婕学习法</span>
+<span className="stage active shang-active">五步精听</span>
  ) : (
 <>
 <span className="stage" style={{ opacity: 0.65, cursor: 'default', fontWeight: 400 }}>普通学习</span>
@@ -799,13 +799,13 @@ export default function Study() {
  className="btn sm primary"
  onClick={() =>{
  if (!sentences || sentences.length === 0) {
- toast('该素材缺少分句字幕，无法使用尚雯婕学习法')
+ toast('该素材缺少分句字幕，无法使用五步精听')
  return
  }
  shang.init(videoId)
  setSearchParams({ mode: 'shang' })
  }}
- >尚雯婕学习法</button>
+ >五步精听</button>
  )}
 </div>
 
@@ -1117,7 +1117,7 @@ export default function Study() {
  )}
 </div>
 
- {isShangFinished &&<div style={{ marginTop: 14, color: '#5C8A6B', fontWeight: 600 }}>本素材尚雯婕训练已完成</div>}
+ {isShangFinished &&<div style={{ marginTop: 14, color: '#5C8A6B', fontWeight: 600 }}>本素材五步精听已完成</div>}
 </div>
  )}
 
