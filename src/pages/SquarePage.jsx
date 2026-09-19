@@ -42,6 +42,7 @@ export default function SquarePage() {
   const [adminInput, setAdminInput] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [showTranscribe, setShowTranscribe] = useState(false)
+  const [transcribeItem, setTranscribeItem] = useState(null)
 
   useEffect(() => { fetchServer() }, [fetchServer])
 
@@ -99,6 +100,11 @@ export default function SquarePage() {
         <button className="btn sm primary" onClick={(e) => { e.stopPropagation(); navigate(learnPath(item)) }}>
           {hasSubs(item) ? '五步精听' : '观看视频'}
         </button>
+        {isAdmin && item.videoUrl?.startsWith('b2://') && (
+          <button className="btn sm" onClick={(e) => { e.stopPropagation(); setTranscribeItem(item); setShowTranscribe(true) }}>
+            {hasSubs(item) ? '更新字幕' : '生成字幕'}
+          </button>
+        )}
         {isAdmin && <button className="btn sm" onClick={(e) => { e.stopPropagation(); doDelete(item) }}>删除</button>}
       </div>
     </div>
@@ -198,7 +204,9 @@ export default function SquarePage() {
         <ContributeModal onClose={() => setShowContribute(false)} onSubmit={(data) => submitItem(data, adminKey)} />
       )}
       {showAdd && <AddMaterialModal onClose={() => setShowAdd(false)} />}
-      {showTranscribe && <TranscribeModal onClose={() => setShowTranscribe(false)} />}
+      {showTranscribe && (
+        <TranscribeModal onClose={() => { setShowTranscribe(false); setTranscribeItem(null) }} item={transcribeItem} />
+      )}
 
       {showAdmin && (
         <div className="modal-mask" onClick={() => setShowAdmin(false)}>

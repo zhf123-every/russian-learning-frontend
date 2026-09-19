@@ -60,6 +60,8 @@ export default function ContributeModal({ onClose, onSubmit }) {
   const [uploadOk, setUploadOk] = useState(null)   // true=上传成功 false=上传失败 null=未开始
   const [cover, setCover] = useState('')           // 自动提取的封面 dataURL
   const [coverBusy, setCoverBusy] = useState(false)
+  const [subsOpen, setSubsOpen] = useState(false)  // 手动粘贴字幕：点击后才展开
+  const [manualSubs, setManualSubs] = useState('')
   const fileInputRef = useRef(null)
   const adminKey = useAdminStore(s => s.adminKey)
 
@@ -121,6 +123,15 @@ export default function ContributeModal({ onClose, onSubmit }) {
     setSubmitting(true)
     try {
       const id = 'square_' + Date.now()
+
+      // 手动粘贴字幕（兜底）：点击展开后粘贴 SRT/VTT/纯文本，逐行断句
+      let sentences = []
+      if (manualSubs.trim()) {
+        const { parseTextToSentences } = await import('../lib/srt')
+        const { sentences: parsed } = parseTextToSentences(manualSubs)
+        sentences = parsed.map((s, i) => ({ id: i + 1, russian: s.text, chinese: '' }))
+      }
+
       const payload = {
         id,
         title: form.title,
@@ -131,14 +142,18 @@ export default function ContributeModal({ onClose, onSubmit }) {
         description: '',
         thumbnail: cover || `https://picsum.photos/seed/${id}/400/280`,
         posterUrl: cover || `https://picsum.photos/seed/${id}/1280/720`,
-        sentences: [],   // 字幕后续通过「音频识别」生成（本弹窗不再手动粘贴）
+        sentences,
         author: '管理员',
         views: 0,
         createdAt: Date.now(),
         tags: ['mp4', form.category, form.level]
       }
       await onSubmit(payload)
-      toast('投稿成功！素材已发布到广场，可到卡片上「音频识别」生成字幕')
+      if (sentences.length) {
+        toast('投稿成功！已含 ' + sentences.length + ' 句字幕')
+      } else {
+        toast('投稿成功！素材已发布到广场，可到卡片上「生成字幕」自动转写')
+      }
       onClose()
       navigate('/square')
     } catch (e) {
@@ -213,6 +228,25 @@ export default function ContributeModal({ onClose, onSubmit }) {
           <select value={form.level} onChange={handleChange('level')}>
             {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
+        </div>
+
+        <div className="field">
+          {!subsOpen ? (
+            <button type="button" className="btn sm" onClick={() => setSubsOpen(true)}>＋ 手动粘贴字幕（可选）</button>
+          ) : (
+            <>
+              <label>手动粘贴字幕（兜底，SRT / VTT / 纯文本）</label>
+              <textarea
+                rows={4}
+                value={manualSubs}
+                onChange={e => setManualSubs(e.target.value)}
+                placeholder={'没有字幕时兜底用：\n\nSRT 例子：\n1\n00:00:01,000 --> 00:00:04,000\nПривет, как дела?'}
+              />
+              <div className="hint" style={{ marginTop: 4 }}>
+                不贴也可以：投稿后到广场卡片点「生成字幕」，自动转写 B2 视频。
+              </div>
+            </>
+          )}
         </div>
 
         <div className="mfoot">

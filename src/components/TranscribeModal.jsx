@@ -1,16 +1,21 @@
 ﻿import { useState } from 'react'
 import { useCourseStore } from '../store/courseStore'
 import { useSettingsStore } from '../store/settingsStore'
+import { useSquareStore } from '../store/squareStore'
+import { useAdminStore } from '../store/adminStore'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '../lib/toast'
 import { apiFetch } from '../lib/api'
 
-export default function TranscribeModal({ onClose }) {
+export default function TranscribeModal({ onClose, item }) {
   const navigate = useNavigate()
   const addMaterial = useCourseStore(s => s.addMaterial)
   const settings = useSettingsStore(s => s.settings)
-  const [url, setUrl] = useState('')
-  const [title, setTitle] = useState('')
+  const submitItem = useSquareStore(s => s.submitItem)
+  const adminKey = useAdminStore(s => s.adminKey)
+  const isSquareItem = !!(item && item.id)
+  const [url, setUrl] = useState(isSquareItem ? (item.videoUrl || '') : '')
+  const [title, setTitle] = useState(isSquareItem ? (item.title || '') : '')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
   const [segs, setSegs] = useState([])
@@ -40,14 +45,39 @@ export default function TranscribeModal({ onClose }) {
     }
   }
 
-  const save = () => {
+  const save = async () => {
     if (!segs.length) { toast('请先完成识别'); return }
+    const sentences = segs.map((s, i) => ({ ...s, id: i + 1 }))
+
+    // 广场素材：字幕写回服务端（同 id 更新），无需新建素材
+    if (isSquareItem) {
+      if (!adminKey) { toast('请先进入管理模式（右上角「管理」）'); return }
+      setBusy(true)
+      try {
+        await submitItem({
+          ...item,
+          title: title.trim() || item.title,
+          sentences,
+          tags: Array.from(new Set([...(item.tags || []), '转写'])),
+        }, adminKey)
+        toast('字幕已写回素材：' + sentences.length + ' 句')
+        onClose()
+        navigate('/square')
+      } catch (e) {
+        alert('保存失败：' + (e.message || '请重试'))
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
+
+    // 我的素材：本地保存（原有逻辑）
     const id2 = 'custom_' + Date.now().toString(36)
     addMaterial({
       id: id2,
       title: title.trim() || '材料 ' + segs.length,
       videoUrl: url.trim(),
-      sentences: segs.map((s, i) => ({ ...s, id: i + 1 })),
+      sentences,
       createdAt: Date.now(),
       thumbnail: 'https://picsum.photos/seed/' + id2 + '/400/280',
       posterUrl: 'https://picsum.photos/seed/' + id2 + '/1280/720',
@@ -63,10 +93,12 @@ export default function TranscribeModal({ onClose }) {
   return (
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <h2>音频识别</h2>
+        <h2>{isSquareItem ? '生成字幕' : '音频识别'}</h2>
         <p className="hint">
-          粘贴视频链接（YouTube/B站），后端用 faster-whisper 将音频转写为带时间戳的俄语句子。
-          模型：{settings.whisperModel || 'tiny'}
+          {isSquareItem
+            ? '为广场素材自动生成字幕：后端转写 B2 云端视频为带时间戳的俄语句子，写回该素材，之后即可五步精听。'
+            : '粘贴视频链接（YouTube/B站 或 mp4 直链），后端用 faster-whisper 将音频转写为带时间戳的俄语句子。'}
+          {' '}模型：{settings.whisperModel || 'tiny'}
         </p>
 
         <div className="field">
@@ -74,8 +106,12 @@ export default function TranscribeModal({ onClose }) {
           <input
             value={url}
             onChange={e => setUrl(e.target.value)}
-            placeholder="https://www.youtube.com/watch?v=..."
+            readOnly={isSquareItem}
+            placeholder="https://www.youtube.com/watch?v=... 或 b2:// 素材地址"
           />
+          {isSquareItem && (
+            <div className="hint" style={{ marginTop: 4 }}>已自动填入该素材的云端地址，直接点「开始识别」。</div>
+          )}
         </div>
 
         <div className="field">
@@ -104,12 +140,16 @@ export default function TranscribeModal({ onClose }) {
 
         <div className="mfoot">
           <button className="btn" onClick={onClose}>关闭</button>
-          <button className="btn" disabled={busy} onClick={() => { setUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'); setTitle('示例：俄语自我介绍'); toast('已填入示例链接') }}>用示例试试</button>
+          {!isSquareItem && (
+            <button className="btn" disabled={busy} onClick={() => { setUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'); setTitle('示例：俄语自我介绍'); toast('已填入示例链接') }}>用示例试试</button>
+          )}
           <button className="btn primary" disabled={busy} onClick={busy ? undefined : start}>
             {busy ? '转写中…' : '开始识别'}
           </button>
           {showPreview && (
-            <button className="btn primary" onClick={save}>保存并开始学习</button>
+            <button className="btn primary" onClick={save} disabled={busy}>
+              {isSquareItem ? '保存字幕到素材' : '保存并开始学习'}
+            </button>
           )}
         </div>
       </div>
