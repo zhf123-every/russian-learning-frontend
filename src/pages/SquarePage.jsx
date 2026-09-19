@@ -13,8 +13,8 @@ import { toast } from '../lib/toast'
 
 // 是否具备分句字幕（五步精听的前提）
 const hasSubs = (it) => Array.isArray(it?.sentences) && it.sentences.length > 0
-// 统一进入学习：有分句字幕 -> 五步精听；无字幕 -> 仅观看（Study 内部有无字幕视图）
-const learnPath = (it) => (hasSubs(it) ? `/square/${it.id}?mode=shang` : `/square/${it.id}`)
+// 统一进入学习：Study 已默认五步精听；无字幕素材由 Study 内部展示纯观看视图
+const learnPath = (it) => `/square/${it.id}`
 
 export default function SquarePage() {
   const navigate = useNavigate()

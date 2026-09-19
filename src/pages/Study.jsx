@@ -57,7 +57,8 @@ export default function Study() {
  const navigate = useNavigate()
  const [searchParams, setSearchParams] = useSearchParams()
  // 从 URL 携带 mode=shang 参数进入
- const shangMode = searchParams.get('mode') === 'shang'
+ // 五步精听为唯一学习模式（普通三阶段已下线、代码保留但无入口）；旧 ?mode=shang 链接仍可访问
+ const shangMode = true
 
  const courseVideo = useCourseStore(s =>s.getVideo(videoId))
  const squareVideo = useSquareStore(s =>s.getItem(videoId))
@@ -287,9 +288,8 @@ export default function Study() {
  // 无字幕素材：仅展示视频可观看，不做逐句学习
  if (sentences.length === 0) {
  return (
-<div className="main">
-<div className="col">
-<div className="card" style={{ padding: 10 }}>
+<div className="study-single">
+<div className="card study-video-card" style={{ padding: 10 }}>
 <div className="video-wrap">
  {play ? (
  play.type === 'direct' ? (
@@ -324,13 +324,10 @@ export default function Study() {
  )}
 </div>
 </div>
-</div>
-<div className="col">
 <div className="card" style={{ padding: 24, textAlign: 'center' }}>
 <div style={{ fontSize: 44, marginBottom: 10 }}></div>
 <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>该视频暂无字幕</div>
 <p className="hint" style={{ margin: 0 }}>只能观看视频，暂无法逐句学习。</p>
-</div>
 </div>
 </div>
  )
@@ -709,9 +706,8 @@ export default function Study() {
 
  // ========== 渲染 ==========
  return (
-<div className="main">
-<div className="col">
-<div className="card" style={{ padding: 10 }}>
+<div className="study-single">
+<div className="card study-video-card" style={{ padding: 10 }}>
 <div className={'video-wrap' + (shouldHideVideo ? ' hidden-video' : '')}>
  {play ? (
  play.type === 'direct' ? (
@@ -774,42 +770,8 @@ export default function Study() {
   })()}
 </div>
  )}
-</div>
-
-<div className="col">
-<div className="card">
- {/* 顶部模式条：普通 / 尚雯婕 */}
-<div className="row mode-row" style={{ marginBottom: 10, justifyContent: 'space-between' }}>
-<div className="stages">
- {shangMode ? (
-<span className="stage active shang-active">五步精听</span>
- ) : (
-<>
-<span className="stage" style={{ opacity: 0.65, cursor: 'default', fontWeight: 400 }}>普通学习</span>
- {TRAD_STAGES.map(t =>(
-<span key={t.key} className={'stage' + (stage === t.key ? ' active' : '')} onClick={() =>setStage(t.key)}>{t.label}</span>
- ))}
-</>
- )}
-</div>
- {shangMode ? (
-<button className="btn sm" onClick={shangExit}>切回普通模式</button>
- ) : (
-<button
- className="btn sm primary"
- onClick={() =>{
- if (!sentences || sentences.length === 0) {
- toast('该素材缺少分句字幕，无法使用五步精听')
- return
- }
- shang.init(videoId)
- setSearchParams({ mode: 'shang' })
- }}
- >五步精听</button>
- )}
-</div>
-
- {/* 尚雯婕五阶段切换条（仅尚雯婕模式） */}
+<div className="card study-stage-card">
+ {/* 五步精听阶段切换条 */}
  {shangMode && (
 <div className="stage-switch">
  {[1, 2, 3, 4, 5].map(s =>(
@@ -1280,17 +1242,6 @@ export default function Study() {
 </div>
 </>
  )}
-</div>
-</div>
-
-<div className="card" style={{ gridColumn: '1/-1' }}>
-<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-<div style={{ flex: 1 }}>
-<div style={{ fontWeight: 600 }}>课程视频</div>
-<div className="hint" style={{ margin: 0 }}>完成听写/跟读后提交评测计算得分</div>
-</div>
-<button className="btn primary" onClick={() =>{ const s = submitVideo(videoId); navigate('/') }}>提交评测</button>
-</div>
 </div>
 
  {/* 全文对照面板（阶段3/阶段4复用） */}
