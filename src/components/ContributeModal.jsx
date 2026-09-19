@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '../lib/toast'
+import { apiFetch } from '../lib/api'
+import { useAdminStore } from '../store/adminStore'
 
 const CATEGORIES = ['shopping', 'daily', 'vlog', 'speech', 'intro', 'campus', 'work', 'transport']
 const LEVELS = ['A1', 'A2', 'B1', 'B2']
@@ -16,9 +18,48 @@ export default function ContributeModal({ onClose, onSubmit }) {
   })
   const [manualSubs, setManualSubs] = useState('')   // 手动粘贴字幕（可选）
   const [submitting, setSubmitting] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadPct, setUploadPct] = useState(0)
+  const [uploadName, setUploadName] = useState('')
+  const fileInputRef = useRef(null)
+  const adminKey = useAdminStore(s => s.adminKey)
 
   const handleChange = (field) => (e) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }))
+  }
+
+  const pickFile = () => fileInputRef.current && fileInputRef.current.click()
+
+  const uploadToB2 = async (file) => {
+    if (!adminKey) { toast('请先登录管理员后再上传本地视频'); return }
+    setUploading(true); setUploadPct(0); setUploadName(file.name)
+    try {
+      const pr = await apiFetch('/api/upload/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, kind: 'video', contentType: file.type || 'video/mp4', adminKey })
+      })
+      const pj = await pr.json()
+      if (!pj.ok) { toast('获取上传授权失败：' + (pj.error || '未知错误')); return }
+      const ok = await new Promise((resolve) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('PUT', pj.uploadUrl, true)
+        xhr.setRequestHeader('Content-Type', pj.contentType)
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) setUploadPct(Math.round(e.loaded / e.total * 100)) }
+        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300)
+        xhr.onerror = () => resolve(false)
+        xhr.send(file)
+      })
+      if (!ok) { toast('视频上传失败，请检查网络或桶 CORS 设置'); return }
+      setForm(prev => ({ ...prev, videoUrl: pj.objectUrl }))
+      setUploadPct(100)
+      toast('视频已上传云端，地址已自动填好')
+    } catch (e) {
+      toast('上传异常：' + (e.message || '请重试'))
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
   const handleSubmit = async () => {
@@ -82,6 +123,31 @@ export default function ContributeModal({ onClose, onSubmit }) {
         </div>
 
         <div className="field">
+          <label>本地视频文件（可选，直传云端永久保存）</label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="video/*"
+            style={{ display: 'none' }}
+            onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) uploadToB2(f) }}
+          />
+          <button type="button" className="btn sm" onClick={pickFile} disabled={uploading}>
+            {uploading ? ('上传中 ' + uploadPct + '%') : '选择本地视频上传'}
+          </button>
+          {uploadName && (
+            <div className="hint" style={{ marginTop: 4 }}>
+              {uploading ? ('正在上传：' + uploadName + '（' + uploadPct + '%）') : ('已上传：' + uploadName + '，地址已填入下方')}
+            </div>
+          )}
+          {uploading && (
+            <div style={{ height: 6, background: '#eee', borderRadius: 3, marginTop: 6, overflow: 'hidden' }}>
+              <div style={{ width: uploadPct + '%', height: '100%', background: '#9B7B5E', transition: 'width .2s' }} />
+            </div>
+          )}
+          <div className="hint" style={{ marginTop: 4 }}>视频直传 Backblaze B2 云端（免费 10GB），不经过网站服务器；也可以不上传、直接在下方贴链接。</div>
+        </div>
+
+        <div className="field">
           <label>视频链接 / mp4 地址</label>
           <input
             value={form.videoUrl}
@@ -129,8 +195,8 @@ export default function ContributeModal({ onClose, onSubmit }) {
 
         <div className="mfoot">
           <button className="btn" onClick={onClose} disabled={submitting}>取消</button>
-          <button className="btn primary" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? '提交中...' : '投稿'}
+          <button className="btn primary" onClick={handleSubmit} disabled={submitting || uploading}>
+            {uploading ? '上传中…' : (submitting ? '提交中...' : '投稿')}
           </button>
         </div>
       </div>
