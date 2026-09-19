@@ -23,7 +23,7 @@ export default function Vocab() {
   const rate = (r) => { review(card.id, r); setShow(false); setI(0) }
 
   return (
-    <div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}>
+    <div style={{ padding: 24 }}>
       {/* 顶部标题和操作 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>

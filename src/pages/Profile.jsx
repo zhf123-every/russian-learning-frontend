@@ -25,13 +25,13 @@ export default function Profile() {
   }
 
   return (
-    <div className="course" style={{ maxWidth: 900, margin: '0 auto' }}>
+    <div className="course">
       <h2 style={{ marginBottom: 20 }}>📊 学习中心</h2>
 
       {/* 核心统计卡片 */}
       <div className="videos-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', marginBottom: 24 }}>
         <div className="card"><div className="score-big">{days.size}</div><div className="hint">学习天数</div></div>
-        <div className="card"><div className="score-big" style={{ color: '#8b5cf6' }}>{streak}</div><div className="hint">连续打卡</div></div>
+        <div className="card"><div className="score-big" style={{ color: '#4F46E5' }}>{streak}</div><div className="hint">连续打卡</div></div>
         <div className="card"><div className="score-big">{practiced}</div><div className="hint">练习句子数</div></div>
         <div className="card"><div className="score-big">{doneVideos}</div><div className="hint">完成视频数</div></div>
         <div className="card"><div className="score-big">{cards.length}</div><div className="hint">生词总数</div></div>

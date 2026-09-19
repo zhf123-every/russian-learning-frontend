@@ -187,7 +187,7 @@ export default function Dictionary() {
   }
 
   return (
-    <div className="main" style={{ display: 'block', maxWidth: 800, margin: '0 auto', padding: '24px 20px' }}>
+    <div className="main" style={{ display: 'block', padding: '24px 20px' }}>
       {/* 查询卡片 */}
       <div className="card">
         <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 14 }}>{meta.title}</div>

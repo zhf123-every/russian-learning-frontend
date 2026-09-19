@@ -92,7 +92,7 @@ export default function CourseStore() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#F7F6FB", padding: "28px 24px 60px" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+      <div>
         {/* 顶部标题 + 搜索 */}
         <div
           style={{
