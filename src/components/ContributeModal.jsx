@@ -7,6 +7,42 @@ import { useAdminStore } from '../store/adminStore'
 const CATEGORIES = ['shopping', 'daily', 'vlog', 'speech', 'intro', 'campus', 'work', 'transport']
 const LEVELS = ['A1', 'A2', 'B1', 'B2']
 
+// 本地视频文件 → 截帧生成封面（video + canvas，复用 thumbnail 思路）
+function extractVideoCover(file) {
+  return new Promise(resolve => {
+    if (!file) { resolve(''); return }
+    const objectUrl = URL.createObjectURL(file)
+    const video = document.createElement('video')
+    video.muted = true
+    video.playsInline = true
+    video.preload = 'auto'
+    video.src = objectUrl
+    let settled = false
+    const finish = (data) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      try { video.removeAttribute('src'); video.load() } catch (e) { /* 忽略 */ }
+      URL.revokeObjectURL(objectUrl)
+      resolve(data)
+    }
+    const timer = setTimeout(() => finish(''), 8000)
+    video.onloadeddata = () => { try { video.currentTime = 1 } catch (e) { finish('') } }
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = 480
+        canvas.height = 270
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(video, 0, 0, 480, 270)
+        finish(canvas.toDataURL('image/jpeg', 0.8))
+      } catch (e) { finish('') }
+    }
+    video.onerror = () => finish('')
+    video.load()
+  })
+}
+
 export default function ContributeModal({ onClose, onSubmit }) {
   const navigate = useNavigate()
   const [form, setForm] = useState({
@@ -14,14 +50,16 @@ export default function ContributeModal({ onClose, onSubmit }) {
     category: 'shopping',
     level: 'A1',
     videoUrl: '',
-    description: ''
+    thumbnail: '',
+    posterUrl: '',
   })
-  const [manualSubs, setManualSubs] = useState('')   // 手动粘贴字幕（可选）
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadPct, setUploadPct] = useState(0)
   const [uploadName, setUploadName] = useState('')
   const [uploadOk, setUploadOk] = useState(null)   // true=上传成功 false=上传失败 null=未开始
+  const [cover, setCover] = useState('')           // 自动提取的封面 dataURL
+  const [coverBusy, setCoverBusy] = useState(false)
   const fileInputRef = useRef(null)
   const adminKey = useAdminStore(s => s.adminKey)
 
@@ -34,6 +72,16 @@ export default function ContributeModal({ onClose, onSubmit }) {
   const uploadToB2 = async (file) => {
     if (!adminKey) { toast('请先登录管理员后再上传本地视频'); return }
     setUploading(true); setUploadPct(0); setUploadName(file.name); setUploadOk(null)
+    // 并行：上传同时自动提取视频封面
+    setCoverBusy(true)
+    extractVideoCover(file)
+      .then(data => {
+        if (data) {
+          setCover(data)
+          setForm(prev => ({ ...prev, thumbnail: data, posterUrl: data }))
+        }
+      })
+      .finally(() => setCoverBusy(false))
     try {
       const pr = await apiFetch('/api/upload/presign', {
         method: 'POST',
@@ -55,7 +103,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
       setForm(prev => ({ ...prev, videoUrl: pj.objectUrl }))
       setUploadPct(100)
       setUploadOk(true)
-      toast('视频已上传云端，地址已自动填好')
+      toast('视频已上传云端，封面已自动提取')
     } catch (e) {
       setUploadOk(false)
       toast('上传异常：' + (e.message || '请重试'))
@@ -67,20 +115,11 @@ export default function ContributeModal({ onClose, onSubmit }) {
 
   const handleSubmit = async () => {
     if (!form.title || !form.videoUrl) {
-      toast('请填写标题和视频链接/地址')
+      toast('请填写标题并上传视频')
       return
     }
     setSubmitting(true)
     try {
-      let sentences = []
-
-      // 字幕：手动粘贴（可选）
-      if (manualSubs.trim()) {
-        const { parseTextToSentences } = await import('../lib/srt')
-        const { sentences: parsed } = parseTextToSentences(manualSubs)
-        sentences = parsed.map((s, i) => ({ id: i + 1, russian: s.text, chinese: '' }))
-      }
-
       const id = 'square_' + Date.now()
       const payload = {
         id,
@@ -89,22 +128,17 @@ export default function ContributeModal({ onClose, onSubmit }) {
         level: form.level,
         source: 'mp4',
         videoUrl: form.videoUrl,
-        description: form.description,
-        thumbnail: `https://picsum.photos/seed/${id}/400/280`,
-        posterUrl: `https://picsum.photos/seed/${id}/1280/720`,
-        sentences,
+        description: '',
+        thumbnail: cover || `https://picsum.photos/seed/${id}/400/280`,
+        posterUrl: cover || `https://picsum.photos/seed/${id}/1280/720`,
+        sentences: [],   // 字幕后续通过「音频识别」生成（本弹窗不再手动粘贴）
         author: '管理员',
         views: 0,
         createdAt: Date.now(),
         tags: ['mp4', form.category, form.level]
       }
-
       await onSubmit(payload)
-      if (sentences.length) {
-        toast('投稿成功！已含 ' + sentences.length + ' 句字幕')
-      } else {
-        toast('投稿成功（纯视频，暂无字幕）')
-      }
+      toast('投稿成功！素材已发布到广场，可到卡片上「音频识别」生成字幕')
       onClose()
       navigate('/square')
     } catch (e) {
@@ -118,7 +152,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
         <h2>投稿素材</h2>
-        <p className="hint">填 YouTube/B站 链接或 mp4 地址即可播放（不经过后端）；字幕手动粘贴（可选），没有也可以先发纯视频。</p>
+        <p className="hint">上传本地视频，直传云端永久保存；封面自动从视频画面提取。</p>
 
         <div className="field">
           <label>标题</label>
@@ -126,7 +160,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
         </div>
 
         <div className="field">
-          <label>本地视频文件（可选，直传云端永久保存）</label>
+          <label>本地视频文件</label>
           <input
             ref={fileInputRef}
             type="file"
@@ -135,16 +169,16 @@ export default function ContributeModal({ onClose, onSubmit }) {
             onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) uploadToB2(f) }}
           />
           <button type="button" className="btn sm" onClick={pickFile} disabled={uploading}>
-            {uploading ? ('上传中 ' + uploadPct + '%') : '选择本地视频上传'}
+            {uploading ? ('上传中 ' + uploadPct + '%') : (uploadOk ? '重新选择视频' : '选择本地视频上传')}
           </button>
           {uploadName && (
             <div className="hint" style={{ marginTop: 4, color: uploadOk === false ? '#c0392b' : undefined }}>
               {uploading
                 ? ('正在上传：' + uploadName + '（' + uploadPct + '%）')
                 : uploadOk === false
-                  ? ('上传失败：' + uploadName + '，请点上方按钮重试，或直接在下方粘贴视频链接')
+                  ? ('上传失败：' + uploadName + '，请重新选择重试')
                   : uploadOk
-                    ? ('已上传：' + uploadName + '，地址已填入下方')
+                    ? ('已上传：' + uploadName)
                     : ''}
             </div>
           )}
@@ -153,19 +187,18 @@ export default function ContributeModal({ onClose, onSubmit }) {
               <div style={{ width: uploadPct + '%', height: '100%', background: '#9B7B5E', transition: 'width .2s' }} />
             </div>
           )}
-          <div className="hint" style={{ marginTop: 4 }}>视频直传 Backblaze B2 云端（免费 10GB），不经过网站服务器；也可以不上传、直接在下方贴链接。</div>
+          <div className="hint" style={{ marginTop: 4 }}>视频直传 Backblaze B2 云端（免费 10GB），不经过网站服务器。</div>
         </div>
 
         <div className="field">
-          <label>视频链接 / mp4 地址</label>
-          <input
-            value={form.videoUrl}
-            onChange={handleChange('videoUrl')}
-            placeholder="YouTube/B站链接，或 /videos/xxx.mp4，或 mp4 直链"
-          />
-          <div className="hint" style={{ marginTop: 4 }}>
-            YouTube/B站链接用原站播放器嵌入播放（走原站流量）；mp4 直链 / 仓库路径（public/videos/）直连播放。
-          </div>
+          <label>封面（自动从视频提取）</label>
+          {cover ? (
+            <img src={cover} alt="封面" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 8, marginTop: 4, border: '1px solid var(--border, #eee)' }} />
+          ) : (
+            <div className="hint" style={{ marginTop: 4 }}>
+              {coverBusy ? '正在从视频提取封面…' : '选择视频并上传成功后自动生成'}
+            </div>
+          )}
         </div>
 
         <div className="field">
@@ -182,29 +215,9 @@ export default function ContributeModal({ onClose, onSubmit }) {
           </select>
         </div>
 
-        <div className="field">
-          <label>手动粘贴字幕（可选，SRT / VTT / 纯文本）</label>
-          <textarea
-            rows={4}
-            value={manualSubs}
-            onChange={e => setManualSubs(e.target.value)}
-            placeholder={'视频没有俄语字幕时，可在这里粘贴字幕。\n\nSRT 例子：\n1\n00:00:01,000 --> 00:00:04,000\nПривет, как дела?'}
-          />
-        </div>
-
-        <div className="field">
-          <label>描述（可选）</label>
-          <textarea
-            value={form.description}
-            onChange={handleChange('description')}
-            placeholder="补充说明，比如场景、学习目标等"
-            rows={2}
-          />
-        </div>
-
         <div className="mfoot">
           <button className="btn" onClick={onClose} disabled={submitting}>取消</button>
-          <button className="btn primary" onClick={handleSubmit} disabled={submitting || uploading}>
+          <button className="btn primary" onClick={handleSubmit} disabled={submitting || uploading || !uploadOk}>
             {uploading ? '上传中…' : (submitting ? '提交中...' : '投稿')}
           </button>
         </div>
