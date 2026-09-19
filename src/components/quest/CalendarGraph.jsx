@@ -131,7 +131,7 @@ export default function CalendarGraph({
     }}>
       <style>{`
         .cg-cell{ transition: transform .1s ease; cursor: pointer; }
-        .cg-cell:hover{ transform: scale(1.25); outline: 2px solid ${theme === 'dark' ? '#e879f9' : '#d946ef'}; outline-offset: 1px; }
+        .cg-cell:hover{ transform: scale(1.25); outline: 2px solid ${theme === 'dark' ? '#818CF8' : '#6366F1'}; outline-offset: 1px; }
         .cg-tooltip{ position: fixed; z-index: 9999; pointer-events: none;
           background: ${theme === 'dark' ? '#2d1f4e' : '#1a1a2e'}; color: #fff;
           padding: '8px 12px'; border-radius: 8px; font-size: 12px;
@@ -147,8 +147,8 @@ export default function CalendarGraph({
         <div style={{ display: 'flex', gap: 16, fontSize: 12, color: T.sub }}>
           <span>累计 <b style={{ color: T.text }}>{formatDuration(totalSeconds)}</b></span>
           <span>活跃 <b style={{ color: T.text }}>{activeDays}</b> 天</span>
-          <span>连续 <b style={{ color: '#d946ef' }}>{currentStreak}</b> 天</span>
-          <span>最长 <b style={{ color: '#d946ef' }}>{longestStreak}</b> 天</span>
+          <span>连续 <b style={{ color: '#6366F1' }}>{currentStreak}</b> 天</span>
+          <span>最长 <b style={{ color: '#6366F1' }}>{longestStreak}</b> 天</span>
         </div>
       </div>
 

@@ -48,7 +48,7 @@ export default function WrongBookModal({
     text: dark ? '#F5EDE2' : '#1a1a2e',
     sub: dark ? '#8B7FA3' : '#666',
     border: dark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.08)',
-    brand: '#E879F9',
+    brand: '#6366F1',
     ok: '#4ADE80',
     err: '#F87171',
     bgSoft: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.03)',

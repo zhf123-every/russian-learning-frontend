@@ -1436,14 +1436,14 @@ html,body{overflow-x:hidden;max-width:100vw}
 /* 学习路线节点 hover */
 .route-node-wrap{transition:transform .2s}
 .route-node-wrap:hover{transform:scale(1.08)}
-.route-node-wrap:hover .route-node{border-color:#8B5CF6;box-shadow:0 4px 12px rgba(139,92,246,.2)}
-.route-node-wrap:hover .route-node-icon{color:#8B5CF6}
+.route-node-wrap:hover .route-node{border-color:#6366F1;box-shadow:0 4px 12px rgba(99,102,241,.2)}
+.route-node-wrap:hover .route-node-icon{color:#6366F1}
 
 /* ===== Earthworm style global config ===== */
 @font-face{font-family:"Nunito";font-weight:700;font-display:swap;src:url("/fonts/Nunito-Bold.ttf") format("truetype")}
 :root{
---ew-accent:#E879F9;--ew-accent-dark:#7C3EED;--ew-accent-mid:#A855F7;--ew-accent-light:#C084FC;
---ew-error:#EF4444;--ew-case:#F59E0B;--ew-conj:#3B82F6;
+--ew-accent:#4F46E5;--ew-accent-dark:#4338CA;--ew-accent-mid:#3730A3;--ew-accent-light:#A5B4FC;
+--ew-error:#E11D48;--ew-case:#EA580C;--ew-conj:#5B7B9A;
 --ew-text:#202020;--ew-text-muted:#6B7280;--ew-text-faint:#9CA3AF;
 --ew-border:#D1D5DB;--ew-bg:#FFFFFF;--ew-bg-soft:#F9FAFB;
 --ew-word-size:3em;--ew-word-height:4rem;

@@ -11,7 +11,7 @@ const PET_MOODS = {
   sleepy: { emoji: '😴', label: '困倦', color: '#B7A8E8' },
   love: { emoji: '🥰', label: '喜爱', color: '#FF6B9D' },
   cool: { emoji: '😎', label: '酷', color: '#7ED6A5' },
-  cheer: { emoji: '🎉', label: '欢呼', color: '#E879F9' },
+  cheer: { emoji: '🎉', label: '欢呼', color: '#6366F1' },
 }
 
 // 随机台词库（按场景分类）

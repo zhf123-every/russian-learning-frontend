@@ -614,7 +614,7 @@ const styles = {
   },
   progressBarFill: {
     height: "100%",
-    background: "linear-gradient(90deg, #E879F9, #A855F7)",
+    background: "linear-gradient(90deg, #6366F1, #4F46E5)",
     transition: "width 0.3s ease",
   },
   mainContent: {

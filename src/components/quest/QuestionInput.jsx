@@ -4,7 +4,7 @@
  * 结构：隐藏的 <input> + 下划线单词槽
  * 视觉：纯白背景，无卡片，只有 border-bottom 下划线
  *   - 默认词：半透明深灰文字 + 灰色下划线 #D1D5DB
- *   - 激活词：紫色文字 #E879F9 + 紫色下划线
+ *   - 激活词：靛蓝文字 #4F46E5 + 靛蓝下划线
  *   - 错误词：文字颜色按错误类型（橙/红/蓝）+ 同色下划线 + 抖动
  * 字体：默认词系统字重400，激活/错误词 Nunito Bold 700
  * 字号：桌面端 3em，移动端 1.8em
@@ -14,9 +14,9 @@ import { useMemo } from "react";
 
 // 错误类型 → 文字颜色映射（下划线同色）
 const ERROR_COLORS = {
-  case_error: "#F59E0B",        // 橙色（变格错误）
-  spelling_error: "#EF4444",    // 红色（拼写错误）
-  conjugation_error: "#3B82F6", // 蓝色（变位错误）
+  case_error: "#EA580C",        // 橙色（变格错误）
+  spelling_error: "#E11D48",    // 红色（拼写错误）
+  conjugation_error: "#5B7B9A", // 蓝色（变位错误）
 };
 
 // 判断是否为纯标点符号（不生成下划线）
@@ -83,8 +83,8 @@ export default function QuestionInput({
 
         /* 激活词：紫色文字 + 紫色下划线 + Bold */
         .quest-word-active {
-          color: #E879F9;
-          border-bottom-color: #E879F9;
+          color: #4F46E5;
+          border-bottom-color: #4F46E5;
           font-weight: 700;
         }
 
@@ -154,7 +154,7 @@ export default function QuestionInput({
         ) : (
           userInputWords.map((word, index) => {
             const error = errorMap[index];
-            const errorColor = error ? ERROR_COLORS[error.errorType] || "#EF4444" : null;
+            const errorColor = error ? ERROR_COLORS[error.errorType] || "#E11D48" : null;
             const isError = word.incorrect && error;
             const isPunct = isPunctuation(word.text);
 

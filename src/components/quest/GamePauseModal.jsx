@@ -37,7 +37,7 @@ export default function GamePauseModal({
     text: dark ? '#F5EDE2' : '#1a1a2e',
     sub: dark ? '#8B7FA3' : '#666',
     border: dark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.08)',
-    brand: '#E879F9',
+    brand: '#6366F1',
     bgSoft: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.03)',
     shadow: '0 20px 60px rgba(0,0,0,.4)',
   }

@@ -50,7 +50,7 @@ export default function CheckInPanel({
 
   const T = theme === 'dark'
     ? { text: '#F5EDE2', sub: '#8B7FA3', border: 'rgba(255,255,255,.1)', bg: '#1B1330', bgSoft: 'rgba(255,255,255,.05)', brand: '#8b5cf6', brandSoft: 'rgba(139,92,246,.15)', ok: '#10B981' }
-    : { text: '#1a1a2e', sub: '#666', border: '#e5e7eb', bg: '#ffffff', bgSoft: '#f9fafb', brand: '#7c3aed', brandSoft: 'rgba(124,92,252,.1)', ok: '#22c55e' }
+    : { text: '#1a1a2e', sub: '#666', border: '#e5e7eb', bg: '#ffffff', bgSoft: '#f9fafb', brand: '#6366F1', brandSoft: 'rgba(124,92,252,.1)', ok: '#22c55e' }
 
   const handleCheckIn = () => {
     if (isCheckedToday) return
@@ -104,8 +104,8 @@ export default function CheckInPanel({
       <style>{`
         @keyframes ciPop { 0%{transform:scale(.8); opacity:0} 50%{transform:scale(1.1)} 100%{transform:scale(1); opacity:1} }
         @keyframes ciShine { 0%{background-position:-200% center} 100%{background-position:200% center} }
-        .ci-btn-checked{ background: linear-gradient(90deg,#8b5cf6,#a78bfa,#8b5cf6); background-size:200% auto; animation:ciShine 2s linear infinite; }
-        .ci-day-checked{ background: linear-gradient(135deg,#8b5cf6,#a78bfa) !important; color:#fff !important; border-color:#8b5cf6 !important; }
+        .ci-btn-checked{ background: linear-gradient(90deg,#6366F1,#818CF8,#6366F1); background-size:200% auto; animation:ciShine 2s linear infinite; }
+        .ci-day-checked{ background: linear-gradient(135deg,#6366F1,#818CF8) !important; color:#fff !important; border-color:#6366F1 !important; }
         .ci-day-today{ outline: 2px solid #f59e0b; outline-offset: 1px; }
       `}</style>
 
@@ -170,7 +170,7 @@ export default function CheckInPanel({
               <div style={{ height: 6, background: T.bgSoft, borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', width: progressToNext + '%',
-                  background: `linear-gradient(90deg,${T.brand},#a78bfa)`,
+                  background: `linear-gradient(90deg,${T.brand},#818CF8)`,
                   borderRadius: 3, transition: 'width .5s ease',
                 }} />
               </div>

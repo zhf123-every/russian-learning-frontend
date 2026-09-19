@@ -40,7 +40,7 @@ function useConfetti(canvasRef, active) {
     const canvas = canvasRef.current
     if (!canvas) return
     const W = canvas.width, H = canvas.height
-    const colors = ['#FFD75E', '#FF8A5C', '#E879F9', '#7ED6A5', '#6FB7FF', '#FF6B9D', '#A78BFA']
+    const colors = ['#FFD75E', '#FF8A5C', '#6366F1', '#7ED6A5', '#6FB7FF', '#FF6B9D', '#4F46E5']
     const ps = []
     for (let i = 0; i < count; i++) {
       ps.push({
@@ -184,7 +184,7 @@ export default function SummaryModal({
     text: dark ? '#F5EDE2' : '#1a1a2e',
     sub: dark ? '#8B7FA3' : '#666',
     border: dark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.08)',
-    brand: '#E879F9',
+    brand: '#6366F1',
     ok: '#4ADE80',
     err: '#F87171',
     bgSoft: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.03)',
@@ -289,7 +289,7 @@ export default function SummaryModal({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
             <button className="sum-btn" onClick={() => { onShare && onShare() }} style={{
               padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: 'linear-gradient(135deg,#E879F9,#A78BFA)', color: '#fff',
+              background: 'linear-gradient(135deg,#6366F1,#4F46E5)', color: '#fff',
               fontSize: 14, fontWeight: 700, flex: '1 1 120px', minWidth: 110,
             }}>📸 生成打卡图</button>
             <button className="sum-btn" onClick={() => setShowWrong(true)} style={{

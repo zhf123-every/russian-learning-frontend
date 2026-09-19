@@ -24,10 +24,10 @@ const FEEDBACK_CONFIG = {
   },
   great: {
     text: "Great",
-    color: "#3B82F6",
+    color: "#059669",
     glowColor: "rgba(59,130,246,0.7)",
     particleCount: 12,
-    particleColors: ["#3B82F6", "#60A5FA", "#93C5FD", "#DBEAFE"],
+    particleColors: ["#059669", "#34D399", "#6EE7B7", "#D1FAE5"],
     scale: 1.1,
   },
   perfect: {
@@ -40,10 +40,10 @@ const FEEDBACK_CONFIG = {
   },
   amazing: {
     text: "Amazing",
-    color: "#F59E0B",
+    color: "#E11D48",
     glowColor: "rgba(245,158,11,0.9)",
     particleCount: 24,
-    particleColors: ["#F59E0B", "#FBBF24", "#FCD34D", "#FEF3C7", "#FFFFFF"],
+    particleColors: ["#E11D48", "#FB7185", "#FDA4AF", "#FFE4E6", "#FFFFFF"],
     scale: 1.4,
     flash: true,
   },

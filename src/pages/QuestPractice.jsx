@@ -376,7 +376,7 @@ export default function QuestPractice() {
       <div style={styles.page}>
         <div style={{ ...styles.loading, flexDirection: "column", gap: 16 }}>
           <style>{"@keyframes qp-spin{to{transform:rotate(360deg)}}"}</style>
-          <div style={{ width: 38, height: 38, borderRadius: "50%", border: "3px solid #EDE9FE", borderTopColor: "#8B5CF6", animation: "qp-spin .8s linear infinite" }} />
+          <div style={{ width: 38, height: 38, borderRadius: "50%", border: "3px solid #EDE9FE", borderTopColor: "#4F46E5", animation: "qp-spin .8s linear infinite" }} />
           <span>正在加载课程…</span>
         </div>
       </div>
@@ -410,7 +410,7 @@ export default function QuestPractice() {
         ...styles.page,
         animation: comboEffect === "shake" ? "quest-shake 0.4s ease-in-out" : "none",
         boxShadow: comboEffect?.startsWith("milestone") || comboEffect?.startsWith("levelup")
-          ? `inset 0 0 80px ${combo >= 20 ? "rgba(245,158,11,0.4)" : combo >= 10 ? "rgba(168,85,247,0.35)" : "rgba(59,130,246,0.3)"}`
+          ? `inset 0 0 80px ${combo >= 20 ? "rgba(245,158,11,0.4)" : combo >= 10 ? "rgba(99,102,241,0.35)" : "rgba(59,130,246,0.3)"}`
           : "none",
         background: "#FFFFFF",
         backgroundImage: combo >= 9
@@ -688,7 +688,7 @@ const styles = {
   },
   progressBarFill: {
     height: "100%",
-    background: "linear-gradient(90deg, #E879F9, #A855F7)",
+    background: "linear-gradient(90deg, #6366F1, #4F46E5)",
     transition: "width 0.3s ease",
   },
   familyBar: {
