@@ -1,4 +1,4 @@
-/**
+﻿/**
  * QuestPractice.jsx —— 俄语连词成句正式答题页（逐级累加模式）
  *
  * 整合：
@@ -29,7 +29,8 @@ import FeedbackPopup from "../components/quest/FeedbackPopup";
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
-const DEFAULT_COURSE_ID = "181cfa7e-61d1-4920-b150-3e908aec4cd3";
+// 无 courseId 时的默认单元：privet_rossiya_a1 课程包第一单元（u1），后端已确证存在
+const DEFAULT_UNIT_ID = "u1";
 
 // 把 /api/units/:id/build-steps 的 family/step 适配成答题引擎使用的 sequence/unit 结构
 // family -> sequence；step -> unit；答题状态机/判题/连击/结算完全复用，不感知数据来源
@@ -84,7 +85,7 @@ function adaptBuildSteps(data) {
 export default function QuestPractice() {
   const navigate = useNavigate();
   const { courseId } = useParams();
-  const effectiveCourseId = courseId || DEFAULT_COURSE_ID;
+  const effectiveCourseId = courseId || DEFAULT_UNIT_ID;
 
   // ---- 课程数据（按 sequence 分组）----
   const [sequences, setSequences] = useState([]);
@@ -234,7 +235,11 @@ export default function QuestPractice() {
           }
         }
       } catch (e) {
-        if (!cancelled) setLoadError(`无法连接后端: ${e.message}`);
+        if (!cancelled) {
+          // 默认兜底单元也加载失败 → 去课程列表选课，不留在 404 页
+          if (!courseId) { navigate('/quest-store', { replace: true }); return; }
+          setLoadError(`无法连接后端: ${e.message}`);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }

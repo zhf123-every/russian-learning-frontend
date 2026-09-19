@@ -30,12 +30,13 @@ import ShortcutTips from "../components/quest/ShortcutTips";
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
-const DEFAULT_COURSE_ID = "b7254aa773f74a315211bd37";
+// 无 courseId 时的默认单元：privet_rossiya_a1 课程包第一单元（u1），后端已确证存在
+const DEFAULT_UNIT_ID = "u1";
 
 export default function QuestDictation() {
   const navigate = useNavigate();
   const { courseId } = useParams();
-  const effectiveCourseId = courseId || DEFAULT_COURSE_ID;
+  const effectiveCourseId = courseId || DEFAULT_UNIT_ID;
 
   // ---- 课程数据 ----
   const [statements, setStatements] = useState([]);
@@ -164,17 +165,37 @@ export default function QuestDictation() {
       setLoading(true);
       setLoadError(null);
       try {
-        const res = await fetch(`${API_BASE}/api/courses/${effectiveCourseId}/statements`);
+        const res = await fetch(`${API_BASE}/api/units/${effectiveCourseId}/build-steps`);
         const json = await res.json();
         if (!cancelled) {
-          if (json.ok && json.data && json.data.statements) {
-            setStatements(json.data.statements);
+          if (json.ok && json.data) {
+            // build-steps → 听写 statements 拍平映射（family 无分组，step → statement）
+            const items = [];
+            for (const fam of json.data.families || []) {
+              for (const st of fam.steps || []) {
+                items.push({
+                  id: st.step_order != null ? `${fam.family_name}-${st.step_order}` : `s${items.length}`,
+                  russian: st.target_sentence || "",
+                  chinese: st.chinese || "",
+                  words: Array.isArray(st.words) ? st.words : [],
+                });
+              }
+            }
+            if (items.length === 0) {
+              setLoadError("该单元没有可听写的句子");
+            } else {
+              setStatements(items);
+            }
           } else {
             setLoadError("课程数据格式异常");
           }
         }
       } catch (e) {
-        if (!cancelled) setLoadError(`无法连接后端: ${e.message}`);
+        if (!cancelled) {
+          // 默认兜底单元也加载失败 → 去课程列表选课，不留在 404 页
+          if (!courseId) { navigate('/quest-store', { replace: true }); return; }
+          setLoadError(`无法连接后端: ${e.message}`);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
