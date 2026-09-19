@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getLevelVideos, LEVELS } from '../data/courseLibrary'
 import { callAI } from '../lib/ai'
@@ -213,7 +213,7 @@ const AUX_SIZE = { 小: 11, 中: 12.5, 大: 14 } // 辅助文字（顶部进度�
 // ================= 模块1.2 全局配色体系（浅色默认 + 3 种护眼主题） =================
 const THEMES = {
   light: { name: '浅色', bg: '#FFFFFF', bgSoft: '#F6F6F8', panel: '#FFFFFF', text: '#3A3A3A', textStrong: '#1C1C1E', sub: '#8E8E93', border: '#E4E4E7', brand: '#7C5CFC', brandSoft: 'rgba(124,92,252,.10)', ok: '#22C55E', okSoft: 'rgba(34,197,94,.12)', err: '#EF4444', errSoft: 'rgba(239,68,68,.10)', aiBg: '#FBFBFD', aiBorder: '#ECE9F4', shadow: '0 12px 44px rgba(60,40,120,.14)', grad: 'linear-gradient(160deg,#F7F6FB 0%,#FFFFFF 45%)' },
-  dark: { name: '深色', bg: '#0D0918', bgSoft: '#16111F', panel: '#1B1330', text: '#F5EDE2', textStrong: '#FFFFFF', sub: '#8B7FA3', border: 'rgba(255,255,255,.12)', brand: '#8B5CF6', brandSoft: 'rgba(139,92,246,.16)', ok: '#10B981', okSoft: 'rgba(16,185,129,.2)', err: '#F87171', errSoft: 'rgba(239,68,68,.15)', aiBg: 'rgba(20,14,36,.94)', aiBorder: 'rgba(255,255,255,.07)', shadow: '0 18px 60px rgba(0,0,0,.5)', grad: 'radial-gradient(ellipse at 50% -20%, #241A3D 0%, #0D0918 55%)' },
+  dark: { name: '深色', bg: '#0D0918', bgSoft: '#16111F', panel: '#1B1330', text: '#F5EDE2', textStrong: '#FFFFFF', sub: '#8B7FA3', border: 'rgba(255,255,255,.12)', brand: '#6366F1', brandSoft: 'rgba(99,102,241,.16)', ok: '#10B981', okSoft: 'rgba(16,185,129,.2)', err: '#F87171', errSoft: 'rgba(239,68,68,.15)', aiBg: 'rgba(20,14,36,.94)', aiBorder: 'rgba(255,255,255,.07)', shadow: '0 18px 60px rgba(0,0,0,.5)', grad: 'radial-gradient(ellipse at 50% -20%, #241A3D 0%, #0D0918 55%)' },
   warm: { name: '暖色护眼', bg: '#FAF3E7', bgSoft: '#F3E9D7', panel: '#FFFDF7', text: '#4A3F33', textStrong: '#2E2620', sub: '#9A8A76', border: '#E5D9C7', brand: '#B0793B', brandSoft: 'rgba(176,121,59,.12)', ok: '#4C9A57', okSoft: 'rgba(76,154,87,.12)', err: '#C0564B', errSoft: 'rgba(192,86,75,.12)', aiBg: '#FBF6EC', aiBorder: '#EFE3D0', shadow: '0 12px 40px rgba(74,63,51,.10)', grad: 'linear-gradient(160deg,#F7EFE0 0%,#FAF3E7 45%)' },
   green: { name: '绿色护眼', bg: '#EAF4EA', bgSoft: '#DEEBDE', panel: '#F5FBF5', text: '#2F4432', textStrong: '#1F2E21', sub: '#7E9783', border: '#CFE0CF', brand: '#3E8E4E', brandSoft: 'rgba(62,142,78,.12)', ok: '#2E9E4F', okSoft: 'rgba(46,158,79,.12)', err: '#C14B4B', errSoft: 'rgba(193,75,75,.12)', aiBg: '#F0F8F0', aiBorder: '#DCEBDC', shadow: '0 12px 40px rgba(31,46,33,.10)', grad: 'linear-gradient(160deg,#E2F0E2 0%,#EAF4EA 45%)' },
 }
@@ -222,13 +222,13 @@ const POS_COLORS = {
   'сущ.': '#3B82F6', '名词': '#3B82F6',
   'гл.': '#22C55E', '动词': '#22C55E',
   'прил.': '#F59E0B', '形容词': '#F59E0B',
-  'нар.': '#8B5CF6', '副词': '#8B5CF6',
+  'нар.': '#6366F1', '副词': '#6366F1',
   'мест.': '#EC4899', '代词': '#EC4899',
   'предл.': '#14B8A6', '介词': '#14B8A6',
   'союз': '#EF4444', '连词': '#EF4444',
 }
 const posColor = (pos) => { for (const k in POS_COLORS) { if ((pos || '').includes(k)) return POS_COLORS[k] } return '#9CA3AF' }
-const UI_DEFAULT = { font: 'system', qSize: '中', sSize: '中', theme: 'light', inputStyle: 'dynamic', answerMode: 'float', posMark: true, autoSpeak: false, speakTimes: 2, speakSpeed: 1, speakGap: 1, answerSpeak: false, autoNext: false, ignoreCase: true, showImage: true, imgPos: 'center', imgSize: 'mid', autoReveal: '3', wrongRec: '3', learnDefault: '初级', showProgress: true, showStruct: true, structStyle: 'outline', showWordTrans: true, skipNames: true, showPos: true, posStyle: 'color_text', posColors: { '名词': '#3b82f6', '动词': '#22c55e', '形容词': '#8b5cf6', '副词': '#eab308', '代词': '#ef4444', '介词': '#1e40af', '并列连词': '#f43f5e', '从属连词': '#f43f5e', '感叹词': '#f97316', '限定词': '#14b8a6', '助动词': '#22c55e', '专有名词': '#3b82f6', '人名': '#3b82f6', '数词': '#8b5cf6', '助词': '#9ca3af' }, posVis: { '名词': true, '动词': true, '形容词': true, '副词': true, '代词': true, '介词': true, '并列连词': true, '从属连词': true, '感叹词': true, '限定词': true, '助动词': true, '专有名词': true, '人名': true, '数词': true, '助词': true } }
+const UI_DEFAULT = { font: 'system', qSize: '中', sSize: '中', theme: 'light', inputStyle: 'dynamic', answerMode: 'float', posMark: true, autoSpeak: false, speakTimes: 2, speakSpeed: 1, speakGap: 1, answerSpeak: false, autoNext: false, ignoreCase: true, showImage: true, imgPos: 'center', imgSize: 'mid', autoReveal: '3', wrongRec: '3', learnDefault: '初级', showProgress: true, showStruct: true, structStyle: 'outline', showWordTrans: true, skipNames: true, showPos: true, posStyle: 'color_text', posColors: { '名词': '#3b82f6', '动词': '#22c55e', '形容词': '#6366f1', '副词': '#eab308', '代词': '#ef4444', '介词': '#1e40af', '并列连词': '#f43f5e', '从属连词': '#f43f5e', '感叹词': '#f97316', '限定词': '#14b8a6', '助动词': '#22c55e', '专有名词': '#3b82f6', '人名': '#3b82f6', '数词': '#6366f1', '助词': '#9ca3af' }, posVis: { '名词': true, '动词': true, '形容词': true, '副词': true, '代词': true, '介词': true, '并列连词': true, '从属连词': true, '感叹词': true, '限定词': true, '助动词': true, '专有名词': true, '人名': true, '数词': true, '助词': true } }
 // 朗读速度档位（0.5x ~ 2x）
 const SPEED_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 // 两遍朗读之间的停顿间隔（秒）
@@ -1343,11 +1343,11 @@ export default function RuQuest() {
               @media(max-width:760px){.unit-grid{grid-template-columns:repeat(2,1fr)}}
               .unit-card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;cursor:pointer}
               .unit-card:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(124,58,237,.18)!important;border-color:#C4B5FD!important}
-              .route-node-wrap:hover .route-node{transform:scale(1.08);border-color:#8B5CF6}
+              .route-node-wrap:hover .route-node{transform:scale(1.08);border-color:#6366F1}
               @keyframes ruModalPop{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
               .modal-pop{animation:ruModalPop .22s ease}
               @keyframes ruSpin{to{transform:rotate(360deg)}}
-              .ru-spin{width:38px;height:38px;border-radius:50%;border:3px solid #EDE9FE;border-top-color:#8B5CF6;animation:ruSpin .8s linear infinite}
+              .ru-spin{width:38px;height:38px;border-radius:50%;border:3px solid #EDE9FE;border-top-color:#6366F1;animation:ruSpin .8s linear infinite}
             `}</style>
 
             {/* 顶部导航 */}
@@ -1371,7 +1371,7 @@ export default function RuQuest() {
                 <>
                   {/* 课程信息头部 */}
                   <div style={styles.detailHead}>
-                    <div style={{ ...styles.detailCover, background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)' }}>
+                    <div style={{ ...styles.detailCover, background: 'linear-gradient(135deg,#6366F1,#4F46E5)' }}>
                       <span style={styles.detailCoverLevel}>{pack?.level || 'A1'}</span>
                     </div>
                     <div style={styles.detailHeadInfo}>
@@ -1420,7 +1420,7 @@ export default function RuQuest() {
                                 <div className="route-node" style={{
                                   ...styles.routeNode,
                                   ...(done ? styles.routeNodeActive : {}),
-                                  ...(doing ? { borderColor: '#8B5CF6', background: '#F3EFFC' } : {}),
+                                  ...(doing ? { borderColor: '#6366F1', background: '#F3EFFC' } : {}),
                                 }}>
                                   <span className="route-node-icon" style={{ ...styles.routeNodeIcon, ...((done || doing) ? { color: done ? '#fff' : '#7c3aed' } : {}) }}>{done ? '✓' : u.order}</span>
                                 </div>
@@ -2256,7 +2256,7 @@ const styles = {
   detailMetaItem: {},
   detailMetaDot: { color: '#ddd' },
   detailHeadRight: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 },
-  detailStartBtn: { background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', color: '#fff', border: 'none', padding: '12px 36px', borderRadius: 24, fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'opacity .2s', boxShadow: '0 4px 16px rgba(139,92,246,.3)' },
+  detailStartBtn: { background: 'linear-gradient(135deg,#6366F1,#4F46E5)', color: '#fff', border: 'none', padding: '12px 36px', borderRadius: 24, fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'opacity .2s', boxShadow: '0 4px 16px rgba(99,102,241,.3)' },
   detailOutline: { background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginTop: 24, padding: '20px 28px' },
   detailOutlineHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   detailOutlineTitle: { fontSize: 17, fontWeight: 600, color: '#1a1a1a' },
@@ -2273,11 +2273,11 @@ const styles = {
   // —— 课程详情页标签页 ——
   detailTabs: { display: 'flex', gap: 28, borderBottom: '1px solid #f0f0f0', marginTop: 24 },
   detailTabItem: { padding: '12px 0', fontSize: 15, color: '#888', cursor: 'pointer', borderBottom: '2px solid transparent', marginBottom: -1, transition: 'color .2s' },
-  detailTabItemOn: { color: '#1a1a1a', fontWeight: 600, borderBottom: '2px solid #8B5CF6' },
+  detailTabItemOn: { color: '#1a1a1a', fontWeight: 600, borderBottom: '2px solid #6366F1' },
   // —— 学习路线视图 ——
   routeView: { marginTop: 24 },
   routeHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  routeDifficulty: { fontSize: 13, color: '#8B5CF6', background: '#F3E8FF', padding: '5px 16px', borderRadius: 14, fontWeight: 500 },
+  routeDifficulty: { fontSize: 13, color: '#6366F1', background: '#F3E8FF', padding: '5px 16px', borderRadius: 14, fontWeight: 500 },
   routeSetting: { fontSize: 13, color: '#999', cursor: 'pointer' },
   routeGraph: { position: 'relative', padding: '10px 0' },
   routeRow: { display: 'flex', alignItems: 'center', position: 'relative', height: 96, marginBottom: 4 },
@@ -2286,65 +2286,65 @@ const styles = {
   routeConnectorRight: { right: '50%', borderRight: 'none', borderRadius: '48px 0 0 0' },
   routeNodeWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', zIndex: 1, position: 'relative', transition: 'transform .2s' },
   routeNode: { width: 56, height: 56, borderRadius: '50%', background: '#f5f5f5', border: '2px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .2s' },
-  routeNodeActive: { background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', borderColor: '#8B5CF6', boxShadow: '0 4px 16px rgba(139,92,246,.35)' },
+  routeNodeActive: { background: 'linear-gradient(135deg,#6366F1,#4F46E5)', borderColor: '#6366F1', boxShadow: '0 4px 16px rgba(99,102,241,.35)' },
   routeNodeIcon: { fontSize: 16, fontWeight: 700, color: '#aaa' },
   routeNodeLabel: { fontSize: 13, color: '#555', marginTop: 8, fontWeight: 500 },
   routeNodeDiff: { fontSize: 11, color: '#bbb', marginTop: 2 },
-  backHome: { position: 'fixed', left: 18, bottom: 18, background: '#3D2E1E', color: '#F6F1E8', border: 'none', padding: '8px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer', zIndex: 10 },
-  lessonHead: { maxWidth: 900, margin: '20px auto 0', background: '#FFFDF9', borderRadius: 18, padding: 22, display: 'flex', gap: 20, boxShadow: '0 2px 14px rgba(61,46,30,.06)' },
-  lessonCover: { width: 90, height: 90, borderRadius: 14, background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, flexShrink: 0 },
-  lessonTitle: { fontSize: 19, fontWeight: 700, color: '#3D2E1E' },
-  lessonDesc: { fontSize: 12.5, color: '#8A7A66', margin: '6px 0', lineHeight: 1.6 },
+  backHome: { position: 'fixed', left: 18, bottom: 18, background: '#6366F1', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer', zIndex: 10 },
+  lessonHead: { maxWidth: 900, margin: '20px auto 0', background: '#FFFFFF', borderRadius: 18, padding: 22, display: 'flex', gap: 20, boxShadow: '0 2px 14px rgba(99,102,241,.08)' },
+  lessonCover: { width: 90, height: 90, borderRadius: 14, background: 'linear-gradient(135deg,#6366F1,#4F46E5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, flexShrink: 0 },
+  lessonTitle: { fontSize: 19, fontWeight: 700, color: '#18181B' },
+  lessonDesc: { fontSize: 12.5, color: '#71717A', margin: '6px 0', lineHeight: 1.6 },
   lessonTags: { display: 'flex', gap: 6, margin: '6px 0' },
-  tagPill: { fontSize: 11, padding: '2px 10px', borderRadius: 10, background: '#F0E8DA', color: '#7A6A55' },
-  lessonStat: { fontSize: 12, color: '#B3A692', marginTop: 4 },
-  outline: { maxWidth: 900, margin: '20px auto 0', background: '#FFFDF9', borderRadius: 18, padding: 22, boxShadow: '0 2px 14px rgba(61,46,30,.06)' },
-  outlineTitle: { fontSize: 15, fontWeight: 700, color: '#3D2E1E', marginBottom: 10 },
-  lessonRow: { display: 'flex', gap: 14, alignItems: 'center', padding: '12px 4px', borderBottom: '1px solid #F0E8DA', cursor: 'pointer' },
-  lessonNo: { fontSize: 13, fontWeight: 700, color: '#B3A692', width: 28 },
-  lessonRowName: { fontSize: 13.5, fontWeight: 600, color: '#3D2E1E' },
-  lessonRowDesc: { fontSize: 11.5, color: '#A99C8B', marginTop: 3 },
-  trial: { fontSize: 11, color: '#8B5CF6', background: '#EDE9FE', padding: '2px 10px', borderRadius: 10, flexShrink: 0 },
+  tagPill: { fontSize: 11, padding: '2px 10px', borderRadius: 10, background: '#EEF0FF', color: '#3730A3' },
+  lessonStat: { fontSize: 12, color: '#A1A1AA', marginTop: 4 },
+  outline: { maxWidth: 900, margin: '20px auto 0', background: '#FFFFFF', borderRadius: 18, padding: 22, boxShadow: '0 2px 14px rgba(99,102,241,.08)' },
+  outlineTitle: { fontSize: 15, fontWeight: 700, color: '#18181B', marginBottom: 10 },
+  lessonRow: { display: 'flex', gap: 14, alignItems: 'center', padding: '12px 4px', borderBottom: '1px solid #E9E9EE', cursor: 'pointer' },
+  lessonNo: { fontSize: 13, fontWeight: 700, color: '#A1A1AA', width: 28 },
+  lessonRowName: { fontSize: 13.5, fontWeight: 600, color: '#18181B' },
+  lessonRowDesc: { fontSize: 11.5, color: '#71717A', marginTop: 3 },
+  trial: { fontSize: 11, color: '#6366F1', background: '#EDE9FE', padding: '2px 10px', borderRadius: 10, flexShrink: 0 },
   modalRoot: { position: 'fixed', inset: 0, background: 'rgba(10,6,20,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, fontFamily: FONT_STACK.system },
-  modeModal: { width: 860, maxWidth: '92vw', background: '#FFFDF9', borderRadius: 20, padding: 28, boxShadow: '0 24px 80px rgba(0,0,0,.4)' },
+  modeModal: { width: 860, maxWidth: '92vw', background: '#FFFFFF', borderRadius: 20, padding: 28, boxShadow: '0 24px 80px rgba(0,0,0,.4)' },
   modeModalTitle: { fontSize: 22, fontWeight: 800, color: '#1F1B2E' },
-  modeModalSub: { fontSize: 12, color: '#A99C8B', marginBottom: 20 },
+  modeModalSub: { fontSize: 12, color: '#71717A', marginBottom: 20 },
   modeBody: { display: 'flex', gap: 24 },
   modeList: { width: 240, display: 'flex', flexDirection: 'column', gap: 4 },
   modeItem: { padding: '12px 14px', borderRadius: 12, cursor: 'pointer', position: 'relative', border: '1px solid transparent' },
   modeItemOn: { background: '#F3EFFC', borderColor: '#C4B5FD' },
   modeItemName: { fontSize: 14.5, fontWeight: 600, color: '#1F1B2E' },
-  modeItemTag: { fontSize: 11, color: '#A99C8B', marginTop: 2 },
-  modeRec: { position: 'absolute', top: 8, right: 10, fontSize: 10, color: '#8B5CF6', background: '#EDE9FE', padding: '1px 8px', borderRadius: 8 },
-  modeDetail: { flex: 1, background: '#FAF7F2', borderRadius: 14, padding: 20 },
+  modeItemTag: { fontSize: 11, color: '#71717A', marginTop: 2 },
+  modeRec: { position: 'absolute', top: 8, right: 10, fontSize: 10, color: '#6366F1', background: '#EDE9FE', padding: '1px 8px', borderRadius: 8 },
+  modeDetail: { flex: 1, background: '#FFFFFF', borderRadius: 14, padding: 20 },
   modeDetailTitle: { fontSize: 17, fontWeight: 700, color: '#1F1B2E' },
-  modeDetailDesc: { fontSize: 13, color: '#7A6A55', margin: '8px 0 18px', lineHeight: 1.7 },
+  modeDetailDesc: { fontSize: 13, color: '#71717A', margin: '8px 0 18px', lineHeight: 1.7 },
   diffLabel: { fontSize: 13, fontWeight: 600, color: '#1F1B2E', marginBottom: 8 },
   diffRow: { display: 'flex', gap: 8 },
-  diffPill: { padding: '6px 16px', borderRadius: 18, border: '1px solid #E0D5C3', color: '#7A6A55', fontSize: 13, cursor: 'pointer', background: '#fff' },
+  diffPill: { padding: '6px 16px', borderRadius: 18, border: '1px solid #E9E9EE', color: '#71717A', fontSize: 13, cursor: 'pointer', background: '#fff' },
   diffOn: { background: '#1F1B2E', color: '#fff', borderColor: '#1F1B2E' },
-  diffHint: { fontSize: 11.5, color: '#B3A692', marginTop: 10 },
+  diffHint: { fontSize: 11.5, color: '#A1A1AA', marginTop: 10 },
   modeFoot: { display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 22 },
-  modeCancel: { padding: '9px 22px', borderRadius: 20, border: '1px solid #E0D5C3', background: '#fff', color: '#7A6A55', fontSize: 14, cursor: 'pointer' },
+  modeCancel: { padding: '9px 22px', borderRadius: 20, border: '1px solid #E9E9EE', background: '#fff', color: '#71717A', fontSize: 14, cursor: 'pointer' },
   modeStart: { padding: '9px 26px', borderRadius: 20, border: 'none', background: '#DC2626', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   catalogState: { minHeight: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginTop: 24 },
   catalogStateText: { fontSize: 14, color: '#888' },
-  catalogRetry: { padding: '9px 26px', borderRadius: 20, border: 'none', background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  catalogRetry: { padding: '9px 26px', borderRadius: 20, border: 'none', background: 'linear-gradient(135deg,#6366F1,#4F46E5)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   unitOutline: { background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginTop: 24, padding: '24px 28px 28px' },
   unitCard: { position: 'relative', background: '#FBFAFF', border: '1px solid #EEE9F9', borderRadius: 16, padding: '18px 16px 16px', minHeight: 132, display: 'flex', flexDirection: 'column' },
   unitCardTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  unitNo: { fontSize: 15, fontWeight: 800, color: '#6D28D9', letterSpacing: 0.3 },
+  unitNo: { fontSize: 15, fontWeight: 800, color: '#4F46E5', letterSpacing: 0.3 },
   unitBadge: { fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 999 },
   unitSub: { fontSize: 14, fontWeight: 600, color: '#1F1B2E', marginBottom: 6, lineHeight: 1.4 },
   unitMeta: { fontSize: 12, color: '#9A90B0', marginBottom: 14 },
   unitStatus: { marginTop: 'auto', alignSelf: 'flex-start', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 999 },
   modeCardRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
-  modeCard: { position: 'relative', background: '#FAF7F2', border: '2px solid #ECE4D8', borderRadius: 16, padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 8 },
-  modeCardOn: { background: '#F3EFFC', borderColor: '#8B5CF6', boxShadow: '0 8px 24px rgba(139,92,246,.18)' },
+  modeCard: { position: 'relative', background: '#FFFFFF', border: '2px solid #E9E9EE', borderRadius: 16, padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 8 },
+  modeCardOn: { background: '#F3EFFC', borderColor: '#6366F1', boxShadow: '0 8px 24px rgba(99,102,241,.18)' },
   modeCardHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   modeCardName: { fontSize: 17, fontWeight: 800, color: '#1F1B2E' },
-  modeCardDesc: { fontSize: 13, color: '#7A6A55', lineHeight: 1.7, minHeight: 44 },
-  modeCardTag: { alignSelf: 'flex-start', fontSize: 11, color: '#8B5CF6', background: '#EDE9FE', padding: '2px 10px', borderRadius: 999, marginTop: 2 },
+  modeCardDesc: { fontSize: 13, color: '#71717A', lineHeight: 1.7, minHeight: 44 },
+  modeCardTag: { alignSelf: 'flex-start', fontSize: 11, color: '#6366F1', background: '#EDE9FE', padding: '2px 10px', borderRadius: 999, marginTop: 2 },
   loadRoot: { position: 'fixed', inset: 0, background: '#0a0a0a', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 60, fontFamily: FONT_STACK.system },
   loadLogo: { width: 280, height: 'auto', filter: 'invert(1)', marginBottom: 70, opacity: 0.95 },
   loadTip: { fontSize: 14, color: '#777', marginBottom: 90, textAlign: 'center', letterSpacing: 0.5, maxWidth: 500 },
@@ -2378,7 +2378,7 @@ const styles = {
   wrongAns: { fontSize: 13, color: '#C9BEE0', marginTop: 2 },
   wrongReason: { fontSize: 12, color: '#FFB347', marginTop: 6 },
   btnGhost: { padding: '9px 18px', borderRadius: 22, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.2)', color: '#E5DDF5', fontSize: 14, cursor: 'pointer' },
-  btnPrimary: { padding: '9px 18px', borderRadius: 22, background: '#8B5CF6', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  btnPrimary: { padding: '9px 18px', borderRadius: 22, background: '#6366F1', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   gameRoot: { minHeight: '100vh', background: '#ffffff', color: '#3A3A3A', position: 'relative', fontFamily: FONT_STACK.system, display: 'flex', flexDirection: 'column' },
   topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', fontSize: 13, color: '#475569', gap: 16, borderTop: '1px solid #e2e8f0', borderBottom: 'none' },
   toolIconBtn: { width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: 'transparent', color: '#475569', fontSize: 18, cursor: 'pointer', padding: 0, transition: 'color .12s, background .12s' },
@@ -2409,12 +2409,12 @@ const styles = {
   hiddenInput: { width: 0, height: 0, opacity: 0, position: 'absolute', pointerEvents: 'none' },
   inputHint: { fontSize: 12.5, color: '#8B7FA3', marginTop: 14 },
   wrongTip: { fontSize: 16, fontWeight: 700, color: '#F87171', marginTop: 10 },
-  stuckBox: { marginTop: 18, background: 'rgba(139,92,246,.12)', border: '1px solid rgba(139,92,246,.4)', borderRadius: 14, padding: '14px 18px', maxWidth: 380, textAlign: 'center' },
+  stuckBox: { marginTop: 18, background: 'rgba(99,102,241,.12)', border: '1px solid rgba(99,102,241,.4)', borderRadius: 14, padding: '14px 18px', maxWidth: 380, textAlign: 'center' },
   stuckTitle: { fontSize: 15, fontWeight: 700, color: '#C4B5FD' },
   stuckText: { fontSize: 12.5, color: '#B9AFCB', margin: '8px 0 12px' },
   stuckBtns: { display: 'flex', gap: 10, justifyContent: 'center' },
   stuckNo: { padding: '6px 16px', borderRadius: 16, background: 'transparent', border: '1px solid rgba(255,255,255,.25)', color: '#B9AFCB', fontSize: 12.5, cursor: 'pointer' },
-  stuckYes: { padding: '6px 16px', borderRadius: 16, background: '#8B5CF6', border: 'none', color: '#fff', fontSize: 12.5, cursor: 'pointer' },
+  stuckYes: { padding: '6px 16px', borderRadius: 16, background: '#6366F1', border: 'none', color: '#fff', fontSize: 12.5, cursor: 'pointer' },
   // 官方 Answer.vue：逐词大字号可点击发音 + 整句喇叭 + 音标 + 中文 + 再来一次/下一题（原地渲染，无遮罩卡片）
   answerWords: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 4, fontSize: 48, fontWeight: 400, lineHeight: 1.2, margin: '0 0 4px' },
   answerWord: { cursor: 'pointer', padding: 4, transition: 'color .12s' },
@@ -2434,7 +2434,7 @@ const styles = {
   rolePosHidden: { height: 14 },
   rolesRow: { display: 'flex', gap: 40, justifyContent: 'center', flexWrap: 'wrap' },
   roleCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 },
-  roleName: { fontSize: 13, color: '#C4B5FD', background: 'rgba(139,92,246,.2)', padding: '3px 14px', borderRadius: 12 },
+  roleName: { fontSize: 13, color: '#C4B5FD', background: 'rgba(99,102,241,.2)', padding: '3px 14px', borderRadius: 12 },
   roleWordWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
   roleWord: { fontSize: 30, fontWeight: 800, color: '#F5EDE2' },
   roleStress: { fontSize: 12, color: '#8B7FA3' },
@@ -2470,14 +2470,14 @@ const styles = {
   aiStatus: { fontSize: 11.5, color: '#8B7FA3', padding: '4px 18px 8px' },
   aiBody: { flex: 1, overflowY: 'auto', padding: '6px 14px', display: 'flex', flexDirection: 'column', gap: 8 },
   aiIntro: { fontSize: 12.5, color: '#B9AFCB', margin: '6px 0 10px' },
-  aiQuick: { fontSize: 12, color: '#C9BEE0', background: 'rgba(139,92,246,.12)', border: '1px solid rgba(139,92,246,.25)', borderRadius: 12, padding: '8px 12px', cursor: 'pointer', lineHeight: 1.5 },
+  aiQuick: { fontSize: 12, color: '#C9BEE0', background: 'rgba(99,102,241,.12)', border: '1px solid rgba(99,102,241,.25)', borderRadius: 12, padding: '8px 12px', cursor: 'pointer', lineHeight: 1.5 },
   aiSection: { fontSize: 11.5, color: '#8B7FA3', marginTop: 8 },
   aiMsg: { fontSize: 12.5, padding: '9px 12px', borderRadius: 12, lineHeight: 1.6, maxWidth: '92%' },
-  aiMsgUser: { background: 'rgba(139,92,246,.25)', color: '#E5DDF5', alignSelf: 'flex-end' },
+  aiMsgUser: { background: 'rgba(99,102,241,.25)', color: '#E5DDF5', alignSelf: 'flex-end' },
   aiMsgBot: { background: 'rgba(255,255,255,.07)', color: '#D8CFF0', alignSelf: 'flex-start' },
   aiFoot: { display: 'flex', gap: 8, padding: 12, borderTop: '1px solid rgba(255,255,255,.07)' },
   aiInput: { flex: 1, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 12, padding: '8px 12px', color: '#F5EDE2', fontSize: 12.5, outline: 'none' },
-  aiSend: { width: 36, height: 36, borderRadius: 12, background: '#8B5CF6', border: 'none', color: '#fff', fontSize: 15, cursor: 'pointer' },
+  aiSend: { width: 36, height: 36, borderRadius: 12, background: '#6366F1', border: 'none', color: '#fff', fontSize: 15, cursor: 'pointer' },
   // 模块1.1 外观设置
   uiBtn: { background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', color: '#E5DDF5', fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 10, cursor: 'pointer', letterSpacing: 1 },
   uiMask: { position: 'fixed', inset: 0, background: 'rgba(5,3,12,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, backdropFilter: 'blur(2px)' },
@@ -2487,7 +2487,7 @@ const styles = {
   uiLabel: { fontSize: 13.5, color: '#C9BEE0', flexShrink: 0, width: 78 },
   uiOpts: { display: 'flex', gap: 6 },
   uiOpt: { padding: '5px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,.16)', color: '#B9AFCB', fontSize: 12.5, cursor: 'pointer', background: 'rgba(255,255,255,.05)' },
-  uiOptOn: { background: '#8B5CF6', borderColor: '#8B5CF6', color: '#fff', fontWeight: 600 },
+  uiOptOn: { background: '#6366F1', borderColor: '#6366F1', color: '#fff', fontWeight: 600 },
   uiHint: { fontSize: 11.5, color: '#8B7FA3', lineHeight: 1.7, marginTop: 6, borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: 12 },
   uiGroupTitle: { fontSize: 12.5, fontWeight: 700, letterSpacing: 1, margin: '2px 0 12px', opacity: .85 },
   uiSfxGrid: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
