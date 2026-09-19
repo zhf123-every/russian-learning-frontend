@@ -5,7 +5,7 @@ import { videoScore, levelMastery, isLevelUnlocked as _unlock, isVideoUnlocked a
 
 function levelIds() {
   const m = {}
-  for (const l of LEVELS) m[l] = getLevelVideos(l).map(x => x.video.id)
+  for (const l of LEVELS) m[l] = getLevelVideos(l).map(x => (x.video ? x.video.id : x.id))
   return m
 }
 
@@ -57,7 +57,7 @@ export const useCourseStore = create((set, get) => ({
   },
 
   resetLevel(level) {
-    const ids = getLevelVideos(level).map(x => x.video.id)
+    const ids = getLevelVideos(level).map(x => (x.video ? x.video.id : x.id))
     const next = { ...get().progress }
     for (const id of ids) delete next[id]
     saveLS(LS.progress, next)

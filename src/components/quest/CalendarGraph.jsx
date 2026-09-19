@@ -167,10 +167,11 @@ export default function CalendarGraph({
         {/* 月份标签 + 格子 */}
         <div style={{ flex: 1 }}>
           {/* 月份标签 */}
-          <div style={{ display: 'flex', gap: 3, marginBottom: 4, height: 14 }}>
+          <div style={{ display: 'flex', gap: 3, marginBottom: 4, height: 14, position: 'relative' }}>
             {monthPositions.map(({ month, week }, i) => (
               <div key={i} style={{
                 position: 'absolute',
+                top: 0, left: 0,
                 marginLeft: week * 15,
                 fontSize: 10, color: T.sub, whiteSpace: 'nowrap',
               }}>{MONTH_LABELS[month]}</div>
