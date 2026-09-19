@@ -387,12 +387,12 @@ export default function QuestPractice() {
     return (
       <div style={styles.page}>
         <div style={styles.errorCard}>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "#A86454", marginBottom: 8 }}>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "#E11D48", marginBottom: 8 }}>
             加载失败
           </div>
-          <div style={{ color: "#86796D", marginBottom: 16 }}>{loadError}</div>
+          <div style={{ color: "#A1A1AA", marginBottom: 16 }}>{loadError}</div>
           <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-            <button style={{ ...styles.primaryBtn, background: "#fff", color: "#856849", border: "1px solid #D8CDBF" }} onClick={() => setReloadKey((k) => k + 1)}>
+            <button style={{ ...styles.primaryBtn, background: "#fff", color: "#4338CA", border: "1px solid #D9D9E0" }} onClick={() => setReloadKey((k) => k + 1)}>
               重新加载
             </button>
             <button style={styles.primaryBtn} onClick={() => navigate(-1)}>
@@ -438,7 +438,7 @@ export default function QuestPractice() {
       {showCorrect && (
         <div style={styles.correctOverlay}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
-          <div style={{ fontSize: 20, fontWeight: 600, color: "#6E8F7E" }}>正确</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: "#059669" }}>正确</div>
         </div>
       )}
 
@@ -456,7 +456,7 @@ export default function QuestPractice() {
           <div
             style={{
               ...styles.comboBadge,
-              color: combo >= 20 ? "#A86454" : combo >= 10 ? "#B08A5A" : combo >= 5 ? "#D4A853" : "#9B7B5E",
+              color: combo >= 20 ? "#E11D48" : combo >= 10 ? "#EA580C" : combo >= 5 ? "#F59E0B" : "#4F46E5",
               animation: combo >= 5 ? "combo-pulse 0.6s ease infinite" : "none",
             }}
           >
@@ -528,17 +528,17 @@ export default function QuestPractice() {
         {/* 模式提示 */}
         <div style={styles.modeHint}>
           {isFixMode && (
-            <span style={{ color: "#A86454" }}>
+            <span style={{ color: "#E11D48" }}>
               按任意键开始修正错误词
             </span>
           )}
           {isFixInputMode && (
-            <span style={{ color: "#B08A5A" }}>
+            <span style={{ color: "#EA580C" }}>
               修正当前词 · 空格跳下一个错词 · Backspace 回退
             </span>
           )}
           {!isFixMode && !isFixInputMode && (
-            <span style={{ color: "#86796D" }}>
+            <span style={{ color: "#A1A1AA" }}>
               Enter 提交 · Ctrl+' 发音 · Ctrl+; 看答案
             </span>
           )}
@@ -604,14 +604,14 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     fontSize: 18,
-    color: "#86796D",
+    color: "#A1A1AA",
   },
   errorCard: {
     margin: "80px auto",
     padding: 32,
     background: "#fff",
     borderRadius: 16,
-    boxShadow: "0 4px 16px rgba(155,123,94,0.10)",
+    boxShadow: "0 4px 16px rgba(79,70,229,0.10)",
     textAlign: "center",
     maxWidth: 400,
   },
@@ -726,14 +726,14 @@ const styles = {
     fontSize: "2.5rem",
     fontWeight: 700,
     fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    color: "#3D332C",
+    color: "#18181B",
     lineHeight: 1.3,
   },
   grammarNote: {
     marginTop: 10,
     fontSize: 13,
-    color: "#9B7B5E",
-    background: "#F5EFE7",
+    color: "#4F46E5",
+    background: "#EEF0FF",
     padding: "8px 14px",
     borderRadius: 8,
     display: "inline-block",
@@ -741,7 +741,7 @@ const styles = {
   answerReveal: {
     marginTop: 12,
     fontSize: 16,
-    color: "#6E8F7E",
+    color: "#059669",
     fontWeight: 500,
   },
   inputCard: {
@@ -758,7 +758,7 @@ const styles = {
   },
   primaryBtn: {
     padding: "10px 24px",
-    background: "linear-gradient(135deg, #9B7B5E, #856849)",
+    background: "linear-gradient(135deg, #4F46E5, #4338CA)",
     color: "#fff",
     border: "none",
     borderRadius: 10,

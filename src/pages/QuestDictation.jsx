@@ -293,10 +293,10 @@ export default function QuestDictation() {
     return (
       <div style={styles.page}>
         <div style={styles.errorCard}>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "#A86454", marginBottom: 8 }}>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "#E11D48", marginBottom: 8 }}>
             加载失败
           </div>
-          <div style={{ color: "#86796D", marginBottom: 16 }}>{loadError}</div>
+          <div style={{ color: "#A1A1AA", marginBottom: 16 }}>{loadError}</div>
           <button style={styles.primaryBtn} onClick={() => navigate(-1)}>
             返回
           </button>
@@ -341,8 +341,8 @@ export default function QuestDictation() {
           80% { transform: translateX(4px); }
         }
         @keyframes play-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(155,123,94,0.4); }
-          50% { box-shadow: 0 0 0 16px rgba(155,123,94,0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(79,70,229,0.4); }
+          50% { box-shadow: 0 0 0 16px rgba(79,70,229,0); }
         }
       `}</style>
 
@@ -384,7 +384,7 @@ export default function QuestDictation() {
           <div
             style={{
               ...styles.comboBadge,
-              color: combo >= 20 ? "#A86454" : combo >= 10 ? "#B08A5A" : combo >= 5 ? "#D4A853" : "#9B7B5E",
+              color: combo >= 20 ? "#E11D48" : combo >= 10 ? "#EA580C" : combo >= 5 ? "#F59E0B" : "#4F46E5",
               animation: combo >= 5 ? "combo-pulse 0.6s ease infinite" : "none",
             }}
           >
@@ -417,8 +417,8 @@ export default function QuestDictation() {
               ...styles.playButton,
               animation: isPlaying ? "play-pulse 1.2s ease infinite" : "none",
               background: isPlaying
-                ? "linear-gradient(135deg, #856849, #6E5438)"
-                : "linear-gradient(135deg, #9B7B5E, #856849)",
+                ? "linear-gradient(135deg, #4338CA, #3730A3)"
+                : "linear-gradient(135deg, #4F46E5, #4338CA)",
             }}
             onClick={() => playAudio()}
             title="播放发音（空格键重播）"
@@ -470,27 +470,27 @@ export default function QuestDictation() {
         {/* 模式提示 */}
         <div style={styles.modeHint}>
           {isFixMode && (
-            <span style={{ color: "#A86454" }}>
+            <span style={{ color: "#E11D48" }}>
               按字母键开始修正 · 空格键重播发音
             </span>
           )}
           {isFixInputMode && inputValue.length === 0 && (
-            <span style={{ color: "#B08A5A" }}>
+            <span style={{ color: "#EA580C" }}>
               输入修正词 · 空输入时空格重播发音 · Backspace 回退上一个错词
             </span>
           )}
           {isFixInputMode && inputValue.length > 0 && (
-            <span style={{ color: "#B08A5A" }}>
+            <span style={{ color: "#EA580C" }}>
               修正当前词 · 空格跳下一个错词 · Backspace 回退
             </span>
           )}
           {!isFixMode && !isFixInputMode && inputValue.length === 0 && (
-            <span style={{ color: "#86796D" }}>
+            <span style={{ color: "#A1A1AA" }}>
               先听发音，再输入 · 空格键重播 · Enter 提交
             </span>
           )}
           {!isFixMode && !isFixInputMode && inputValue.length > 0 && (
-            <span style={{ color: "#86796D" }}>
+            <span style={{ color: "#A1A1AA" }}>
               Enter 提交 · Ctrl+' 重播发音 · Ctrl+; 看字幕
             </span>
           )}
@@ -542,14 +542,14 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     fontSize: 18,
-    color: "#86796D",
+    color: "#A1A1AA",
   },
   errorCard: {
     margin: "80px auto",
     padding: 32,
     background: "#fff",
     borderRadius: 16,
-    boxShadow: "0 4px 16px rgba(155,123,94,0.10)",
+    boxShadow: "0 4px 16px rgba(79,70,229,0.10)",
     textAlign: "center",
     maxWidth: 400,
   },
@@ -634,7 +634,7 @@ const styles = {
     padding: "24px 24px 20px",
     background: "#fff",
     borderRadius: 16,
-    boxShadow: "0 2px 12px rgba(155,123,94,0.06)",
+    boxShadow: "0 2px 12px rgba(79,70,229,0.06)",
     textAlign: "center",
     display: "flex",
     flexDirection: "column",
@@ -651,18 +651,18 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     transition: "transform 0.2s, box-shadow 0.2s",
-    boxShadow: "0 4px 16px rgba(155,123,94,0.3)",
+    boxShadow: "0 4px 16px rgba(79,70,229,0.3)",
     marginBottom: 12,
   },
   playHint: {
     fontSize: 14,
-    color: "#86796D",
+    color: "#A1A1AA",
     fontWeight: 500,
   },
   subtitleBlur: {
     marginTop: 16,
     padding: "10px 20px",
-    background: "#FAF7F3",
+    background: "#F4F4F6",
     borderRadius: 10,
     maxWidth: "100%",
   },
@@ -679,7 +679,7 @@ const styles = {
     width: "100%",
     background: "#fff",
     borderRadius: 16,
-    boxShadow: "0 4px 16px rgba(155,123,94,0.10)",
+    boxShadow: "0 4px 16px rgba(79,70,229,0.10)",
     minHeight: 140,
     display: "flex",
     alignItems: "center",
@@ -692,7 +692,7 @@ const styles = {
   },
   primaryBtn: {
     padding: "12px 28px",
-    background: "linear-gradient(135deg, #9B7B5E, #856849)",
+    background: "linear-gradient(135deg, #4F46E5, #4338CA)",
     color: "#fff",
     border: "none",
     borderRadius: 12,
@@ -700,7 +700,7 @@ const styles = {
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.2s ease",
-    boxShadow: "0 2px 8px rgba(155,123,94,0.25)",
+    boxShadow: "0 2px 8px rgba(79,70,229,0.25)",
   },
   // ---- 首次进入引导层 ----
   startOverlay: {
@@ -721,7 +721,7 @@ const styles = {
     padding: "48px 40px",
     background: "#fff",
     borderRadius: 24,
-    boxShadow: "0 8px 32px rgba(155,123,94,0.15)",
+    boxShadow: "0 8px 32px rgba(79,70,229,0.15)",
     maxWidth: 420,
   },
   startButton: {
@@ -729,26 +729,26 @@ const styles = {
     height: 88,
     borderRadius: "50%",
     border: "none",
-    background: "linear-gradient(135deg, #9B7B5E, #856849)",
+    background: "linear-gradient(135deg, #4F46E5, #4338CA)",
     color: "#fff",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     margin: "0 auto 24px",
-    boxShadow: "0 6px 24px rgba(155,123,94,0.35)",
+    boxShadow: "0 6px 24px rgba(79,70,229,0.35)",
     transition: "transform 0.2s, box-shadow 0.2s",
   },
   startTitle: {
     fontSize: 26,
     fontWeight: 800,
-    color: "#3D332C",
+    color: "#18181B",
     marginBottom: 12,
     letterSpacing: "1px",
   },
   startDesc: {
     fontSize: 15,
-    color: "#86796D",
+    color: "#A1A1AA",
     lineHeight: 1.7,
     marginBottom: 24,
   },
