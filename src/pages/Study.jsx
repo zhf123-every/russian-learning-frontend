@@ -837,7 +837,7 @@ export default function Study() {
 <div style={{ padding: 20, textAlign: 'center' }}>
 <div style={{ fontSize: 50, marginBottom: 10 }}></div>
 <div className="ru-large" style={{ opacity: 0.2 }}>俄文字幕已隐藏</div>
-<div className="zh-medium" style={{ marginTop: 6 }}>整体盲听 · 感受语境主旨</div>
+<div className="zh-medium" style={{ marginTop: 6 }}>盲听 · 感受语境主旨</div>
 <div className="hint" style={{ marginTop: 8 }}>本素材共 {sentences.length} 句，请反复听完整篇</div>
 <div style={{ marginTop: 12 }}>
  {playingIdx === -1 ? (
@@ -911,7 +911,7 @@ export default function Study() {
 
  {/* 训练操作区 */}
 <div className="train-card" style={{ marginTop: 12 }}>
-<div className="tc-title">影子跟读训练</div>
+<div className="tc-title">跟读训练</div>
 <div style={{ textAlign: 'center', marginBottom: 12 }}>
 <span className="act-hint">听 → 跟读 → 模仿重音、语速、语调</span>
 </div>
@@ -944,7 +944,7 @@ export default function Study() {
 
  {shangWenjieStage === STAGES.RECITE_OUT && (
 <div style={{ padding: 16, textAlign: 'center' }}>
-<div className="ru-large" style={{ opacity: 0.12, fontSize: 22 }}>俄文字幕已隐藏 · 脱稿复述</div>
+<div className="ru-large" style={{ opacity: 0.12, fontSize: 22 }}>俄文字幕已隐藏 · 听后复述</div>
 <div style={{ fontSize: 45, margin: '12px 0' }}></div>
 <div className="hint" style={{ marginBottom: 8 }}>第 {curIdx + 1} 句 / 共 {sentences.length} 句 — 复述完成 {reciteProgress.done}/{reciteProgress.total}</div>
 <div>
@@ -958,7 +958,7 @@ export default function Study() {
 
  {/* 阶段5 新增：全文背诵 + 录音原文比对 */}
 <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border2, #E0D6C4)' }}>
-<div className="hint" style={{ marginBottom: 8 }}>整篇背诵训练</div>
+<div className="hint" style={{ marginBottom: 8 }}>整篇复述训练</div>
 <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
  {!isRecording ? (
 <button
@@ -966,7 +966,7 @@ export default function Study() {
  onClick={startRecording}
  style={{ background: '#C0392B', borderColor: '#C0392B' }}
  >
- 全文背诵（开始录音）
+ 全文复述（开始录音）
 </button>
  ) : (
 <button
@@ -1027,7 +1027,7 @@ export default function Study() {
  {/* 录音完成后显示回放 + AI分析 */}
  {reciteAudioUrl && !isRecording && (
 <div style={{ marginTop: 12, textAlign: 'left' }}>
-<div className="hint" style={{ marginBottom: 6 }}>已录制背诵音频</div>
+<div className="hint" style={{ marginBottom: 6 }}>已录制复述音频</div>
 <audio
  ref={reciteAudioRef}
  src={reciteAudioUrl}
@@ -1054,7 +1054,7 @@ export default function Study() {
 <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>AI 比对结果</div>
  {reciteResult.user_text && (
 <div style={{ marginBottom: 10 }}>
-<div className="hint">识别到的背诵内容：</div>
+<div className="hint">识别到的复述内容：</div>
 <div style={{ marginTop: 4, fontSize: 14, lineHeight: 1.6, color: '#3D2F22' }}>{reciteResult.user_text}</div>
 </div>
  )}
@@ -1104,7 +1104,7 @@ export default function Study() {
  ))}
 </div>
  ) : (
-<div style={{ marginBottom: 10, color: '#5C8A6B', fontWeight: 600 }}>未发现明显错误，背诵很棒！</div>
+<div style={{ marginBottom: 10, color: '#5C8A6B', fontWeight: 600 }}>未发现明显错误，复述很棒！</div>
  )}
  {reciteResult.overall_tip && (
 <div style={{ padding: '8px 10px', background: 'var(--soft)', borderRadius: 6, fontSize: 13, lineHeight: 1.6 }}>
