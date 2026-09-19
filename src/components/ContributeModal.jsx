@@ -21,6 +21,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
   const [uploading, setUploading] = useState(false)
   const [uploadPct, setUploadPct] = useState(0)
   const [uploadName, setUploadName] = useState('')
+  const [uploadOk, setUploadOk] = useState(null)   // true=上传成功 false=上传失败 null=未开始
   const fileInputRef = useRef(null)
   const adminKey = useAdminStore(s => s.adminKey)
 
@@ -32,7 +33,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
 
   const uploadToB2 = async (file) => {
     if (!adminKey) { toast('请先登录管理员后再上传本地视频'); return }
-    setUploading(true); setUploadPct(0); setUploadName(file.name)
+    setUploading(true); setUploadPct(0); setUploadName(file.name); setUploadOk(null)
     try {
       const pr = await apiFetch('/api/upload/presign', {
         method: 'POST',
@@ -40,7 +41,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
         body: JSON.stringify({ filename: file.name, kind: 'video', contentType: file.type || 'video/mp4', adminKey })
       })
       const pj = await pr.json()
-      if (!pj.ok) { toast('获取上传授权失败：' + (pj.error || '未知错误')); return }
+      if (!pj.ok) { setUploadOk(false); toast('获取上传授权失败：' + (pj.error || '未知错误')); return }
       const ok = await new Promise((resolve) => {
         const xhr = new XMLHttpRequest()
         xhr.open('PUT', pj.uploadUrl, true)
@@ -50,11 +51,13 @@ export default function ContributeModal({ onClose, onSubmit }) {
         xhr.onerror = () => resolve(false)
         xhr.send(file)
       })
-      if (!ok) { toast('视频上传失败，请检查网络或桶 CORS 设置'); return }
+      if (!ok) { setUploadOk(false); toast('视频上传失败，请检查网络或桶 CORS 设置'); return }
       setForm(prev => ({ ...prev, videoUrl: pj.objectUrl }))
       setUploadPct(100)
+      setUploadOk(true)
       toast('视频已上传云端，地址已自动填好')
     } catch (e) {
+      setUploadOk(false)
       toast('上传异常：' + (e.message || '请重试'))
     } finally {
       setUploading(false)
@@ -135,8 +138,14 @@ export default function ContributeModal({ onClose, onSubmit }) {
             {uploading ? ('上传中 ' + uploadPct + '%') : '选择本地视频上传'}
           </button>
           {uploadName && (
-            <div className="hint" style={{ marginTop: 4 }}>
-              {uploading ? ('正在上传：' + uploadName + '（' + uploadPct + '%）') : ('已上传：' + uploadName + '，地址已填入下方')}
+            <div className="hint" style={{ marginTop: 4, color: uploadOk === false ? '#c0392b' : undefined }}>
+              {uploading
+                ? ('正在上传：' + uploadName + '（' + uploadPct + '%）')
+                : uploadOk === false
+                  ? ('上传失败：' + uploadName + '，请点上方按钮重试，或直接在下方粘贴视频链接')
+                  : uploadOk
+                    ? ('已上传：' + uploadName + '，地址已填入下方')
+                    : ''}
             </div>
           )}
           {uploading && (
