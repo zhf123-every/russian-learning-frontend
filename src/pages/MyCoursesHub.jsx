@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MyCoursesHub.jsx —— 「我的」课程中心
  * 展示：正在学习（含继续学习）、已购买、可试学课程；底部保留工具入口。
  * 数据：GET /api/course-packs + /api/course-packs/:id/units；购买状态走 courseAccess（localStorage）。
@@ -106,7 +106,7 @@ export default function MyCoursesHub() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F7F6FB", padding: "28px 24px 60px" }}>
+    <div style={{ minHeight: "100vh", background: "#F7F6FB", padding: "28px 24px 60px", overflowX: "hidden" }}>
       <div style={{ maxWidth: 980, margin: "0 auto" }}>
         <div style={{ marginBottom: 26 }}>
           <div style={{ fontSize: 26, fontWeight: 800, color: "#1F1B2E" }}>我的课程</div>
@@ -168,7 +168,7 @@ export default function MyCoursesHub() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
                     gap: 18,
                     marginBottom: 34,
                   }}
@@ -182,7 +182,7 @@ export default function MyCoursesHub() {
 
             {/* 学习工具 */}
             <SectionTitle title="学习工具" />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 14 }}>
               {TOOL_LINKS.map((t) => (
                 <div
                   key={t.to}

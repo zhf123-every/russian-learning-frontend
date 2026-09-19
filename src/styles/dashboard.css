@@ -57,7 +57,7 @@
 @media(max-width:900px){
   .app-shell{display:block;height:auto;overflow:visible}
   .db-sidenav{display:none}
-  .shell-main{height:auto;min-height:100vh;overflow:visible;padding-top:52px;padding-bottom:calc(60px + env(safe-area-inset-bottom))}
+  .shell-main{height:auto;min-height:100vh;overflow-x:hidden;padding-top:52px;padding-bottom:calc(60px + env(safe-area-inset-bottom))}
   .db-page{min-height:100vh}
   .db-container{padding:18px 16px 28px}
 

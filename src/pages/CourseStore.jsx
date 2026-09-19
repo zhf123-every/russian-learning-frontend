@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CourseStore.jsx —— 课程中心（课程货架页）
  * 数据来源：GET /api/course-packs（课程包）
  *           GET /api/course-packs/:id/units（统计学习进度：已完成单元数 / 总单元数 / 总步数）
@@ -122,7 +122,7 @@ export default function CourseStore() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F7F6FB", padding: "28px 24px 60px" }}>
+    <div style={{ minHeight: "100vh", background: "#F7F6FB", padding: "28px 24px 60px", overflowX: "hidden" }}>
       <div style={{ maxWidth: 1180, margin: "0 auto" }}>
         {/* 顶部标题 + 搜索 */}
         <div
@@ -244,7 +244,7 @@ export default function CourseStore() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
               gap: 22,
             }}
           >
