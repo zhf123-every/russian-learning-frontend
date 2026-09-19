@@ -112,7 +112,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
     if (isMCQ) {
       return (
         <div>
-          <div style={{ fontWeight: 600, marginBottom: 14, fontSize: 15, lineHeight: 1.6, color: '#3D332C' }}>
+          <div style={{ fontWeight: 600, marginBottom: 14, fontSize: 15, lineHeight: 1.6, color: '#18181B' }}>
             {q.question}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -128,8 +128,8 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                     width: '100%',
                     textAlign: 'left',
                     padding: '10px 14px',
-                    background: selected ? 'var(--accent, #8B735F)' : '#FFFCF7',
-                    color: selected ? '#fff' : '#5C4A3A',
+                    background: selected ? 'var(--accent, #8B735F)' : '#FFFFFF',
+                    color: selected ? '#fff' : '#71717A',
                     border: selected ? '1px solid var(--accent, #8B735F)' : '1px solid var(--border2, #E8E1D9)',
                     borderRadius: 10,
                     fontSize: 14,
@@ -150,7 +150,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
     // 主观题
     return (
       <div>
-        <div style={{ fontWeight: 600, marginBottom: 14, fontSize: 15, lineHeight: 1.6, color: '#3D332C' }}>
+        <div style={{ fontWeight: 600, marginBottom: 14, fontSize: 15, lineHeight: 1.6, color: '#18181B' }}>
           {q.question}
         </div>
         <textarea
@@ -168,8 +168,8 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
             lineHeight: 1.6,
             resize: 'vertical',
             outline: 'none',
-            background: '#FFFCF7',
-            color: '#3D332C',
+            background: '#FFFFFF',
+            color: '#18181B',
           }}
         />
       </div>
@@ -178,9 +178,9 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
 
   // 通过状态
   const getPassInfo = (res) => {
-    if (res.score >= 80) return { label: '通过', color: '#6E8F7E' }
-    if (res.score >= 60) return { label: '勉强通过', color: '#B08A5A' }
-    return { label: '❌ 未通过', color: '#A86454' }
+    if (res.score >= 80) return { label: '通过', color: '#059669' }
+    if (res.score >= 60) return { label: '勉强通过', color: '#D97706' }
+    return { label: '❌ 未通过', color: '#E11D48' }
   }
 
   // 切换详情展开
@@ -197,7 +197,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(60, 45, 30, 0.55)',
+        background: 'rgba(24, 24, 27, 0.55)',
         zIndex: 10000,
         display: 'flex',
         alignItems: 'center',
@@ -209,9 +209,9 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: '#FFFCF7',
+          background: '#FFFFFF',
           borderRadius: 16,
-          boxShadow: '0 20px 60px rgba(60,45,30,0.35)',
+          boxShadow: '0 20px 60px rgba(24,24,27,0.35)',
           width: '100%',
           maxWidth: 700,
           maxHeight: '90vh',
@@ -233,9 +233,9 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
             flexShrink: 0,
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: 16, color: '#3D332C' }}>
+          <div style={{ fontWeight: 600, fontSize: 16, color: '#18181B' }}>
             AI 测验
-            {videoTitle && <span style={{ marginLeft: 8, fontSize: 13, color: 'var(--muted, #86796D)', fontWeight: 400 }}>— {videoTitle}</span>}
+            {videoTitle && <span style={{ marginLeft: 8, fontSize: 13, color: 'var(--muted, #A1A1AA)', fontWeight: 400 }}>— {videoTitle}</span>}
           </div>
           <button className="btn sm" onClick={onClose} style={{ fontSize: 12 }}>关闭</button>
         </div>
@@ -246,10 +246,10 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
           {phase === 'generating' && (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}></div>
-              <div style={{ fontSize: 16, color: '#3D332C', fontWeight: 500, marginBottom: 8 }}>
+              <div style={{ fontSize: 16, color: '#18181B', fontWeight: 500, marginBottom: 8 }}>
                 正在生成测验题目…
               </div>
-              <div style={{ fontSize: 13, color: 'var(--muted, #86796D)' }}>
+              <div style={{ fontSize: 13, color: 'var(--muted, #A1A1AA)' }}>
                 AI 正在根据文章内容生成 30 道题，请稍候（约 30-90 秒，首次生成可能较慢）
               </div>
               <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 4 }}>
@@ -271,10 +271,10 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
           {phase === 'error' && (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}></div>
-              <div style={{ fontSize: 16, color: '#A86454', fontWeight: 500, marginBottom: 8 }}>
+              <div style={{ fontSize: 16, color: '#E11D48', fontWeight: 500, marginBottom: 8 }}>
                 题目生成失败
               </div>
-              <div style={{ fontSize: 13, color: 'var(--muted, #86796D)', marginBottom: 20 }}>
+              <div style={{ fontSize: 13, color: 'var(--muted, #A1A1AA)', marginBottom: 20 }}>
                 {genError || '未知错误'}
               </div>
               <button className="btn sm primary" onClick={generateQuiz}>重新生成</button>
@@ -287,7 +287,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
               {/* 进度条 */}
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#3D332C' }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#18181B' }}>
                     第 {currentIdx + 1} 题 / 共 {quiz.length} 题
                   </span>
                   <span
@@ -336,9 +336,9 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                         background: isCur
                           ? 'var(--accent, #8B735F)'
                           : answered
-                            ? '#6E8F7E'
+                            ? '#059669'
                             : 'var(--border2, #E8E1D9)',
-                        color: isCur || answered ? '#fff' : 'var(--muted, #86796D)',
+                        color: isCur || answered ? '#fff' : 'var(--muted, #A1A1AA)',
                         transition: 'all 0.15s',
                       }}
                     >
@@ -362,7 +362,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                 >
                   上一题
                 </button>
-                <span style={{ fontSize: 12, color: 'var(--muted, #86796D)', alignSelf: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--muted, #A1A1AA)', alignSelf: 'center' }}>
                   已答 {answeredCount}/{quiz.length}
                 </span>
                 {currentIdx < quiz.length - 1 ? (
@@ -385,10 +385,10 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
           {phase === 'grading' && (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}></div>
-              <div style={{ fontSize: 16, color: '#3D332C', fontWeight: 500, marginBottom: 8 }}>
+              <div style={{ fontSize: 16, color: '#18181B', fontWeight: 500, marginBottom: 8 }}>
                 正在评分…
               </div>
-              <div style={{ fontSize: 13, color: 'var(--muted, #86796D)' }}>
+              <div style={{ fontSize: 13, color: 'var(--muted, #A1A1AA)' }}>
                 AI 正在批改你的答案，请稍候
               </div>
               <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 4 }}>
@@ -414,7 +414,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                 <div style={{ fontSize: 56, fontWeight: 700, color: 'var(--accent, #8B735F)', lineHeight: 1 }}>
                   {result.score}
                 </div>
-                <div style={{ fontSize: 14, color: 'var(--muted, #86796D)', marginTop: 4 }}>分（百分制）</div>
+                <div style={{ fontSize: 14, color: 'var(--muted, #A1A1AA)', marginTop: 4 }}>分（百分制）</div>
                 <div
                   style={{
                     display: 'inline-block',
@@ -434,7 +434,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
               {/* 各题型得分 */}
               {result.breakdown && Object.keys(result.breakdown).length > 0 && (
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: '#3D332C' }}>各题型得分</div>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: '#18181B' }}>各题型得分</div>
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
@@ -451,8 +451,8 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                           fontSize: 12,
                         }}
                       >
-                        <div style={{ color: 'var(--muted, #86796D)' }}>{TYPE_LABEL_MAP[type] || type}</div>
-                        <div style={{ fontWeight: 600, color: '#3D332C', marginTop: 2 }}>{String(val)}</div>
+                        <div style={{ color: 'var(--muted, #A1A1AA)' }}>{TYPE_LABEL_MAP[type] || type}</div>
+                        <div style={{ fontWeight: 600, color: '#18181B', marginTop: 2 }}>{String(val)}</div>
                       </div>
                     ))}
                   </div>
@@ -469,7 +469,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                   borderRadius: 10,
                   fontSize: 13,
                   lineHeight: 1.7,
-                  color: '#3D332C',
+                  color: '#18181B',
                 }}>
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>针对性复习建议</div>
                   {result.suggestion}
@@ -478,7 +478,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
 
               {/* 每题详情 */}
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: '#3D332C' }}>📋 答题详情</div>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: '#18181B' }}>📋 答题详情</div>
                 {result.details && result.details.map((d, i) => {
                   const q = quiz.find(qq => qq.id === d.id)
                   const isOpen = expandedDetails[d.id]
@@ -512,32 +512,32 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                         <span style={{
                           flexShrink: 0,
                           width: 22, height: 22, borderRadius: '50%',
-                          background: isCorrect === true ? '#6E8F7E' : isCorrect === false ? '#A86454' : 'var(--border2, #E8E1D9)',
+                          background: isCorrect === true ? '#059669' : isCorrect === false ? '#E11D48' : 'var(--border2, #E8E1D9)',
                           color: '#fff',
                           fontSize: 11, fontWeight: 600,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                           {i + 1}
                         </span>
-                        <span style={{ flex: 1, color: '#3D332C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ flex: 1, color: '#18181B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {q?.question || `第${i + 1}题`}
                         </span>
-                        <span style={{ fontSize: 11, color: 'var(--muted, #86796D)', flexShrink: 0 }}>
+                        <span style={{ fontSize: 11, color: 'var(--muted, #A1A1AA)', flexShrink: 0 }}>
                           {TYPE_LABEL_MAP[q?.type] || ''}
                         </span>
-                        <span style={{ fontSize: 12, color: 'var(--muted, #86796D)', flexShrink: 0 }}>
+                        <span style={{ fontSize: 12, color: 'var(--muted, #A1A1AA)', flexShrink: 0 }}>
                           {isOpen ? '▲' : '▼'}
                         </span>
                       </button>
                       {isOpen && (
                         <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border2, #E8E1D9)', fontSize: 13, lineHeight: 1.7 }}>
                           {q?.question && (
-                            <div style={{ marginTop: 10, color: '#3D332C' }}>
+                            <div style={{ marginTop: 10, color: '#18181B' }}>
                               <strong>题目：</strong>{q.question}
                             </div>
                           )}
                           {q?.options && q.options.length > 0 && (
-                            <div style={{ marginTop: 6, color: '#5C4A3A' }}>
+                            <div style={{ marginTop: 6, color: '#71717A' }}>
                               <strong>选项：</strong>
                               <div style={{ marginTop: 4, paddingLeft: 8 }}>
                                 {q.options.map((opt, oi) => (
@@ -545,7 +545,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                                     padding: '2px 8px',
                                     borderRadius: 4,
                                     background: oi === q.answer ? 'rgba(110,143,126,0.12)' : 'transparent',
-                                    color: oi === q.answer ? '#6E8F7E' : '#5C4A3A',
+                                    color: oi === q.answer ? '#059669' : '#71717A',
                                     fontWeight: oi === q.answer ? 600 : 400,
                                   }}>
                                     {String.fromCharCode(65 + oi)}. {opt}
@@ -555,16 +555,16 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                               </div>
                             </div>
                           )}
-                          <div style={{ marginTop: 8, color: '#A86454' }}>
+                          <div style={{ marginTop: 8, color: '#E11D48' }}>
                             <strong>你的答案：</strong>
                             {d.userAnswer != null && d.userAnswer !== ''
                               ? (typeof d.userAnswer === 'number' && q?.options
                                   ? `${String.fromCharCode(65 + d.userAnswer)}. ${q.options[d.userAnswer]}`
                                   : String(d.userAnswer))
-                              : <span style={{ color: 'var(--muted, #86796D)' }}>（未作答）</span>}
+                              : <span style={{ color: 'var(--muted, #A1A1AA)' }}>（未作答）</span>}
                           </div>
                           {d.correctAnswer != null && d.correctAnswer !== '' && (
-                            <div style={{ marginTop: 4, color: '#6E8F7E' }}>
+                            <div style={{ marginTop: 4, color: '#059669' }}>
                               <strong>正确答案：</strong>
                               {typeof d.correctAnswer === 'number' && q?.options
                                 ? `${String.fromCharCode(65 + d.correctAnswer)}. ${q.options[d.correctAnswer]}`
@@ -572,7 +572,7 @@ export default function AIQuiz({ sentences, videoId, videoTitle, onClose }) {
                             </div>
                           )}
                           {d.explanation && (
-                            <div style={{ marginTop: 8, padding: '8px 10px', background: 'var(--soft, #F5F0E8)', borderRadius: 6, color: '#5C4A3A' }}>
+                            <div style={{ marginTop: 8, padding: '8px 10px', background: 'var(--soft, #F5F0E8)', borderRadius: 6, color: '#71717A' }}>
                               <strong>解析：</strong>{d.explanation}
                             </div>
                           )}

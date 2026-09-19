@@ -152,7 +152,7 @@ export default function FullTextPanel({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(60, 45, 30, 0.55)',
+        background: 'rgba(24, 24, 27, 0.55)',
         zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
@@ -164,9 +164,9 @@ export default function FullTextPanel({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#FDF8F0',
+          background: '#FFFFFF',
           borderRadius: 14,
-          boxShadow: '0 20px 60px rgba(60,45,30,0.35)',
+          boxShadow: '0 20px 60px rgba(24,24,27,0.35)',
           width: '100%',
           maxWidth: 820,
           maxHeight: '80vh',
@@ -187,7 +187,7 @@ export default function FullTextPanel({
             background: 'var(--soft, #F5F0E8)',
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: 16, color: '#5C4A3A' }}>
+          <div style={{ fontWeight: 600, fontSize: 16, color: '#71717A' }}>
             {title}
             <span style={{ marginLeft: 10, fontSize: 13, color: 'var(--muted, #9A8B7A)', fontWeight: 400 }}>
               共 {sentences.length} 句 · 悬停单词查释义
@@ -241,7 +241,7 @@ export default function FullTextPanel({
                     : isHover
                       ? 'rgba(176, 138, 90, 0.08)'
                       : 'transparent',
-                  borderLeft: isActive ? '3px solid var(--accent, #B08A5A)' : '3px solid transparent',
+                  borderLeft: isActive ? '3px solid var(--accent, #D97706)' : '3px solid transparent',
                   transition: 'background 0.2s, border-color 0.2s',
                 }}
               >
@@ -252,7 +252,7 @@ export default function FullTextPanel({
                       width: 26,
                       height: 26,
                       borderRadius: '50%',
-                      background: isActive ? 'var(--accent, #B08A5A)' : 'var(--soft, #F5F0E8)',
+                      background: isActive ? 'var(--accent, #D97706)' : 'var(--soft, #F5F0E8)',
                       color: isActive ? '#fff' : 'var(--muted, #9A8B7A)',
                       fontSize: 12,
                       fontWeight: 600,
@@ -270,7 +270,7 @@ export default function FullTextPanel({
                       style={{
                         fontSize: 17,
                         lineHeight: 1.6,
-                        color: '#3D2F22',
+                        color: '#18181B',
                         wordBreak: 'break-word',
                       }}
                     >
@@ -310,7 +310,7 @@ export default function FullTextPanel({
             left: wordTip.x,
             top: wordTip.y,
             transform: wordTip.above ? 'translate(-50%, -100%)' : 'translateX(-50%)',
-            background: '#FDF8F0',
+            background: '#FFFFFF',
             border: '1px solid var(--border2, #E0D6C4)',
             borderRadius: 8,
             padding: '10px 12px',
@@ -318,7 +318,7 @@ export default function FullTextPanel({
             boxShadow: '0 4px 16px rgba(90,70,50,0.18)',
             zIndex: 10000,
             fontSize: 13,
-            color: '#5C4A3A',
+            color: '#71717A',
             lineHeight: 1.5,
             pointerEvents: 'none',
             textAlign: 'left',
@@ -339,13 +339,13 @@ export default function FullTextPanel({
           )}
           {/* 第三行：中文同义解释 */}
           {wordTip.synonym && (
-            <div style={{ color: 'var(--accent, #B08A5A)', fontSize: 12, marginBottom: 4 }}>
+            <div style={{ color: 'var(--accent, #D97706)', fontSize: 12, marginBottom: 4 }}>
               在中文中相当于：{wordTip.synonym}
             </div>
           )}
           {/* 第四行：例句 */}
           {wordTip.example && (
-            <div style={{ fontSize: 11, color: '#7A6B5A', fontStyle: 'italic' }}>
+            <div style={{ fontSize: 11, color: '#71717A', fontStyle: 'italic' }}>
               {wordTip.example}
             </div>
           )}

@@ -312,12 +312,12 @@ export default function Study() {
 <img src={video.posterUrl || video.thumbnail} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
  )}
  {videoError && (
-<div style={{ position: 'absolute', inset: 0, background: 'rgba(38,30,22,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#fff', zIndex: 5, textAlign: 'center', padding: 16 }}>
+<div style={{ position: 'absolute', inset: 0, background: 'rgba(24,24,27,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#fff', zIndex: 5, textAlign: 'center', padding: 16 }}>
 <div style={{ fontSize: 15, fontWeight: 700 }}>⚠️ 视频无法播放</div>
 <div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.6 }}>{videoError}</div>
 <div style={{ fontSize: 12, opacity: 0.65, lineHeight: 1.5 }}>可能原因：视频被删除、设为私享、禁止嵌入或地区限制。<br />建议更换一个可播放的视频链接（mp4 直链最佳）。</div>
  {video?.videoUrl && (
-<a href={video.videoUrl} target="_blank" rel="noreferrer" style={{ marginTop: 8, padding: '9px 20px', background: '#fff', color: '#6E5238', borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>在 YouTube 打开查看 →</a>
+<a href={video.videoUrl} target="_blank" rel="noreferrer" style={{ marginTop: 8, padding: '9px 20px', background: '#fff', color: '#3730A3', borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>在 YouTube 打开查看 →</a>
  )}
 <button onClick={() =>setVideoError(null)} style={{ marginTop: 6, background: 'transparent', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', padding: '6px 14px', borderRadius: 999, fontSize: 12, cursor: 'pointer' }}>关闭提示</button>
 </div>
@@ -687,7 +687,7 @@ export default function Study() {
  // 错误类型颜色映射
  const errorColor = (type) =>{
  switch (type) {
- case 'misread': return '#C0392B'
+ case 'misread': return '#E11D48'
  case 'omitted': return '#E67E22'
  case 'extra': return '#2980B9'
  case 'word_order': return '#8E44AD'
@@ -733,12 +733,12 @@ export default function Study() {
 <img src={video.posterUrl || video.thumbnail} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
  )}
  {videoError && (
-<div style={{ position: 'absolute', inset: 0, background: 'rgba(38,30,22,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#fff', zIndex: 5, textAlign: 'center', padding: 16 }}>
+<div style={{ position: 'absolute', inset: 0, background: 'rgba(24,24,27,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#fff', zIndex: 5, textAlign: 'center', padding: 16 }}>
 <div style={{ fontSize: 15, fontWeight: 700 }}>⚠️ 视频无法播放</div>
 <div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.6 }}>{videoError}</div>
 <div style={{ fontSize: 12, opacity: 0.65, lineHeight: 1.5 }}>可能原因：视频被删除、设为私享、禁止嵌入或地区限制。<br />建议更换一个可播放的视频链接（mp4 直链最佳）。</div>
  {video?.videoUrl && (
-<a href={video.videoUrl} target="_blank" rel="noreferrer" style={{ marginTop: 8, padding: '9px 20px', background: '#fff', color: '#6E5238', borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>在 YouTube 打开查看 →</a>
+<a href={video.videoUrl} target="_blank" rel="noreferrer" style={{ marginTop: 8, padding: '9px 20px', background: '#fff', color: '#3730A3', borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>在 YouTube 打开查看 →</a>
  )}
 <button onClick={() =>setVideoError(null)} style={{ marginTop: 6, background: 'transparent', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', padding: '6px 14px', borderRadius: 999, fontSize: 12, cursor: 'pointer' }}>关闭提示</button>
 </div>
@@ -746,7 +746,7 @@ export default function Study() {
 </div>
 </div>
  {!play && (
-<div className="card" style={{ padding: '10px 14px', background: '#FDF2E9', border: '1px solid #E8C9A0', color: '#A86454', fontSize: 13, lineHeight: 1.6 }}>
+<div className="card" style={{ padding: '10px 14px', background: '#FEF3E2', border: '1px solid #FDE68A', color: '#E11D48', fontSize: 13, lineHeight: 1.6 }}>
  该素材没有视频地址（videoUrl），按钮无法控制视频播放。请在「精听学习 · 我的素材」中填写 mp4 视频链接后重新学习。
 </div>
  )}
@@ -788,7 +788,7 @@ export default function Study() {
  )}
 <div className="shang-hint" style={{ padding: '8px 10px', background: 'var(--soft, #F5F0E8)', border: '1px solid var(--border2, #E0D6C4)', borderRadius: 6, fontSize: 12, lineHeight: 1.55, marginBottom: 10 }}>
  {shangMode
- ? (<>{STAGE_HINTS[curStage]}{isShangFinished &&<span style={{ marginLeft: 8, color: '#5C8A6B', fontWeight: 600 }}>训练完成</span>}</>)
+ ? (<>{STAGE_HINTS[curStage]}{isShangFinished &&<span style={{ marginLeft: 8, color: '#059669', fontWeight: 600 }}>训练完成</span>}</>)
  : (TRAD_STAGES.find(t =>t.key === stage)?.hint)}
 </div>
 
@@ -845,10 +845,10 @@ export default function Study() {
  const d = shangDictations[cur.id]
  if (!d) return null
  return (
-<div className="compare-box" style={{ marginTop: 10, padding: 10, background: '#FBF6EC', border: '1px solid var(--border2)', borderRadius: 6 }}>
+<div className="compare-box" style={{ marginTop: 10, padding: 10, background: '#EEF0FF', border: '1px solid var(--border2)', borderRadius: 6 }}>
 <div className="hint">你刚才的听写：</div>
 <div style={{ marginTop: 4 }}>{d.text ||<span style={{ opacity: 0.5 }}>（已跳过）</span>}</div>
- {d.skipped &&<div className="hint" style={{ marginTop: 4, color: '#A86454' }}>本句为「跳过」状态，请重点精读</div>}
+ {d.skipped &&<div className="hint" style={{ marginTop: 4, color: '#E11D48' }}>本句为「跳过」状态，请重点精读</div>}
 </div>
  )
  })()}
@@ -926,7 +926,7 @@ export default function Study() {
 <button
  className="btn sm primary"
  onClick={startRecording}
- style={{ background: '#C0392B', borderColor: '#C0392B' }}
+ style={{ background: '#E11D48', borderColor: '#E11D48' }}
  >
  全文复述（开始录音）
 </button>
@@ -935,9 +935,9 @@ export default function Study() {
  className="btn sm"
  onClick={stopRecording}
  style={{
- background: '#C0392B',
+ background: '#E11D48',
  color: '#fff',
- borderColor: '#C0392B',
+ borderColor: '#E11D48',
  animation: 'pulse 1s infinite',
  }}
  >
@@ -976,7 +976,7 @@ export default function Study() {
 <button
  className="btn sm primary"
  onClick={() =>setShowQuiz(true)}
- style={{ background: '#6B8E6B', borderColor: '#6B8E6B' }}
+ style={{ background: '#059669', borderColor: '#059669' }}
  >
  开始AI测验（30题）
 </button>
@@ -1012,12 +1012,12 @@ export default function Study() {
 
  {/* AI比对结果 */}
  {reciteResult && (
-<div style={{ marginTop: 12, padding: 12, background: '#FBF6EC', border: '1px solid var(--border2)', borderRadius: 8, textAlign: 'left' }}>
+<div style={{ marginTop: 12, padding: 12, background: '#EEF0FF', border: '1px solid var(--border2)', borderRadius: 8, textAlign: 'left' }}>
 <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>AI 比对结果</div>
  {reciteResult.user_text && (
 <div style={{ marginBottom: 10 }}>
 <div className="hint">识别到的复述内容：</div>
-<div style={{ marginTop: 4, fontSize: 14, lineHeight: 1.6, color: '#3D2F22' }}>{reciteResult.user_text}</div>
+<div style={{ marginTop: 4, fontSize: 14, lineHeight: 1.6, color: '#18181B' }}>{reciteResult.user_text}</div>
 </div>
  )}
  {reciteResult.errors && reciteResult.errors.length >0 ? (
@@ -1057,7 +1057,7 @@ export default function Study() {
  )}
 </div>
  {err.suggestion && (
-<div style={{ marginTop: 4, color: '#5C8A6B' }}>{err.suggestion}</div>
+<div style={{ marginTop: 4, color: '#059669' }}>{err.suggestion}</div>
  )}
  {err.correct_reading && (
 <div style={{ marginTop: 2, color: 'var(--muted)', fontSize: 12 }}>正确读法：{err.correct_reading}</div>
@@ -1066,7 +1066,7 @@ export default function Study() {
  ))}
 </div>
  ) : (
-<div style={{ marginBottom: 10, color: '#5C8A6B', fontWeight: 600 }}>未发现明显错误，复述很棒！</div>
+<div style={{ marginBottom: 10, color: '#059669', fontWeight: 600 }}>未发现明显错误，复述很棒！</div>
  )}
  {reciteResult.overall_tip && (
 <div style={{ padding: '8px 10px', background: 'var(--soft)', borderRadius: 6, fontSize: 13, lineHeight: 1.6 }}>
@@ -1079,7 +1079,7 @@ export default function Study() {
  )}
 </div>
 
- {isShangFinished &&<div style={{ marginTop: 14, color: '#5C8A6B', fontWeight: 600 }}>本素材五步精听已完成</div>}
+ {isShangFinished &&<div style={{ marginTop: 14, color: '#059669', fontWeight: 600 }}>本素材五步精听已完成</div>}
 </div>
  )}
 
@@ -1179,9 +1179,9 @@ export default function Study() {
 <div className="hint" style={{ margin: '0 0 8px' }}>朗读本篇素材并录音，与原声比对，检查发音与背诵准确度。</div>
 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
  {!isRecording ? (
-<button className="btn sm primary" onClick={startRecording} style={{ background: '#C0392B', borderColor: '#C0392B' }}>开始录音</button>
+<button className="btn sm primary" onClick={startRecording} style={{ background: '#E11D48', borderColor: '#E11D48' }}>开始录音</button>
  ) : (
-<button className="btn sm" onClick={stopRecording} style={{ background: '#C0392B', color: '#fff', borderColor: '#C0392B' }}>停止录音</button>
+<button className="btn sm" onClick={stopRecording} style={{ background: '#E11D48', color: '#fff', borderColor: '#E11D48' }}>停止录音</button>
  )}
 <button className="btn sm" onClick={() =>{ if (reciteAudioUrl) setShowReciteCompare(true); else toast('请先录音') }}>原文比对</button>
  {reciteAudioUrl && !isRecording && (
@@ -1197,9 +1197,9 @@ export default function Study() {
 <div style={{ marginTop: 8, padding: 10, background: '#fff', border: '1px solid var(--border2)', borderRadius: 6, fontSize: 13, lineHeight: 1.6 }}>
  {reciteResult.user_text &&<div><span className="hint">识别内容：</span>{reciteResult.user_text}</div>}
  {reciteResult.errors && reciteResult.errors.length >0 ? (
-<div style={{ marginTop: 6, color: '#C0392B' }}>发现 {reciteResult.errors.length} 处问题：读错/漏读/多读等，见比对面板</div>
+<div style={{ marginTop: 6, color: '#E11D48' }}>发现 {reciteResult.errors.length} 处问题：读错/漏读/多读等，见比对面板</div>
  ) : (
-<div style={{ marginTop: 6, color: '#5C8A6B', fontWeight: 600 }}>未发现明显错误，朗读很棒！</div>
+<div style={{ marginTop: 6, color: '#059669', fontWeight: 600 }}>未发现明显错误，朗读很棒！</div>
  )}
  {reciteResult.overall_tip &&<div style={{ marginTop: 6 }}>💡 {reciteResult.overall_tip}</div>}
 </div>
@@ -1230,7 +1230,7 @@ export default function Study() {
 <div style={{ padding: 12, background: 'var(--soft)', borderRadius: 8 }}>
 <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>掌握程度检验</div>
 <div className="hint" style={{ margin: '0 0 8px' }}>完成本篇学习后，开始 AI 测验（语法、翻译、造句等题型）。</div>
-<button className="btn sm primary" onClick={() =>setShowQuiz(true)} style={{ background: '#6B8E6B', borderColor: '#6B8E6B' }}>开始AI测验</button>
+<button className="btn sm primary" onClick={() =>setShowQuiz(true)} style={{ background: '#059669', borderColor: '#059669' }}>开始AI测验</button>
 </div>
 </div>
  )}
@@ -1266,7 +1266,7 @@ export default function Study() {
  style={{
  position: 'fixed',
  inset: 0,
- background: 'rgba(60, 45, 30, 0.55)',
+ background: 'rgba(24, 24, 27, 0.55)',
  zIndex: 9999,
  display: 'flex',
  alignItems: 'center',
@@ -1278,9 +1278,9 @@ export default function Study() {
 <div
  onClick={(e) =>e.stopPropagation()}
  style={{
- background: '#FDF8F0',
+ background: '#FFFFFF',
  borderRadius: 14,
- boxShadow: '0 20px 60px rgba(60,45,30,0.35)',
+ boxShadow: '0 20px 60px rgba(24,24,27,0.35)',
  width: '100%',
  maxWidth: 820,
  maxHeight: '80vh',
@@ -1298,14 +1298,14 @@ export default function Study() {
  borderBottom: '1px solid var(--border2, #E0D6C4)',
  background: 'var(--soft, #F5F0E8)',
  }}>
-<div style={{ fontWeight: 600, fontSize: 16, color: '#5C4A3A' }}>
+<div style={{ fontWeight: 600, fontSize: 16, color: '#71717A' }}>
  录音原文比对
 <span style={{ marginLeft: 10, fontSize: 13, color: 'var(--muted)', fontWeight: 400 }}>播放录音时自动高亮对应句子</span>
 </div>
 <button className="btn sm" onClick={() =>setShowReciteCompare(false)} style={{ fontSize: 12 }}>关闭</button>
 </div>
 
-<div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border2)', background: '#FBF6EC' }}>
+<div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border2)', background: '#EEF0FF' }}>
 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
 <audio
  src={reciteAudioUrl}
@@ -1328,7 +1328,7 @@ export default function Study() {
  marginBottom: 6,
  borderRadius: 8,
  background: isActive ? 'rgba(176, 138, 90, 0.18)' : 'transparent',
- borderLeft: isActive ? '3px solid var(--accent, #B08A5A)' : '3px solid transparent',
+ borderLeft: isActive ? '3px solid var(--accent, #D97706)' : '3px solid transparent',
  transition: 'background 0.2s',
  }}
  >
@@ -1343,7 +1343,7 @@ export default function Study() {
  marginTop: 2,
  }}>{idx + 1}</span>
 <div style={{ flex: 1 }}>
-<div style={{ fontSize: 16, lineHeight: 1.6, color: '#3D2F22' }}>{s.russian}</div>
+<div style={{ fontSize: 16, lineHeight: 1.6, color: '#18181B' }}>{s.russian}</div>
  {s.chinese &&<div style={{ marginTop: 2, fontSize: 13, color: 'var(--muted)' }}>{s.chinese}</div>}
 </div>
 </div>
@@ -1395,7 +1395,7 @@ export default function Study() {
  style={{
  position: 'fixed',
  inset: 0,
- background: 'rgba(60, 45, 30, 0.55)',
+ background: 'rgba(24, 24, 27, 0.55)',
  zIndex: 10001,
  display: 'flex',
  alignItems: 'center',
@@ -1407,9 +1407,9 @@ export default function Study() {
 <div
  onClick={e =>e.stopPropagation()}
  style={{
- background: '#FFFCF7',
+ background: '#FFFFFF',
  borderRadius: 16,
- boxShadow: '0 20px 60px rgba(60,45,30,0.35)',
+ boxShadow: '0 20px 60px rgba(24,24,27,0.35)',
  padding: '28px 32px',
  maxWidth: 420,
  width: '100%',
@@ -1418,10 +1418,10 @@ export default function Study() {
  }}
  >
 <div style={{ fontSize: 48, marginBottom: 12 }}></div>
-<div style={{ fontSize: 18, fontWeight: 600, color: '#3D332C', marginBottom: 8 }}>
+<div style={{ fontSize: 18, fontWeight: 600, color: '#18181B', marginBottom: 8 }}>
  训练完成！
 </div>
-<div style={{ fontSize: 14, color: 'var(--muted, #86796D)', marginBottom: 20, lineHeight: 1.6 }}>
+<div style={{ fontSize: 14, color: 'var(--muted, #A1A1AA)', marginBottom: 20, lineHeight: 1.6 }}>
  是否开始 AI 测验检验学习成果？<br />
  共 30 道题，涵盖词汇、语法、翻译等。
 </div>

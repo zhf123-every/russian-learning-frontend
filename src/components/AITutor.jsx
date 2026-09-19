@@ -135,7 +135,7 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
         width: 340,
         height: '100vh',
         zIndex: 999,
-        background: '#FFFCF7',
+        background: '#FFFFFF',
         borderLeft: '1px solid var(--border2, #E8E1D9)',
         boxShadow: '-4px 0 20px rgba(0,0,0,0.08)',
         display: 'flex',
@@ -171,8 +171,8 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
           
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, color: '#3D332C' }}>俄语助教</div>
-          <div style={{ fontSize: 11, color: 'var(--muted, #86796D)' }}>
+          <div style={{ fontWeight: 600, fontSize: 14, color: '#18181B' }}>俄语助教</div>
+          <div style={{ fontSize: 11, color: 'var(--muted, #A1A1AA)' }}>
             第{stage}步 · {STAGE_NAMES[stage] || '未知'}
           </div>
         </div>
@@ -207,7 +207,7 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
         }}
       >
         {messages.length === 0 && !loading && (
-          <div style={{ textAlign: 'center', color: 'var(--muted, #86796D)', fontSize: 13, padding: '20px 0' }}>
+          <div style={{ textAlign: 'center', color: 'var(--muted, #A1A1AA)', fontSize: 13, padding: '20px 0' }}>
             有任何俄语学习问题都可以问我～
           </div>
         )}
@@ -233,9 +233,9 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
                       borderBottomRightRadius: 4,
                     }
                   : {
-                      background: '#FDF8F0',
+                      background: '#FFFFFF',
                       border: '1px solid var(--border2, #E8E1D9)',
-                      color: '#3D332C',
+                      color: '#18181B',
                       borderBottomLeftRadius: 4,
                     }),
               }}
@@ -255,10 +255,10 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
                 padding: '8px 12px',
                 borderRadius: 12,
                 borderBottomLeftRadius: 4,
-                background: '#FDF8F0',
+                background: '#FFFFFF',
                 border: '1px solid var(--border2, #E8E1D9)',
                 fontSize: 13,
-                color: 'var(--muted, #86796D)',
+                color: 'var(--muted, #A1A1AA)',
               }}
             >
               正在思考
@@ -296,7 +296,7 @@ export default function AITutor({ stage, curSentence, sentences, videoTitle }) {
               lineHeight: 1.5,
               outline: 'none',
               maxHeight: 120,
-              background: '#FFFCF7',
+              background: '#FFFFFF',
             }}
           />
           <button

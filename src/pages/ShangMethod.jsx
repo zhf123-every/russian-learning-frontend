@@ -9,7 +9,7 @@ import { courseLibrary, LEVELS } from '../data/courseLibrary'
 import FullTextPanel from '../components/FullTextPanel'
 import DictationExam from '../components/DictationExam'
 
-const LEVEL_COLORS = { A1: '#8B735F', A2: '#A8937F', B1: '#B08A5A', B2: '#A86454' }
+const LEVEL_COLORS = { A1: '#8B735F', A2: '#A8937F', B1: '#D97706', B2: '#E11D48' }
 
 // 5 个阶段的提示文案（还原原版尚雯婕学习法核心理念）
 const STAGE_HINTS = {
@@ -504,7 +504,7 @@ export default function ShangMethod() {
  // 错误类型颜色映射
  const errorColor = (type) =>{
  switch (type) {
- case 'misread': return '#C0392B'
+ case 'misread': return '#E11D48'
  case 'omitted': return '#E67E22'
  case 'extra': return '#2980B9'
  case 'word_order': return '#8E44AD'
@@ -581,7 +581,7 @@ export default function ShangMethod() {
 <span className="level-badge" style={{ background: LEVEL_COLORS[selectedLevel] || 'var(--accent)' }}>{selectedLevel}</span>
 <span className="theme-name">{currentCollection?.name}</span>
 <span className="progress">{curIdx + 1} / {sentences.length}</span>
- {isFinished &&<span className="chip" style={{ background: '#5C8A6B', color: '#fff' }}>尚雯婕训练完成</span>}
+ {isFinished &&<span className="chip" style={{ background: '#059669', color: '#fff' }}>尚雯婕训练完成</span>}
 </div>
 
  {/* 阶段切换条（15 顺序不可逆，可回退上一阶段） */}
@@ -657,10 +657,10 @@ export default function ShangMethod() {
  const d = shang.load(materialId)?.dictations?.[currentSentenceWithId.id]
  if (!d) return null
  return (
-<div className="compare-box" style={{ marginTop: 10, padding: 10, background: '#FBF6EC', border: '1px solid var(--border2)', borderRadius: 6 }}>
+<div className="compare-box" style={{ marginTop: 10, padding: 10, background: '#EEF0FF', border: '1px solid var(--border2)', borderRadius: 6 }}>
 <div className="hint">你刚才的听写：</div>
 <div style={{ marginTop: 4 }}>{d.text ||<span style={{ opacity: 0.5 }}>（已跳过）</span>}</div>
- {d.skipped &&<div className="hint" style={{ marginTop: 4, color: '#A86454' }}>本句为「跳过」状态，请重点精读</div>}
+ {d.skipped &&<div className="hint" style={{ marginTop: 4, color: '#E11D48' }}>本句为「跳过」状态，请重点精读</div>}
 </div>
  )
  })()}
@@ -721,7 +721,7 @@ export default function ShangMethod() {
 <button
  className="btn sm primary"
  onClick={startRecording}
- style={{ background: '#C0392B', borderColor: '#C0392B' }}
+ style={{ background: '#E11D48', borderColor: '#E11D48' }}
  >
  全文背诵（开始录音）
 </button>
@@ -730,9 +730,9 @@ export default function ShangMethod() {
  className="btn sm"
  onClick={stopRecording}
  style={{
- background: '#C0392B',
+ background: '#E11D48',
  color: '#fff',
- borderColor: '#C0392B',
+ borderColor: '#E11D48',
  }}
  >
  停止录音
@@ -775,12 +775,12 @@ export default function ShangMethod() {
 
  {/* AI比对结果 */}
  {reciteResult && (
-<div style={{ marginTop: 12, padding: 12, background: '#FBF6EC', border: '1px solid var(--border2)', borderRadius: 8, textAlign: 'left' }}>
+<div style={{ marginTop: 12, padding: 12, background: '#EEF0FF', border: '1px solid var(--border2)', borderRadius: 8, textAlign: 'left' }}>
 <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>AI 比对结果</div>
  {reciteResult.user_text && (
 <div style={{ marginBottom: 10 }}>
 <div className="hint">识别到的背诵内容：</div>
-<div style={{ marginTop: 4, fontSize: 14, lineHeight: 1.6, color: '#3D2F22' }}>{reciteResult.user_text}</div>
+<div style={{ marginTop: 4, fontSize: 14, lineHeight: 1.6, color: '#18181B' }}>{reciteResult.user_text}</div>
 </div>
  )}
  {reciteResult.errors && reciteResult.errors.length >0 ? (
@@ -820,7 +820,7 @@ export default function ShangMethod() {
  )}
 </div>
  {err.suggestion && (
-<div style={{ marginTop: 4, color: '#5C8A6B' }}>{err.suggestion}</div>
+<div style={{ marginTop: 4, color: '#059669' }}>{err.suggestion}</div>
  )}
  {err.correct_reading && (
 <div style={{ marginTop: 2, color: 'var(--muted)', fontSize: 12 }}>正确读法：{err.correct_reading}</div>
@@ -829,7 +829,7 @@ export default function ShangMethod() {
  ))}
 </div>
  ) : (
-<div style={{ marginBottom: 10, color: '#5C8A6B', fontWeight: 600 }}>未发现明显错误，背诵很棒！</div>
+<div style={{ marginBottom: 10, color: '#059669', fontWeight: 600 }}>未发现明显错误，背诵很棒！</div>
  )}
  {reciteResult.overall_tip && (
 <div style={{ padding: '8px 10px', background: 'var(--soft)', borderRadius: 6, fontSize: 13, lineHeight: 1.6 }}>
@@ -843,7 +843,7 @@ export default function ShangMethod() {
 </div>
 
  {isFinished && (
-<div style={{ marginTop: 16, color: '#5C8A6B', fontWeight: 600 }}>本素材尚雯婕训练已完成</div>
+<div style={{ marginTop: 16, color: '#059669', fontWeight: 600 }}>本素材尚雯婕训练已完成</div>
  )}
 </div>
  )}
@@ -946,7 +946,7 @@ export default function ShangMethod() {
  style={{
  position: 'fixed',
  inset: 0,
- background: 'rgba(60, 45, 30, 0.55)',
+ background: 'rgba(24, 24, 27, 0.55)',
  zIndex: 9999,
  display: 'flex',
  alignItems: 'center',
@@ -958,9 +958,9 @@ export default function ShangMethod() {
 <div
  onClick={(e) =>e.stopPropagation()}
  style={{
- background: '#FDF8F0',
+ background: '#FFFFFF',
  borderRadius: 14,
- boxShadow: '0 20px 60px rgba(60,45,30,0.35)',
+ boxShadow: '0 20px 60px rgba(24,24,27,0.35)',
  width: '100%',
  maxWidth: 820,
  maxHeight: '80vh',
@@ -978,14 +978,14 @@ export default function ShangMethod() {
  borderBottom: '1px solid var(--border2, #E0D6C4)',
  background: 'var(--soft, #F5F0E8)',
  }}>
-<div style={{ fontWeight: 600, fontSize: 16, color: '#5C4A3A' }}>
+<div style={{ fontWeight: 600, fontSize: 16, color: '#71717A' }}>
  录音原文比对
 <span style={{ marginLeft: 10, fontSize: 13, color: 'var(--muted)', fontWeight: 400 }}>播放录音时自动高亮对应句子</span>
 </div>
 <button className="btn sm" onClick={() =>setShowReciteCompare(false)} style={{ fontSize: 12 }}>关闭</button>
 </div>
 
-<div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border2)', background: '#FBF6EC' }}>
+<div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border2)', background: '#EEF0FF' }}>
 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
 <audio
  src={reciteAudioUrl}
@@ -1008,7 +1008,7 @@ export default function ShangMethod() {
  marginBottom: 6,
  borderRadius: 8,
  background: isActive ? 'rgba(176, 138, 90, 0.18)' : 'transparent',
- borderLeft: isActive ? '3px solid var(--accent, #B08A5A)' : '3px solid transparent',
+ borderLeft: isActive ? '3px solid var(--accent, #D97706)' : '3px solid transparent',
  transition: 'background 0.2s',
  }}
  >
@@ -1023,7 +1023,7 @@ export default function ShangMethod() {
  marginTop: 2,
  }}>{idx + 1}</span>
 <div style={{ flex: 1 }}>
-<div style={{ fontSize: 16, lineHeight: 1.6, color: '#3D2F22' }}>{s.russian}</div>
+<div style={{ fontSize: 16, lineHeight: 1.6, color: '#18181B' }}>{s.russian}</div>
  {s.chinese &&<div style={{ marginTop: 2, fontSize: 13, color: 'var(--muted)' }}>{s.chinese}</div>}
 </div>
 </div>
