@@ -134,7 +134,7 @@ export default function Vocab() {
                 {c.pos && <span style={{ fontSize: 12, padding: '2px 8px', background: 'var(--soft, #F5EDE0)', borderRadius: 4, marginRight: 8 }}>{c.pos}</span>}
                 <button
                   className="btn sm"
-                  style={{ color: '#C0392B', borderColor: '#E0D6C4' }}
+                  style={{ color: '#E11D48', borderColor: '#D9D9E0' }}
                   onClick={() => {
                     if (window.confirm(`确定删除生词"${c.word}"吗？`)) {
                       removeCard(c.id)

@@ -275,7 +275,7 @@ export default function Dictionary() {
       {/* 语法预设列表：仅 grammar tab 且无查询结果时显示 */}
       {activeTab === 'grammar' && !loading && !resultHtml && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 12, color: '#5C4A3A' }}>
+          <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 12, color: '#71717A' }}>
             常用语法点（点击直接查询）
           </div>
           {GRAMMAR_PRESETS.map(group => (
@@ -297,21 +297,21 @@ export default function Dictionary() {
                       border: '1px solid var(--border2)',
                       borderRadius: 8,
                       cursor: 'pointer',
-                      background: '#FFFCF7',
+                      background: '#FFFFFF',
                       transition: 'all 0.15s',
                     }}
                     onMouseEnter={e => {
                       e.currentTarget.style.borderColor = 'var(--accent)'
-                      e.currentTarget.style.background = '#FBF6EC'
+                      e.currentTarget.style.background = '#EEF0FF'
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.borderColor = 'var(--border2)'
-                      e.currentTarget.style.background = '#FFFCF7'
+                      e.currentTarget.style.background = '#FFFFFF'
                     }}
                   >
                     <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{item.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>{item.desc}</div>
-                    <div style={{ fontSize: 11, color: '#7A6B5A', fontStyle: 'italic' }}>{item.example}</div>
+                    <div style={{ fontSize: 11, color: '#71717A', fontStyle: 'italic' }}>{item.example}</div>
                   </div>
                 ))}
               </div>
