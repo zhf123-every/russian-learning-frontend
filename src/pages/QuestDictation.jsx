@@ -1,4 +1,4 @@
-/**
+﻿/**
  * QuestDictation.jsx —— 俄语听写模式答题页
  *
  * 与 QuestPractice（中译俄）共用 90% 逻辑：
@@ -441,14 +441,14 @@ export default function QuestDictation() {
           {/* 模糊字幕（Ctrl+; 切换） */}
           {showSubtitle && (
             <div style={styles.subtitleBlur}>
-              <span style={{ fontSize: 11, color: "#B4A79C", marginBottom: 4, display: "block" }}>
+              <span style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 4, display: "block" }}>
                 字幕（模糊预览，答完后可看清）
               </span>
               <span style={styles.subtitleText}>{currentStatement?.russian}</span>
             </div>
           )}
           {!showSubtitle && (
-            <div style={{ fontSize: 12, color: "#B4A79C", marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: "#A1A1AA", marginTop: 8 }}>
               按 Ctrl+; 查看模糊字幕
             </div>
           )}
@@ -669,7 +669,7 @@ const styles = {
   subtitleText: {
     fontFamily: '"PT Serif", Georgia, serif',
     fontSize: 20,
-    color: "#5C4D3F",
+    color: "#18181B",
     filter: "blur(4px)",
     userSelect: "none",
     letterSpacing: "0.5px",
@@ -709,7 +709,7 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: "rgba(245,240,235,0.96)",
+    background: "rgba(247,247,249,0.96)",
     backdropFilter: "blur(8px)",
     display: "flex",
     alignItems: "center",
@@ -754,7 +754,7 @@ const styles = {
   },
   startTips: {
     fontSize: 13,
-    color: "#B4A79C",
+    color: "#A1A1AA",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
