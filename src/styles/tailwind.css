@@ -1,0 +1,115 @@
+/* ============================================================
+   Tailwind CSS v4 入口 · 俄语学习产品设计系统 B（冷灰靛蓝）
+   v4 语法：@import "tailwindcss" + @theme 定义设计 token
+   引入顺序：tailwind.css（先）→ styles.css（后，老页面兼容）
+   ============================================================ */
+
+@import 'tailwindcss';
+
+/* ---------- 品牌 token：注入 Tailwind 主题（可用 bg-brand / text-brand 等工具类） ---------- */
+@theme {
+  --color-brand: #4F46E5;
+  --color-brand-hover: #4338CA;
+  --color-brand-soft: #EEF0FF;
+  --color-brand-dark: #3730A3;
+
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-ru: 'PT Serif', Georgia, 'Times New Roman', 'Segoe UI', serif;
+
+  --radius-card: 1.25rem;
+  --radius-btn: 0.75rem;
+
+  --shadow-card: 0 1px 2px rgb(24 24 27 / 0.04), 0 4px 14px rgb(24 24 27 / 0.04);
+  --shadow-pop: 0 8px 30px rgb(24 24 27 / 0.12);
+
+  --animate-pop: pop 0.18s ease;
+  --animate-pulse-dot: pulse-dot 2.2s ease-in-out infinite;
+
+  @keyframes pop {
+    from { transform: translateY(8px) scale(0.98); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.75); }
+  }
+}
+
+/* ---------- 页面级 CSS 变量（老样式渐进迁移时引用） ---------- */
+:root {
+  /* B 配色 - 冷灰靛蓝 */
+  --db-bg: #F7F7F9;
+  --db-card: #FFFFFF;
+  --db-card-2: #F4F4F6;
+  --db-border: #E9E9EE;
+  --db-border-strong: #D9D9E0;
+  --db-text: #18181B;
+  --db-text-2: #71717A;
+  --db-text-3: #A1A1AA;
+  --db-brand: #4F46E5;
+  --db-brand-h: #4338CA;
+  --db-brand-soft: #EEF0FF;
+  --db-amber: #B45309;
+  --db-amber-soft: #FEF6EC;
+  --db-ok: #059669;
+  --db-ok-soft: #ECFDF5;
+  --db-danger: #E11D48;
+  --db-danger-soft: #FFF1F3;
+  --db-warn: #D97706;
+  --db-warn-soft: #FEF3E2;
+}
+
+html { scroll-behavior: smooth; }
+body { -webkit-tap-highlight-color: transparent; }
+
+/* ---------- 通用组件类（@layer components，@apply v4 下直接可用） ---------- */
+@layer components {
+  /* 通用卡片 */
+  .card {
+    @apply rounded-card border border-zinc-100 bg-white shadow-card;
+  }
+  .card-soft {
+    @apply rounded-card border border-zinc-100 bg-zinc-50;
+  }
+  .card-head {
+    @apply mb-3 flex items-center justify-between text-sm font-semibold text-zinc-900;
+  }
+
+  /* 主按钮 */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-btn bg-brand px-4 py-2
+      text-sm font-semibold text-white shadow-sm transition hover:bg-brand-hover
+      active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-btn border border-zinc-200 bg-white
+      px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand-soft;
+  }
+  .btn-icon {
+    @apply inline-flex items-center justify-center rounded-btn border border-zinc-200 bg-white
+      p-2 text-zinc-500 transition hover:bg-zinc-50 hover:text-brand;
+  }
+
+  /* 药丸标签 */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1
+      text-xs font-medium text-brand-dark;
+  }
+
+  /* 输入框 */
+  .field {
+    @apply w-full rounded-btn border border-zinc-200 bg-white px-3.5 py-2.5 text-sm
+      text-zinc-900 outline-none transition focus:border-indigo-400 focus:ring-2
+      focus:ring-indigo-100;
+  }
+
+  /* 空状态 */
+  .empty-state {
+    @apply flex flex-col items-center justify-center gap-3 rounded-card border border-dashed
+      border-zinc-200 bg-white px-6 py-10 text-center text-sm text-zinc-500;
+  }
+}
+
+/* ---------- 响应式容器 ---------- */
+.container-ui { width: 100%; margin-inline: auto; padding-inline: 1.5rem; }
+@media (min-width: 1280px) { .container-ui { max-width: 1280px; } }
