@@ -42,24 +42,32 @@ function CheckinWeek() {
   }
 
   return (
-    <div className="flex items-center justify-between">
-      {week.map((w, i) => (
-        <div key={i} className="flex flex-col items-center gap-1.5">
-          <span className="text-[11px] text-gray-400">{w.d}</span>
-          <div
-            className={
-              'h-7 w-7 rounded-full border flex items-center justify-center text-xs transition-all ' +
-              (w.done
-                ? 'border-brand bg-brand text-white'
-                : w.today
-                  ? 'border-brand text-brand font-bold'
-                  : 'border-gray-200 text-transparent')
-            }
-          >
-            {w.done && '✓'}
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex items-center justify-between w-full">
+        {week.map((w, i) => (
+          <div key={i} className="flex flex-col items-center gap-1.5">
+            <span className="text-[11px] text-gray-400">{w.d}</span>
+            <div
+              className={
+                'h-7 w-7 rounded-full border flex items-center justify-center text-xs transition-all ' +
+                (w.done
+                  ? 'border-brand bg-brand text-white'
+                  : w.today
+                    ? 'border-brand text-brand font-bold'
+                    : 'border-gray-200 text-transparent')
+              }
+            >
+              {w.done && '✓'}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+      <button
+        onClick={handleCheckin}
+        className="w-full rounded-xl bg-brand py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-hover active:scale-[0.98]"
+      >
+        ✧ 立即打卡
+      </button>
     </div>
   )
 }
@@ -263,14 +271,6 @@ export default function Dashboard() {
                 <div className="text-[11px] text-gray-400 mb-2">本周打卡记录</div>
                 <CheckinWeek />
               </div>
-
-              {/* 打卡按钮 */}
-              <button
-                onClick={handleCheckin}
-                className="mt-4 w-full rounded-xl bg-brand py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-hover active:scale-[0.98]"
-              >
-                ✧ 立即打卡
-              </button>
             </div>
 
             {/* 复习本 / 生词本 */}
