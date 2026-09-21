@@ -172,13 +172,13 @@ export default function GameStore() {
         {/* ===== 本周精选游戏 ===== */}
         <section>
           <h2 className="text-2xl font-extrabold mb-4">本周精选游戏</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {FEATURED.map((it) => {
               const unlocked = isCoursePurchased(it.id)
               return (
                 <div key={it.id} className="group" onClick={() => onCoverCardClick(it)} style={{ cursor: unlocked ? 'pointer' : 'default' }}>
-                  <div className={`aspect-[4/3] rounded-xl overflow-hidden mb-2.5 p-4 flex flex-col justify-end group-hover:shadow-lg transition ${it.cover}`}>
-                    <span className={`text-xl font-extrabold leading-tight drop-shadow ${it.ink}`}>{it.big}</span>
+                  <div className={`aspect-[3/2] rounded-xl overflow-hidden mb-2 p-3 flex flex-col justify-end group-hover:shadow-lg transition ${it.cover}`}>
+                    <span className={`text-lg font-extrabold leading-tight drop-shadow ${it.ink}`}>{it.big}</span>
                   </div>
                   <div className="text-sm font-bold leading-snug">{it.title}</div>
                   <div className="text-xs text-gray-400 mt-1">{it.meta}</div>
@@ -198,13 +198,15 @@ export default function GameStore() {
                 更多视频 <ChevronRight />
               </a>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
               {VIDEOS.map((v) => {
                 const unlocked = isCoursePurchased(v.id)
                 return (
                   <div key={v.id} className="group" onClick={() => onVideoCardClick(v)} style={{ cursor: unlocked ? 'pointer' : 'default' }}>
                     <div className={`aspect-video rounded-xl overflow-hidden mb-2 bg-gradient-to-br ${v.cover} flex items-center justify-center group-hover:shadow-lg transition relative`}>
-                      <PlayBadge />
+                      <span className="w-9 h-9 rounded-full bg-white/25 backdrop-blur flex items-center justify-center">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="6 4 20 12 6 20 6 4" /></svg>
+                      </span>
                       <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{v.eps}</span>
                     </div>
                     <div className="text-sm font-semibold">{v.title}</div>
@@ -225,13 +227,13 @@ export default function GameStore() {
                 更多课程 <ChevronRight />
               </a>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
               {GUIDES.map((g) => {
                 const unlocked = isCoursePurchased(g.id)
                 return (
                   <div key={g.id} className="group" onClick={() => onCoverCardClick(g)} style={{ cursor: unlocked ? 'pointer' : 'default' }}>
                     <div className={`aspect-video rounded-xl overflow-hidden mb-2 bg-gradient-to-br ${g.cover} flex items-center justify-center group-hover:shadow-lg transition`}>
-                      <span className={`font-extrabold text-lg ${g.ink} ${g.title.startsWith('字母') ? 'tracking-widest' : ''}`}>{g.word}</span>
+                      <span className={`font-extrabold text-base ${g.ink} ${g.title.startsWith('字母') ? 'tracking-widest' : ''}`}>{g.word}</span>
                     </div>
                     <div className="text-sm font-semibold">{g.title}</div>
                     <UnlockBar game={g} />

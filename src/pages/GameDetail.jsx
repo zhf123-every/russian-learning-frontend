@@ -149,13 +149,13 @@ export default function GameDetail() {
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>加载大纲…</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 12, marginBottom: 40 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 10, marginBottom: 40 }}>
             {units.map((u) => {
               const dm = DIFF_META[u.difficulty] || DIFF_META.easy
               const sm = STATUS_META[u.status] || STATUS_META['未开始']
               return (
                 <div key={u.id} className="card" onClick={() => setPickedUnit(u)}
-                  style={{ padding: 16, borderRadius: 14, cursor: 'pointer', transition: 'transform .15s, box-shadow .15s' }}
+                  style={{ padding: 12, borderRadius: 12, cursor: 'pointer', transition: 'transform .15s, box-shadow .15s' }}
                   onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
                 >

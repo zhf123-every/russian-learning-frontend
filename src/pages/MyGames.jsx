@@ -45,8 +45,10 @@ function GameCard({ g, onVideoClick }) {
   if (g.kind === 'video') {
     return (
       <div className="cursor-pointer group block" onClick={() => onVideoClick(g)}>
-        <div className={`aspect-[4/3] rounded-xl overflow-hidden mb-2.5 p-4 flex items-center justify-center group-hover:shadow-lg transition relative ${coverCls}`}>
-          <PlayBadge />
+        <div className={`aspect-[3/2] rounded-xl overflow-hidden mb-2 p-3 flex items-center justify-center group-hover:shadow-lg transition relative ${coverCls}`}>
+          <span className="w-9 h-9 rounded-full bg-white/25 backdrop-blur flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="6 4 20 12 6 20 6 4" /></svg>
+          </span>
         </div>
         <div className="text-sm font-bold leading-snug">{g.title}</div>
         <div className="text-xs text-gray-400 mt-1 leading-relaxed line-clamp-2">{g.desc}</div>
@@ -57,9 +59,9 @@ function GameCard({ g, onVideoClick }) {
   // 课程类：点卡片进课程详情页
   return (
     <Link to={`/game/${g.id}`} className="cursor-pointer group block">
-      <div className={`aspect-[4/3] rounded-xl overflow-hidden mb-2.5 p-4 flex items-center justify-center group-hover:shadow-lg transition relative ${coverCls}`}>
+      <div className={`aspect-[3/2] rounded-xl overflow-hidden mb-2 p-3 flex items-center justify-center group-hover:shadow-lg transition relative ${coverCls}`}>
         <div className="w-full h-full flex flex-col justify-end">
-          <span className={`text-lg font-extrabold leading-tight drop-shadow ${ink}`}>{bigText}</span>
+          <span className={`text-base font-extrabold leading-tight drop-shadow ${ink}`}>{bigText}</span>
         </div>
       </div>
       <div className="text-sm font-bold leading-snug">{g.title}</div>
@@ -143,17 +145,17 @@ export default function MyGames() {
 
         {/* ===== 游戏组（占位） ===== */}
         <div className="text-sm font-semibold text-gray-500 mb-3">游戏组</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           {GROUPS.map((grp) => (
             <div key={grp.name} className="cursor-pointer group">
-              <div className="aspect-[4/3] rounded-xl overflow-hidden mb-2.5 bg-primary/5 flex items-center justify-center group-hover:shadow-lg transition">
-                <FolderMark />
+              <div className="aspect-[3/2] rounded-xl overflow-hidden mb-2 bg-primary/5 flex items-center justify-center group-hover:shadow-lg transition">
+                <FolderMark size={36} strokeWidth={1.6} />
               </div>
               <div className="text-sm font-bold">{grp.name}</div>
               <div className="text-xs text-gray-400 mt-0.5">{grp.count}</div>
             </div>
           ))}
-          <button type="button" disabled title="即将上线" className="cursor-not-allowed aspect-[4/3] rounded-xl border-2 border-dashed border-base-300 flex flex-col items-center justify-center gap-2 text-gray-400 opacity-60 bg-transparent">
+          <button type="button" disabled title="即将上线" className="cursor-not-allowed aspect-[3/2] rounded-xl border-2 border-dashed border-base-300 flex flex-col items-center justify-center gap-2 text-gray-400 opacity-60 bg-transparent">
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
               <line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
@@ -180,7 +182,7 @@ export default function MyGames() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {games.map((g) => <GameCard key={g.id} g={g} onVideoClick={setVideoTarget} />)}
           </div>
         )}
