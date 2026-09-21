@@ -59,7 +59,7 @@ export default function GameSettingModal({
     text: dark ? '#F5EDE2' : '#1a1a2e',
     sub: dark ? '#8B7FA3' : '#666',
     border: dark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.08)',
-    brand: '#6366F1',
+    brand: 'oklch(23.27% 0.0249 284.3)',
     bgSoft: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.03)',
     shadow: '0 20px 60px rgba(0,0,0,.4)',
   }

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSquareStore } from '../store/squareStore'
 import { useShangStore } from '../store/shangStore'
@@ -51,7 +51,7 @@ export default function SquarePage() {
 
   // 五步精听完成角标
   const DoneBadge = ({ id }) => (shang.isFinished(id)
-    ? <span className="thumb-score" style={{ left: 'auto', right: 8, background: '#4F46E5' }}>五步 ✓</span>
+    ? <span className="thumb-score" style={{ left: 'auto', right: 8, background: 'oklch(23.27% 0.0249 284.3)' }}>五步 ✓</span>
     : null)
 
   const renderSquareCard = (item) => (

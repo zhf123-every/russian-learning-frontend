@@ -1,36 +1,51 @@
 // 学习仪表盘导航配置（桌面侧栏、手机抽屉、底部 Tab、Hub 落地页共用）
+// icon 使用 SVG path 字符串，组件中渲染为线性图标
 
-export const NAV_HOME = { to: '/', icon: '🏠', label: '主页', end: true }
+const ICONS = {
+  home: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10',
+  gamepad: 'M6 11h4 M8 9v4 M15 12h.01 M18 10h.01 M2 16a2 2 0 002 2h16a2 2 0 002-2V10a2 2 0 00-2-2H4a2 2 0 00-2 2z',
+  play: 'M6 4l14 8-14 8z',
+  map: 'M1 6v16l7-4 8 4 7-4V2l-7 4-8-4z M8 2v16 M16 6v16',
+  users: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M9 11a4 4 0 100-8 4 4 0 000 8z M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75',
+  bell: 'M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 01-3.46 0',
+  database: 'M12 3c5 0 9 1.34 9 3s-4 3-9 3-9-1.34-9-3 4-3 9-3z M21 12c0 1.66-4 3-9 3s-9-1.34-9-3 M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5',
+  barChart: 'M18 20V10 M12 20V4 M6 20v-6',
+  book: 'M4 19.5A2.5 2.5 0 016.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z',
+  fileText: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M16 13H8 M16 17H8',
+  help: 'M12 22a10 10 0 100-20 10 10 0 000 20z M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3 M12 17h.01',
+}
+
+export const NAV_HOME = { to: '/', icon: ICONS.home, label: '主页', end: true }
 
 export const NAV_GROUPS = [
   { type: 'item', ...NAV_HOME },
+  { type: 'item', to: '/unlocked-games', icon: ICONS.gamepad, label: '解锁游戏' },
+  { type: 'item', to: '/my-games', icon: ICONS.play, label: '我的游戏' },
+  { type: 'item', to: '/journey', icon: ICONS.map, label: '通关之路', soon: true },
   {
-    type: 'group', label: '学习', items: [
-      { to: '/quest-store', icon: '🎮', label: '游戏化学习' },
-      { to: '/square', icon: '🎧', label: '精听学习' },
-      { to: '/tutor', icon: '🗣️', label: 'AI 对话教练' },
+    type: 'collapsible', label: '社区', icon: ICONS.users,
+    items: [
+      { to: '/community/notifications', icon: ICONS.bell, label: '消息通知', soon: true },
+      { to: '/community/groups', icon: ICONS.users, label: '学习小组', soon: true },
     ],
   },
   {
-    type: 'group', label: '工具', items: [
-      { to: '/vocab', icon: '📒', label: '生词本', badgeKey: 'vocabDue' },
-      { to: '/dictionary', icon: '🔎', label: '词典' },
-      { to: '/profile', icon: '📊', label: '统计' },
-    ],
-  },
-  {
-    type: 'group', label: '账户', items: [
-      { to: '/me', icon: '👤', label: '我的' },
+    type: 'collapsible', label: '通关存档', icon: ICONS.database,
+    items: [
+      { to: '/save/proficiency', icon: ICONS.barChart, label: '关卡熟练度', soon: true },
+      { to: '/vocab', icon: ICONS.book, label: '复习关卡', badgeKey: 'vocabDue' },
+      { to: '/save/notes', icon: ICONS.fileText, label: '关卡笔记', soon: true },
+      { to: '/save/unknown', icon: ICONS.help, label: '陌生关卡', soon: true },
     ],
   },
 ]
 
-// 手机底部 Tab（4 个一级入口；学习/工具进落地页）
+// 手机底部 Tab
 export const TABBAR = [
-  { to: '/', icon: '🏠', label: '主页', end: true },
-  { to: '/learn', icon: '📚', label: '学习' },
-  { to: '/tools', icon: '🧰', label: '工具' },
-  { to: '/me', icon: '👤', label: '我的' },
+  { to: '/', icon: ICONS.home, label: '主页', end: true },
+  { to: '/unlocked-games', icon: ICONS.gamepad, label: '游戏' },
+  { to: '/journey', icon: ICONS.map, label: '通关', soon: true },
+  { to: '/me', icon: ICONS.users, label: '我的' },
 ]
 
 // 学习落地页
@@ -77,7 +92,7 @@ export const TOOLS_CARDS = [
   },
 ]
 
-// 我的落地页（第一批为占位，第三批建设）
+// 我的落地页
 export const ME_CARDS = [
   { icon: '🗂️', title: '学习档案', desc: '按单元 / 家族查看完成情况与掌握度。', soon: '即将上线' },
   { icon: '🔥', title: '打卡记录', desc: '连续打卡、学习热力图与每日目标完成情况。', soon: '即将上线' },

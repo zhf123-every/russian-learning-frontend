@@ -21,9 +21,9 @@ import {
 } from '../lib/courseAccess'
 
 const C = {
-  brand: '#4F46E5',
-  brandDark: '#4338CA',
-  brandSoft: '#EEF0FF',
+  brand: 'oklch(23.27% 0.0249 284.3)',
+  brandDark: 'oklch(18% 0.0249 284.3)',
+  brandSoft: 'oklch(95% 0.0081 61.42)',
   text: '#18181B',
   sub: '#71717A',
   faint: '#A1A1AA',
@@ -92,7 +92,7 @@ export default function PurchaseModal({ pack, units, onClose, onPurchased }) {
             position: 'relative',
             height: 132,
             background:
-              'linear-gradient(135deg,#6366F1 0%,#4F46E5 55%,#4338CA 100%)',
+              'linear-gradient(135deg,oklch(23.27% 0.0249 284.3) 0%,oklch(23.27% 0.0249 284.3) 55%,oklch(18% 0.0249 284.3) 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -230,7 +230,7 @@ export default function PurchaseModal({ pack, units, onClose, onPurchased }) {
                   fontSize: 16,
                   fontWeight: 700,
                   cursor: paying ? 'wait' : 'pointer',
-                  boxShadow: '0 8px 20px rgba(79,70,229,.28)',
+                  boxShadow: '0 8px 20px rgba(26,26,30,.28)',
                   transition: 'transform .15s ease, box-shadow .15s ease',
                 }}
               >

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getLevelVideos, LEVELS } from '../data/courseLibrary'
 import { callAI } from '../lib/ai'
@@ -55,7 +55,7 @@ const MODES = [
   { key: 'chinese_to_english', name: '中译俄模式', tag: '初级', rec: '新手推荐', desc: '看到中文提示，按句型家族的渐进步骤，逐词到整句用俄语表达。' },
   { key: 'dictation', name: '听写模式', tag: '初级', desc: '听俄语原声，把听到的句子逐词写下来。锻炼听力与拼写。' },
 ]
-const ACTIVE_MODE_KEYS = MODES.map(m => m.key)
+const ACTIVE_MODE_KEYS = MODES.map(m => m.key).concat(['speaking','reading'])  // 口语/阅读代码已实现，从课程详情页 ?mode= 带入
 const DIFFS = ['自定义', '初级', '中级', '高级']
 
 // 单元难度（与后端 quest_courses.difficulty 对齐）
@@ -67,7 +67,7 @@ const DIFF_META = {
 // 单元学习状态（后端按学习记录判定：未开始/进行中/已完成）
 const STATUS_META = {
   '未开始': { label: '未开始', color: '#9ca3af', bg: '#F3F4F6' },
-  '进行中': { label: '进行中', color: '#7c3aed', bg: '#EDE9FE' },
+  '进行中': { label: '进行中', color: 'oklch(18% 0.0249 284.3)', bg: 'oklch(95% 0.0081 61.42)' },
   '已完成': { label: '已完成 ✓', color: '#16a34a', bg: '#DCFCE7' },
 }
 
@@ -222,7 +222,7 @@ const AUX_SIZE = { 小: 11, 中: 12.5, 大: 14 } // 辅助文字（顶部进度�
 // ================= 模块1.2 全局配色体系（浅色默认 + 3 种护眼主题） =================
 const THEMES = {
   light: { name: '浅色', bg: '#FFFFFF', bgSoft: '#F6F6F8', panel: '#FFFFFF', text: '#3A3A3A', textStrong: '#1C1C1E', sub: '#8E8E93', border: '#E4E4E7', brand: '#7C5CFC', brandSoft: 'rgba(124,92,252,.10)', ok: '#22C55E', okSoft: 'rgba(34,197,94,.12)', err: '#EF4444', errSoft: 'rgba(239,68,68,.10)', aiBg: '#FBFBFD', aiBorder: '#ECE9F4', shadow: '0 12px 44px rgba(60,40,120,.14)', grad: 'linear-gradient(160deg,#F7F6FB 0%,#FFFFFF 45%)' },
-  dark: { name: '深色', bg: '#0D0918', bgSoft: '#16111F', panel: '#1B1330', text: '#F5EDE2', textStrong: '#FFFFFF', sub: '#8B7FA3', border: 'rgba(255,255,255,.12)', brand: '#6366F1', brandSoft: 'rgba(99,102,241,.16)', ok: '#10B981', okSoft: 'rgba(16,185,129,.2)', err: '#F87171', errSoft: 'rgba(239,68,68,.15)', aiBg: 'rgba(20,14,36,.94)', aiBorder: 'rgba(255,255,255,.07)', shadow: '0 18px 60px rgba(0,0,0,.5)', grad: 'radial-gradient(ellipse at 50% -20%, #241A3D 0%, #0D0918 55%)' },
+  dark: { name: '深色', bg: '#0D0918', bgSoft: '#16111F', panel: '#1B1330', text: '#F5EDE2', textStrong: '#FFFFFF', sub: '#8B7FA3', border: 'rgba(255,255,255,.12)', brand: 'oklch(23.27% 0.0249 284.3)', brandSoft: 'rgba(26,26,30,.16)', ok: '#10B981', okSoft: 'rgba(16,185,129,.2)', err: '#F87171', errSoft: 'rgba(239,68,68,.15)', aiBg: 'rgba(20,14,36,.94)', aiBorder: 'rgba(255,255,255,.07)', shadow: '0 18px 60px rgba(0,0,0,.5)', grad: 'radial-gradient(ellipse at 50% -20%, #241A3D 0%, #0D0918 55%)' },
   warm: { name: '暖色护眼', bg: '#FAF3E7', bgSoft: '#F3E9D7', panel: '#FFFDF7', text: '#4A3F33', textStrong: '#2E2620', sub: '#9A8A76', border: '#E5D9C7', brand: '#B0793B', brandSoft: 'rgba(176,121,59,.12)', ok: '#4C9A57', okSoft: 'rgba(76,154,87,.12)', err: '#C0564B', errSoft: 'rgba(192,86,75,.12)', aiBg: '#FBF6EC', aiBorder: '#EFE3D0', shadow: '0 12px 40px rgba(74,63,51,.10)', grad: 'linear-gradient(160deg,#F7EFE0 0%,#FAF3E7 45%)' },
   green: { name: '绿色护眼', bg: '#EAF4EA', bgSoft: '#DEEBDE', panel: '#F5FBF5', text: '#2F4432', textStrong: '#1F2E21', sub: '#7E9783', border: '#CFE0CF', brand: '#3E8E4E', brandSoft: 'rgba(62,142,78,.12)', ok: '#2E9E4F', okSoft: 'rgba(46,158,79,.12)', err: '#C14B4B', errSoft: 'rgba(193,75,75,.12)', aiBg: '#F0F8F0', aiBorder: '#DCEBDC', shadow: '0 12px 40px rgba(31,46,33,.10)', grad: 'linear-gradient(160deg,#E2F0E2 0%,#EAF4EA 45%)' },
 }
@@ -231,7 +231,7 @@ const POS_COLORS = {
   'сущ.': '#3B82F6', '名词': '#3B82F6',
   'гл.': '#22C55E', '动词': '#22C55E',
   'прил.': '#F59E0B', '形容词': '#F59E0B',
-  'нар.': '#6366F1', '副词': '#6366F1',
+  'нар.': 'oklch(23.27% 0.0249 284.3)', '副词': 'oklch(23.27% 0.0249 284.3)',
   'мест.': '#EC4899', '代词': '#EC4899',
   'предл.': '#14B8A6', '介词': '#14B8A6',
   'союз': '#EF4444', '连词': '#EF4444',
@@ -261,7 +261,11 @@ export default function RuQuest() {
   const [draftMode, setDraftMode] = useState('chinese_to_english') // 弹窗内暂选的练习模式
   const [curLesson, setCurLesson] = useState(null) // 当前课
   const [mode, setMode] = useState(() => {
-    try { return localStorage.getItem('rlearn_quest_mode') || 'chinese_to_english' } catch (e) { return 'chinese_to_english' }
+    try {
+      const urlMode = new URLSearchParams(window.location.search).get('mode')
+      if (urlMode) { localStorage.setItem('rlearn_quest_mode', urlMode); return urlMode }
+      return localStorage.getItem('rlearn_quest_mode') || 'chinese_to_english'
+    } catch (e) { return 'chinese_to_english' }
   })
   const [modeOpen, setModeOpen] = useState(false)  // 答题页内模式切换面板
   const [moreOpen, setMoreOpen] = useState(false)    // 工具栏「更多」溢出菜单（保留扩展功能入口）
@@ -1387,12 +1391,12 @@ export default function RuQuest() {
               @media(max-width:1024px){.unit-grid{grid-template-columns:repeat(3,1fr)}}
               @media(max-width:760px){.unit-grid{grid-template-columns:repeat(2,1fr)}}
               .unit-card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;cursor:pointer}
-              .unit-card:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(124,58,237,.18)!important;border-color:#C4B5FD!important}
-              .route-node-wrap:hover .route-node{transform:scale(1.08);border-color:#6366F1}
+              .unit-card:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(26,26,30,.18)!important;border-color:#C4B5FD!important}
+              .route-node-wrap:hover .route-node{transform:scale(1.08);border-color:oklch(23.27% 0.0249 284.3)}
               @keyframes ruModalPop{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
               .modal-pop{animation:ruModalPop .22s ease}
               @keyframes ruSpin{to{transform:rotate(360deg)}}
-              .ru-spin{width:38px;height:38px;border-radius:50%;border:3px solid #EDE9FE;border-top-color:#6366F1;animation:ruSpin .8s linear infinite}
+              .ru-spin{width:38px;height:38px;border-radius:50%;border:3px solid oklch(95% 0.0081 61.42);border-top-color:oklch(23.27% 0.0249 284.3);animation:ruSpin .8s linear infinite}
             `}</style>
 
             {/* 顶部导航 */}
@@ -1416,7 +1420,7 @@ export default function RuQuest() {
                 <>
                   {/* 课程信息头部 */}
                   <div style={styles.detailHead}>
-                    <div style={{ ...styles.detailCover, background: 'linear-gradient(135deg,#6366F1,#4F46E5)' }}>
+                    <div style={{ ...styles.detailCover, background: 'linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(23.27% 0.0249 284.3))' }}>
                       <span style={styles.detailCoverLevel}>{pack?.level || 'A1'}</span>
                     </div>
                     <div style={styles.detailHeadInfo}>
@@ -1443,14 +1447,14 @@ export default function RuQuest() {
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             {!fullyOpen && (
-                              <span style={{ fontSize: 16, fontWeight: 800, color: '#4F46E5' }}>{accessPriceLabel(am)}</span>
+                              <span style={{ fontSize: 16, fontWeight: 800, color: 'oklch(23.27% 0.0249 284.3)' }}>{accessPriceLabel(am)}</span>
                             )}
                             <button style={styles.detailStartBtn} onClick={() => firstOpen && openUnit(firstOpen)}>
                               {fullyOpen ? '开始学习' : '免费试学'}
                             </button>
                             {!fullyOpen && (
                               <button
-                                style={{ ...styles.detailStartBtn, background: '#fff', color: '#4F46E5', border: '1.5px solid #4F46E5', boxShadow: 'none' }}
+                                style={{ ...styles.detailStartBtn, background: '#fff', color: 'oklch(23.27% 0.0249 284.3)', border: '1.5px solid oklch(23.27% 0.0249 284.3)', boxShadow: 'none' }}
                                 onClick={() => { setLockedUnit(null); setShowPayModal(true) }}
                               >解锁全部</button>
                             )}
@@ -1486,10 +1490,10 @@ export default function RuQuest() {
                                 <div className="route-node" style={{
                                   ...styles.routeNode,
                                   ...(done ? styles.routeNodeActive : {}),
-                                  ...(doing ? { borderColor: '#6366F1', background: '#F3EFFC' } : {}),
+                                  ...(doing ? { borderColor: 'oklch(23.27% 0.0249 284.3)', background: 'oklch(95% 0.0081 61.42)' } : {}),
                                   ...(locked ? { background: '#F3F4F6', borderColor: '#E5E7EB' } : {}),
                                 }}>
-                                  <span className="route-node-icon" style={{ ...styles.routeNodeIcon, ...((done || doing) ? { color: done ? '#fff' : '#7c3aed' } : {}), ...(locked ? { color: '#9CA3AF' } : {}) }}>{locked ? '🔒' : (done ? '✓' : u.order)}</span>
+                                  <span className="route-node-icon" style={{ ...styles.routeNodeIcon, ...((done || doing) ? { color: done ? '#fff' : 'oklch(18% 0.0249 284.3)' } : {}), ...(locked ? { color: '#9CA3AF' } : {}) }}>{locked ? '🔒' : (done ? '✓' : u.order)}</span>
                                 </div>
                                 <div style={{ ...styles.routeNodeLabel, ...(locked ? { color: '#9CA3AF' } : {}) }}>{u.title}</div>
                                 <div style={{ ...styles.routeNodeDiff, color: locked ? '#9CA3AF' : dm.color }}>{locked ? '未解锁' : dm.label}</div>
@@ -2345,7 +2349,7 @@ const styles = {
   detailMetaItem: {},
   detailMetaDot: { color: '#ddd' },
   detailHeadRight: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 },
-  detailStartBtn: { background: 'linear-gradient(135deg,#6366F1,#4F46E5)', color: '#fff', border: 'none', padding: '12px 36px', borderRadius: 24, fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'opacity .2s', boxShadow: '0 4px 16px rgba(99,102,241,.3)' },
+  detailStartBtn: { background: 'linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(23.27% 0.0249 284.3))', color: '#fff', border: 'none', padding: '12px 36px', borderRadius: 24, fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'opacity .2s', boxShadow: '0 4px 16px rgba(26,26,30,.3)' },
   detailOutline: { background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginTop: 24, padding: '20px 28px' },
   detailOutlineHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   detailOutlineTitle: { fontSize: 17, fontWeight: 600, color: '#1a1a1a' },
@@ -2362,11 +2366,11 @@ const styles = {
   // —— 课程详情页标签页 ——
   detailTabs: { display: 'flex', gap: 28, borderBottom: '1px solid #f0f0f0', marginTop: 24 },
   detailTabItem: { padding: '12px 0', fontSize: 15, color: '#888', cursor: 'pointer', borderBottom: '2px solid transparent', marginBottom: -1, transition: 'color .2s' },
-  detailTabItemOn: { color: '#1a1a1a', fontWeight: 600, borderBottom: '2px solid #6366F1' },
+  detailTabItemOn: { color: '#1a1a1a', fontWeight: 600, borderBottom: '2px solid oklch(23.27% 0.0249 284.3)' },
   // —— 学习路线视图 ——
   routeView: { marginTop: 24 },
   routeHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  routeDifficulty: { fontSize: 13, color: '#6366F1', background: '#F3E8FF', padding: '5px 16px', borderRadius: 14, fontWeight: 500 },
+  routeDifficulty: { fontSize: 13, color: 'oklch(23.27% 0.0249 284.3)', background: 'oklch(95% 0.0081 61.42)', padding: '5px 16px', borderRadius: 14, fontWeight: 500 },
   routeSetting: { fontSize: 13, color: '#999', cursor: 'pointer' },
   routeGraph: { position: 'relative', padding: '10px 0' },
   routeRow: { display: 'flex', alignItems: 'center', position: 'relative', height: 96, marginBottom: 4 },
@@ -2375,25 +2379,25 @@ const styles = {
   routeConnectorRight: { right: '50%', borderRight: 'none', borderRadius: '48px 0 0 0' },
   routeNodeWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', zIndex: 1, position: 'relative', transition: 'transform .2s' },
   routeNode: { width: 56, height: 56, borderRadius: '50%', background: '#f5f5f5', border: '2px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .2s' },
-  routeNodeActive: { background: 'linear-gradient(135deg,#6366F1,#4F46E5)', borderColor: '#6366F1', boxShadow: '0 4px 16px rgba(99,102,241,.35)' },
+  routeNodeActive: { background: 'linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(23.27% 0.0249 284.3))', borderColor: 'oklch(23.27% 0.0249 284.3)', boxShadow: '0 4px 16px rgba(26,26,30,.35)' },
   routeNodeIcon: { fontSize: 16, fontWeight: 700, color: '#aaa' },
   routeNodeLabel: { fontSize: 13, color: '#555', marginTop: 8, fontWeight: 500 },
   routeNodeDiff: { fontSize: 11, color: '#bbb', marginTop: 2 },
-  backHome: { position: 'fixed', left: 18, bottom: 18, background: '#6366F1', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer', zIndex: 10 },
-  lessonHead: { maxWidth: 900, margin: '20px auto 0', background: '#FFFFFF', borderRadius: 18, padding: 22, display: 'flex', gap: 20, boxShadow: '0 2px 14px rgba(99,102,241,.08)' },
-  lessonCover: { width: 90, height: 90, borderRadius: 14, background: 'linear-gradient(135deg,#6366F1,#4F46E5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, flexShrink: 0 },
+  backHome: { position: 'fixed', left: 18, bottom: 18, background: 'oklch(23.27% 0.0249 284.3)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer', zIndex: 10 },
+  lessonHead: { maxWidth: 900, margin: '20px auto 0', background: '#FFFFFF', borderRadius: 18, padding: 22, display: 'flex', gap: 20, boxShadow: '0 2px 14px rgba(26,26,30,.08)' },
+  lessonCover: { width: 90, height: 90, borderRadius: 14, background: 'linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(23.27% 0.0249 284.3))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, flexShrink: 0 },
   lessonTitle: { fontSize: 19, fontWeight: 700, color: '#18181B' },
   lessonDesc: { fontSize: 12.5, color: '#71717A', margin: '6px 0', lineHeight: 1.6 },
   lessonTags: { display: 'flex', gap: 6, margin: '6px 0' },
-  tagPill: { fontSize: 11, padding: '2px 10px', borderRadius: 10, background: '#EEF0FF', color: '#3730A3' },
+  tagPill: { fontSize: 11, padding: '2px 10px', borderRadius: 10, background: 'oklch(95% 0.0081 61.42)', color: 'oklch(15% 0.0249 284.3)' },
   lessonStat: { fontSize: 12, color: '#A1A1AA', marginTop: 4 },
-  outline: { maxWidth: 900, margin: '20px auto 0', background: '#FFFFFF', borderRadius: 18, padding: 22, boxShadow: '0 2px 14px rgba(99,102,241,.08)' },
+  outline: { maxWidth: 900, margin: '20px auto 0', background: '#FFFFFF', borderRadius: 18, padding: 22, boxShadow: '0 2px 14px rgba(26,26,30,.08)' },
   outlineTitle: { fontSize: 15, fontWeight: 700, color: '#18181B', marginBottom: 10 },
   lessonRow: { display: 'flex', gap: 14, alignItems: 'center', padding: '12px 4px', borderBottom: '1px solid #E9E9EE', cursor: 'pointer' },
   lessonNo: { fontSize: 13, fontWeight: 700, color: '#A1A1AA', width: 28 },
   lessonRowName: { fontSize: 13.5, fontWeight: 600, color: '#18181B' },
   lessonRowDesc: { fontSize: 11.5, color: '#71717A', marginTop: 3 },
-  trial: { fontSize: 11, color: '#6366F1', background: '#EDE9FE', padding: '2px 10px', borderRadius: 10, flexShrink: 0 },
+  trial: { fontSize: 11, color: 'oklch(23.27% 0.0249 284.3)', background: 'oklch(95% 0.0081 61.42)', padding: '2px 10px', borderRadius: 10, flexShrink: 0 },
   modalRoot: { position: 'fixed', inset: 0, background: 'rgba(10,6,20,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, fontFamily: FONT_STACK.system },
   modeModal: { width: 860, maxWidth: '92vw', background: '#FFFFFF', borderRadius: 20, padding: 28, boxShadow: '0 24px 80px rgba(0,0,0,.4)' },
   modeModalTitle: { fontSize: 22, fontWeight: 800, color: '#1F1B2E' },
@@ -2401,10 +2405,10 @@ const styles = {
   modeBody: { display: 'flex', gap: 24 },
   modeList: { width: 240, display: 'flex', flexDirection: 'column', gap: 4 },
   modeItem: { padding: '12px 14px', borderRadius: 12, cursor: 'pointer', position: 'relative', border: '1px solid transparent' },
-  modeItemOn: { background: '#F3EFFC', borderColor: '#C4B5FD' },
+  modeItemOn: { background: 'oklch(95% 0.0081 61.42)', borderColor: '#C4B5FD' },
   modeItemName: { fontSize: 14.5, fontWeight: 600, color: '#1F1B2E' },
   modeItemTag: { fontSize: 11, color: '#71717A', marginTop: 2 },
-  modeRec: { position: 'absolute', top: 8, right: 10, fontSize: 10, color: '#6366F1', background: '#EDE9FE', padding: '1px 8px', borderRadius: 8 },
+  modeRec: { position: 'absolute', top: 8, right: 10, fontSize: 10, color: 'oklch(23.27% 0.0249 284.3)', background: 'oklch(95% 0.0081 61.42)', padding: '1px 8px', borderRadius: 8 },
   modeDetail: { flex: 1, background: '#FFFFFF', borderRadius: 14, padding: 20 },
   modeDetailTitle: { fontSize: 17, fontWeight: 700, color: '#1F1B2E' },
   modeDetailDesc: { fontSize: 13, color: '#71717A', margin: '8px 0 18px', lineHeight: 1.7 },
@@ -2418,22 +2422,22 @@ const styles = {
   modeStart: { padding: '9px 26px', borderRadius: 20, border: 'none', background: '#DC2626', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   catalogState: { minHeight: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginTop: 24 },
   catalogStateText: { fontSize: 14, color: '#888' },
-  catalogRetry: { padding: '9px 26px', borderRadius: 20, border: 'none', background: 'linear-gradient(135deg,#6366F1,#4F46E5)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  catalogRetry: { padding: '9px 26px', borderRadius: 20, border: 'none', background: 'linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(23.27% 0.0249 284.3))', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   unitOutline: { background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginTop: 24, padding: '24px 28px 28px' },
   unitCard: { position: 'relative', background: '#FBFAFF', border: '1px solid #EEE9F9', borderRadius: 16, padding: '18px 16px 16px', minHeight: 132, display: 'flex', flexDirection: 'column' },
   unitCardTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  unitNo: { fontSize: 15, fontWeight: 800, color: '#4F46E5', letterSpacing: 0.3 },
+  unitNo: { fontSize: 15, fontWeight: 800, color: 'oklch(23.27% 0.0249 284.3)', letterSpacing: 0.3 },
   unitBadge: { fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 999 },
   unitSub: { fontSize: 14, fontWeight: 600, color: '#1F1B2E', marginBottom: 6, lineHeight: 1.4 },
   unitMeta: { fontSize: 12, color: '#9A90B0', marginBottom: 14 },
   unitStatus: { marginTop: 'auto', alignSelf: 'flex-start', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 999 },
   modeCardRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
   modeCard: { position: 'relative', background: '#FFFFFF', border: '2px solid #E9E9EE', borderRadius: 16, padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 8 },
-  modeCardOn: { background: '#F3EFFC', borderColor: '#6366F1', boxShadow: '0 8px 24px rgba(99,102,241,.18)' },
+  modeCardOn: { background: 'oklch(95% 0.0081 61.42)', borderColor: 'oklch(23.27% 0.0249 284.3)', boxShadow: '0 8px 24px rgba(26,26,30,.18)' },
   modeCardHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   modeCardName: { fontSize: 17, fontWeight: 800, color: '#1F1B2E' },
   modeCardDesc: { fontSize: 13, color: '#71717A', lineHeight: 1.7, minHeight: 44 },
-  modeCardTag: { alignSelf: 'flex-start', fontSize: 11, color: '#6366F1', background: '#EDE9FE', padding: '2px 10px', borderRadius: 999, marginTop: 2 },
+  modeCardTag: { alignSelf: 'flex-start', fontSize: 11, color: 'oklch(23.27% 0.0249 284.3)', background: 'oklch(95% 0.0081 61.42)', padding: '2px 10px', borderRadius: 999, marginTop: 2 },
   loadRoot: { position: 'fixed', inset: 0, background: '#0a0a0a', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 60, fontFamily: FONT_STACK.system },
   loadLogo: { width: 280, height: 'auto', filter: 'invert(1)', marginBottom: 70, opacity: 0.95 },
   loadTip: { fontSize: 14, color: '#777', marginBottom: 90, textAlign: 'center', letterSpacing: 0.5, maxWidth: 500 },
@@ -2467,7 +2471,7 @@ const styles = {
   wrongAns: { fontSize: 13, color: '#C9BEE0', marginTop: 2 },
   wrongReason: { fontSize: 12, color: '#FFB347', marginTop: 6 },
   btnGhost: { padding: '9px 18px', borderRadius: 22, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.2)', color: '#E5DDF5', fontSize: 14, cursor: 'pointer' },
-  btnPrimary: { padding: '9px 18px', borderRadius: 22, background: '#6366F1', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  btnPrimary: { padding: '9px 18px', borderRadius: 22, background: 'oklch(23.27% 0.0249 284.3)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   gameRoot: { minHeight: '100vh', background: '#ffffff', color: '#3A3A3A', position: 'relative', fontFamily: FONT_STACK.system, display: 'flex', flexDirection: 'column' },
   topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', fontSize: 13, color: '#475569', gap: 16, borderTop: '1px solid #e2e8f0', borderBottom: 'none' },
   toolIconBtn: { width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: 'transparent', color: '#475569', fontSize: 18, cursor: 'pointer', padding: 0, transition: 'color .12s, background .12s' },
@@ -2480,7 +2484,7 @@ const styles = {
   topScore: { display: 'none' },
   overflowPop: { position: 'absolute', top: 40, right: 0, minWidth: 168, borderRadius: 12, padding: 6, zIndex: 80, background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 12px 32px rgba(15,23,42,.14)' },
   overflowItem: { padding: '8px 12px', borderRadius: 8, fontSize: 13, cursor: 'pointer', color: '#334155', display: 'flex', alignItems: 'center', gap: 8 },
-  overflowItemOn: { background: '#f5f3ff', color: '#7c3aed', fontWeight: 600 },
+  overflowItemOn: { background: '#f5f3ff', color: 'oklch(18% 0.0249 284.3)', fontWeight: 600 },
   progressBarFull: { height: 24, width: '100%', background: '#f1f5f9', padding: 2, boxSizing: 'border-box', borderBottom: '1px solid #e2e8f0' },
   progressBarFill: { height: '100%', background: '#d946ef', borderRadius: 4, transition: 'width .3s ease' },
   gameMain: { display: 'flex', flexDirection: 'column', flex: 1 },
@@ -2498,12 +2502,12 @@ const styles = {
   hiddenInput: { width: 0, height: 0, opacity: 0, position: 'absolute', pointerEvents: 'none' },
   inputHint: { fontSize: 12.5, color: '#8B7FA3', marginTop: 14 },
   wrongTip: { fontSize: 16, fontWeight: 700, color: '#F87171', marginTop: 10 },
-  stuckBox: { marginTop: 18, background: 'rgba(99,102,241,.12)', border: '1px solid rgba(99,102,241,.4)', borderRadius: 14, padding: '14px 18px', maxWidth: 380, textAlign: 'center' },
+  stuckBox: { marginTop: 18, background: 'rgba(26,26,30,.12)', border: '1px solid rgba(26,26,30,.4)', borderRadius: 14, padding: '14px 18px', maxWidth: 380, textAlign: 'center' },
   stuckTitle: { fontSize: 15, fontWeight: 700, color: '#C4B5FD' },
   stuckText: { fontSize: 12.5, color: '#B9AFCB', margin: '8px 0 12px' },
   stuckBtns: { display: 'flex', gap: 10, justifyContent: 'center' },
   stuckNo: { padding: '6px 16px', borderRadius: 16, background: 'transparent', border: '1px solid rgba(255,255,255,.25)', color: '#B9AFCB', fontSize: 12.5, cursor: 'pointer' },
-  stuckYes: { padding: '6px 16px', borderRadius: 16, background: '#6366F1', border: 'none', color: '#fff', fontSize: 12.5, cursor: 'pointer' },
+  stuckYes: { padding: '6px 16px', borderRadius: 16, background: 'oklch(23.27% 0.0249 284.3)', border: 'none', color: '#fff', fontSize: 12.5, cursor: 'pointer' },
   // 官方 Answer.vue：逐词大字号可点击发音 + 整句喇叭 + 音标 + 中文 + 再来一次/下一题（原地渲染，无遮罩卡片）
   answerWords: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 4, fontSize: 48, fontWeight: 400, lineHeight: 1.2, margin: '0 0 4px' },
   answerWord: { cursor: 'pointer', padding: 4, transition: 'color .12s' },
@@ -2523,7 +2527,7 @@ const styles = {
   rolePosHidden: { height: 14 },
   rolesRow: { display: 'flex', gap: 40, justifyContent: 'center', flexWrap: 'wrap' },
   roleCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 },
-  roleName: { fontSize: 13, color: '#C4B5FD', background: 'rgba(99,102,241,.2)', padding: '3px 14px', borderRadius: 12 },
+  roleName: { fontSize: 13, color: '#C4B5FD', background: 'rgba(26,26,30,.2)', padding: '3px 14px', borderRadius: 12 },
   roleWordWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
   roleWord: { fontSize: 30, fontWeight: 800, color: '#F5EDE2' },
   roleStress: { fontSize: 12, color: '#8B7FA3' },
@@ -2559,14 +2563,14 @@ const styles = {
   aiStatus: { fontSize: 11.5, color: '#8B7FA3', padding: '4px 18px 8px' },
   aiBody: { flex: 1, overflowY: 'auto', padding: '6px 14px', display: 'flex', flexDirection: 'column', gap: 8 },
   aiIntro: { fontSize: 12.5, color: '#B9AFCB', margin: '6px 0 10px' },
-  aiQuick: { fontSize: 12, color: '#C9BEE0', background: 'rgba(99,102,241,.12)', border: '1px solid rgba(99,102,241,.25)', borderRadius: 12, padding: '8px 12px', cursor: 'pointer', lineHeight: 1.5 },
+  aiQuick: { fontSize: 12, color: '#C9BEE0', background: 'rgba(26,26,30,.12)', border: '1px solid rgba(26,26,30,.25)', borderRadius: 12, padding: '8px 12px', cursor: 'pointer', lineHeight: 1.5 },
   aiSection: { fontSize: 11.5, color: '#8B7FA3', marginTop: 8 },
   aiMsg: { fontSize: 12.5, padding: '9px 12px', borderRadius: 12, lineHeight: 1.6, maxWidth: '92%' },
-  aiMsgUser: { background: 'rgba(99,102,241,.25)', color: '#E5DDF5', alignSelf: 'flex-end' },
+  aiMsgUser: { background: 'rgba(26,26,30,.25)', color: '#E5DDF5', alignSelf: 'flex-end' },
   aiMsgBot: { background: 'rgba(255,255,255,.07)', color: '#D8CFF0', alignSelf: 'flex-start' },
   aiFoot: { display: 'flex', gap: 8, padding: 12, borderTop: '1px solid rgba(255,255,255,.07)' },
   aiInput: { flex: 1, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 12, padding: '8px 12px', color: '#F5EDE2', fontSize: 12.5, outline: 'none' },
-  aiSend: { width: 36, height: 36, borderRadius: 12, background: '#6366F1', border: 'none', color: '#fff', fontSize: 15, cursor: 'pointer' },
+  aiSend: { width: 36, height: 36, borderRadius: 12, background: 'oklch(23.27% 0.0249 284.3)', border: 'none', color: '#fff', fontSize: 15, cursor: 'pointer' },
   // 模块1.1 外观设置
   uiBtn: { background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', color: '#E5DDF5', fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 10, cursor: 'pointer', letterSpacing: 1 },
   uiMask: { position: 'fixed', inset: 0, background: 'rgba(5,3,12,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, backdropFilter: 'blur(2px)' },
@@ -2576,7 +2580,7 @@ const styles = {
   uiLabel: { fontSize: 13.5, color: '#C9BEE0', flexShrink: 0, width: 78 },
   uiOpts: { display: 'flex', gap: 6 },
   uiOpt: { padding: '5px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,.16)', color: '#B9AFCB', fontSize: 12.5, cursor: 'pointer', background: 'rgba(255,255,255,.05)' },
-  uiOptOn: { background: '#6366F1', borderColor: '#6366F1', color: '#fff', fontWeight: 600 },
+  uiOptOn: { background: 'oklch(23.27% 0.0249 284.3)', borderColor: 'oklch(23.27% 0.0249 284.3)', color: '#fff', fontWeight: 600 },
   uiHint: { fontSize: 11.5, color: '#8B7FA3', lineHeight: 1.7, marginTop: 6, borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: 12 },
   uiGroupTitle: { fontSize: 12.5, fontWeight: 700, letterSpacing: 1, margin: '2px 0 12px', opacity: .85 },
   uiSfxGrid: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 },

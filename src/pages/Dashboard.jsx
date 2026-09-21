@@ -51,10 +51,10 @@ function CheckinWeek() {
               className={
                 'h-7 w-7 rounded-full border flex items-center justify-center text-xs transition-all ' +
                 (w.done
-                  ? 'border-brand bg-brand text-white'
+                  ? 'border-[#c51db7] bg-[#c51db7] text-white'
                   : w.today
-                    ? 'border-brand text-brand font-bold'
-                    : 'border-gray-200 text-transparent')
+                    ? 'border-[#c51db7] text-[#c51db7] font-bold'
+                    : 'border-gray-500 text-transparent')
               }
             >
               {w.done && '✓'}
@@ -64,7 +64,7 @@ function CheckinWeek() {
       </div>
       <button
         onClick={handleCheckin}
-        className="w-full rounded-xl bg-brand py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-hover active:scale-[0.98]"
+        className="checkin-neon-btn w-full rounded-xl py-2 text-xs font-bold tracking-wide"
       >
         ✧ 立即打卡
       </button>
@@ -101,9 +101,9 @@ function RecentItem({ thumb, title, sub, time }) {
         {thumb}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-gray-900 truncate">{title}</div>
-        <div className="text-xs text-gray-500 truncate">{sub}</div>
-        <div className="text-[11px] text-gray-400">{time}</div>
+        <div className="text-sm font-semibold truncate">{title}</div>
+        <div className="rc-muted text-xs truncate">{sub}</div>
+        <div className="rc-muted text-[11px]">{time}</div>
       </div>
     </div>
   )
@@ -168,6 +168,7 @@ export default function Dashboard() {
 
   // 真实：课程包 / 当前单元
   const [packTarget, setPackTarget] = useState(null)
+  const [showMonthCalendar, setShowMonthCalendar] = useState(false)
   useEffect(() => {
     let cancelled = false
     const base = import.meta.env.VITE_API_BASE || 'https://russian-learning-jetq.onrender.com'
@@ -209,152 +210,328 @@ export default function Dashboard() {
   const questTo = packTarget ? `/quest-practice/${packTarget.id}?pack=privet_rossiya_a1` : '/quest-store'
 
   return (
-    <div className="min-h-screen bg-gray-50/80 font-ui text-gray-900">
-      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 pb-20 pt-6">
-
-        {/* 顶栏 */}
-        <div className="mb-5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-brand flex items-center justify-center text-white font-bold font-ru">А</div>
-            <h1 className="text-lg font-bold">我的主页</h1>
-          </div>
-          <div className="h-9 w-9 rounded-full bg-brand flex items-center justify-center text-sm font-bold text-white cursor-pointer">
-            学
-          </div>
-        </div>
-
-        {/* 三栏网格 */}
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_310px] gap-5 items-start">
+    <div className="min-h-screen bg-gray-50 font-ui text-gray-900">
+      <main className="flex-1 p-6 overflow-auto">
+        {/* 三栏宽度：左、中 minmax(300px,1fr) 弹性均分（侧边栏收起/展开时自动伸缩）；右栏=CSS 变量 --rc-w。
+            调右栏宽窄 → 改 dashboard.css 里 .home-grid 的 --rc-w；调左中最小宽度 → 改两个 300px */}
+        <div className="home-grid">
 
           {/* ===== 左列 ===== */}
           <div className="flex flex-col gap-4">
-            {/* 每日打卡 */}
-            <div className="card p-5">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-semibold">每日打卡</span>
-                <div className="flex items-center gap-1.5">
-                  <button className="text-gray-400 hover:text-brand transition-colors">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            {/* 每日打卡卡片 */}
+            <div className="card bg-base-100 shadow-sm h-[490px]">
+              <div className="card-body p-5 flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold">每日打卡</h2>
+                  <button className="btn btn-ghost btn-circle btn-sm opacity-40 cursor-not-allowed" disabled title="即将上线">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="w-4 h-4 text-gray-400">
+                      <path stroke="currentColor" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                   </button>
                 </div>
-              </div>
-
-              {/* 统计 */}
-              <div className="flex items-end justify-between">
-                <div>
-                  <div className="text-[11px] text-gray-400 mb-1">连胜</div>
-                  <div className="text-[32px] font-extrabold leading-none tracking-tight">
-                    {streak}<span className="text-xs font-semibold text-gray-400 ml-1">天</span>
+                <div className="flex items-end justify-between mb-4">
+                  <div>
+                    <p className="text-base text-gray-400 mb-1 flex items-center gap-1">
+                      连胜
+                      <svg className="h-4 w-4 text-[#C0392B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                      </svg>
+                    </p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-extrabold leading-none">{streak}</span>
+                      <span className="text-sm font-semibold text-gray-400">天</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-base text-gray-400 mb-1">累计打卡</p>
+                    <div className="flex items-baseline gap-1 justify-end">
+                      <span className="text-4xl font-extrabold leading-none">{streak}</span>
+                      <span className="text-sm font-semibold text-gray-400">天</span>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-[11px] text-gray-400 mb-1">累计打卡</div>
-                  <div className="text-[32px] font-extrabold leading-none tracking-tight">
-                    {streak}<span className="text-xs font-semibold text-gray-400 ml-1">天</span>
+                <div className="mb-4">
+                  <div className="flex justify-between text-base text-gray-500 mb-1.5">
+                    <span>今日目标</span>
+                    <span className="font-semibold text-gray-700">{goalDone}/{goalTotal}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-base-200 overflow-hidden">
+                    <div className="h-full rounded-full bg-[#C0392B] transition-all" style={{ width: `${Math.min((goalDone / goalTotal) * 100, 100)}%` }} />
                   </div>
                 </div>
-              </div>
-
-              {/* 今日目标 */}
-              <div className="mt-4">
-                <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-                  <span>今日目标</span>
-                  <span className="font-semibold text-gray-700">{goalDone}/{goalTotal}</span>
+                <div className="flex-1">
+                  <p className="text-base text-gray-400 mb-2">本周打卡记录</p>
+                  <CheckinWeek />
+                  <div className="mt-3 flex justify-center">
+                    <button
+                      onClick={() => setShowMonthCalendar(true)}
+                      className="cursor-pointer inline-flex items-center gap-1 py-1 text-base text-[#b01010] hover:text-[#b75a65] underline-offset-2 hover:underline"
+                    >
+                      打卡日历 »
+                    </button>
+                  </div>
                 </div>
-                <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${Math.min((goalDone / goalTotal) * 100, 100)}%` }} />
-                </div>
-              </div>
-
-              {/* 本周 */}
-              <div className="mt-4">
-                <div className="text-[11px] text-gray-400 mb-2">本周打卡记录</div>
-                <CheckinWeek />
               </div>
             </div>
 
-            {/* 复习本 / 生词本 */}
-            <div className="grid grid-cols-2 gap-3">
-              <Link to="/vocab" className="card p-3.5 hover:shadow-card-hover transition group">
-                <div className="h-9 w-9 rounded-lg bg-amber-50 flex items-center justify-center text-base mb-2.5">📕</div>
-                <div className="text-sm font-semibold text-gray-900 leading-tight">复习本</div>
-                <div className="text-[11px] text-gray-400 mt-1 leading-relaxed">智能复习，巩固学习内容</div>
-                {dueCount > 0 && (
-                  <div className="mt-2 text-[11px] font-semibold text-amber-600">今日推荐 <span className="text-amber-500">{dueCount}</span></div>
-                )}
-              </Link>
-              <Link to="/vocab" className="card p-3.5 hover:shadow-card-hover transition group">
-                <div className="h-9 w-9 rounded-lg bg-brand-soft flex items-center justify-center text-base mb-2.5">📖</div>
-                <div className="text-sm font-semibold text-gray-900 leading-tight">生词本</div>
-                <div className="text-[11px] text-gray-400 mt-1 leading-relaxed">记录学习中遇到的生词</div>
-              </Link>
-            </div>
+            {/* 重复通关卡片 → 生词复习页 /vocab */}
+            <Link to="/vocab" className="card bg-base-100 shadow-sm hover:shadow-md transition cursor-pointer">
+              <div className="card-body p-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
+                      <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-gray-900 leading-tight">重复通关</div>
+                      <div className="text-xs font-semibold text-amber-600">推荐关卡 <span className="text-amber-500">{dueCount}</span></div>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5 leading-relaxed">重复闯关，巩固游戏内容</div>
+                    <div className="text-xs text-gray-400 mt-0.5 leading-relaxed">复习关卡 1/30</div>
+                  </div>
+                </div>
+              </div>
+            </Link>
           </div>
 
           {/* ===== 中列 ===== */}
-          <div className="card p-5">
-            <div className="text-sm font-semibold mb-3">每日任务</div>
-            <TaskRow icon="🗓" tint="bg-blue-50 text-blue-600" title="今日打卡" badge="+30" to="#" />
-            <TaskRow
-              icon="🎧"
-              tint="bg-rose-50 text-rose-600"
-              title="五步精听一段"
-              badge="+15"
-              desc="每天花几分钟，听一段真实俄语视频——自己听懂、跟读出来的句子，才是你真正能脱口而出的。盲听、听写、精读、跟读、复述，五步走完；听不懂也没关系。"
-              to={recListen ? `/square/${recListen.id}` : '/square'}
-            />
-            <TaskRow icon="📅" tint="bg-amber-50 text-amber-600" title="完成今日复习" badge="+20" desc="完成一次复习练习" to="/vocab" />
-            <div className="pt-3 pb-1">
-              <span className="text-[11px] text-gray-400 tracking-wide uppercase">特别任务</span>
+          <div className="flex flex-col gap-4">
+            {/* 每日任务卡片 */}
+            <div className="card bg-base-100 shadow-sm h-[490px]">
+              <div className="card-body p-5 flex flex-col">
+                <h2 className="text-2xl font-bold mb-3">每日任务</h2>
+                <div className="flex items-start gap-3 py-3.5 border-b border-gray-100">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="mt-1 h-5 w-5 shrink-0 text-gray-400">
+                    <path stroke="currentColor" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-semibold text-gray-900">今日打卡</span>
+                      <span className="inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">+30</span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500 leading-relaxed">在左侧「每日打卡」卡片点击「立即打卡」即可完成</p>
+                  </div>
+                </div>
+                <Link to="/square" className="flex items-start gap-3 py-3.5 border-b border-gray-100 hover:bg-gray-50/60 -mx-2 px-2 rounded-xl transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="mt-1 h-5 w-5 shrink-0 text-gray-400">
+                    <path stroke="currentColor" strokeWidth="1.5" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-semibold text-gray-900">五步精听一段</span>
+                      <span className="inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">+15</span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500 leading-relaxed line-clamp-2">
+                      每天花几分钟，听一段真实俄语视频——自己听懂、跟读出来的句子，才是你真正能脱口而出的。
+                    </p>
+                  </div>
+                  <div className="shrink-0 pt-1 text-sm text-gray-400 transition-colors group-hover:text-brand">去完成 →</div>
+                </Link>
+                <Link to="/vocab" className="flex items-start gap-3 py-3.5 border-b border-gray-100 hover:bg-gray-50/60 -mx-2 px-2 rounded-xl transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="mt-1 h-5 w-5 shrink-0 text-gray-400">
+                    <path stroke="currentColor" strokeWidth="1.5" d="M12 6.253v13.493C10.887 20.44 9.493 21 8 21H6a2 2 0 01-2-2V7a2 2 0 012-2h2c1.493 0 2.887.56 4 1.253zm0 0C13.113 5.56 14.507 5 16 5h2a2 2 0 012 2v12a2 2 0 01-2 2h-2c-1.493 0-2.887-.56-4-1.253" />
+                  </svg>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-semibold text-gray-900">完成今日复习</span>
+                      <span className="inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">+20</span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500 leading-relaxed">完成一次复习练习</p>
+                  </div>
+                  <div className="shrink-0 pt-1 text-sm text-gray-400">去完成 →</div>
+                </Link>
+                <div className="pt-3 pb-1">
+                  <span className="text-sm text-gray-400 tracking-wide uppercase">特别任务</span>
+                </div>
+                <Link to="/quest-store" className="flex items-center gap-3 py-4 hover:bg-gray-50/60 -mx-2 px-2 rounded-xl transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-gray-400">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+                    <circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="1.5" />
+                    <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                  </svg>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-semibold text-gray-900">测测你的俄语水平</span>
+                      <span className="inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">+50</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 pt-1 text-sm text-gray-400">去完成 →</div>
+                </Link>
+              </div>
             </div>
-            <TaskRow icon="🎯" tint="bg-brand-soft text-brand" title="测测你的俄语水平" badge="+50" to="/profile" />
+
+            {/* 陌生关卡卡片 → 解锁游戏商城 /unlocked-games */}
+            <Link to="/unlocked-games" className="card bg-base-100 shadow-sm hover:shadow-md transition cursor-pointer">
+              <div className="card-body p-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
+                      <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/>
+                      <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-gray-900 leading-tight">陌生关卡</div>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5 leading-relaxed">记录闯关失败的关卡</div>
+                    <div className="text-xs text-gray-400 mt-0.5 leading-relaxed">预习关卡 1/30</div>
+                  </div>
+                </div>
+              </div>
+            </Link>
           </div>
 
-          {/* ===== 右列 ===== */}
-          <div className="flex flex-col gap-4">
-            {/* 学习热力图 */}
-            <div className="card p-5">
-              <HeatMini />
+          {/* ===== 右列（锁定第3列，跨两行，宽度/颜色走 dashboard.css .home-grid 参数） ===== */}
+          <div className="right-col flex flex-col gap-4">
+            {/* 六格掌握度雷达图 */}
+            <div className="card bg-base-100 shadow-sm">
+              <div className="card-body p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold">六格掌握度</span>
+                  <span className="text-[11px] badge badge-primary badge-sm">Pro</span>
+                </div>
+                <div className="relative w-full aspect-square max-w-[140px] mx-auto">
+                  <svg viewBox="0 0 200 200" className="w-full h-full">
+                    <polygon points="100,10 177.9,55 177.9,145 100,190 22.1,145 22.1,55" fill="none" stroke="#E5E7EB" strokeWidth="1"/>
+                    <polygon points="100,40 151.8,70 151.8,130 100,160 48.2,130 48.2,70" fill="none" stroke="#E5E7EB" strokeWidth="1"/>
+                    <polygon points="100,70 125.9,85 125.9,115 100,130 74.1,115 74.1,85" fill="none" stroke="#E5E7EB" strokeWidth="1"/>
+                    <line x1="100" y1="10" x2="100" y2="190" stroke="#E5E7EB" strokeWidth="1"/>
+                    <line x1="22.1" y1="55" x2="177.9" y2="145" stroke="#E5E7EB" strokeWidth="1"/>
+                    <line x1="177.9" y1="55" x2="22.1" y2="145" stroke="#E5E7EB" strokeWidth="1"/>
+                    <polygon
+                      className="rc-radar-shape"
+                      points="100,23.5 160.5,65 149.2,117.3 100,130 55.3,108.2 68.7,68.5"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 text-[10px] text-gray-600 font-medium">一格</div>
+                  <div className="absolute top-[15%] right-0 text-[10px] text-gray-600 font-medium">二格</div>
+                  <div className="absolute bottom-[15%] right-0 text-[10px] text-gray-600 font-medium">三格</div>
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] text-gray-600 font-medium">四格</div>
+                  <div className="absolute bottom-[15%] left-0 text-[10px] text-gray-600 font-medium">五格</div>
+                  <div className="absolute top-[15%] left-0 text-[10px] text-gray-600 font-medium">六格</div>
+                </div>
+                <div className="mt-3 space-y-1.5">
+                  {[
+                    { name: '第一格', value: 85 },
+                    { name: '第二格', value: 70 },
+                    { name: '第三格', value: 45 },
+                    { name: '第四格', value: 60 },
+                    { name: '第五格', value: 30 },
+                    { name: '第六格', value: 55 },
+                  ].map((item, i) => (
+                    <div key={i}>
+                      <div className="rc-muted flex justify-between text-[10px] mb-0.5">
+                        <span>{item.name}</span>
+                        <span className="font-semibold">{item.value}%</span>
+                      </div>
+                      <div className="rc-bar">
+                        <i style={{ width: `${item.value}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* 最近学习 */}
-            <div className="card p-5">
-              <div className="text-sm font-semibold mb-1">最近学习</div>
-              <RecentItem thumb="У1" title="Привет, Россия! A1" sub="Урок 1 · 问候与初识" time="大约 2 小时前" />
-              <RecentItem thumb="🎧" title="精听 · 在超市购物" sub="常用对话 · 五步精听" time="大约 9 小时前" />
-              <RecentItem thumb="У3" title="句子闯关" sub="家族 2 · 第 5 步" time="1 天前" />
-              <button className="mt-2 w-full text-center text-xs text-gray-400 hover:text-brand transition-colors py-1">
-                查看更多
-              </button>
+            <div className="card bg-base-100 shadow-sm">
+              <div className="card-body p-5">
+                <div className="text-sm font-semibold mb-1">最近学习</div>
+                <RecentItem thumb="У1" title="Привет, Россия! A1" sub="Урок 1 · 问候与初识" time="大约 2 小时前" />
+                <RecentItem thumb="🎧" title="精听 · 在超市购物" sub="常用对话 · 五步精听" time="大约 9 小时前" />
+                <RecentItem thumb="У3" title="句子闯关" sub="家族 2 · 第 5 步" time="1 天前" />
+                <Link to="/profile" className="rc-muted mt-2 block w-full text-center text-xs hover:text-primary transition-colors py-1">
+                  查看更多
+                </Link>
+              </div>
             </div>
 
             {/* 邀请有礼 */}
-            <div className="rounded-2xl bg-brand p-5 text-white shadow-sm">
-              <div className="text-sm font-bold mb-1">🎁 邀请有礼</div>
-              <div className="text-xs text-white/80 leading-relaxed mb-3">邀请好友加入，双方都能获得会员时长</div>
-              <button className="w-full rounded-xl bg-white py-2 text-sm font-bold text-brand transition hover:bg-gray-50">
-                邀请好友
-              </button>
+            <div className="rc-invite card shadow-sm">
+              <div className="card-body p-5">
+                <div className="text-sm font-bold text-base-content mb-1">🎁 邀请有礼</div>
+                <div className="text-xs text-base-content opacity-60 leading-relaxed mb-3">邀请好友加入，双方都能获得会员时长</div>
+                <button className="rc-invite-btn btn btn-sm border-0 opacity-50 cursor-not-allowed" disabled title="即将上线">
+                  邀请好友 · 即将上线
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* ===== 底部：我的课程 ===== */}
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-extrabold text-gray-900">我的课程</h2>
-            <Link to="/quest-store" className="btn-ghost text-xs py-1.5 px-3">
-              🛒 课程包商城
-            </Link>
-          </div>
-          <div className="card border-dashed">
-            <div className="flex flex-col items-center justify-center gap-3 py-10">
-              <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-xl text-gray-400">＋</div>
-              <div className="text-sm text-gray-500">将常用课程包添加到主页，让您的学习更便捷高效</div>
+          {/* ===== 我的游戏入口（跨左中两列，上下居中） ===== */}
+          <Link to="/my-games" className="col-entry flex items-center self-center card bg-transparent shadow-sm hover:shadow-md transition cursor-pointer px-4 py-3">
+            <div className="h-20 w-20 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
+                <line x1="6" y1="11" x2="10" y2="11"/>
+                <line x1="8" y1="9" x2="8" y2="13"/>
+                <line x1="15" y1="12" x2="15.01" y2="12"/>
+                <line x1="18" y1="10" x2="18.01" y2="10"/>
+                <rect x="2" y="6" width="20" height="12" rx="2"/>
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1 ml-3">
+              <div className="text-2xl font-semibold text-gray-900">我的游戏</div>
+              <div className="text-xl text-gray-400 mt-0.5">添加你的游戏数据包</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 shrink-0">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </Link>
+
+        </div>
+      </main>
+
+      {/* 月日历弹窗 */}
+      {showMonthCalendar && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-sm">
+            <h3 className="font-bold text-lg mb-4">📅 2026 年 9 月 打卡日历</h3>
+            <div className="grid grid-cols-7 gap-1 mb-2 text-center text-xs text-gray-400">
+              <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center text-sm">
+              <span></span><span></span>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">1</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">2</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">3</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">4</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">5</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">6</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">7</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">8</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">9</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">10</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">11</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">12</div>
+              <div className="w-8 h-8 mx-auto rounded-full bg-primary text-white flex items-center justify-center">13</div>
+              <div className="w-8 h-8 mx-auto rounded-full border-2 border-primary text-primary flex items-center justify-center font-bold">15</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">16</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">17</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">18</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">19</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">20</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">21</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">22</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">23</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">24</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">25</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">26</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">27</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">28</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">29</div>
+              <div className="w-8 h-8 mx-auto rounded-full border border-base-300 flex items-center justify-center text-gray-400">30</div>
+            </div>
+            <div className="modal-action">
+              <button className="btn btn-sm" onClick={() => setShowMonthCalendar(false)}>关闭</button>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

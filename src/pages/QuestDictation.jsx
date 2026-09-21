@@ -1,4 +1,4 @@
-﻿/**
+/**
  * QuestDictation.jsx —— 俄语听写模式答题页
  *
  * 与 QuestPractice（中译俄）共用 90% 逻辑：
@@ -378,8 +378,8 @@ export default function QuestDictation() {
           80% { transform: translateX(4px); }
         }
         @keyframes play-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(79,70,229,0.4); }
-          50% { box-shadow: 0 0 0 16px rgba(79,70,229,0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(26,26,30,0.4); }
+          50% { box-shadow: 0 0 0 16px rgba(26,26,30,0); }
         }
       `}</style>
 
@@ -421,7 +421,7 @@ export default function QuestDictation() {
           <div
             style={{
               ...styles.comboBadge,
-              color: combo >= 20 ? "#E11D48" : combo >= 10 ? "#EA580C" : combo >= 5 ? "#F59E0B" : "#4F46E5",
+              color: combo >= 20 ? "#E11D48" : combo >= 10 ? "#EA580C" : combo >= 5 ? "#F59E0B" : "oklch(23.27% 0.0249 284.3)",
               animation: combo >= 5 ? "combo-pulse 0.6s ease infinite" : "none",
             }}
           >
@@ -454,8 +454,8 @@ export default function QuestDictation() {
               ...styles.playButton,
               animation: isPlaying ? "play-pulse 1.2s ease infinite" : "none",
               background: isPlaying
-                ? "linear-gradient(135deg, #4338CA, #3730A3)"
-                : "linear-gradient(135deg, #4F46E5, #4338CA)",
+                ? "linear-gradient(135deg, oklch(18% 0.0249 284.3), oklch(15% 0.0249 284.3))"
+                : "linear-gradient(135deg, oklch(23.27% 0.0249 284.3), oklch(18% 0.0249 284.3))",
             }}
             onClick={() => playAudio()}
             title="播放发音（空格键重播）"
@@ -586,7 +586,7 @@ const styles = {
     padding: 32,
     background: "#fff",
     borderRadius: 16,
-    boxShadow: "0 4px 16px rgba(79,70,229,0.10)",
+    boxShadow: "0 4px 16px rgba(26,26,30,0.10)",
     textAlign: "center",
     maxWidth: 400,
   },
@@ -651,7 +651,7 @@ const styles = {
   },
   progressBarFill: {
     height: "100%",
-    background: "linear-gradient(90deg, #6366F1, #4F46E5)",
+    background: "linear-gradient(90deg, oklch(23.27% 0.0249 284.3), oklch(23.27% 0.0249 284.3))",
     transition: "width 0.3s ease",
   },
   mainContent: {
@@ -671,7 +671,7 @@ const styles = {
     padding: "24px 24px 20px",
     background: "#fff",
     borderRadius: 16,
-    boxShadow: "0 2px 12px rgba(79,70,229,0.06)",
+    boxShadow: "0 2px 12px rgba(26,26,30,0.06)",
     textAlign: "center",
     display: "flex",
     flexDirection: "column",
@@ -688,7 +688,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     transition: "transform 0.2s, box-shadow 0.2s",
-    boxShadow: "0 4px 16px rgba(79,70,229,0.3)",
+    boxShadow: "0 4px 16px rgba(26,26,30,0.3)",
     marginBottom: 12,
   },
   playHint: {
@@ -716,7 +716,7 @@ const styles = {
     width: "100%",
     background: "#fff",
     borderRadius: 16,
-    boxShadow: "0 4px 16px rgba(79,70,229,0.10)",
+    boxShadow: "0 4px 16px rgba(26,26,30,0.10)",
     minHeight: 140,
     display: "flex",
     alignItems: "center",
@@ -729,7 +729,7 @@ const styles = {
   },
   primaryBtn: {
     padding: "12px 28px",
-    background: "linear-gradient(135deg, #4F46E5, #4338CA)",
+    background: "linear-gradient(135deg, oklch(23.27% 0.0249 284.3), oklch(18% 0.0249 284.3))",
     color: "#fff",
     border: "none",
     borderRadius: 12,
@@ -737,7 +737,7 @@ const styles = {
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.2s ease",
-    boxShadow: "0 2px 8px rgba(79,70,229,0.25)",
+    boxShadow: "0 2px 8px rgba(26,26,30,0.25)",
   },
   // ---- 首次进入引导层 ----
   startOverlay: {
@@ -758,7 +758,7 @@ const styles = {
     padding: "48px 40px",
     background: "#fff",
     borderRadius: 24,
-    boxShadow: "0 8px 32px rgba(79,70,229,0.15)",
+    boxShadow: "0 8px 32px rgba(26,26,30,0.15)",
     maxWidth: 420,
   },
   startButton: {
@@ -766,14 +766,14 @@ const styles = {
     height: 88,
     borderRadius: "50%",
     border: "none",
-    background: "linear-gradient(135deg, #4F46E5, #4338CA)",
+    background: "linear-gradient(135deg, oklch(23.27% 0.0249 284.3), oklch(18% 0.0249 284.3))",
     color: "#fff",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     margin: "0 auto 24px",
-    boxShadow: "0 6px 24px rgba(79,70,229,0.35)",
+    boxShadow: "0 6px 24px rgba(26,26,30,0.35)",
     transition: "transform 0.2s, box-shadow 0.2s",
   },
   startTitle: {

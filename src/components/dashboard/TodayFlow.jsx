@@ -19,7 +19,7 @@ function ProgressRing({ value, total }) {
     <svg className="tf-ring" width="66" height="66" viewBox="0 0 66 66">
       <circle cx="33" cy="33" r={r} fill="none" stroke="#E9E9EE" strokeWidth="6" />
       <circle
-        cx="33" cy="33" r={r} fill="none" stroke="#4F46E5" strokeWidth="6"
+        cx="33" cy="33" r={r} fill="none" stroke="oklch(23.27% 0.0249 284.3)" strokeWidth="6"
         strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)}
         transform="rotate(-90 33 33)"
       />

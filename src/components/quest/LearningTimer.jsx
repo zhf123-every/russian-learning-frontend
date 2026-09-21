@@ -91,7 +91,7 @@ export default function LearningTimer({
   const T = theme || {
     text: dark ? '#F5EDE2' : '#1a1a2e',
     sub: dark ? '#8B7FA3' : '#666',
-    brand: '#6366F1',
+    brand: 'oklch(23.27% 0.0249 284.3)',
     bgSoft: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.03)',
     border: dark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.08)',
   }

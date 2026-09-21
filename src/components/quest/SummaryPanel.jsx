@@ -32,8 +32,8 @@ export default function SummaryPanel({
 
   // 评级颜色与样式（紫色系）
   const gradeConfig = {
-    SSS: { color: "#4F46E5", glow: "rgba(79,70,229,0.45)", label: "完美通关" },
-    SS:  { color: "#4F46E5", glow: "rgba(79,70,229,0.4)", label: "出色表现" },
+    SSS: { color: "oklch(23.27% 0.0249 284.3)", glow: "rgba(26,26,30,0.45)", label: "完美通关" },
+    SS:  { color: "oklch(23.27% 0.0249 284.3)", glow: "rgba(26,26,30,0.4)", label: "出色表现" },
     S:   { color: "#818CF8", glow: "rgba(129,140,248,0.35)", label: "表现优秀" },
     A:   { color: "#6B7280", glow: "rgba(107,114,128,0.35)", label: "稳步前进" },
     B:   { color: "#9CA3AF", glow: "rgba(156,163,175,0.3)", label: "继续加油" },
@@ -81,7 +81,7 @@ export default function SummaryPanel({
 
   // ---- 撒花粒子系统（紫色系） ----
   const initParticles = useCallback((canvas) => {
-    const colors = ["#6366F1", "#4F46E5", "#818CF8", "#A5B4FC", "#FFFFFF"];
+    const colors = ["oklch(23.27% 0.0249 284.3)", "oklch(23.27% 0.0249 284.3)", "#818CF8", "#A5B4FC", "#FFFFFF"];
     const particles = [];
     const count = 80;
     for (let i = 0; i < count; i++) {
@@ -202,7 +202,7 @@ export default function SummaryPanel({
           .summary-btn-primary { transition: opacity 0.15s ease; }
           .summary-btn-primary:hover { opacity: 0.85; }
           .summary-btn-secondary { transition: border-color 0.15s ease, color 0.15s ease; }
-          .summary-btn-secondary:hover { border-color: var(--ew-accent, #4F46E5); color: var(--ew-accent, #4F46E5); }
+          .summary-btn-secondary:hover { border-color: var(--ew-accent, oklch(23.27% 0.0249 284.3)); color: var(--ew-accent, oklch(23.27% 0.0249 284.3)); }
         `}</style>
 
         {/* 评级展示 */}
@@ -253,7 +253,7 @@ export default function SummaryPanel({
           </div>
           <div style={styles.statDivider} />
           <div style={styles.statItem}>
-            <div style={{ ...styles.statValue, color: "#4F46E5" }}>×{maxCombo}</div>
+            <div style={{ ...styles.statValue, color: "oklch(23.27% 0.0249 284.3)" }}>×{maxCombo}</div>
             <div style={styles.statLabel}>最大连击</div>
           </div>
         </div>
@@ -382,7 +382,7 @@ const styles = {
   },
   primaryBtn: {
     padding: "10px 22px",
-    background: "var(--ew-accent, #4F46E5)",
+    background: "var(--ew-accent, oklch(23.27% 0.0249 284.3))",
     color: "#fff",
     border: "none",
     borderRadius: 6,

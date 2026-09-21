@@ -5,8 +5,29 @@ import { useVocabStore } from '../../store/vocabStore'
 import { isDue } from '../../lib/fsrs'
 import { loadDone, effectiveDone, doneCount, STEP_IDS } from '../../lib/todayFlow'
 
+// 线性 SVG 图标组件
+function NavIcon({ path }) {
+  return (
+    <span className="ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d={path} />
+      </svg>
+    </span>
+  )
+}
+
 function NavItem({ item, onNavigate, badges }) {
   const badge = item.badgeKey && badges && badges[item.badgeKey]
+  // 页面尚未开发：置灰 +「即将上线」，禁用点击
+  if (item.soon) {
+    return (
+      <span className="db-navitem soon" title="即将上线">
+        <NavIcon path={item.icon} />
+        {item.label}
+        <span className="db-soon">即将上线</span>
+      </span>
+    )
+  }
   return (
     <NavLink
       to={item.to}
@@ -14,10 +35,31 @@ function NavItem({ item, onNavigate, badges }) {
       onClick={onNavigate}
       className={({ isActive }) => 'db-navitem' + (isActive ? ' active' : '')}
     >
-      <span className="ic">{item.icon}</span>
+      <NavIcon path={item.icon} />
       {item.label}
       {badge ? <span className="db-badge">{badge}</span> : null}
     </NavLink>
+  )
+}
+
+// 可折叠分组
+function CollapsibleGroup({ group, onNavigate, badges }) {
+  const [open, setOpen] = useState(true)
+  return (
+    <div className="db-collapsible">
+      <button className="db-collapsible-head" onClick={() => setOpen(!open)}>
+        <NavIcon path={group.icon} />
+        <span className="label">{group.label}</span>
+        <span className="arrow">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div className="db-collapsible-items">
+          {group.items.map((it) => (
+            <NavItem key={it.to} item={it} onNavigate={onNavigate} badges={badges} />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -28,6 +70,9 @@ export function NavList({ onNavigate, badges }) {
       {NAV_GROUPS.map((g) => {
         if (g.type === 'item') {
           return <NavItem key={g.to} item={g} onNavigate={onNavigate} badges={badges} />
+        }
+        if (g.type === 'collapsible') {
+          return <CollapsibleGroup key={g.label} group={g} onNavigate={onNavigate} badges={badges} />
         }
         return (
           <div key={g.label}>
@@ -42,7 +87,7 @@ export function NavList({ onNavigate, badges }) {
   )
 }
 
-// 侧栏底部：真实今日训练流进度（复习步无到期生词时自动计完成）
+// 侧栏底部：真实今日训练流进度
 function TodayGoalMini() {
   const navigate = useNavigate()
   const cards = useVocabStore((s) => s.cards)
@@ -71,7 +116,7 @@ function TodayGoalMini() {
       <div className="row">
         <svg className="ring" viewBox="0 0 36 36" aria-hidden="true">
           <circle cx="18" cy="18" r="15.5" fill="none" stroke="#ECECEF" strokeWidth="4" />
-          <circle cx="18" cy="18" r="15.5" fill="none" stroke="#4F46E5" strokeWidth="4"
+          <circle cx="18" cy="18" r="15.5" fill="none" stroke="oklch(23.27% 0.0249 284.3)" strokeWidth="4"
             strokeLinecap="round" strokeDasharray={`${(count / total) * C} ${C}`}
             transform="rotate(-90 18 18)" />
         </svg>

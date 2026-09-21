@@ -31,7 +31,7 @@ export default function Profile() {
       {/* 核心统计卡片 */}
       <div className="videos-grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', marginBottom: 24 }}>
         <div className="card"><div className="score-big">{days.size}</div><div className="hint">学习天数</div></div>
-        <div className="card"><div className="score-big" style={{ color: '#4F46E5' }}>{streak}</div><div className="hint">连续打卡</div></div>
+        <div className="card"><div className="score-big" style={{ color: 'oklch(23.27% 0.0249 284.3)' }}>{streak}</div><div className="hint">连续打卡</div></div>
         <div className="card"><div className="score-big">{practiced}</div><div className="hint">练习句子数</div></div>
         <div className="card"><div className="score-big">{doneVideos}</div><div className="hint">完成视频数</div></div>
         <div className="card"><div className="score-big">{cards.length}</div><div className="hint">生词总数</div></div>

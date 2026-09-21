@@ -17,6 +17,9 @@ import RuQuest from './pages/RuQuest'
 import TestPractice from './pages/TestPractice'
 import QuestPractice from './pages/QuestPractice'
 import CourseStore from './pages/CourseStore'
+import GameStore from './pages/GameStore'
+import MyGames from './pages/MyGames'
+import GameDetail from './pages/GameDetail'
 import QuestDictation from './pages/QuestDictation'
 
 export default function App() {
@@ -42,6 +45,9 @@ export default function App() {
         <Route path="/quest" element={<RuQuest />} />
         <Route path="/quest/:packId" element={<RuQuest />} />
         <Route path="/quest-store" element={<CourseStore />} />
+        <Route path="/unlocked-games" element={<GameStore />} />
+        <Route path="/my-games" element={<MyGames />} />
+        <Route path="/game/:id" element={<GameDetail />} />
         <Route path="/square" element={<SquarePage />} />
         <Route path="/tutor" element={<TutorChat />} />
 

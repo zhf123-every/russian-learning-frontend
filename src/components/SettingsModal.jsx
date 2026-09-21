@@ -1085,7 +1085,7 @@ export default function SettingsModal({ onClose }) {
         .qs-row-name{font-size:14px;color:#333;flex:1;min-width:0}
         .qs-chip{display:inline-flex;align-items:center;gap:4px;background:#f1f1f4;border-radius:8px;padding:5px 12px;font-size:12.5px;color:#555;white-space:nowrap;flex-shrink:0}
         .qs-edit{padding:6px 18px;border:1px solid #e0e0e4;border-radius:8px;background:#fff;color:#555;font-size:13px;cursor:pointer;transition:all .15s;flex-shrink:0}
-        .qs-edit:hover{border-color:#c4b5fd;color:#7c3aed;background:#faf7ff}
+        .qs-edit:hover{border-color:#c4b5fd;color:oklch(18% 0.0249 284.3);background:#faf7ff}
         /* —— 学习页：默认难度提示行 —— */
         .qs-tips{background:#f7f7f9;border:1px solid #efeff2;border-radius:12px;padding:4px 16px;margin:4px 0 14px}
         .qs-tip{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:13px;color:#555;line-height:1.6}
@@ -1103,7 +1103,7 @@ export default function SettingsModal({ onClose }) {
         .qs-pos-act-purple{background:#8b5cf6}
         .qs-pos-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
         .qs-pos-tab{padding:6px 16px;border-radius:99px;border:1px solid #e5e5e9;background:#fff;color:#555;font-size:13px;cursor:pointer;transition:all .15s}
-        .qs-pos-tab:hover{border-color:#c4b5fd;color:#7c3aed}
+        .qs-pos-tab:hover{border-color:#c4b5fd;color:oklch(18% 0.0249 284.3)}
         .qs-pos-tab-on{background:#8b5cf6;border-color:#8b5cf6;color:#fff;font-weight:600}
         .qs-pos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:4px 0 14px}
         .qs-pos-card{background:#fff;border:1px solid #eef0f3;border-radius:12px;padding:12px 14px 10px;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.04)}
@@ -1126,7 +1126,7 @@ export default function SettingsModal({ onClose }) {
         .qs-sel-card{display:flex;align-items:center;gap:12px;border:1.5px solid #e5e5e9;border-radius:12px;padding:12px 14px;background:#fff;cursor:pointer;transition:all .15s;position:relative}
         .qs-sel-card:hover{border-color:#c4b5fd}
         .qs-sel-on{border-color:#8b5cf6;background:rgba(139,92,246,.06)}
-        .qs-sel-ico{width:38px;height:38px;border-radius:10px;background:#f3f0ff;color:#7c3aed;font-size:14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+        .qs-sel-ico{width:38px;height:38px;border-radius:10px;background:#f3f0ff;color:oklch(18% 0.0249 284.3);font-size:14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
         .qs-sel-body{flex:1}
         .qs-sel-title{font-size:14px;color:#333;font-weight:500;margin-bottom:2px}
         .qs-sel-desc{font-size:12px;color:#aaa}
@@ -1146,7 +1146,7 @@ export default function SettingsModal({ onClose }) {
         .qs-bg-labels{display:flex;gap:14px;margin-bottom:14px}
         .qs-bg-labels span{width:74px;text-align:center;font-size:12px;color:#888}
         .qs-bg-upload{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border:1.5px solid #e5e5e9;border-radius:10px;background:#fff;font-size:13.5px;color:#444;cursor:pointer;transition:all .15s}
-        .qs-bg-upload:hover{border-color:#c4b5fd;color:#7c3aed}
+        .qs-bg-upload:hover{border-color:#c4b5fd;color:oklch(18% 0.0249 284.3)}
         .qs-bg-note{font-size:12px;color:#aaa;line-height:1.9;margin-top:12px}
         /* —— 其余面板 —— */
         .qs-row{display:flex;align-items:center;padding:11px 4px;border-bottom:1px solid #f2f2f4}

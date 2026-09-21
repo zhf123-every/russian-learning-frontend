@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useVocabStore } from '../store/vocabStore'
 import { useShangStore, STAGES } from '../store/shangStore'
@@ -657,7 +657,7 @@ export default function ShangMethod() {
  const d = shang.load(materialId)?.dictations?.[currentSentenceWithId.id]
  if (!d) return null
  return (
-<div className="compare-box" style={{ marginTop: 10, padding: 10, background: '#EEF0FF', border: '1px solid var(--border2)', borderRadius: 6 }}>
+<div className="compare-box" style={{ marginTop: 10, padding: 10, background: 'oklch(95% 0.0081 61.42)', border: '1px solid var(--border2)', borderRadius: 6 }}>
 <div className="hint">你刚才的听写：</div>
 <div style={{ marginTop: 4 }}>{d.text ||<span style={{ opacity: 0.5 }}>（已跳过）</span>}</div>
  {d.skipped &&<div className="hint" style={{ marginTop: 4, color: '#E11D48' }}>本句为「跳过」状态，请重点精读</div>}
@@ -775,7 +775,7 @@ export default function ShangMethod() {
 
  {/* AI比对结果 */}
  {reciteResult && (
-<div style={{ marginTop: 12, padding: 12, background: '#EEF0FF', border: '1px solid var(--border2)', borderRadius: 8, textAlign: 'left' }}>
+<div style={{ marginTop: 12, padding: 12, background: 'oklch(95% 0.0081 61.42)', border: '1px solid var(--border2)', borderRadius: 8, textAlign: 'left' }}>
 <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>AI 比对结果</div>
  {reciteResult.user_text && (
 <div style={{ marginBottom: 10 }}>
@@ -985,7 +985,7 @@ export default function ShangMethod() {
 <button className="btn sm" onClick={() =>setShowReciteCompare(false)} style={{ fontSize: 12 }}>关闭</button>
 </div>
 
-<div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border2)', background: '#EEF0FF' }}>
+<div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border2)', background: 'oklch(95% 0.0081 61.42)' }}>
 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
 <audio
  src={reciteAudioUrl}

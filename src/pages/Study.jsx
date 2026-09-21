@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCourseStore } from '../store/courseStore'
 import { useSquareStore } from '../store/squareStore'
@@ -317,7 +317,7 @@ export default function Study() {
 <div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.6 }}>{videoError}</div>
 <div style={{ fontSize: 12, opacity: 0.65, lineHeight: 1.5 }}>可能原因：视频被删除、设为私享、禁止嵌入或地区限制。<br />建议更换一个可播放的视频链接（mp4 直链最佳）。</div>
  {video?.videoUrl && (
-<a href={video.videoUrl} target="_blank" rel="noreferrer" style={{ marginTop: 8, padding: '9px 20px', background: '#fff', color: '#3730A3', borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>在 YouTube 打开查看 →</a>
+<a href={video.videoUrl} target="_blank" rel="noreferrer" style={{ marginTop: 8, padding: '9px 20px', background: '#fff', color: 'oklch(15% 0.0249 284.3)', borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>在 YouTube 打开查看 →</a>
  )}
 <button onClick={() =>setVideoError(null)} style={{ marginTop: 6, background: 'transparent', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', padding: '6px 14px', borderRadius: 999, fontSize: 12, cursor: 'pointer' }}>关闭提示</button>
 </div>
@@ -738,7 +738,7 @@ export default function Study() {
 <div style={{ fontSize: 13, opacity: 0.9, lineHeight: 1.6 }}>{videoError}</div>
 <div style={{ fontSize: 12, opacity: 0.65, lineHeight: 1.5 }}>可能原因：视频被删除、设为私享、禁止嵌入或地区限制。<br />建议更换一个可播放的视频链接（mp4 直链最佳）。</div>
  {video?.videoUrl && (
-<a href={video.videoUrl} target="_blank" rel="noreferrer" style={{ marginTop: 8, padding: '9px 20px', background: '#fff', color: '#3730A3', borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>在 YouTube 打开查看 →</a>
+<a href={video.videoUrl} target="_blank" rel="noreferrer" style={{ marginTop: 8, padding: '9px 20px', background: '#fff', color: 'oklch(15% 0.0249 284.3)', borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>在 YouTube 打开查看 →</a>
  )}
 <button onClick={() =>setVideoError(null)} style={{ marginTop: 6, background: 'transparent', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', padding: '6px 14px', borderRadius: 999, fontSize: 12, cursor: 'pointer' }}>关闭提示</button>
 </div>
@@ -845,7 +845,7 @@ export default function Study() {
  const d = shangDictations[cur.id]
  if (!d) return null
  return (
-<div className="compare-box" style={{ marginTop: 10, padding: 10, background: '#EEF0FF', border: '1px solid var(--border2)', borderRadius: 6 }}>
+<div className="compare-box" style={{ marginTop: 10, padding: 10, background: 'oklch(95% 0.0081 61.42)', border: '1px solid var(--border2)', borderRadius: 6 }}>
 <div className="hint">你刚才的听写：</div>
 <div style={{ marginTop: 4 }}>{d.text ||<span style={{ opacity: 0.5 }}>（已跳过）</span>}</div>
  {d.skipped &&<div className="hint" style={{ marginTop: 4, color: '#E11D48' }}>本句为「跳过」状态，请重点精读</div>}
@@ -1012,7 +1012,7 @@ export default function Study() {
 
  {/* AI比对结果 */}
  {reciteResult && (
-<div style={{ marginTop: 12, padding: 12, background: '#EEF0FF', border: '1px solid var(--border2)', borderRadius: 8, textAlign: 'left' }}>
+<div style={{ marginTop: 12, padding: 12, background: 'oklch(95% 0.0081 61.42)', border: '1px solid var(--border2)', borderRadius: 8, textAlign: 'left' }}>
 <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>AI 比对结果</div>
  {reciteResult.user_text && (
 <div style={{ marginBottom: 10 }}>
@@ -1305,7 +1305,7 @@ export default function Study() {
 <button className="btn sm" onClick={() =>setShowReciteCompare(false)} style={{ fontSize: 12 }}>关闭</button>
 </div>
 
-<div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border2)', background: '#EEF0FF' }}>
+<div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border2)', background: 'oklch(95% 0.0081 61.42)' }}>
 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
 <audio
  src={reciteAudioUrl}

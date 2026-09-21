@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { callAI } from '../lib/ai'
 import { toast } from '../lib/toast'
 import { mdToHtml } from '../lib/md'
@@ -302,7 +302,7 @@ export default function Dictionary() {
                     }}
                     onMouseEnter={e => {
                       e.currentTarget.style.borderColor = 'var(--accent)'
-                      e.currentTarget.style.background = '#EEF0FF'
+                      e.currentTarget.style.background = 'oklch(95% 0.0081 61.42)'
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.borderColor = 'var(--border2)'

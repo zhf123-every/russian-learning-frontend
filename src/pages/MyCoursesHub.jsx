@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MyCoursesHub.jsx —— 「我的」课程中心
  * 展示：正在学习（含继续学习）、已购买、可试学课程；底部保留工具入口。
  * 数据：GET /api/course-packs + /api/course-packs/:id/units；购买状态走 courseAccess（localStorage）。
@@ -24,8 +24,10 @@ async function fetchJson(url, tries = 4) {
       const res = await fetch(url);
       if (!res.ok) throw new Error("HTTP " + res.status);
       const json = await res.json();
-      if (json && json.ok) return json.data;
-      throw new Error((json && json.error) || "返回数据格式异常");
+      // 兼容多种返回格式
+      if (json && json.data) return json.data;
+      if (Array.isArray(json)) return json;
+      return json;
     } catch (e) {
       last = e;
       await new Promise((r) => setTimeout(r, 900 * (i + 1)));
@@ -106,11 +108,11 @@ export default function MyCoursesHub() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F7F6FB", padding: "28px 24px 60px", overflowX: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "#F7F5F2", padding: "28px 24px 60px", overflowX: "hidden" }}>
       <div style={{ maxWidth: 980, margin: "0 auto" }}>
         <div style={{ marginBottom: 26 }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: "#1F1B2E" }}>我的课程</div>
-          <div style={{ fontSize: 13, color: "#9A90B0", marginTop: 4 }}>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "#1A1512" }}>我的课程</div>
+          <div style={{ fontSize: 13, color: "#7A6A60", marginTop: 4 }}>
             继续学习、查看已购课程与学习进度
           </div>
         </div>
@@ -123,8 +125,8 @@ export default function MyCoursesHub() {
                 height: 40,
                 margin: "0 auto 16px",
                 borderRadius: "50%",
-                border: "3px solid #EDE9FE",
-                borderTopColor: "#6366F1",
+                border: "3px solid oklch(95% 0.0081 61.42)",
+                borderTopColor: "oklch(23.27% 0.0249 284.3)",
                 animation: "mcSpin .8s linear infinite",
               }}
             />
@@ -137,7 +139,7 @@ export default function MyCoursesHub() {
             <div style={{ marginTop: 14 }}>
               <button
                 onClick={load}
-                style={{ padding: "9px 24px", border: "1px solid #4F46E5", borderRadius: 20, background: "#fff", color: "#4F46E5", cursor: "pointer" }}
+                style={{ padding: "9px 24px", border: "1px solid oklch(23.27% 0.0249 284.3)", borderRadius: 20, background: "#fff", color: "oklch(23.27% 0.0249 284.3)", cursor: "pointer" }}
               >
                 重新加载
               </button>
@@ -189,14 +191,14 @@ export default function MyCoursesHub() {
                   onClick={() => navigate(t.to)}
                   style={{
                     background: "#fff",
-                    border: "1px solid #EEE9F9",
+                    border: "1px solid #E9E0D8",
                     borderRadius: 16,
                     padding: "18px 20px",
                     cursor: "pointer",
                     display: "flex",
                     gap: 14,
                     alignItems: "center",
-                    boxShadow: "0 2px 10px rgba(61,46,100,.04)",
+                    boxShadow: "0 2px 10px rgba(26,26,30,.04)",
                     transition: "transform .15s ease, box-shadow .15s ease",
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-2px)")}
@@ -220,7 +222,7 @@ export default function MyCoursesHub() {
 function SectionTitle({ title }) {
   return (
     <div style={{ fontSize: 15, fontWeight: 700, color: "#1F1B2E", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
-      <span style={{ width: 4, height: 16, borderRadius: 2, background: "linear-gradient(180deg,#6366F1,#4F46E5)" }} />
+      <span style={{ width: 4, height: 16, borderRadius: 2, background: "linear-gradient(180deg,oklch(23.27% 0.0249 284.3),oklch(18% 0.0249 284.3))" }} />
       {title}
     </div>
   )
@@ -231,11 +233,11 @@ function EmptyHint({ text, actionText, onAction }) {
     <div
       style={{
         background: "#fff",
-        border: "1px dashed #D9D2EC",
+        border: "1px dashed #D4CCC0",
         borderRadius: 16,
         padding: "34px 24px",
         textAlign: "center",
-        color: "#7C7390",
+        color: "#7A6A60",
         fontSize: 14,
         marginBottom: 34,
       }}
@@ -248,11 +250,11 @@ function EmptyHint({ text, actionText, onAction }) {
             padding: "10px 26px",
             border: "none",
             borderRadius: 22,
-            background: "linear-gradient(135deg,#6366F1,#4F46E5)",
+            background: "linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(18% 0.0249 284.3))",
             color: "#fff",
             fontWeight: 600,
             cursor: "pointer",
-            boxShadow: "0 6px 16px rgba(79,70,229,.25)",
+            boxShadow: "0 6px 16px rgba(26,26,30,.25)",
           }}
         >
           {actionText}
@@ -268,14 +270,14 @@ function CourseRow({ p, onContinue, onDetail }) {
     <div
       style={{
         background: "#fff",
-        border: "1px solid #EEE9F9",
+        border: "1px solid #E9E0D8",
         borderRadius: 18,
         padding: 20,
         display: "flex",
         gap: 18,
         alignItems: "center",
         flexWrap: "wrap",
-        boxShadow: "0 2px 12px rgba(61,46,100,.05)",
+        boxShadow: "0 2px 12px rgba(26,26,30,.05)",
       }}
     >
       <div
@@ -288,8 +290,8 @@ function CourseRow({ p, onContinue, onDetail }) {
           cursor: "pointer",
           background:
             meta.type === "video"
-              ? "linear-gradient(135deg,#6366F1,#312E81)"
-              : "linear-gradient(135deg,#8B5CF6,#6D28D9)",
+              ? "linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(15% 0.0249 284.3))"
+              : "linear-gradient(135deg,oklch(18% 0.0249 284.3),oklch(15% 0.0249 284.3))",
           color: "#fff",
           display: "flex",
           alignItems: "center",
@@ -302,7 +304,7 @@ function CourseRow({ p, onContinue, onDetail }) {
       <div style={{ flex: 1, minWidth: 200 }} onClick={onDetail} className="mc-cursor">
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 16, fontWeight: 800, color: "#1F1B2E", cursor: "pointer" }}>{p.title}</span>
-          <span style={{ fontSize: 11, color: "#6D28D9", background: "#EDE9FE", padding: "2px 9px", borderRadius: 999 }}>
+          <span style={{ fontSize: 11, color: "oklch(18% 0.0249 284.3)", background: "oklch(95% 0.0081 61.42)", padding: "2px 9px", borderRadius: 999 }}>
             {typeLabel(meta.type)}
           </span>
           {p._owned && (
@@ -314,13 +316,13 @@ function CourseRow({ p, onContinue, onDetail }) {
         <div style={{ fontSize: 12.5, color: "#9A90B0", margin: "6px 0 8px" }}>
           {p._done}/{p._units} 单元 · {p._steps} 步 {p._doing > 0 ? "· 有进行中的单元" : ""}
         </div>
-        <div style={{ height: 7, background: "#F1EEF9", borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ height: 7, background: "#F0EBE5", borderRadius: 4, overflow: "hidden" }}>
           <div
             style={{
               width: p._pct + "%",
               height: "100%",
               borderRadius: 4,
-              background: "linear-gradient(90deg,#8B5CF6,#6D28D9)",
+              background: "linear-gradient(90deg,oklch(23.27% 0.0249 284.3),oklch(18% 0.0249 284.3))",
               transition: "width .4s ease",
             }}
           />
@@ -332,12 +334,12 @@ function CourseRow({ p, onContinue, onDetail }) {
           padding: "11px 26px",
           border: "none",
           borderRadius: 22,
-          background: "linear-gradient(135deg,#6366F1,#4F46E5)",
+          background: "linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(18% 0.0249 284.3))",
           color: "#fff",
           fontWeight: 700,
           fontSize: 14,
           cursor: "pointer",
-          boxShadow: "0 6px 16px rgba(79,70,229,.25)",
+          boxShadow: "0 6px 16px rgba(26,26,30,.25)",
           flex: "0 0 auto",
         }}
       >
@@ -354,11 +356,11 @@ function MiniCourseCard({ p, onClick }) {
       onClick={onClick}
       style={{
         background: "#fff",
-        border: "1px solid #EEE9F9",
+        border: "1px solid #E9E0D8",
         borderRadius: 16,
         overflow: "hidden",
         cursor: "pointer",
-        boxShadow: "0 2px 10px rgba(61,46,100,.04)",
+        boxShadow: "0 2px 10px rgba(26,26,30,.04)",
         transition: "transform .15s ease, box-shadow .15s ease",
       }}
       onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-3px)")}
@@ -375,8 +377,8 @@ function MiniCourseCard({ p, onClick }) {
           fontSize: 26,
           background:
             meta.type === "video"
-              ? "linear-gradient(135deg,#6366F1,#312E81)"
-              : "linear-gradient(135deg,#8B5CF6,#6D28D9)",
+              ? "linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(15% 0.0249 284.3))"
+              : "linear-gradient(135deg,oklch(18% 0.0249 284.3),oklch(15% 0.0249 284.3))",
         }}
       >
         {meta.type === "video" ? "▶" : "❝"}
@@ -387,7 +389,7 @@ function MiniCourseCard({ p, onClick }) {
             right: 10,
             fontSize: 11.5,
             fontWeight: 700,
-            color: p._owned ? "#047857" : "#6D28D9",
+            color: p._owned ? "#047857" : "oklch(18% 0.0249 284.3)",
             background: p._owned ? "#E7F5EF" : "#fff",
             padding: "3px 10px",
             borderRadius: 999,

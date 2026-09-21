@@ -48,10 +48,6 @@ export default function CheckInPanel({
   const todayKey = getTodayKey()
   const isCheckedToday = data.history[todayKey]
 
-  const T = theme === 'dark'
-    ? { text: '#F5EDE2', sub: '#8B7FA3', border: 'rgba(255,255,255,.1)', bg: '#1B1330', bgSoft: 'rgba(255,255,255,.05)', brand: '#8b5cf6', brandSoft: 'rgba(139,92,246,.15)', ok: '#10B981' }
-    : { text: '#1a1a2e', sub: '#666', border: '#e5e7eb', bg: '#ffffff', bgSoft: '#f9fafb', brand: '#6366F1', brandSoft: 'rgba(124,92,252,.1)', ok: '#22c55e' }
-
   const handleCheckIn = () => {
     if (isCheckedToday) return
     const yesterday = getYesterdayKey()
@@ -97,154 +93,120 @@ export default function CheckInPanel({
   }, [data.history, todayKey])
 
   return (
-    <div style={{
-      padding: 20, borderRadius: 16, border: '1px solid ' + T.border,
-      background: T.bg, position: 'relative', overflow: 'hidden',
-    }}>
-      <style>{`
-        @keyframes ciPop { 0%{transform:scale(.8); opacity:0} 50%{transform:scale(1.1)} 100%{transform:scale(1); opacity:1} }
-        @keyframes ciShine { 0%{background-position:-200% center} 100%{background-position:200% center} }
-        .ci-btn-checked{ background: linear-gradient(90deg,#6366F1,#818CF8,#6366F1); background-size:200% auto; animation:ciShine 2s linear infinite; }
-        .ci-day-checked{ background: linear-gradient(135deg,#6366F1,#818CF8) !important; color:#fff !important; border-color:#6366F1 !important; }
-        .ci-day-today{ outline: 2px solid #f59e0b; outline-offset: 1px; }
-      `}</style>
+    <div className="card bg-base-100 shadow-sm">
+      <div className="card-body p-6">
+        <style>{`
+          @keyframes ciPop { 0%{transform:scale(.8); opacity:0} 50%{transform:scale(1.1)} 100%{transform:scale(1); opacity:1} }
+          @keyframes ciShine { 0%{background-position:-200% center} 100%{background-position:200% center} }
+          .ci-btn-checked{ background: linear-gradient(90deg,oklch(23.27% 0.0249 284.3),#818CF8,oklch(23.27% 0.0249 284.3)); background-size:200% auto; animation:ciShine 2s linear infinite; }
+          .ci-day-checked{ background: linear-gradient(135deg,oklch(23.27% 0.0249 284.3),#818CF8) !important; color:#fff !important; border-color:oklch(23.27% 0.0249 284.3) !important; }
+          .ci-day-today{ outline: 2px solid #f59e0b; outline-offset: 1px; }
+        `}</style>
 
-      {/* 签到成功动效 */}
-      {justChecked && (
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,.3)', zIndex: 10, borderRadius: 16,
-        }}>
-          <div style={{
-            background: T.bg, padding: '24px 36px', borderRadius: 16, textAlign: 'center',
-            animation: 'ciPop .4s ease', border: '1px solid ' + T.brand,
-          }}>
-            <div style={{ fontSize: 48, marginBottom: 8 }}>🎉</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 4 }}>签到成功！</div>
-            <div style={{ fontSize: 14, color: T.brand, fontWeight: 600 }}>连续签到 {data.streak} 天</div>
-          </div>
-        </div>
-      )}
-
-      {/* 头部 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: T.text, marginBottom: 4 }}>
-            📅 每日签到
-          </div>
-          <div style={{ fontSize: 13, color: T.sub }}>
-            已累计签到 <b style={{ color: T.text }}>{data.total}</b> 天
-          </div>
-        </div>
-        <button
-          onClick={handleCheckIn}
-          disabled={isCheckedToday}
-          className={isCheckedToday ? '' : 'ci-btn-checked'}
-          style={{
-            padding: '10px 24px', borderRadius: 12, border: 'none', cursor: isCheckedToday ? 'default' : 'pointer',
-            fontSize: 14, fontWeight: 700, color: '#fff',
-            background: isCheckedToday ? T.ok : undefined,
-            opacity: isCheckedToday ? 0.9 : 1,
-            transition: 'all .2s ease',
-          }}
-        >
-          {isCheckedToday ? '✓ 已签到' : '立即签到'}
-        </button>
-      </div>
-
-      {/* 连续签到展示 */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px',
-        background: T.brandSoft, borderRadius: 12, marginBottom: 14,
-      }}>
-        <div style={{ fontSize: 36 }}>🔥</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 24, fontWeight: 900, color: T.brand, lineHeight: 1 }}>
-            {data.streak} <span style={{ fontSize: 14, fontWeight: 600 }}>天连续签到</span>
-          </div>
-          {nextMilestone && (
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 11, color: T.sub, marginBottom: 3 }}>
-                距离 {nextMilestone.label} {nextMilestone.emoji} 还差 {nextMilestone.days - data.streak} 天
-              </div>
-              <div style={{ height: 6, background: T.bgSoft, borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', width: progressToNext + '%',
-                  background: `linear-gradient(90deg,${T.brand},#818CF8)`,
-                  borderRadius: 3, transition: 'width .5s ease',
-                }} />
-              </div>
+        {/* 签到成功动效 */}
+        {justChecked && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 rounded-2xl">
+            <div className="bg-base-100 p-6 px-10 rounded-2xl text-center border border-primary" style={{ animation: 'ciPop .4s ease' }}>
+              <div className="text-5xl mb-2">🎉</div>
+              <div className="text-xl font-extrabold text-base-content mb-1">签到成功！</div>
+              <div className="text-sm text-primary font-semibold">连续签到 {data.streak} 天</div>
             </div>
-          )}
-          {!nextMilestone && (
-            <div style={{ fontSize: 12, color: T.brand, fontWeight: 600, marginTop: 4 }}>
-              🏆 已达成所有里程碑，太厉害了！
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 里程碑展示 */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-        {REWARD_MILESTONES.map(m => {
-          const achieved = data.streak >= m.days
-          return (
-            <div key={m.days} style={{
-              flex: '1 1 auto', minWidth: 60, padding: '8px 6px', borderRadius: 8,
-              background: achieved ? T.brandSoft : T.bgSoft,
-              border: '1px solid ' + (achieved ? T.brand : T.border),
-              textAlign: 'center', opacity: achieved ? 1 : 0.5,
-            }}>
-              <div style={{ fontSize: 18 }}>{achieved ? m.emoji : '🔒'}</div>
-              <div style={{ fontSize: 10, color: achieved ? T.brand : T.sub, fontWeight: 600, marginTop: 2 }}>{m.days}天</div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* 本月签到日历切换 */}
-      <button
-        onClick={() => setShowCalendar(s => !s)}
-        style={{
-          width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid ' + T.border,
-          background: T.bgSoft, color: T.sub, fontSize: 12, cursor: 'pointer',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}
-      >
-        <span>本月签到日历</span>
-        <span>{showCalendar ? '▲ 收起' : '▼ 展开'}</span>
-      </button>
-
-      {/* 本月签到日历 */}
-      {showCalendar && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: 6 }}>
-            {['日', '一', '二', '三', '四', '五', '六'].map(d => (
-              <div key={d} style={{ textAlign: 'center', fontSize: 11, color: T.sub, fontWeight: 600 }}>{d}</div>
-            ))}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
-            {monthDays.map((d, i) => {
-              if (!d) return <div key={i} />
-              return (
-                <div
-                  key={i}
-                  className={(d.checked ? 'ci-day-checked ' : '') + (d.isToday ? 'ci-day-today' : '')}
-                  style={{
-                    aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    borderRadius: 6, fontSize: 12, fontWeight: 600,
-                    background: d.checked ? undefined : T.bgSoft,
-                    color: d.checked ? undefined : T.text,
-                    border: '1px solid ' + (d.checked ? T.brand : T.border),
-                  }}
-                >
-                  {d.day}
+        )}
+
+        {/* 头部 */}
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <div className="text-lg font-bold text-base-content mb-1">
+              📅 每日签到
+            </div>
+            <div className="text-sm text-gray-500">
+              已累计签到 <b className="text-base-content">{data.total}</b> 天
+            </div>
+          </div>
+          <button
+            onClick={handleCheckIn}
+            disabled={isCheckedToday}
+            className={`btn btn-primary ${isCheckedToday ? '' : 'ci-btn-checked'}`}
+          >
+            {isCheckedToday ? '✓ 已签到' : '立即签到'}
+          </button>
+        </div>
+
+        {/* 连续签到展示 */}
+        <div className="flex items-center gap-4 p-4 bg-primary/10 rounded-xl mb-4">
+          <div className="text-4xl">🔥</div>
+          <div className="flex-1">
+            <div className="text-2xl font-black text-primary leading-none">
+              {data.streak} <span className="text-sm font-semibold">天连续签到</span>
+            </div>
+            {nextMilestone && (
+              <div className="mt-2">
+                <div className="text-xs text-gray-500 mb-1">
+                  距离 {nextMilestone.label} {nextMilestone.emoji} 还差 {nextMilestone.days - data.streak} 天
                 </div>
-              )
-            })}
+                <div className="w-full bg-base-200 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-primary h-1.5 rounded-full transition-all duration-500"
+                    style={{ width: progressToNext + '%' }}
+                  />
+                </div>
+              </div>
+            )}
+            {!nextMilestone && (
+              <div className="text-xs text-primary font-semibold mt-1">
+                🏆 已达成所有里程碑，太厉害了！
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        {/* 里程碑展示 */}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {REWARD_MILESTONES.map(m => {
+            const achieved = data.streak >= m.days
+            return (
+              <div key={m.days} className={`flex-1 min-w-[60px] p-2 rounded-lg text-center ${achieved ? 'bg-primary/10 border border-primary' : 'bg-base-200 border border-base-300 opacity-50'}`}>
+                <div className="text-lg">{achieved ? m.emoji : '🔒'}</div>
+                <div className={`text-xs font-semibold mt-0.5 ${achieved ? 'text-primary' : 'text-gray-500'}`}>{m.days}天</div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* 本月签到日历切换 */}
+        <button
+          onClick={() => setShowCalendar(s => !s)}
+          className="w-full p-2 rounded-lg border border-base-300 bg-base-200 text-gray-500 text-xs flex justify-between items-center"
+        >
+          <span>本月签到日历</span>
+          <span>{showCalendar ? '▲ 收起' : '▼ 展开'}</span>
+        </button>
+
+        {/* 本月签到日历 */}
+        {showCalendar && (
+          <div className="mt-3">
+            <div className="grid grid-cols-7 gap-1 mb-1">
+              {['日', '一', '二', '三', '四', '五', '六'].map(d => (
+                <div key={d} className="text-center text-xs text-gray-500 font-semibold">{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {monthDays.map((d, i) => {
+                if (!d) return <div key={i} />
+                return (
+                  <div
+                    key={i}
+                    className={`aspect-square flex items-center justify-center rounded-md text-xs font-semibold border ${d.checked ? 'ci-day-checked' : 'bg-base-200 border-base-300 text-base-content'} ${d.isToday ? 'ci-day-today' : ''}`}
+                  >
+                    {d.day}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

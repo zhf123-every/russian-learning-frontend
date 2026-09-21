@@ -12,7 +12,7 @@ export const POS_COLORS = {
   adjective: "#A855F7",    // 形容词 - 紫
   adverb: "#EAB308",       // 副词 - 黄
   pronoun: "#EF4444",      // 代词 - 红
-  preposition: "#6366F1",  // 介词 - 靛蓝
+  preposition: "oklch(23.27% 0.0249 284.3)",  // 介词 - 靛蓝
   conjunction: "#EC4899",  // 连词 - 粉
   interjection: "#F97316", // 感叹词 - 橙
   numeral: "#A855F7",      // 数词 - 紫（同形容词）

@@ -92,8 +92,8 @@ export default function ShortcutTips({
           font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
         .ew-shortcut-item:hover {
-          border-color: var(--ew-accent, #4F46E5);
-          color: var(--ew-accent, #4F46E5);
+          border-color: var(--ew-accent, oklch(23.27% 0.0249 284.3));
+          color: var(--ew-accent, oklch(23.27% 0.0249 284.3));
         }
         .ew-shortcut-item.disabled {
           opacity: 0.5;

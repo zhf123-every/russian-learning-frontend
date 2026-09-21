@@ -1,4 +1,4 @@
-﻿/**
+/**
  * QuestPractice.jsx —— 俄语连词成句正式答题页（逐级累加模式）
  *
  * 整合：
@@ -397,7 +397,7 @@ export default function QuestPractice() {
       <div style={styles.page}>
         <div style={{ ...styles.loading, flexDirection: "column", gap: 16 }}>
           <style>{"@keyframes qp-spin{to{transform:rotate(360deg)}}"}</style>
-          <div style={{ width: 38, height: 38, borderRadius: "50%", border: "3px solid #EDE9FE", borderTopColor: "#4F46E5", animation: "qp-spin .8s linear infinite" }} />
+          <div style={{ width: 38, height: 38, borderRadius: "50%", border: "3px solid oklch(95% 0.0081 61.42)", borderTopColor: "oklch(23.27% 0.0249 284.3)", animation: "qp-spin .8s linear infinite" }} />
           <span>正在加载课程…</span>
         </div>
       </div>
@@ -413,7 +413,7 @@ export default function QuestPractice() {
           </div>
           <div style={{ color: "#A1A1AA", marginBottom: 16 }}>{loadError}</div>
           <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-            <button style={{ ...styles.primaryBtn, background: "#fff", color: "#4338CA", border: "1px solid #D9D9E0" }} onClick={() => setReloadKey((k) => k + 1)}>
+            <button style={{ ...styles.primaryBtn, background: "#fff", color: "oklch(18% 0.0249 284.3)", border: "1px solid #D4CCC0" }} onClick={() => setReloadKey((k) => k + 1)}>
               重新加载
             </button>
             <button style={styles.primaryBtn} onClick={() => navigate(-1)}>
@@ -477,7 +477,7 @@ export default function QuestPractice() {
           <div
             style={{
               ...styles.comboBadge,
-              color: combo >= 20 ? "#E11D48" : combo >= 10 ? "#EA580C" : combo >= 5 ? "#F59E0B" : "#4F46E5",
+              color: combo >= 20 ? "#E11D48" : combo >= 10 ? "#EA580C" : combo >= 5 ? "#F59E0B" : "oklch(23.27% 0.0249 284.3)",
               animation: combo >= 5 ? "combo-pulse 0.6s ease infinite" : "none",
             }}
           >
@@ -709,7 +709,7 @@ const styles = {
   },
   progressBarFill: {
     height: "100%",
-    background: "linear-gradient(90deg, #6366F1, #4F46E5)",
+    background: "linear-gradient(90deg, oklch(23.27% 0.0249 284.3), oklch(18% 0.0249 284.3))",
     transition: "width 0.3s ease",
   },
   familyBar: {
@@ -753,8 +753,8 @@ const styles = {
   grammarNote: {
     marginTop: 10,
     fontSize: 13,
-    color: "#4F46E5",
-    background: "#EEF0FF",
+    color: "oklch(18% 0.0249 284.3)",
+    background: "oklch(95% 0.0081 61.42)",
     padding: "8px 14px",
     borderRadius: 8,
     display: "inline-block",
@@ -779,7 +779,7 @@ const styles = {
   },
   primaryBtn: {
     padding: "10px 24px",
-    background: "linear-gradient(135deg, #4F46E5, #4338CA)",
+    background: "linear-gradient(135deg, oklch(23.27% 0.0249 284.3), oklch(18% 0.0249 284.3))",
     color: "#fff",
     border: "none",
     borderRadius: 10,

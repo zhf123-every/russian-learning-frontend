@@ -18,12 +18,12 @@ export default function CaseRadarChart({ data }) {
       })}
       <polygon
         points={data.map((d, i) => pt(R * Math.max(0.04, d.value / 100), i).join(',')).join(' ')}
-        fill="rgba(79,70,229,.16)" stroke="#4F46E5" strokeWidth="2"
+        fill="rgba(26,26,30,.16)" stroke="oklch(23.27% 0.0249 284.3)" strokeWidth="2"
       />
       {data.map((d, i) => {
         const [x, y] = pt(R * Math.max(0.04, d.value / 100), i)
         const weak = d.value <= 35
-        return <circle key={i} cx={x} cy={y} r="2.8" fill={weak ? '#B45309' : '#4F46E5'} />
+        return <circle key={i} cx={x} cy={y} r="2.8" fill={weak ? '#B45309' : 'oklch(23.27% 0.0249 284.3)'} />
       })}
       {data.map((d, i) => {
         const [x, y] = pt(R + 15, i)

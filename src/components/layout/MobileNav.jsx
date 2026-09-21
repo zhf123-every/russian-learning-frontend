@@ -35,15 +35,22 @@ export default function MobileNav() {
 
       <nav className="db-tabbar">
         {TABBAR.map((t) => (
-          <NavLink
-            key={t.to}
-            to={t.to}
-            end={t.end}
-            className={cur === t.to ? 'active' : ''}
-          >
-            <span className="tic">{t.icon}</span>
-            {t.label}
-          </NavLink>
+          t.soon ? (
+            <span key={t.to} className="db-tab soon" title="即将上线">
+              <span className="tic">{t.icon}</span>
+              {t.label}
+            </span>
+          ) : (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              end={t.end}
+              className={cur === t.to ? 'active' : ''}
+            >
+              <span className="tic">{t.icon}</span>
+              {t.label}
+            </NavLink>
+          )
         ))}
       </nav>
     </>

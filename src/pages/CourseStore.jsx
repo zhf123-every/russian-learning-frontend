@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CourseStore.jsx —— 课程中心（课程货架页）
  * 数据来源：GET /api/course-packs（课程包）
  *           GET /api/course-packs/:id/units（统计学习进度：已完成单元数 / 总单元数 / 总步数）
@@ -122,7 +122,7 @@ export default function CourseStore() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F7F6FB", padding: "28px 24px 60px", overflowX: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "#F7F5F2", padding: "28px 24px 60px", overflowX: "hidden" }}>
       <div style={{ maxWidth: 1180, margin: "0 auto" }}>
         {/* 顶部标题 + 搜索 */}
         <div
@@ -136,8 +136,8 @@ export default function CourseStore() {
           }}
         >
           <div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: "#1F1B2E" }}>课程中心</div>
-            <div style={{ fontSize: 13, color: "#9A90B0", marginTop: 4 }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: "#1A1512" }}>课程中心</div>
+            <div style={{ fontSize: 13, color: "#7A6A60", marginTop: 4 }}>
               系统课程从试学到精通，选一门开始今天的训练
             </div>
           </div>
@@ -170,16 +170,16 @@ export default function CourseStore() {
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: "pointer",
-                border: "1px solid " + (typeFilter === f.key ? "#4F46E5" : "#E2DDF0"),
-                background: typeFilter === f.key ? "#4F46E5" : "#fff",
-                color: typeFilter === f.key ? "#fff" : "#6B6480",
+                border: "1px solid " + (typeFilter === f.key ? "oklch(23.27% 0.0249 284.3)" : "#E9E0D8"),
+                background: typeFilter === f.key ? "oklch(23.27% 0.0249 284.3)" : "#fff",
+                color: typeFilter === f.key ? "#fff" : "#7A6A60",
                 transition: "all .15s ease",
               }}
             >
               {f.label}
             </button>
           ))}
-          <span style={{ width: 1, height: 22, background: "#E2DDF0", margin: "0 4px" }} />
+          <span style={{ width: 1, height: 22, background: "#E9E0D8", margin: "0 4px" }} />
           {levels.map((lv) => (
             <button
               key={lv}
@@ -190,9 +190,9 @@ export default function CourseStore() {
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: "pointer",
-                border: "1px solid " + (levelFilter === lv ? "#7c3aed" : "#E2DDF0"),
-                background: levelFilter === lv ? "#EDE9FE" : "#fff",
-                color: levelFilter === lv ? "#6D28D9" : "#6B6480",
+                border: "1px solid " + (levelFilter === lv ? "oklch(23.27% 0.0249 284.3)" : "#E9E0D8"),
+                background: levelFilter === lv ? "oklch(95% 0.0081 61.42)" : "#fff",
+                color: levelFilter === lv ? "oklch(18% 0.0249 284.3)" : "#7A6A60",
                 transition: "all .15s ease",
               }}
             >
@@ -209,8 +209,8 @@ export default function CourseStore() {
                 height: 40,
                 margin: "0 auto 16px",
                 borderRadius: "50%",
-                border: "3px solid #EDE9FE",
-                borderTopColor: "#6366F1",
+                border: "3px solid oklch(95% 0.0081 61.42)",
+                borderTopColor: "oklch(23.27% 0.0249 284.3)",
                 animation: "csSpin .8s linear infinite",
               }}
             />
@@ -225,10 +225,10 @@ export default function CourseStore() {
                 onClick={fetchPacks}
                 style={{
                   padding: "9px 24px",
-                  border: "1px solid #4F46E5",
+                  border: "1px solid oklch(23.27% 0.0249 284.3)",
                   borderRadius: 20,
                   background: "#fff",
-                  color: "#4F46E5",
+                  color: "oklch(23.27% 0.0249 284.3)",
                   cursor: "pointer",
                 }}
               >
@@ -263,10 +263,10 @@ export default function CourseStore() {
                   style={{
                     background: "#fff",
                     borderRadius: 18,
-                    border: "1px solid #EEE9F9",
+                    border: "1px solid #E9E0D8",
                     overflow: "hidden",
                     cursor: "pointer",
-                    boxShadow: "0 2px 12px rgba(61,46,100,.05)",
+                    boxShadow: "0 2px 12px rgba(26,26,30,.05)",
                     transition:
                       "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
                     display: "flex",
@@ -285,8 +285,8 @@ export default function CourseStore() {
                       background: p.cover_url
                         ? undefined
                         : isVideo
-                        ? "linear-gradient(135deg,#6366F1 0%,#312E81 100%)"
-                        : "linear-gradient(135deg,#8B5CF6 0%,#6D28D9 100%)",
+                        ? "linear-gradient(135deg,oklch(23.27% 0.0249 284.3) 0%,oklch(15% 0.0249 284.3) 100%)"
+                        : "linear-gradient(135deg,oklch(18% 0.0249 284.3) 0%,oklch(15% 0.0249 284.3) 100%)",
                       overflow: "hidden",
                     }}
                   >
@@ -330,7 +330,7 @@ export default function CourseStore() {
                           bottom: 12,
                           right: 12,
                           fontSize: 11,
-                          color: "#6D28D9",
+                          color: "oklch(18% 0.0249 284.3)",
                           background: "rgba(255,255,255,.92)",
                           padding: "3px 10px",
                           borderRadius: 999,
@@ -365,8 +365,8 @@ export default function CourseStore() {
                           key={t}
                           style={{
                             fontSize: 11,
-                            color: "#7c3aed",
-                            background: "#EDE9FE",
+                            color: "oklch(18% 0.0249 284.3)",
+                            background: "oklch(95% 0.0081 61.42)",
                             padding: "2px 10px",
                             borderRadius: 999,
                           }}
@@ -401,15 +401,15 @@ export default function CourseStore() {
                             <span>
                               {doneUnits}/{totalUnits} 单元完成
                             </span>
-                            <span style={{ color: "#7c3aed", fontWeight: 600 }}>{pct}%</span>
+                            <span style={{ color: "oklch(18% 0.0249 284.3)", fontWeight: 600 }}>{pct}%</span>
                           </div>
-                          <div style={{ height: 7, background: "#F1EEF9", borderRadius: 4, overflow: "hidden" }}>
+                          <div style={{ height: 7, background: "#F0EBE5", borderRadius: 4, overflow: "hidden" }}>
                             <div
                               style={{
                                 width: pct + "%",
                                 height: "100%",
                                 borderRadius: 4,
-                                background: "linear-gradient(90deg,#8B5CF6,#6D28D9)",
+                                background: "linear-gradient(90deg,oklch(23.27% 0.0249 284.3),oklch(18% 0.0249 284.3))",
                                 transition: "width .4s ease",
                               }}
                             />
@@ -444,7 +444,7 @@ export default function CourseStore() {
 
       <style>
         {`
-          .pack-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(124,58,237,.18)!important;border-color:#C4B5FD!important}
+          .pack-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(26,26,30,.18)!important;border-color:#C4A89A!important}
         `}
       </style>
     </div>
@@ -454,7 +454,7 @@ export default function CourseStore() {
 /** 价格角标：免费（绿）/ 价格（紫）/ 会员（金）/ 已解锁（绿） */
 function PriceTag({ meta, owned }) {
   let bg = "#fff"
-  let color = "#6D28D9"
+  let color = "oklch(18% 0.0249 284.3)"
   let text = priceLabel(meta)
   if (meta.isPro) {
     bg = "#FEF3C7"

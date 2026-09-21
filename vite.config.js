@@ -9,6 +9,16 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: false,
+    proxy: {
+      '/api': 'https://russian-learning-jetq.onrender.com',
+    },
+  },
+  preview: {
+    port: 4173,
+    strictPort: true,
+    proxy: {
+      '/api': 'https://russian-learning-jetq.onrender.com',
+    },
   },
   test: {
     environment: 'jsdom',
