@@ -376,7 +376,7 @@ export default function Dashboard() {
               <line x1="100" y1="10" x2="100" y2="190" stroke="#E5E7EB" strokeWidth="1" />
               <line x1="22.1" y1="55" x2="177.9" y2="145" stroke="#E5E7EB" strokeWidth="1" />
               <line x1="177.9" y1="55" x2="22.1" y2="145" stroke="#E5E7EB" strokeWidth="1" />
-              <polygon className="rc-radar-shape" points="100,23.5 160.5,65 149.2,117.3 100,130 55.3,108.2 68.7,68.5" stroke="#6d28d9" fill="rgba(109,40,217,0.12)" strokeWidth="2" />
+              <polygon className="rc-radar-shape" points="100,23.5 160.5,65 149.2,117.3 100,130 55.3,108.2 68.7,68.5" style={{ stroke: '#6d28d9', fill: 'rgba(109,40,217,0.12)' }} strokeWidth="2" />
             </svg>
             <div className="absolute top-0 left-1/2 -translate-x-1/2 text-[10px] text-gray-600 font-medium">一格</div>
             <div className="absolute top-[15%] right-0 text-[10px] text-gray-600 font-medium">二格</div>
