@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>俄语学习 Dashboard - 修复边框与滚动</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .bg-brand { background-color: #6d28d9; }
+    .text-brand { color: #6d28d9; }
+    .border-brand { border-color: #6d28d9; }
+    .rc-radar-shape { stroke: #6d28d9; fill: rgba(109, 40, 217, 0.1); }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased text-gray-900 m-0 p-0">
+  <div class="flex flex-col h-screen w-full overflow-hidden bg-white">
+    <!-- ================= 全局顶部 Header ================= -->
+    <header class="relative z-20 flex h-[50px] w-full shrink-0 items-center justify-between bg-[#fafafa] px-4 border-b border-gray-200">
+      <a class="flex items-center gap-2 font-bold text-base whitespace-nowrap" href="/">
+        <span class="inline-flex w-7 h-7 rounded-lg bg-zinc-900 text-white items-center justify-center font-black text-sm">А</span>
+        俄语学习
+      </a>
+      <div class="ml-auto flex items-center gap-3">
+        <div class="flex items-center gap-2 text-sm text-gray-500">
+          <span class="font-medium">体验会员</span>
+          <span class="text-gray-300">|</span>
+          <span>剩余 1天 08时</span>
+          <span class="text-purple-600 font-medium cursor-pointer">查看 ›</span>
+        </div>
+        <span class="block text-gray-300">|</span>
+        <button class="inline-flex text-sm text-gray-600 opacity-60 cursor-not-allowed" title="即将上线">推广赚佣金</button>
+        <button class="inline-flex text-sm text-gray-600 opacity-60 cursor-not-allowed" title="即将上线">帮助与反馈</button>
+        <span class="block text-gray-300">|</span>
+        <button class="text-gray-500 opacity-60 cursor-not-allowed" title="即将上线">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 9h18"></path></svg>
+        </button>
+        <div class="flex items-center gap-1 text-sm"><span class="text-amber-500">🪙</span><span class="font-semibold text-gray-700">0</span></div>
+        <div class="flex items-center gap-1 text-sm"><span class="text-cyan-500">💎</span><span class="font-semibold text-gray-700">1,000</span></div>
+        <a class="inline-flex w-8 h-8 rounded-full bg-indigo-100 border border-indigo-200 items-center justify-center" aria-label="个人中心" href="/me">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </a>
+      </div>
+    </header>
+    <!-- ================= 下方主体区域 ================= -->
+    <div class="flex flex-1 min-h-0">
+      <!-- 左侧侧边栏 -->
+      <aside class="relative hidden md:flex w-[240px] shrink-0 h-full border-r border-gray-200 bg-white flex-col">
+        <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto scrollbar-hide pt-4 pb-2">
+          <div class="flex w-full min-w-0 flex-col px-2">
+            <ul class="flex w-full min-w-0 flex-col gap-1">
+              <li>
+                <a href="/" class="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm h-8 bg-indigo-50 text-indigo-700 font-medium hover:bg-indigo-100 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  <span>主页</span>
+                </a>
+              </li>
+              <li>
+                <a href="/unlocked-games" class="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm h-8 hover:bg-gray-100 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><path d="M6 11h4M8 9v4M15 12h.01M18 10h.01M2 16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/></svg>
+                  <span>解锁游戏</span>
+                </a>
+              </li>
+              <li>
+                <a href="/my-games" class="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm h-8 hover:bg-gray-100 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <span>我的游戏</span>
+                </a>
+              </li>
+              <li>
+                <span class="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm h-8 text-gray-400 cursor-not-allowed opacity-70">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4z"/><path d="M8 2v16"/><path d="M16 6v16"/></svg>
+                  <span>通关之路</span>
+                  <span class="ml-auto text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">即将上线</span>
+                </span>
+              </li>
+            </ul>
+          </div>
+          <div class="h-px bg-gray-200 mx-2"></div>
+          <div class="flex w-full min-w-0 flex-col px-2 py-1">
+            <button class="flex h-8 w-full cursor-pointer items-center justify-between rounded-md px-2 text-sm font-medium hover:bg-gray-100 transition-colors">
+              <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>社区</span>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-gray-400 rotate-90 transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="mt-1 space-y-1 pl-2">
+              <span class="flex items-center gap-2 rounded-md p-2 text-sm text-gray-400 cursor-not-allowed h-8 opacity-70">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span>消息通知</span>
+                <span class="ml-auto text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">即将上线</span>
+              </span>
+              <span class="flex items-center gap-2 rounded-md p-2 text-sm text-gray-400 cursor-not-allowed h-8 opacity-70">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>学习小组</span>
+                <span class="ml-auto text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">即将上线</span>
+              </span>
+            </div>
+          </div>
+          <div class="flex w-full min-w-0 flex-col px-2 py-1">
+            <button class="flex h-8 w-full cursor-pointer items-center justify-between rounded-md px-2 text-sm font-medium hover:bg-gray-100 transition-colors">
+              <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><path d="M12 3c5 0 9 1.34 9 3s-4 3-9 3-9-1.34-9-3 4-3 9-3z"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                <span>通关存档</span>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-gray-400 rotate-90 transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="mt-1 space-y-1 pl-2">
+              <span class="flex items-center gap-2 rounded-md p-2 text-sm text-gray-400 cursor-not-allowed h-8 opacity-70">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                <span>关卡熟练度</span>
+                <span class="ml-auto text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">即将上线</span>
+              </span>
+              <a href="/vocab" class="flex items-center gap-2 rounded-md p-2 text-sm h-8 hover:bg-gray-100 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                <span>复习关卡</span>
+              </a>
+              <span class="flex items-center gap-2 rounded-md p-2 text-sm text-gray-400 cursor-not-allowed h-8 opacity-70">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                <span>关卡笔记</span>
+                <span class="ml-auto text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">即将上线</span>
+              </span>
+              <span class="flex items-center gap-2 rounded-md p-2 text-sm text-gray-400 cursor-not-allowed h-8 opacity-70">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                <span>陌生关卡</span>
+                <span class="ml-auto text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">即将上线</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="p-4 border-t border-gray-100 bg-white">
+          <div class="flex items-center justify-between text-xs font-medium text-gray-700 mb-2">
+            <span>今日目标</span><span class="text-gray-400">0/4</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <svg class="w-8 h-8 shrink-0" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15.5" fill="none" stroke="#F3F4F6" stroke-width="4"></circle>
+              <circle cx="18" cy="18" r="15.5" fill="none" stroke="#6d28d9" stroke-width="4" stroke-linecap="round" stroke-dasharray="0 97.38937226128358" transform="rotate(-90 18 18)"></circle>
+            </svg>
+            <div class="text-[11px] text-gray-500 leading-tight">再完成 4 步<br>达成今日目标</div>
+          </div>
+        </div>
+        <button data-sidebar="rail" data-slot="sidebar-rail" aria-label="Toggle Sidebar" tabindex="-1" title="Toggle Sidebar" class="absolute inset-y-0 right-[-4px] z-30 hidden w-[4px] cursor-w-resize transition-all sm:flex after:absolute after:inset-y-0 after:-inset-x-1.5 after:w-[4px] hover:bg-gray-300"></button>
+      </aside>
+      <!-- 右侧主内容区 -->
+      <!-- ⚠️ 修改点1：主内容区改为 flex-col，并且 overflow-hidden，不在此处滚动 -->
+      <main class="flex-1 flex flex-col h-full min-w-0 bg-gray-50 relative overflow-hidden">
+        
+        <!-- ⚠️ 修改点2：页眉单独放在外面，并且加上 shrink-0 阻止收缩，使其固定 -->
+        <header class="relative z-10 flex h-[50px] w-full shrink-0 items-center justify-between bg-[#fafafa] px-4 border-b border-gray-200">
+          <div class="flex min-w-0 items-center gap-2">
+            <button class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900 h-7 w-7 -ml-1 cursor-pointer" aria-label="收起侧边栏">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/></svg>
+              <span class="sr-only">Toggle Sidebar</span>
+            </button>
+            <h1 class="text-base font-medium text-gray-900">我的主页</h1>
+          </div>
+        </header>
+        <!-- ⚠️ 修改点3：新增外层滚动区域，把内容都包进带边框的大卡片里 -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-6">
+          
+          <!-- ⚠️ 修改点4：内容区外壳，加边框、圆角、白色背景 -->
+          <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm min-h-full">
+            
+            <!-- 卡片网格 -->
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] w-full items-start max-w-[1200px] mx-auto">
+              
+              <!-- 左侧主区域 -->
+              <div class="space-y-6">
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <!-- 每日打卡 -->
+                  <div class="flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <div class="mb-4 flex items-center justify-between">
+                      <h2 class="text-base font-bold text-gray-900">每日打卡</h2>
+                      <button class="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4"><path stroke="currentColor" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      </button>
+                    </div>
+                    <div class="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <div class="flex items-center justify-between">
+                        <div><div class="text-xs text-gray-500">连胜</div><div class="mt-1 flex items-baseline"><span class="text-3xl font-bold text-brand">0</span><span class="ml-1 text-sm text-gray-500">天</span></div></div>
+                        <div class="text-right"><div class="text-xs text-gray-500">累计打卡</div><div class="mt-1 flex items-baseline justify-end"><span class="text-3xl font-bold text-gray-900">0</span><span class="ml-1 text-sm text-gray-500">天</span></div></div>
+                      </div>
+                    </div>
+                    <div class="mb-4 rounded-lg border border-gray-200 bg-white p-4">
+                      <div class="mb-2 flex items-center justify-between text-xs text-gray-500"><span>今日目标</span><span class="font-semibold text-gray-700">0/4</span></div>
+                      <div class="h-2 w-full rounded-full bg-gray-200"><div class="h-2 rounded-full bg-brand" style="width: 0%;"></div></div>
+                    </div>
+                    <div class="mb-4">
+                      <div class="mb-2 text-xs font-medium text-gray-700">本周打卡记录</div>
+                      <div class="grid grid-cols-7 gap-1">
+                        <div class="flex flex-col items-center"><div class="mb-1 text-[10px] text-gray-500">一</div><div class="flex h-8 w-8 items-center justify-center rounded-lg border border-brand bg-brand text-white text-xs font-bold">✓</div></div>
+                        <div class="flex flex-col items-center"><div class="mb-1 text-[10px] text-gray-500">二</div><div class="flex h-8 w-8 items-center justify-center rounded-lg border border-brand bg-brand text-white text-xs font-bold">✓</div></div>
+                        <div class="flex flex-col items-center"><div class="mb-1 text-[10px] text-gray-500">三</div><div class="flex h-8 w-8 items-center justify-center rounded-lg border border-brand bg-brand text-white text-xs font-bold">✓</div></div>
+                        <div class="flex flex-col items-center"><div class="mb-1 text-[10px] text-gray-500">四</div><div class="flex h-8 w-8 items-center justify-center rounded-lg border border-brand bg-brand text-white text-xs font-bold">✓</div></div>
+                        <div class="flex flex-col items-center"><div class="mb-1 text-[10px] text-gray-500">五</div><div class="flex h-8 w-8 items-center justify-center rounded-lg border border-brand bg-brand text-white text-xs font-bold">✓</div></div>
+                        <div class="flex flex-col items-center"><div class="mb-1 text-[10px] text-gray-500">六</div><div class="flex h-8 w-8 items-center justify-center rounded-lg border border-brand bg-brand text-white text-xs font-bold">✓</div></div>
+                        <div class="flex flex-col items-center"><div class="mb-1 text-[10px] font-medium text-brand">日</div><div class="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-brand bg-transparent text-brand font-bold text-xs"></div></div>
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 pt-2">
+                      <button class="flex items-center justify-center rounded-lg border border-gray-300 px-2 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100">打卡日历</button>
+                      <button class="flex items-center justify-center rounded-lg bg-brand px-2 py-2 text-xs font-bold text-white hover:bg-purple-700">✧ 立即打卡</button>
+                    </div>
+                  </div>
+                  <!-- 每日任务 -->
+                  <div class="flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <div class="mb-4 flex shrink-0 items-center justify-between"><h2 class="text-base font-bold text-gray-900">每日任务</h2></div>
+                    <div class="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+                      <div class="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 text-blue-500"><path stroke="currentColor" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>
+                        <div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="text-sm font-medium text-gray-900">今日打卡</span><span class="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-600"> +30</span></div></div>
+                        <div class="shrink-0"><button class="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50">去完成<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button></div>
+                      </div>
+                      <div class="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pink-100"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 text-pink-500"><path stroke="currentColor" stroke-width="1.5" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg></div>
+                        <div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="text-sm font-medium text-gray-900">五步精听一段</span><span class="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-600"> +15</span></div><div class="mt-0.5 text-xs text-gray-500 line-clamp-2">每天花几分钟，听一段真实俄语视频。</div></div>
+                        <div class="shrink-0"><button class="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50">去完成<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button></div>
+                      </div>
+                      <div class="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 text-amber-500"><path stroke="currentColor" stroke-width="1.5" d="M12 6.253v13.493C10.887 20.44 9.493 21 8 21H6a2 2 0 01-2-2V7a2 2 0 012-2h2c1.493 0 2.887.56 4 1.253zm0 0C13.113 5.56 14.507 5 16 5h2a2 2 0 012 2v12a2 2 0 01-2 2h-2c-1.493 0-2.887-.56-4-1.253"></path></svg></div>
+                        <div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="text-sm font-medium text-gray-900">完成今日复习</span><span class="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-600"> +20</span></div><div class="mt-0.5 text-xs text-gray-500">完成一次复习练习</div></div>
+                        <div class="shrink-0"><button class="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50">去完成<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button></div>
+                      </div>
+                      <div class="pt-2 text-xs font-semibold text-gray-500"> 特别任务 </div>
+                      <div class="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 text-violet-600"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"></circle><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor"></circle></svg></div>
+                        <div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="text-sm font-medium text-gray-900">测测你的俄语水平</span><span class="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-600"> +50</span></div></div>
+                        <div class="shrink-0"><button class="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50">去完成<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-col flex-wrap gap-4 lg:flex-row">
+                  <a class="group flex-1 cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white p-4 transition-all hover:bg-gray-50 shadow-sm hover:shadow-md" href="/vocab">
+                    <div class="flex items-center">
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50"><svg class="h-5 w-5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"></path></svg></div>
+                      <div class="ml-3 min-w-0 flex-1"><h3 class="text-sm font-medium text-gray-900">重复通关</h3><p class="mt-1 truncate text-xs text-gray-500">重复闯关，巩固游戏内容</p><p class="mt-1 text-xs text-gray-500">复习关卡 1/30</p></div>
+                      <div class="mr-2 flex shrink-0 items-center space-x-2"><div class="flex items-center space-x-1"><div class="text-xl font-semibold text-amber-500">27</div><div class="text-sm text-gray-500">推荐关卡</div></div></div>
+                    </div>
+                  </a>
+                  <a class="group flex-1 cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white p-4 transition-all hover:bg-gray-50 shadow-sm hover:shadow-md" href="/unlocked-games">
+                    <div class="flex items-center">
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50"><svg class="h-5 w-5 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"></path><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"></path></svg></div>
+                      <div class="ml-3 min-w-0 flex-1"><h3 class="text-sm font-medium text-gray-900">陌生关卡</h3><p class="mt-1 truncate text-xs text-gray-500">记录闯关失败的关卡</p><p class="mt-1 text-xs text-gray-500">预习关卡 1/30</p></div>
+                    </div>
+                  </a>
+                </div>
+                <!-- 我的游戏（在左侧底部） -->
+                <div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-6 shadow-sm">
+                  <div class="mb-4 flex items-center justify-between sm:mb-6">
+                    <h2 class="text-xl font-medium text-gray-900">我的游戏</h2>
+                    <button class="flex items-center space-x-1 rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-200 transition-colors">
+                      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                      <span>游戏包商城</span>
+                    </button>
+                  </div>
+                  <div class="flex min-h-[200px] cursor-pointer items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white/50 transition-colors hover:bg-gray-50">
+                    <div class="text-center">
+                      <div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100"><svg class="h-6 w-6 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path></svg></div>
+                      <p class="p-3 text-sm text-gray-500">添加你的游戏数据包</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- 右侧边栏 -->
+              <div class="space-y-6">
+                <!-- 六格掌握度 -->
+                <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <div class="mb-3 flex items-center justify-between"><h2 class="text-base font-medium text-gray-900">六格掌握度</h2><span class="rounded bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-600">Pro</span></div>
+                  <div class="relative w-full aspect-square max-w-[140px] mx-auto mt-4">
+                    <svg viewBox="0 0 200 200" class="w-full h-full">
+                      <polygon points="100,10 177.9,55 177.9,145 100,190 22.1,145 22.1,55" fill="none" stroke="#E5E7EB" stroke-width="1"></polygon>
+                      <polygon points="100,40 151.8,70 151.8,130 100,160 48.2,130 48.2,70" fill="none" stroke="#E5E7EB" stroke-width="1"></polygon>
+                      <polygon points="100,70 125.9,85 125.9,115 100,130 74.1,115 74.1,85" fill="none" stroke="#E5E7EB" stroke-width="1"></polygon>
+                      <line x1="100" y1="10" x2="100" y2="190" stroke="#E5E7EB" stroke-width="1"></line>
+                      <line x1="22.1" y1="55" x2="177.9" y2="145" stroke="#E5E7EB" stroke-width="1"></line>
+                      <line x1="177.9" y1="55" x2="22.1" y2="145" stroke="#E5E7EB" stroke-width="1"></line>
+                      <polygon class="rc-radar-shape" points="100,23.5 160.5,65 149.2,117.3 100,130 55.3,108.2 68.7,68.5" stroke-width="2"></polygon>
+                    </svg>
+                    <div class="absolute top-0 left-1/2 -translate-x-1/2 text-[10px] text-gray-600 font-medium">一格</div>
+                    <div class="absolute top-[15%] right-0 text-[10px] text-gray-600 font-medium">二格</div>
+                    <div class="absolute bottom-[15%] right-0 text-[10px] text-gray-600 font-medium">三格</div>
+                    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] text-gray-600 font-medium">四格</div>
+                    <div class="absolute bottom-[15%] left-0 text-[10px] text-gray-600 font-medium">五格</div>
+                    <div class="absolute top-[15%] left-0 text-[10px] text-gray-600 font-medium">六格</div>
+                  </div>
+                  <div class="mt-4 space-y-2">
+                    <div><div class="flex justify-between text-[10px] mb-1 text-gray-500"><span>第一格</span><span class="font-semibold text-gray-700">85%</span></div><div class="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-[#6d28d9]" style="width: 85%;"></div></div></div>
+                    <div><div class="flex justify-between text-[10px] mb-1 text-gray-500"><span>第二格</span><span class="font-semibold text-gray-700">70%</span></div><div class="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-[#6d28d9]" style="width: 70%;"></div></div></div>
+                    <div><div class="flex justify-between text-[10px] mb-1 text-gray-500"><span>第三格</span><span class="font-semibold text-gray-700">45%</span></div><div class="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-[#6d28d9]" style="width: 45%;"></div></div></div>
+                    <div><div class="flex justify-between text-[10px] mb-1 text-gray-500"><span>第四格</span><span class="font-semibold text-gray-700">60%</span></div><div class="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-[#6d28d9]" style="width: 60%;"></div></div></div>
+                    <div><div class="flex justify-between text-[10px] mb-1 text-gray-500"><span>第五格</span><span class="font-semibold text-gray-700">30%</span></div><div class="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-[#6d28d9]" style="width: 30%;"></div></div></div>
+                    <div><div class="flex justify-between text-[10px] mb-1 text-gray-500"><span>第六格</span><span class="font-semibold text-gray-700">55%</span></div><div class="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-[#6d28d9]" style="width: 55%;"></div></div></div>
+                  </div>
+                </div>
+                <!-- 最近学习 -->
+                <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <h3 class="mb-4 text-base font-medium text-gray-900">最近学习</h3>
+                  <div class="space-y-3">
+                    <div class="group flex cursor-pointer items-start space-x-3 rounded-lg py-2 transition-colors hover:bg-gray-50">
+                      <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-indigo-50 text-indigo-600 font-bold text-lg">У1</div>
+                      <div class="min-w-0 flex-1"><h3 class="mb-1 truncate text-sm font-medium text-gray-900">Привет, Россия! A1</h3><div class="mb-1 truncate text-xs text-blue-600">Урок 1 · 问候与初识</div><div class="text-xs text-gray-500">大约 2 小时前</div></div>
+                    </div>
+                    <div class="group flex cursor-pointer items-start space-x-3 rounded-lg py-2 transition-colors hover:bg-gray-50">
+                      <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-pink-50 text-pink-600 font-bold text-lg">🎧</div>
+                      <div class="min-w-0 flex-1"><h3 class="mb-1 truncate text-sm font-medium text-gray-900">精听 · 在超市购物</h3><div class="mb-1 truncate text-xs text-blue-600">常用对话 · 五步精听</div><div class="text-xs text-gray-500">大约 9 小时前</div></div>
+                    </div>
+                    <div class="group flex cursor-pointer items-start space-x-3 rounded-lg py-2 transition-colors hover:bg-gray-50">
+                      <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-amber-50 text-amber-600 font-bold text-lg">У3</div>
+                      <div class="min-w-0 flex-1"><h3 class="mb-1 truncate text-sm font-medium text-gray-900">句子闯关</h3><div class="mb-1 truncate text-xs text-blue-600">家族 2 · 第 5 步</div><div class="text-xs text-gray-500">1 天前</div></div>
+                    </div>
+                    <button class="mt-2 w-full rounded-lg bg-gray-100 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-900">查看更多</button>
+                  </div>
+                </div>
+                <!-- 邀请有礼 -->
+                <div class="cursor-pointer overflow-hidden rounded-lg border border-purple-200 bg-gradient-to-b from-purple-500 to-purple-600 p-4 transition-colors hover:from-purple-600 hover:to-purple-700">
+                  <div class="mb-2 flex items-center gap-2"><span class="text-lg leading-none">🎁</span><h3 class="text-sm font-bold text-white">邀请有礼</h3></div>
+                  <p class="mb-3 text-xs leading-relaxed text-white/80">邀请好友加入，双方都能获得会员时长</p>
+                  <button class="w-full rounded-lg bg-white py-1.5 text-xs font-semibold text-purple-600 opacity-60 cursor-not-allowed transition-colors" disabled title="即将上线">邀请好友 · 即将上线</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
