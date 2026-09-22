@@ -448,7 +448,7 @@
   --rc-invite-bg: oklch(95% 0.0081 61.42);/* ⑦ 邀请有礼卡片底色（默认浅暖灰）*/
   --rc-invite-btn:#6d28d9;                /* ⑧ 邀请有礼按钮底色 */
   --rc-invite-btn-text: #ffffff;          /* ⑨ 邀请有礼按钮文字色 */
-  display: grid; gap: 20px; width: 100%;
+  display: grid; gap: 32px; width: 100%;
   /* 左、中弹性均分（随侧栏收展自动伸缩），右栏=①宽度 */
   grid-template-columns: minmax(300px,1fr) minmax(300px,1fr) var(--rc-w);
 }
