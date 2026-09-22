@@ -17,7 +17,7 @@
 <body class="bg-gray-50 font-sans antialiased text-gray-900 m-0 p-0">
   <div class="flex flex-col h-screen w-full overflow-hidden bg-white">
     <!-- ================= 全局顶部 Header ================= -->
-    <header class="relative z-20 flex h-[50px] w-full shrink-0 items-center justify-between bg-[#fafafa] px-4 border-b border-gray-200">
+    <header class="relative z-20 flex h-12 w-full shrink-0 items-center justify-between bg-[#fafafa] px-3 border-b border-gray-200">
       <a class="flex items-center gap-2 font-bold text-base whitespace-nowrap" href="/">
         <span class="inline-flex w-7 h-7 rounded-lg bg-zinc-900 text-white items-center justify-center font-black text-sm">А</span>
         俄语学习
@@ -46,7 +46,7 @@
     <!-- ================= 下方主体区域 ================= -->
     <div class="flex flex-1 min-h-0">
       <!-- 左侧侧边栏 -->
-      <aside class="relative hidden md:flex w-[240px] shrink-0 h-full border-r border-gray-200 bg-white flex-col">
+      <aside class="relative hidden md:flex w-[256px] shrink-0 h-full border-r border-gray-200 bg-white flex-col">
         <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto scrollbar-hide pt-4 pb-2">
           <div class="flex w-full min-w-0 flex-col px-2">
             <ul class="flex w-full min-w-0 flex-col gap-1">
@@ -149,7 +149,7 @@
       <main class="flex-1 flex flex-col h-full min-w-0 bg-gray-50 relative overflow-hidden">
         
         <!-- ⚠️ 修改点2：页眉单独放在外面，并且加上 shrink-0 阻止收缩，使其固定 -->
-        <header class="relative z-10 flex h-[50px] w-full shrink-0 items-center justify-between bg-[#fafafa] px-4 border-b border-gray-200">
+        <header class="relative z-10 flex h-12 w-full shrink-0 items-center justify-between bg-white px-3 border-b border-gray-200">
           <div class="flex min-w-0 items-center gap-2">
             <button class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900 h-7 w-7 -ml-1 cursor-pointer" aria-label="收起侧边栏">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/></svg>
@@ -159,13 +159,10 @@
           </div>
         </header>
         <!-- ⚠️ 修改点3：新增外层滚动区域，把内容都包进带边框的大卡片里 -->
-        <div class="flex-1 overflow-y-auto p-4 md:p-6">
+        <div class="flex-1 overflow-y-auto">
           
-          <!-- ⚠️ 修改点4：内容区外壳，加边框、圆角、白色背景 -->
-          <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm min-h-full">
-            
-            <!-- 卡片网格 -->
-            <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] w-full items-start max-w-[1200px] mx-auto">
+          <!-- 卡片网格 -->
+            <div class="grid grid-cols-1 gap-6 p-2 md:grid-cols-[1fr_250px] md:p-3 w-full items-start">
               
               <!-- 左侧主区域 -->
               <div class="space-y-6">
@@ -249,7 +246,7 @@
                   </a>
                 </div>
                 <!-- 我的游戏（在左侧底部） -->
-                <div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-6 shadow-sm">
+                <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                   <div class="mb-4 flex items-center justify-between sm:mb-6">
                     <h2 class="text-xl font-medium text-gray-900">我的游戏</h2>
                     <button class="flex items-center space-x-1 rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-200 transition-colors">
@@ -323,7 +320,6 @@
                 </div>
               </div>
             </div>
-          </div>
         </div>
       </main>
     </div>
