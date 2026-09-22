@@ -47,12 +47,12 @@
   padding:18px 12px;display:flex;flex-direction:column;
   position:sticky;top:0;height:100vh;overflow-y:auto;align-self:start;
 }
-.db-logo{display:flex;align-items:center;gap:10px;padding:2px 8px 16px;font-weight:800;font-size:16px;color:var(--db-text)}
+.db-logo{display:flex;align-items:center;gap:10px;padding:2px 8px 16px;font-weight:800;font-size:18px;color:var(--db-text)}
 .db-logo .mark{width:32px;height:32px;border-radius:9px;background:var(--db-text);color:#fff;display:grid;place-items:center;font-size:17px;flex:none}
-.db-navgroup{font-size:11px;letter-spacing:1.5px;color:var(--db-text-3);padding:16px 10px 6px;font-weight:600}
+.db-navgroup{font-size:14px;letter-spacing:1.5px;color:var(--db-text-3);padding:16px 10px 6px;font-weight:600}
 .db-navitem{
   display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--db-r-btn);
-  font-size:14px;color:var(--db-text-2);cursor:pointer;margin-bottom:2px;
+  font-size:22px;color:var(--db-text-2);cursor:pointer;margin-bottom:2px;
   text-decoration:none;transition:background .15s,color .15s;
 }
 .db-navitem .ic{width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center}
@@ -83,7 +83,7 @@
 .db-collapsible-head .label{flex:1;text-align:left}
 .db-collapsible-head .arrow{font-size:11px;color:var(--db-text-3);flex:none}
 .db-collapsible-items{padding-left:14px;display:flex;flex-direction:column;margin-top:2px}
-.db-collapsible-items .db-navitem{font-size:13.5px;padding:8px 10px}
+.db-collapsible-items .db-navitem{font-size:22px;padding:8px 10px}
 .db-sidefoot{margin-top:auto;background:var(--db-card-2);border:1px solid var(--db-border);border-radius:var(--db-r-card);padding:12px 13px}
 .db-sidefoot .t{font-size:12.5px;font-weight:700;display:flex;justify-content:space-between;color:var(--db-text)}
 .db-sidefoot .t span{color:var(--db-text-3);font-weight:500}
@@ -439,7 +439,7 @@
 @media(min-width:901px){ .store-subbar{top:60px} }
 /* ================= ★★★ 主页三栏 + 右栏可调参数区（只改这里） ★★★ ================= */
 .home-grid {
-  --rc-w: 200px;                          /* ① 右栏宽度：更宽→380px，更窄→300px */
+  --rc-w: 250px;                          /* ① 右栏宽度：更宽→380px，更窄→300px */
   --rc-card-bg: #ffffff;                  /* ② 右栏卡片整体底色，如 #f6f3ef/#f4f5fb */
   --rc-card-text: #18181b;                /* ③ 右栏标题/主文字色 */
   --rc-muted: #9ca3af;                    /* ④ 右栏次要说明文字的灰色 */
@@ -448,7 +448,7 @@
   --rc-invite-bg: oklch(95% 0.0081 61.42);/* ⑦ 邀请有礼卡片底色（默认浅暖灰）*/
   --rc-invite-btn:#6d28d9;                /* ⑧ 邀请有礼按钮底色 */
   --rc-invite-btn-text: #ffffff;          /* ⑨ 邀请有礼按钮文字色 */
-  display: grid; gap: 32px; width: 100%;
+  display: grid; gap: 10px; width: 100%;
   /* 左、中弹性均分（随侧栏收展自动伸缩），右栏=①宽度 */
   grid-template-columns: minmax(300px,1fr) minmax(300px,1fr) var(--rc-w);
 }

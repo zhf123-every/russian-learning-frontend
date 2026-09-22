@@ -1,0 +1,43 @@
+/* Tailwind Play CSS 面板 */
+@import "tailwindcss";
+@plugin "daisyui";
+
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: "light";
+  --color-base-100: oklch(100% 0 0);
+  --color-base-content: oklch(20.8% 0.029 58.7);
+  --color-primary: oklch(45% 0.24 277);
+}
+
+/* ========== ★★★ 所有可调参数（只改这里）★★★ ========== */
+
+/* ① 全局字体大小（全站一起变） */
+html { font-size: 20px; }
+
+/* ② 导航栏字体大小 */
+.sidenav-logo { font-size: 16px; }        /* Logo "俄语学习" */
+.sidenav nav a { font-size: 14px; }       /* 菜单项（主页/解锁游戏...）*/
+.sidenav nav .navgroup-title { font-size: 12px; }  /* 分组标题（社区/通关存档）*/
+.sidefoot-text { font-size: 12px; }       /* 底部今日目标 */
+
+/* ③ 导航栏宽度 */
+.sidenav { width: 232px; }
+
+/* ④ 顶部页眉高度 */
+.topbar { height: 60px; }
+
+/* ⑤ 主页三栏布局 */
+.home-grid {
+  --rc-w: 200px;                   /* 右栏宽度 */
+  display: grid;
+  gap: 32px;                        /* 卡片间距 */
+  grid-template-columns: minmax(300px,1fr) minmax(300px,1fr) var(--rc-w);
+}
+.right-col { grid-column: 3; grid-row: 1 / span 2; }
+.col-entry { grid-column: 1 / span 2; grid-row: 2; }
+@media (max-width: 1023px){
+  .home-grid { grid-template-columns: 1fr; }
+  .right-col, .col-entry { grid-column: auto; grid-row: auto; }
+}

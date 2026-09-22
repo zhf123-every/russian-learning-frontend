@@ -1,0 +1,229 @@
+<!-- ============================================
+  Tailwind Play HTML 面板 · 1:1 还原线上主页
+  ============================================ -->
+<div style="display:flex;min-height:100vh;background:#f5f5f5;font-family:'Nunito',sans-serif;">
+
+  <!-- ===== 左侧导航栏 ===== -->
+  <aside style="width:232px;flex-shrink:0;background:#fff;border-right:1px solid #eee;padding:16px 12px;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;gap:10px;padding:2px 8px 16px;font-weight:800;font-size:16px;">
+      <span style="display:inline-flex;width:28px;height:28px;border-radius:8px;background:#1a1a2e;color:#fff;align-items:center;justify-content:center;font-weight:900;">А</span>
+      俄语学习
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:2px;">
+      <a style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:#eef2ff;color:#4f46e5;font-weight:700;font-size:14px;text-decoration:none;">🏠 主页</a>
+      <a style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#555;font-size:14px;text-decoration:none;">🎮 解锁游戏</a>
+      <a style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#555;font-size:14px;text-decoration:none;">▶️ 我的游戏</a>
+      <a style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#aaa;font-size:14px;text-decoration:none;opacity:.6;">🗺️ 通关之路 <em style="font-size:10px;font-style:normal;background:#f0f0f0;padding:1px 6px;border-radius:4px;margin-left:auto;">即将上线</em></a>
+      <div style="padding:12px 12px 4px;font-size:14px;color:#333;font-weight:600;">社区 ▾</div>
+      <a style="display:flex;align-items:center;gap:10px;padding:10px 12px 10px 36px;border-radius:10px;color:#aaa;font-size:14px;opacity:.6;text-decoration:none;">🔔 消息通知 <em style="font-size:10px;font-style:normal;background:#f0f0f0;padding:1px 6px;border-radius:4px;margin-left:auto;">即将上线</em></a>
+      <a style="display:flex;align-items:center;gap:10px;padding:10px 12px 10px 36px;border-radius:10px;color:#aaa;font-size:14px;opacity:.6;text-decoration:none;">👥 学习小组 <em style="font-size:10px;font-style:normal;background:#f0f0f0;padding:1px 6px;border-radius:4px;margin-left:auto;">即将上线</em></a>
+      <div style="padding:12px 12px 4px;font-size:14px;color:#333;font-weight:600;">通关存档 ▾</div>
+      <a style="display:flex;align-items:center;gap:10px;padding:10px 12px 10px 36px;border-radius:10px;color:#aaa;font-size:14px;opacity:.6;text-decoration:none;">📊 关卡熟练度 <em style="font-size:10px;font-style:normal;background:#f0f0f0;padding:1px 6px;border-radius:4px;margin-left:auto;">即将上线</em></a>
+      <a style="display:flex;align-items:center;gap:10px;padding:10px 12px 10px 36px;border-radius:10px;color:#555;font-size:14px;text-decoration:none;">📖 复习关卡</a>
+      <a style="display:flex;align-items:center;gap:10px;padding:10px 12px 10px 36px;border-radius:10px;color:#aaa;font-size:14px;opacity:.6;text-decoration:none;">📝 关卡笔记 <em style="font-size:10px;font-style:normal;background:#f0f0f0;padding:1px 6px;border-radius:4px;margin-left:auto;">即将上线</em></a>
+      <a style="display:flex;align-items:center;gap:10px;padding:10px 12px 10px 36px;border-radius:10px;color:#aaa;font-size:14px;opacity:.6;text-decoration:none;">❓ 陌生关卡 <em style="font-size:10px;font-style:normal;background:#f0f0f0;padding:1px 6px;border-radius:4px;margin-left:auto;">即将上线</em></a>
+    </nav>
+    <div style="margin-top:auto;padding:12px;background:#fafafa;border-radius:10px;font-size:12px;">
+      <div style="font-weight:700;margin-bottom:6px;">今日目标 <span style="float:right;color:#4f46e5;">0/4</span></div>
+      <div style="display:flex;align-items:center;gap:8px;color:#999;">
+        <svg width="30" height="30" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="#ececef" stroke-width="4"/></svg>
+        <span>再完成 4 步<br/>达成今日目标</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== 右侧 ===== -->
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+    <!-- 顶栏 -->
+    <header style="height:60px;background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;padding:0 16px;">
+      <button style="background:none;border:none;font-size:18px;cursor:pointer;">◧</button>
+      <div style="flex:1;"></div>
+      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#f59e0b);"></div>
+    </header>
+
+    <!-- 主页内容 -->
+    <main style="flex:1;padding:24px;">
+      <div class="home-grid">
+
+        <!-- 左列 -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <!-- 打卡卡片 -->
+          <div style="background:#fff;border-radius:16px;border:1px solid #eee;box-shadow:0 1px 3px rgba(0,0,0,.05);height:490px;padding:20px;display:flex;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:24px;font-weight:800;">每日打卡</h2>
+              <div style="width:32px;height:32px;border-radius:8px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:#ccc;cursor:not-allowed;">?</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
+              <div>
+                <p style="font-size:14px;color:#999;margin-bottom:4px;">连胜 <span style="color:#6d28d9;">🔥</span></p>
+                <div><span style="font-size:36px;font-weight:900;">0</span> <span style="font-size:14px;color:#999;">天</span></div>
+              </div>
+              <div style="text-align:right;">
+                <p style="font-size:14px;color:#999;margin-bottom:4px;">累计打卡</p>
+                <div><span style="font-size:36px;font-weight:900;">0</span> <span style="font-size:14px;color:#999;">天</span></div>
+              </div>
+            </div>
+            <div style="margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;font-size:14px;color:#666;margin-bottom:6px;"><span>今日目标</span><span style="font-weight:700;">0/4</span></div>
+              <div style="height:8px;border-radius:99px;background:#f0f0f0;"><div style="height:100%;background:#6d28d9;width:0%;border-radius:99px;"></div></div>
+            </div>
+            <p style="font-size:14px;color:#999;margin-bottom:8px;">本周打卡记录</p>
+            <div style="display:flex;justify-content:space-between;">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><span style="font-size:11px;color:#999;">一</span><div style="width:28px;height:28px;border-radius:50%;background:#6d28d9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</div></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><span style="font-size:11px;color:#999;">二</span><div style="width:28px;height:28px;border-radius:50%;background:#6d28d9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</div></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><span style="font-size:11px;color:#999;">三</span><div style="width:28px;height:28px;border-radius:50%;background:#6d28d9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</div></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><span style="font-size:11px;color:#999;">四</span><div style="width:28px;height:28px;border-radius:50%;background:#6d28d9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</div></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><span style="font-size:11px;color:#999;">五</span><div style="width:28px;height:28px;border-radius:50%;background:#6d28d9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</div></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><span style="font-size:11px;color:#999;">六</span><div style="width:28px;height:28px;border-radius:50%;background:#6d28d9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</div></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><span style="font-size:11px;color:#999;">日</span><div style="width:28px;height:28px;border-radius:50%;border:2px solid #6d28d9;"></div></div>
+            </div>
+            <!-- 发光按钮 -->
+            <button style="margin-top:16px;width:100%;padding:10px;border-radius:12px;border:2px solid #8b5cf6;background:#fff;color:#8b5cf6;font-weight:700;font-size:13px;box-shadow:0 0 12px rgba(139,92,246,.5);">✧ 立即打卡</button>
+            <div style="margin-top:8px;text-align:center;font-size:14px;color:#6d28d9;">打卡日历 »</div>
+          </div>
+
+          <!-- 重复通关 -->
+          <div style="background:#fff;border-radius:16px;border:1px solid #eee;box-shadow:0 1px 3px rgba(0,0,0,.05);padding:12px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:40px;height:40px;border-radius:12px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;">📖</div>
+              <div style="flex:1;">
+                <div style="display:flex;justify-content:space-between;"><span style="font-size:14px;font-weight:700;">重复通关</span><span style="font-size:12px;color:#d97706;font-weight:700;">推荐关卡 27</span></div>
+                <div style="font-size:12px;color:#999;">重复闯关，巩固游戏内容</div>
+                <div style="font-size:12px;color:#999;">复习关卡 1/30</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 中列 -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="background:#fff;border-radius:16px;border:1px solid #eee;box-shadow:0 1px 3px rgba(0,0,0,.05);height:490px;padding:20px;">
+            <h2 style="font-size:24px;font-weight:800;margin-bottom:12px;">每日任务</h2>
+            <div style="display:flex;gap:12px;padding:14px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#999;">📅</span>
+              <div style="flex:1;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <span style="font-size:20px;font-weight:700;">今日打卡</span>
+                  <span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;">+30</span>
+                </div>
+                <p style="font-size:14px;color:#888;margin-top:4px;">在左侧「每日打卡」卡片点击「立即打卡」即可完成</p>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;padding:14px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#999;">🎧</span>
+              <div style="flex:1;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <span style="font-size:20px;font-weight:700;">五步精听一段</span>
+                  <span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;">+15</span>
+                </div>
+                <p style="font-size:14px;color:#888;margin-top:4px;">每天花几分钟，听一段真实俄语视频——自己听懂、跟读出来的句子，才是你真正能脱口而出的。</p>
+              </div>
+              <span style="font-size:14px;color:#999;">去完成 →</span>
+            </div>
+            <div style="display:flex;gap:12px;padding:14px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#999;">📚</span>
+              <div style="flex:1;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <span style="font-size:20px;font-weight:700;">完成今日复习</span>
+                  <span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;">+20</span>
+                </div>
+                <p style="font-size:14px;color:#888;margin-top:4px;">完成一次复习练习</p>
+              </div>
+              <span style="font-size:14px;color:#999;">去完成 →</span>
+            </div>
+            <div style="padding:12px 0 4px;font-size:12px;color:#999;letter-spacing:1px;">特别任务</div>
+            <div style="display:flex;gap:12px;padding:12px 0;">
+              <span style="color:#999;">🎯</span>
+              <div style="flex:1;">
+                <span style="font-size:20px;font-weight:700;">测测你的俄语水平</span>
+                <span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;margin-left:8px;">+50</span>
+              </div>
+              <span style="font-size:14px;color:#999;">去完成 →</span>
+            </div>
+          </div>
+
+          <div style="background:#fff;border-radius:16px;border:1px solid #eee;box-shadow:0 1px 3px rgba(0,0,0,.05);padding:12px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:40px;height:40px;border-radius:12px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;">📕</div>
+              <div style="flex:1;">
+                <div style="font-size:14px;font-weight:700;">陌生关卡</div>
+                <div style="font-size:12px;color:#999;">记录闯关失败的关卡</div>
+                <div style="font-size:12px;color:#999;">预习关卡 1/30</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右列 -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="background:#fff;border-radius:16px;border:1px solid #eee;box-shadow:0 1px 3px rgba(0,0,0,.05);padding:20px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+              <span style="font-size:14px;font-weight:700;">六格掌握度</span>
+              <span style="font-size:11px;background:#6d28d9;color:#fff;padding:2px 8px;border-radius:99px;">Pro</span>
+            </div>
+            <!-- 真实六边形雷达图 -->
+            <div style="width:130px;height:130px;margin:0 auto;position:relative;">
+              <svg viewBox="0 0 200 200" style="width:100%;height:100%;">
+                <polygon points="100,10 177.9,55 177.9,145 100,190 22.1,145 22.1,55" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+                <polygon points="100,40 151.8,70 151.8,130 100,160 48.2,130 48.2,70" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+                <polygon points="100,70 125.9,85 125.9,115 100,130 74.1,115 74.1,85" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+                <line x1="100" y1="10" x2="100" y2="190" stroke="#e5e7eb" stroke-width="1"/>
+                <line x1="22.1" y1="55" x2="177.9" y2="145" stroke="#e5e7eb" stroke-width="1"/>
+                <line x1="177.9" y1="55" x2="22.1" y2="145" stroke="#e5e7eb" stroke-width="1"/>
+                <polygon points="100,23.5 160.5,65 149.2,117.3 100,130 55.3,108.2 68.7,68.5" fill="rgba(124,58,46,.12)" stroke="#7c3a2e" stroke-width="2"/>
+              </svg>
+              <span style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:10px;color:#666;">一格</span>
+              <span style="position:absolute;top:15%;right:0;font-size:10px;color:#666;">二格</span>
+              <span style="position:absolute;bottom:15%;right:0;font-size:10px;color:#666;">三格</span>
+              <span style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);font-size:10px;color:#666;">四格</span>
+              <span style="position:absolute;bottom:15%;left:0;font-size:10px;color:#666;">五格</span>
+              <span style="position:absolute;top:15%;left:0;font-size:10px;color:#666;">六格</span>
+            </div>
+            <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;">
+              <div><div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;color:#888;"><span>第一格</span><span>85%</span></div><div style="height:4px;background:#eee;border-radius:99px;"><div style="height:100%;background:#6d28d9;width:85%;border-radius:99px;"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;color:#888;"><span>第二格</span><span>70%</span></div><div style="height:4px;background:#eee;border-radius:99px;"><div style="height:100%;background:#6d28d9;width:70%;border-radius:99px;"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;color:#888;"><span>第三格</span><span>45%</span></div><div style="height:4px;background:#eee;border-radius:99px;"><div style="height:100%;background:#6d28d9;width:45%;border-radius:99px;"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;color:#888;"><span>第四格</span><span>60%</span></div><div style="height:4px;background:#eee;border-radius:99px;"><div style="height:100%;background:#6d28d9;width:60%;border-radius:99px;"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;color:#888;"><span>第五格</span><span>30%</span></div><div style="height:4px;background:#eee;border-radius:99px;"><div style="height:100%;background:#6d28d9;width:30%;border-radius:99px;"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;color:#888;"><span>第六格</span><span>55%</span></div><div style="height:4px;background:#eee;border-radius:99px;"><div style="height:100%;background:#6d28d9;width:55%;border-radius:99px;"></div></div></div>
+            </div>
+          </div>
+
+          <div style="background:#fff;border-radius:16px;border:1px solid #eee;box-shadow:0 1px 3px rgba(0,0,0,.05);padding:20px;">
+            <div style="font-size:14px;font-weight:700;margin-bottom:8px;">最近学习</div>
+            <div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+              <div style="width:40px;height:40px;border-radius:8px;background:#eef2ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">У1</div>
+              <div><div style="font-size:14px;font-weight:600;">Привет, Россия!</div><div style="font-size:11px;color:#999;">Урок 1 · 问候</div></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+              <div style="width:40px;height:40px;border-radius:8px;background:#eef2ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;">🎧</div>
+              <div><div style="font-size:14px;font-weight:600;">精听 · 在超市购物</div><div style="font-size:11px;color:#999;">常用对话 · 五步精听</div></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;padding:8px 0;">
+              <div style="width:40px;height:40px;border-radius:8px;background:#eef2ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">У3</div>
+              <div><div style="font-size:14px;font-weight:600;">句子闯关</div><div style="font-size:11px;color:#999;">家族 2 · 第 5 步</div></div>
+            </div>
+            <div style="text-align:center;font-size:12px;color:#999;margin-top:8px;">查看更多</div>
+          </div>
+
+          <div style="background:#faf8f5;border-radius:16px;border:1px solid #eee;padding:20px;">
+            <div style="font-size:14px;font-weight:800;margin-bottom:4px;">🎁 邀请有礼</div>
+            <div style="font-size:12px;color:#888;margin-bottom:12px;">邀请好友加入，双方都能获得会员时长</div>
+            <button style="background:#6d28d9;color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;opacity:.5;cursor:not-allowed;">邀请好友 · 即将上线</button>
+          </div>
+        </div>
+
+        <!-- 我的游戏入口（跨两列） -->
+        <div style="grid-column:1/3;background:transparent;border-radius:16px;padding:12px 16px;display:flex;align-items:center;">
+          <div style="width:80px;height:80px;border-radius:12px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:36px;">🎮</div>
+          <div style="margin-left:12px;flex:1;">
+            <div style="font-size:24px;font-weight:700;">我的游戏</div>
+            <div style="font-size:20px;color:#999;">添加你的游戏数据包</div>
+          </div>
+          <span style="color:#ccc;">›</span>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
