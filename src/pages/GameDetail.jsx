@@ -93,16 +93,16 @@ export default function GameDetail() {
 
   return (
     <div className="db-page">
-      <div className="db-container" style={{ maxWidth: 1100 }}>
+      <div className="db-container" style={{ maxWidth: 880 }}>
         {/* ===== 头部 ===== */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <button className="db-btn db-btn-ghost" onClick={() => navigate(-1)}>← 返回</button>
         </div>
 
         <div style={{ background: 'linear-gradient(135deg,#4f46e5 0%,#7c3aed 60%,#9333ea 100%)', borderRadius: 16, padding: 24, marginBottom: 20, color: '#fff' }}>
-          <div style={{ fontSize: 26, fontWeight: 900 }}>{game.big || game.title}</div>
-          <div style={{ fontSize: 14, opacity: 0.9, marginTop: 6 }}>{game.desc}</div>
-          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 8 }}>{game.meta || `${units.length} 课`}</div>
+          <div style={{ fontSize: 30, fontWeight: 900 }}>{game.big || game.title}</div>
+          <div style={{ fontSize: 15, opacity: 0.9, marginTop: 8 }}>{game.desc}</div>
+          <div style={{ fontSize: 14, opacity: 0.85, marginTop: 10 }}>{game.meta || `${units.length} 课`}</div>
           <div style={{ marginTop: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
               <span>总进度</span><span>{doneCount}/{units.length} 课 · {progress}%</span>
@@ -116,8 +116,8 @@ export default function GameDetail() {
 
         {/* ===== 学习路线 ===== */}
         <div className="card" style={{ padding: 20, borderRadius: 16, marginBottom: 20 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>学习路线</div>
-          <div style={{ fontSize: 12.5, color: '#9ca3af', marginBottom: 16 }}>按顺序学习效果最佳，绿色=已完成，紫色=正在学</div>
+          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>学习路线</div>
+          <div style={{ fontSize: 13.5, color: '#9ca3af', marginBottom: 16 }}>按顺序学习效果最佳，绿色=已完成，紫色=正在学</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, overflowX: 'auto', paddingBottom: 6 }}>
             {routeNodes.map((u, i) => {
               if (!u) return <div key={'e' + i} style={{ flex: '0 0 28px', textAlign: 'center', color: '#c0c4cc', fontWeight: 800 }}>…</div>
@@ -143,27 +143,27 @@ export default function GameDetail() {
 
         {/* ===== 大纲 ===== */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ fontSize: 16, fontWeight: 800 }}>课程大纲</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>课程大纲</div>
           {isDemo && <span style={{ fontSize: 11.5, color: '#b45309', background: '#FEF3C7', borderRadius: 6, padding: '3px 10px' }}>示例大纲 · 演示</span>}
         </div>
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>加载大纲…</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 10, marginBottom: 40 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 14, marginBottom: 40 }}>
             {units.map((u) => {
               const dm = DIFF_META[u.difficulty] || DIFF_META.easy
               const sm = STATUS_META[u.status] || STATUS_META['未开始']
               return (
                 <div key={u.id} className="card" onClick={() => setPickedUnit(u)}
-                  style={{ padding: 12, borderRadius: 12, cursor: 'pointer', transition: 'transform .15s, box-shadow .15s' }}
+                  style={{ padding: 16, borderRadius: 14, cursor: 'pointer', transition: 'transform .15s, box-shadow .15s' }}
                   onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 14, fontWeight: 800 }}>{u.title}</span>
+                    <span style={{ fontSize: 15, fontWeight: 800 }}>{u.title}</span>
                     <span style={{ fontSize: 11, color: dm.color, background: dm.bg, borderRadius: 6, padding: '2px 8px' }}>{dm.label}</span>
                   </div>
-                  {(u.subtitle || u.description) && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>{u.subtitle || u.description}</div>}
+                  {(u.subtitle || u.description) && <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 6 }}>{u.subtitle || u.description}</div>}
                   <div style={{ marginTop: 10 }}>
                     <span style={{ fontSize: 11.5, color: sm.color, background: sm.bg, borderRadius: 6, padding: '2px 8px' }}>{sm.label}</span>
                   </div>
