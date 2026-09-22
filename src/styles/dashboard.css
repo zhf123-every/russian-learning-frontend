@@ -41,7 +41,7 @@
 .shell-card-header{
   height:48px;display:flex;align-items:center;gap:12px;padding:0 12px;
   background:#fff;
-  flex-shrink:0;
+  border-bottom:1px solid #e5e7eb;flex-shrink:0;
 }
 .shell-card-toggle{
   flex:none;width:36px;height:36px;border-radius:8px;
