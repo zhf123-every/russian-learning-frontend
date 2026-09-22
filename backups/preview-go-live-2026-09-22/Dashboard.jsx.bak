@@ -210,11 +210,12 @@ export default function Dashboard() {
   const questTo = packTarget ? `/quest-practice/${packTarget.id}?pack=privet_rossiya_a1` : '/quest-store'
 
   return (
-    <>
-      <div className="home-grid p-2 md:p-3">
+    <div className="min-h-screen bg-gray-50 font-ui text-gray-900">
+      <main className="flex-1 p-3 overflow-auto">
         {/* 主页布局：主区（左+中两列）+ 右栏，对标 julebu.co 嵌套网格。
             外层 .home-grid = 主区1fr + 右栏250px；主区内部 .home-main = 左+中两列。
             右栏宽度 → dashboard.css .home-grid 的 --rc-w；左中弹性均分无需改。 */}
+        <div className="home-grid">
           {/* 主区：左+中两列 */}
           <div className="home-main">
 
@@ -480,6 +481,7 @@ export default function Dashboard() {
 
 
         </div>
+      </main>
 
       {/* 月日历弹窗 */}
       {showMonthCalendar && (
@@ -527,6 +529,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }
