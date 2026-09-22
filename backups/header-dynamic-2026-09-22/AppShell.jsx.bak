@@ -1,48 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import SideNav from './SideNav'
 import MobileNav from './MobileNav'
 import TopBar from './TopBar'
-import { PageHeaderCtx } from './PageHeaderContext'
-
-// 路由 → 页眉标题（跟随导航栏）
-const TITLES = {
-  '/': '我的主页',
-  '/unlocked-games': '解锁游戏',
-  '/my-games': '我的游戏',
-  '/vocab': '复习关卡',
-  '/quest-store': '游戏化学习',
-  '/square': '精听学习',
-  '/tutor': 'AI 对话教练',
-  '/dictionary': '词典',
-  '/profile': '统计',
-  '/learn': '学习',
-  '/tools': '工具',
-  '/me': '我的',
-}
-const PREFIX_TITLES = [
-  ['/game/', '游戏详情'],
-  ['/quest-practice', '闯关练习'],
-  ['/quest-dictation', '听写练习'],
-  ['/square/', '精听学习'],
-  ['/study/', '精听学习'],
-  ['/custom', '自定义素材'],
-  ['/method', '五步精听法'],
-]
-function resolveTitle(path) {
-  if (TITLES[path]) return TITLES[path]
-  for (const [pre, t] of PREFIX_TITLES) {
-    if (path.startsWith(pre)) return t
-  }
-  return ''
-}
 
 export default function AppShell() {
   const [collapsed, setCollapsed] = useState(false)
-  const [headerRight, setHeaderRight] = useState(null)
-  const [titleOverride, setTitleOverride] = useState(null)
-  const location = useLocation()
-  const pageTitle = resolveTitle(location.pathname)
   useEffect(() => {
     const handler = () => setCollapsed((v) => !v)
     window.addEventListener('app:toggle-sidebar', handler)
@@ -62,7 +25,7 @@ export default function AppShell() {
         <main className="shell-main">
           {/* 白色大卡片容器：页眉 + 所有内容都在里面 */}
           <div className="shell-card">
-            {/* 内容页页眉：[◧ 收起] + 当前页面标题（跟随导航栏） */}
+            {/* 内容页页眉 */}
             <div className="shell-card-header">
               <button
                 type="button"
@@ -70,13 +33,12 @@ export default function AppShell() {
                 onClick={() => setCollapsed(v => !v)}
                 aria-label="收起侧边栏"
               >◧</button>
-              {titleOverride || <h1 className="shell-card-title">{pageTitle}</h1>}
-              {/* 页面注入的标题右侧工具栏（分类标签/搜索等，紧贴标题） */}
-              {headerRight}
+              <span className="shell-card-hint">收起侧边栏</span>
+              <div className="shell-card-spacer" />
+              <button type="button" className="shell-card-btn" aria-label="收起侧边栏">◧</button>
+              <button type="button" className="shell-card-btn" aria-label="设置">⚙</button>
             </div>
-            <PageHeaderCtx.Provider value={{ setHeaderRight, setTitleOverride }}>
-              <Outlet />
-            </PageHeaderCtx.Provider>
+            <Outlet />
           </div>
         </main>
       </div>

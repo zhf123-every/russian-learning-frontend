@@ -1,6 +1,7 @@
 /* ============================================
-   Tailwind Play CSS 面板 · 所有可调参数
-   ★ 标注的都可以改，右边实时看效果
+   Tailwind Play CSS 面板 · 主页完整布局（嵌套网格版）
+   所有 ★ 标注的都可以改，右边实时看效果
+   改完复制本文件内容到 Play 的 CSS 面板
    ============================================ */
 @import "tailwindcss";
 @plugin "daisyui";
@@ -15,43 +16,411 @@
 }
 
 /* ========== ★ 全局 ========== */
-/* ① 全站字体大小（所有文字一起变） */
-html { font-size: 22px; }
+/* ① 全站字体大小（所有文字一起变，句乐部16px/你22px） */
+html { font-size: 16px; }
 
-/* ========== ★ 顶栏（页眉） ========== */
-/* ② 顶栏高度 */
-header { height: 60px !important; }
-/* ③ 顶栏背景颜色 */
-header { background: #ffffff !important; }
-
-/* ========== ★ 侧边栏（导航栏） ========== */
-/* ④ 侧边栏宽度 */
-aside { width: 300px !important; }
-/* ⑤ 侧边栏背景颜色（和顶栏设成一样就没有分割线） */
-aside { background: #ffffff !important; }
-/* ⑥ 侧边栏菜单字体大小 */
-aside nav a, aside a { font-size: 15px !important; }
-/* ⑦ 侧边栏右边有没有分割线（内容区和侧边栏之间） */
-aside { border-right: 1px solid #eee !important; }
-/*    想去掉这条线改成：aside { border-right: none !important; } */
-
-/* ========== ★ 主页三栏布局 ========== */
-.home-grid {
-  /* ⑧ 右栏宽度 */
-  --rc-w: 250px;
-  /* ⑨ 卡片之间间距 */
-  gap: 10px;
-  /* ⑩ 左中两栏最小宽度（两个数字） */
-  grid-template-columns: minmax(300px,1fr) minmax(300px,1fr) var(--rc-w);
+/* 整页骨架（HTML面板里的 .app / .app-body） */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f5f5;
+  font-family: 'Nunito', sans-serif;
 }
-.right-col { grid-column: 3; grid-row: 1 / span 2; }
-.col-entry { grid-column: 1 / span 2; grid-row: 2; }
+.app-body { display: flex; flex: 1; min-height: 0; }
+
+/* ============================================
+   ★★★ 导航栏 ①：顶部通栏 ★★★
+   ============================================ */
+.topbar {
+  /* ② 通栏高度（60px默认，句乐部50px，改52/56/64/72） */
+  height: 50px;
+  /* ③ 通栏背景色（#fff纯白 / #fafafa浅灰白） */
+  background: #ffffff;
+  /* ④ 通栏左右留白（18px默认） */
+  padding: 0 18px;
+  /* 通栏内元素间距 */
+  gap: 12px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-bottom: 0px solid #eee; /* ⑤ 通栏底部要不要分割线：0px无 / 1px有 */
+}
+/* 收起按钮 */
+.topbar-hamburger {
+  width: 36px;   /* ⑥ 按钮宽高 */
+  height: 36px;
+  border: none;  /* 有边框：1px solid #e5e7eb，无边框：none */
+  background: none;
+  cursor: pointer;
+  font-size: 16px; /* 按钮内图标大小 */
+}
+/* Logo 文字 */
+.topbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  text-decoration: none;
+  color: #18181b;
+  font-size: 18px; /* ⑦ Logo 文字大小 */
+}
+/* Logo 方块 */
+.topbar-logo-badge {
+  display: inline-flex;
+  width: 28px;   /* ⑧ Logo 方块宽高 */
+  height: 28px;
+  border-radius: 8px; /* Logo 方块圆角 */
+  background: #18181b;
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 14px;
+}
+.topbar-spacer { flex: 1; }
+.topbar-text { font-size: 14px; color: #666; }
+.topbar-link { font-size: 14px; color: #6d28d9; font-weight: 600; }
+.topbar-sep { color: #ddd; }
+.topbar-dim { font-size: 14px; color: #999; opacity: .6; }
+/* 头像 */
+.topbar-avatar {
+  width: 34px;  /* ⑨ 头像宽高 */
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg,#fbbf24,#f97316);
+}
+
+/* ============================================
+   ★★★ 导航栏 ②：侧边栏 ★★★
+   ============================================ */
+.sidenav {
+  /* ⑩ 侧边栏宽度（300px默认，句乐部256px，改260/280/320/340） */
+  width: 256px;
+  flex-shrink: 0;
+  background: #ffffff; /* ⑪ 侧边栏背景色 */
+  border-right: 1px solid #eee; /* ⑫ 右边分割线：1px有 / 0px无 */
+  padding: 12px; /* ⑬ 侧边栏内边距 */
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+/* ㊸ 侧边栏滚动条（句乐部实测：6px宽、浅灰、圆角3px）
+   侧边栏内容超高时会出现上下滚动条 */
+.sidenav::-webkit-scrollbar { width: 6px; }
+.sidenav::-webkit-scrollbar-track { background: transparent; }
+.sidenav::-webkit-scrollbar-thumb { background: rgba(209,213,219,.5); border-radius: 3px; }
+.sidenav::-webkit-scrollbar-thumb:hover { background: rgb(156 163 175); }
+.sidenav { scrollbar-width: thin; scrollbar-color: rgba(209,213,219,.5) transparent; }
+/* 菜单项 */
+.sidenav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px; /* ⑭ 菜单项上下/左右内边距 */
+  border-radius: 10px; /* ⑮ 菜单项圆角 */
+  color: #555;
+  font-size: 14px; /* ⑯ 菜单文字大小（句乐部14px） */
+  text-decoration: none;
+  margin-bottom: 2px; /* 菜单项之间间距 */
+}
+/* 当前选中的菜单项 */
+.sidenav-item-active {
+  background: #eef2ff; /* ⑰ 选中项背景色 */
+  color: #4f46e5;      /* ⑱ 选中项文字色 */
+  font-weight: 700;
+}
+/* 即将上线（置灰） */
+.sidenav-item.is-soon { color: #aaa; opacity: .6; }
+/* 二级菜单（社区/通关存档下面的） */
+.sidenav-sub { padding-left: 36px; }
+/* 分组标题（社区/通关存档） */
+.sidenav-group {
+  padding: 12px 10px 4px;
+  font-size: 12px; /* ⑲ 分组标题字号 */
+  color: #999;
+  font-weight: 600;
+}
+/* "即将上线"小标签 */
+.soon-badge {
+  font-size: 10px;
+  font-style: normal;
+  background: #f0f0f0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: auto;
+}
+/* 底部今日目标卡片 */
+.sidenav-goal {
+  margin-top: auto;
+  padding: 12px;
+  background: #fafafa; /* ⑳ 目标卡片背景 */
+  border-radius: 10px;
+  font-size: 12px;
+}
+.goal-title { font-weight: 700; margin-bottom: 6px; }
+.goal-num { float: right; color: #4f46e5; }
+.goal-body { display: flex; align-items: center; gap: 8px; color: #999; }
+
+/* ============================================
+   ★★★ 内容区 ★★★
+   ============================================ */
+.content {
+  flex: 1;
+  min-width: 0;
+  background: #f5f5f5; /* ㉑ 内容区外面背景色 */
+  padding: 16px;       /* ㉒ 内容区外面留白 */
+}
+
+/* ★ 白色大容器 */
+.shell {
+  background: #fff;
+  border-radius: 16px;  /* ㉓ 大容器圆角（12/16/20，句乐部无圆角白底） */
+  box-shadow: 0 1px 3px rgba(0,0,0,.05); /* ㉔ 大容器阴影 */
+  overflow: hidden;
+  min-height: 100%;
+}
+
+/* ============================================
+   ★★★ 内容页页眉 ★★★
+   ============================================ */
+.content-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* ㉕ 页眉高度（48px默认，改52/56/60） */
+  height: 56px;
+  /* ㉖ 页眉背景色（#fff纯白 / #fafafa浅灰白） */
+  background: #fafafa;
+  /* ㉗ 页眉左右留白（12px默认，16px更松） */
+  padding: 0 12px;
+  /* ㉘ 底部分割线（#e5e7eb浅灰；删除或改0就是无分割线） */
+  border-bottom: 1px solid #e5e7eb;
+}
+.content-header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-size: 16px; /* ㉙ 页眉图标大小 */
+}
+.content-header-title {
+  font-size: 18px;  /* ㉚ 标题大小（句乐部18px，一致） */
+  font-weight: 700; /* ㉛ 标题粗细（500常规 / 700加粗） */
+  color: #18181b;   /* ㉜ 标题颜色（#18181b深黑 / #666灰） */
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* ============================================
+   ★★★ 主页嵌套网格 ★★★
+   ============================================ */
+.content-pad { padding: 16px; } /* ㉝ 卡片区域与外层间距 */
+
+.home-grid {
+  /* ㉞ 右栏宽度（句乐部 250px） */
+  --rc-w: 250px;
+  /* ㉟ 外层间距（句乐部 gap-6 = 24px） */
+  gap: 24px;
+  /* ㊱ 外层：主区弹性 + 右栏固定 */
+  grid-template-columns: 1fr var(--rc-w);
+  display: grid;
+  align-items: start;
+  width: 100%;
+}
+/* 主区：左+中两列（句乐部 gap-4 = 16px） */
+.home-main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+  min-width: 0;
+}
+.home-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.right-col { grid-column: 2; grid-row: 1 / span 2; }
+.home-entry { grid-column: 1 / span 2; }
 @media (max-width: 1023px){
   .home-grid { grid-template-columns: 1fr; }
+  .home-main { grid-template-columns: 1fr; }
+  .right-col, .home-entry { grid-column: auto; grid-row: auto; }
 }
 
-/* ========== ★ 卡片样式 ========== */
-/* ⑪ 卡片圆角大小 */
-.card { border-radius: 16px; }
-/* ⑫ 内容区背景颜色 */
-main { background: #f5f5f5; }
+/* ============================================
+   ★★★ 卡片样式（对照句乐部参数已标注） ★★★
+   ============================================ */
+.card {
+  background: #fff;
+  border-radius: 12px;  /* ㊲ 卡片圆角（句乐部12px，一致） */
+  border: 1px solid #e5e7eb; /* ㊳ 卡片边框（句乐部1px #e5e7eb） */
+  padding: 16px;         /* ㊴ 卡片内边距（句乐部16px，你是20px） */
+}
+.card-tall { height: 438px; } /* ㊵ 打卡卡片高度（句乐部449px） */
+.task-card { height: 438px; } /* 任务卡：句乐部 438px */
+.card-compact { padding: 12px; }
+.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.card-title { font-size: 16px; font-weight: 700; margin: 0; } /* 卡片标题（句乐部16px粗700） */
+.card-help { width: 32px; height: 32px; border-radius: 8px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; color: #ccc; }
+
+/* 打卡卡片内部 */
+.checkin-stats { display: flex; justify-content: space-between; margin-bottom: 16px; }
+.stat-label { font-size: 12px; color: #999; margin: 0 0 4px; }
+.stat-num { font-size: 30px; font-weight: 700; }
+.stat-unit { font-size: 14px; color: #999; }
+.goal-progress { margin-bottom: 16px; }
+.goal-progress-head { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 6px; }
+.progress-track { height: 8px; border-radius: 99px; background: #f0f0f0; }
+.progress-fill { height: 100%; background: #6d28d9; border-radius: 99px; }
+.week-label { font-size: 12px; color: #999; margin: 0 0 8px; }
+.week-dots { display: flex; justify-content: space-between; }
+.day { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.day-name { font-size: 10px; color: #999; }
+.day-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.day-dot.done { background: #6d28d9; color: #fff; }
+.day-dot.today { border: 2px solid #6d28d9; }
+.checkin-btn {
+  margin-top: 16px; width: 100%; padding: 10px;
+  border-radius: 12px; border: 2px solid #8b5cf6;
+  background: #fff; color: #8b5cf6;
+  font-weight: 700; font-size: 13px;
+  box-shadow: 0 0 12px rgba(139,92,246,.5);
+  cursor: pointer;
+}
+
+/* 小卡片行（重复通关/陌生关卡） */
+.mini-row { display: flex; align-items: center; gap: 12px; }
+.mini-icon { width: 40px; height: 40px; border-radius: 12px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.mini-head { display: flex; justify-content: space-between; }
+.mini-title { font-size: 14px; font-weight: 700; }
+.mini-tag { font-size: 12px; color: #d97706; font-weight: 700; }
+.mini-sub { font-size: 12px; color: #999; }
+
+/* 每日任务 */
+.task-row { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid #f0f0f0; align-items: center; }
+.task-row:last-of-type { border-bottom: none; }
+.task-icon { color: #999; flex-shrink: 0; }
+.task-head { display: flex; gap: 8px; align-items: center; }
+.task-name { font-size: 14px; font-weight: 500; }
+.task-reward { font-size: 12px; background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; }
+.task-desc { font-size: 12px; color: #888; margin: 4px 0 0; }
+.task-btn { border: 1px solid #ddd; background: #fff; padding: 6px 14px; border-radius: 8px; font-size: 14px; color: #666; cursor: pointer; flex-shrink: 0; }
+.special-label { padding: 12px 0 4px; font-size: 12px; color: #999; }
+
+/* 六格掌握度 */
+.mastery-head { display: flex; justify-content: space-between; margin-bottom: 12px; }
+.pro-badge { font-size: 12px; background: #6d28d9; color: #fff; padding: 2px 8px; border-radius: 99px; }
+.hexagon-wrap { width: 130px; height: 130px; margin: 0 auto; }
+.mastery-bars { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.mbar-head { display: flex; justify-content: space-between; font-size: 10px; color: #888; margin-bottom: 2px; }
+.mbar-track { height: 4px; background: #eee; border-radius: 99px; }
+.mbar-fill { height: 100%; background: #6d28d9; border-radius: 99px; }
+
+/* 最近学习 */
+.recent-title { font-size: 16px; font-weight: 500; margin-bottom: 8px; }
+.recent-row { padding: 8px 0; border-bottom: 1px solid #f0f0f0; display: flex; gap: 10px; align-items: center; }
+.recent-row:last-child { border-bottom: none; }
+.recent-icon { width: 40px; height: 40px; border-radius: 8px; background: #eef2ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.recent-name { font-size: 14px; font-weight: 600; }
+.recent-sub { font-size: 11px; color: #999; }
+
+/* 我的游戏入口 */
+.home-entry {
+  grid-column: 1 / span 2;
+  grid-row: 2;
+  background: transparent;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+}
+.entry-icon { width: 80px; height: 80px; border-radius: 12px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+.entry-title { font-size: 24px; font-weight: 700; }
+.entry-sub { font-size: 20px; color: #999; }
+
+/* ============================================
+   ★★★ 邀请有礼卡片 ★★★
+   ============================================ */
+.invite-card {
+  /* ㊶ 卡片底色（你线上是浅米黄 #fdf8ef，句乐部是紫色渐变） */
+  background: #fdf8ef;
+  border: 1px solid #f5e6c8;
+  padding: 16px;
+  border-radius: 12px;
+}
+.invite-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.invite-sub { font-size: 12px; color: #999; margin-bottom: 12px; line-height: 1.5; }
+.invite-btn {
+  width: 100%;
+  background: #6d28d9;  /* ㊷ 按钮底色 */
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   ★★★ 我的课程卡片（句乐部同款骨架） ★★★
+   ============================================ */
+.course-card {
+  grid-column: 1 / span 2;   /* 跨左+中两列（句乐部主区同款） */
+  background: #fff;
+  border: 1px solid #e5e7eb; /* ㊸ 边框（句乐部 border-gray-200） */
+  border-radius: 8px;        /* ㊹ 圆角（句乐部 rounded-lg=8px） */
+  padding: 16px;             /* ㊺ 内边距（句乐部 p-4=16px） */
+}
+.course-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;       /* ㊻ 标题与虚线框间距（句乐部 mb-4） */
+}
+.course-title {
+  font-size: 20px;           /* ㊼ 标题字号（句乐部 text-xl=20px） */
+  font-weight: 500;          /* ㊽ 标题粗细（句乐部 font-medium=500） */
+  margin: 0;
+}
+.course-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f3f4f6;       /* ㊾ 按钮底色（句乐部 bg-gray-100） */
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;         /* ㊿ 按钮内边距（句乐部 px-3 py-1.5） */
+  font-size: 14px;           /* 按钮字号（句乐部 text-sm=14px） */
+  color: #4b5563;            /* 按钮文字色（句乐部 text-gray-600） */
+  cursor: pointer;
+}
+.course-empty {
+  min-height: 200px;         /* 虚线框最小高度（句乐部 min-h-[200px]） */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #d1d5db; /* 虚线边框（句乐部 border-dashed border-gray-300） */
+  border-radius: 8px;
+  background: rgba(255,255,255,.5);
+}
+.course-empty:hover { background: #f9fafb; }
+.course-plus {
+  width: 48px;               /* 加号圆直径（句乐部 h-12 w-12=48px） */
+  height: 48px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #6b7280;
+  margin: 0 auto 8px;
+}
+.course-hint {
+  text-align: center;
+  font-size: 14px;           /* 提示字号（句乐部 text-sm=14px） */
+  color: #6b7280;            /* 提示文字色（句乐部 text-gray-500） */
+  padding: 12px;
+  margin: 0;
+}

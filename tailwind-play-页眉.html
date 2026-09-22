@@ -1,0 +1,111 @@
+<!-- ============================================
+  页眉 Header 完整代码
+  【使用方法】复制下面整段 <header>...</header>，
+  替换 Tailwind Play 里原来的 header 标签即可。
+  所有 ★ 标注的地方都可以改，右边实时看效果。
+============================================ -->
+
+<header
+  class="
+    relative
+    z-header
+    flex
+    w-full
+    shrink-0
+    items-center
+    justify-between
+    /* ★ ① 页眉整体高度（改数字：44/48/52/56/60） */
+    h-[50px]
+
+    /* ★ ② 页眉背景颜色（改色值） */
+    /* 可选：bg-white 纯白 / bg-[#fafafa] 浅灰白 / bg-gray-50 淡灰 / bg-[#f5f5f5] */
+    bg-white
+
+    /* ★ ③ 页眉左右内边距（文字离左右边缘距离） */
+    /* px-2 紧 / px-3 默认 / px-4 松 / px-6 很松 */
+    px-4
+
+    /* ★ ④ 页眉底部有没有分割线（二选一） */
+    /* 有分割线：border-b border-gray-100 */
+    /* 无分割线：直接删掉这行 */
+    border-b border-gray-100
+  "
+>
+
+  <!-- ★ 左侧区域：收起按钮 + 页面标题 -->
+  <div class="flex items-center gap-3">
+    <!-- ★ ⑤ 收起侧边栏按钮 -->
+    <button
+      class="
+        /* 按钮宽高 */
+        w-9 h-9
+        /* 按钮圆角 */
+        rounded-lg
+        /* 按钮边框和背景 */
+        border border-gray-200 bg-white
+        /* 按钮内图标大小 */
+        text-base
+        flex items-center justify-center cursor-pointer
+      "
+    >
+      ◧
+    </button>
+
+    <!-- ★ ⑥ "收起侧边栏"提示文字 -->
+    <span
+      class="
+        /* 文字大小：text-sm 小 / text-base 默认 */
+        text-sm
+        /* 文字颜色：text-gray-600 深灰 / text-gray-500 中灰 */
+        text-gray-600
+      "
+    >
+      收起侧边栏
+    </span>
+
+    <!-- ★ ⑦ 页面标题（可删掉上面两个，只留这个） -->
+    <!--
+    <h1 class="text-base font-bold text-gray-900">我的主页</h1>
+    -->
+  </div>
+
+  <!-- ★ 右侧区域：按钮组 -->
+  <div class="flex items-center gap-2">
+    <!-- ★ ⑧ 按钮间距（gap-1 近 / gap-2 默认 / gap-3 远） -->
+
+    <!-- ★ ⑨ 收起按钮（第二个） -->
+    <button
+      class="
+        w-9 h-9 rounded-lg border border-gray-200 bg-white
+        flex items-center justify-center cursor-pointer text-base
+      "
+    >
+      ◧
+    </button>
+
+    <!-- ★ ⑩ 设置按钮 -->
+    <button
+      class="
+        w-9 h-9 rounded-lg border border-gray-200 bg-white
+        flex items-center justify-center cursor-pointer text-base
+      "
+    >
+      ⚙
+    </button>
+  </div>
+
+</header>
+
+
+<!-- ============================================
+  配套：外层白色大容器（页眉必须放在这个 div 里面）
+  ★ ⑪ 大容器圆角：rounded-lg / rounded-xl / rounded-2xl
+  ★ ⑫ 大容器阴影：shadow-sm / shadow / shadow-lg
+  ★ ⑬ 大容器必须保留 overflow-hidden，页眉圆角才对齐
+============================================ -->
+<!--
+<div class="bg-white rounded-xl shadow w-full overflow-hidden">
+  ↑ 把上面整个 <header> 放在这里面最顶部
+  ↓ 下面放你的卡片网格
+</div>
+-->

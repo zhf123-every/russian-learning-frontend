@@ -1,0 +1,67 @@
+/* ============================================
+   Tailwind Play CSS 面板 · 所有可调参数
+   ★ 标注的都可以改，右边实时看效果
+   ============================================ */
+@import "tailwindcss";
+@plugin "daisyui";
+
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: "light";
+  --color-base-100: oklch(100% 0 0);
+  --color-base-content: oklch(20.8% 0.029 58.7);
+  --color-primary: oklch(45% 0.24 277);
+}
+
+/* ========== ★ 全局 ========== */
+/* ① 全站字体大小（所有文字一起变） */
+html { font-size: 22px; }
+
+/* ========== ★ 顶部通栏 ========== */
+/* ② 通栏高度 */
+header { height: 60px !important; }
+/* ③ 通栏背景颜色 */
+header { background: #ffffff !important; }
+
+/* ========== ★ 侧边栏（导航栏） ========== */
+/* ④ 侧边栏宽度 */
+aside { width: 300px !important; }
+/* ⑤ 侧边栏背景颜色 */
+aside { background: #ffffff !important; }
+/* ⑥ 侧边栏菜单字体大小 */
+aside nav a, aside a { font-size: 15px !important; }
+/* ⑦ 侧边栏右边分割线 */
+aside { border-right: 1px solid #eee !important; }
+
+/* ========== ★ 内容区白色大容器 ========== */
+/* ⑧ 内容区外面背景色 */
+main { background: #f5f5f5 !important; padding: 16px !important; }
+/* ⑨ 白色大容器圆角 */
+main > div { border-radius: 16px !important; }
+
+/* ========== ★ 内容页页眉 ========== */
+/* ⑩ 页眉高度（48px默认，可改52/56/60） */
+/* ⑪ 页眉背景色（#fff纯白 / #fafafa浅灰白） */
+/* ⑫ 页眉左右留白（padding） */
+/* ⑬ 底部分割线颜色（#e5e7eb浅灰，删掉border-bottom就是无分割线） */
+/* ★ 这些参数写在HTML里的内联样式中，直接在HTML改 */
+
+/* ========== ★ 主页三栏布局 ========== */
+.home-grid {
+  /* ⑭ 右栏宽度 */
+  --rc-w: 250px;
+  /* ⑮ 卡片之间间距 */
+  gap: 10px;
+  /* ⑯ 左中两栏最小宽度 */
+  grid-template-columns: minmax(300px,1fr) minmax(300px,1fr) var(--rc-w);
+}
+.right-col { grid-column: 3; grid-row: 1 / span 2; }
+.col-entry { grid-column: 1 / span 2; grid-row: 2; }
+@media (max-width: 1023px){
+  .home-grid { grid-template-columns: 1fr; }
+}
+
+/* ========== ★ 卡片样式 ========== */
+/* ⑰ 卡片圆角大小 */
+.card { border-radius: 12px; }

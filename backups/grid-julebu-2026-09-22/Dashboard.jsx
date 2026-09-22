@@ -212,20 +212,17 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50 font-ui text-gray-900">
       <main className="flex-1 p-6 overflow-auto">
-        {/* 主页布局：主区（左+中两列）+ 右栏，对标 julebu.co 嵌套网格。
-            外层 .home-grid = 主区1fr + 右栏250px；主区内部 .home-main = 左+中两列。
-            右栏宽度 → dashboard.css .home-grid 的 --rc-w；左中弹性均分无需改。 */}
+        {/* 三栏宽度：左、中 minmax(300px,1fr) 弹性均分（侧边栏收起/展开时自动伸缩）；右栏=CSS 变量 --rc-w。
+            调右栏宽窄 → 改 dashboard.css 里 .home-grid 的 --rc-w；调左中最小宽度 → 改两个 300px */}
         <div className="home-grid">
-          {/* 主区：左+中两列 */}
-          <div className="home-main">
 
           {/* ===== 左列 ===== */}
           <div className="flex flex-col gap-4">
             {/* 每日打卡卡片 */}
-            <div className="card bg-base-100 shadow-sm h-[438px]">
-              <div className="card-body p-4 flex flex-col">
+            <div className="card bg-base-100 shadow-sm h-[490px]">
+              <div className="card-body p-5 flex flex-col">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-bold">每日打卡</h2>
+                  <h2 className="text-2xl font-bold">每日打卡</h2>
                   <button className="btn btn-ghost btn-circle btn-sm opacity-40 cursor-not-allowed" disabled title="即将上线">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="w-4 h-4 text-gray-400">
                       <path stroke="currentColor" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -234,27 +231,27 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-end justify-between mb-4">
                   <div>
-                    <p className="text-xs text-gray-400 mb-1 flex items-center gap-1">
+                    <p className="text-base text-gray-400 mb-1 flex items-center gap-1">
                       连胜
                       <svg className="h-4 w-4 text-[#6d28d9]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
                       </svg>
                     </p>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold leading-none">{streak}</span>
+                      <span className="text-4xl font-extrabold leading-none">{streak}</span>
                       <span className="text-sm font-semibold text-gray-400">天</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-gray-400 mb-1">累计打卡</p>
+                    <p className="text-base text-gray-400 mb-1">累计打卡</p>
                     <div className="flex items-baseline gap-1 justify-end">
-                      <span className="text-3xl font-bold leading-none">{streak}</span>
+                      <span className="text-4xl font-extrabold leading-none">{streak}</span>
                       <span className="text-sm font-semibold text-gray-400">天</span>
                     </div>
                   </div>
                 </div>
                 <div className="mb-4">
-                  <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                  <div className="flex justify-between text-base text-gray-500 mb-1.5">
                     <span>今日目标</span>
                     <span className="font-semibold text-gray-700">{goalDone}/{goalTotal}</span>
                   </div>
@@ -263,7 +260,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-gray-400 mb-2">本周打卡记录</p>
+                  <p className="text-base text-gray-400 mb-2">本周打卡记录</p>
                   <CheckinWeek />
                   <div className="mt-3 flex justify-center">
                     <button
@@ -303,19 +300,19 @@ export default function Dashboard() {
           {/* ===== 中列 ===== */}
           <div className="flex flex-col gap-4">
             {/* 每日任务卡片 */}
-            <div className="card bg-base-100 shadow-sm h-[438px]">
-              <div className="card-body p-4 flex flex-col">
-                <h2 className="text-base font-bold mb-3">每日任务</h2>
+            <div className="card bg-base-100 shadow-sm h-[490px]">
+              <div className="card-body p-5 flex flex-col">
+                <h2 className="text-2xl font-bold mb-3">每日任务</h2>
                 <div className="flex items-start gap-3 py-3.5 border-b border-gray-100">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="mt-1 h-5 w-5 shrink-0 text-gray-400">
                     <path stroke="currentColor" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">今日打卡</span>
+                      <span className="text-xl font-semibold text-gray-900">今日打卡</span>
                       <span className="inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">+30</span>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500 leading-relaxed">在左侧「每日打卡」卡片点击「立即打卡」即可完成</p>
+                    <p className="mt-1 text-sm text-gray-500 leading-relaxed">在左侧「每日打卡」卡片点击「立即打卡」即可完成</p>
                   </div>
                 </div>
                 <Link to="/square" className="flex items-start gap-3 py-3.5 border-b border-gray-100 hover:bg-gray-50/60 -mx-2 px-2 rounded-xl transition-colors">
@@ -324,10 +321,10 @@ export default function Dashboard() {
                   </svg>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">五步精听一段</span>
+                      <span className="text-xl font-semibold text-gray-900">五步精听一段</span>
                       <span className="inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">+15</span>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500 leading-relaxed line-clamp-2">
+                    <p className="mt-1 text-sm text-gray-500 leading-relaxed line-clamp-2">
                       每天花几分钟，听一段真实俄语视频——自己听懂、跟读出来的句子，才是你真正能脱口而出的。
                     </p>
                   </div>
@@ -339,10 +336,10 @@ export default function Dashboard() {
                   </svg>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">完成今日复习</span>
+                      <span className="text-xl font-semibold text-gray-900">完成今日复习</span>
                       <span className="inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">+20</span>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500 leading-relaxed">完成一次复习练习</p>
+                    <p className="mt-1 text-sm text-gray-500 leading-relaxed">完成一次复习练习</p>
                   </div>
                   <div className="shrink-0 pt-1 text-sm text-gray-400">去完成 →</div>
                 </Link>
@@ -357,7 +354,7 @@ export default function Dashboard() {
                   </svg>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">测测你的俄语水平</span>
+                      <span className="text-xl font-semibold text-gray-900">测测你的俄语水平</span>
                       <span className="inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">+50</span>
                     </div>
                   </div>
@@ -388,26 +385,13 @@ export default function Dashboard() {
             </Link>
           </div>
 
-
-          {/* ===== 我的游戏（句乐部“我的课程”骨架：虚线框+加号，只占左+中列） ===== */}
-          <Link to="/my-games" className="course-card">
-            <div className="course-head">
-              <h2 className="course-title">我的游戏</h2>
-              <span className="course-btn">🎮 游戏包商城</span>
-            </div>
-            <div className="course-empty">
-              <div className="course-plus">＋</div>
-              <p className="course-hint">添加你的游戏数据包</p>
-            </div>
-          </Link>
-          </div>
-          {/* ===== 右列（锁定第2列，宽度/颜色走 dashboard.css .home-grid 参数） ===== */}
+          {/* ===== 右列（锁定第3列，跨两行，宽度/颜色走 dashboard.css .home-grid 参数） ===== */}
           <div className="right-col flex flex-col gap-4">
             {/* 六格掌握度雷达图 */}
             <div className="card bg-base-100 shadow-sm">
-              <div className="card-body p-4">
+              <div className="card-body p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-bold">六格掌握度</span>
+                  <span className="text-sm font-semibold">六格掌握度</span>
                   <span className="text-[11px] badge badge-primary badge-sm">Pro</span>
                 </div>
                 <div className="relative w-full aspect-square max-w-[140px] mx-auto">
@@ -456,8 +440,8 @@ export default function Dashboard() {
 
             {/* 最近学习 */}
             <div className="card bg-base-100 shadow-sm">
-              <div className="card-body p-4">
-                <div className="text-base font-medium mb-1">最近学习</div>
+              <div className="card-body p-5">
+                <div className="text-sm font-semibold mb-1">最近学习</div>
                 <RecentItem thumb="У1" title="Привет, Россия! A1" sub="Урок 1 · 问候与初识" time="大约 2 小时前" />
                 <RecentItem thumb="🎧" title="精听 · 在超市购物" sub="常用对话 · 五步精听" time="大约 9 小时前" />
                 <RecentItem thumb="У3" title="句子闯关" sub="家族 2 · 第 5 步" time="1 天前" />
@@ -469,7 +453,7 @@ export default function Dashboard() {
 
             {/* 邀请有礼 */}
             <div className="rc-invite card shadow-sm">
-              <div className="card-body p-4">
+              <div className="card-body p-5">
                 <div className="text-sm font-bold text-base-content mb-1">🎁 邀请有礼</div>
                 <div className="text-xs text-base-content opacity-60 leading-relaxed mb-3">邀请好友加入，双方都能获得会员时长</div>
                 <button className="rc-invite-btn btn btn-sm border-0 opacity-50 cursor-not-allowed" disabled title="即将上线">
@@ -479,6 +463,25 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* ===== 我的游戏入口（跨左中两列，上下居中） ===== */}
+          <Link to="/my-games" className="col-entry flex items-center self-center card bg-transparent shadow-sm hover:shadow-md transition cursor-pointer px-4 py-3">
+            <div className="h-20 w-20 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
+                <line x1="6" y1="11" x2="10" y2="11"/>
+                <line x1="8" y1="9" x2="8" y2="13"/>
+                <line x1="15" y1="12" x2="15.01" y2="12"/>
+                <line x1="18" y1="10" x2="18.01" y2="10"/>
+                <rect x="2" y="6" width="20" height="12" rx="2"/>
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1 ml-3">
+              <div className="text-2xl font-semibold text-gray-900">我的游戏</div>
+              <div className="text-xl text-gray-400 mt-0.5">添加你的游戏数据包</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 shrink-0">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </Link>
 
         </div>
       </main>

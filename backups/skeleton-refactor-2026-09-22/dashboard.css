@@ -15,48 +15,13 @@
   --db-shadow:0 1px 2px rgba(24,24,27,.05),0 4px 14px rgba(24,24,27,.05);
   --db-shadow-pop:0 8px 30px rgba(24,24,27,.12);
   --db-r-btn:8px; --db-r-card:12px; --db-r-modal:16px;
-  --db-sidenav-w:256px;
+  --db-sidenav-w:300px;
   --db-font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
 }
 
 /* ============ 应用外壳布局 ============ */
 .app-shell{display:flex;flex-direction:column;height:100vh;overflow:hidden;background:var(--bg);font-family:var(--db-font)}
-
-/* 骨架三件套（对标 julebu.co）：① 占位符(防遮挡) ② fixed实体 ③ flex-1主内容 */
-.shell-body{position:relative;display:flex;flex:1;min-height:0}
-.shell-sidebar-ph{
-  flex:none;width:var(--db-sidenav-w);min-width:0;
-  display:none; /* 桌面才占位（占文档流，防 fixed 侧栏遮挡内容） */
-}
-@media(min-width:901px){ .shell-sidebar-ph{display:block} }
-.shell-main{
-  flex:1;min-width:0;overflow-y:auto;overflow-x:hidden;
-  background:#f5f5f5;padding:16px;
-}
-.shell-card{
-  background:#fff;border-radius:16px;min-height:100%;
-  box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden;
-}
-.shell-card-header{
-  height:56px;display:flex;align-items:center;gap:12px;padding:0 12px;
-  background:#fafafa;
-  border-bottom:1px solid #e5e7eb;flex-shrink:0;
-}
-.shell-card-toggle{
-  flex:none;width:36px;height:36px;border-radius:8px;
-  border:1px solid #eee;background:#fff;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  color:var(--db-text);font-size:16px;
-}
-.shell-card-hint{font-size:14px;color:#666;white-space:nowrap}
-.shell-card-title{font-size:18px;font-weight:700;color:#18181b;margin:0;white-space:nowrap}
-.shell-card-spacer{flex:1}
-.shell-card-btn{
-  flex:none;width:36px;height:36px;border-radius:8px;
-  border:1px solid #eee;background:#fff;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  color:var(--db-text);font-size:16px;
-}
+.shell-main{flex:1;min-width:0;overflow-y:auto;overflow-x:hidden}
 .db-page{background:var(--db-bg);color:var(--db-text);font-family:var(--db-font);min-height:100%}
 .db-container{width:100%;max-width:none;margin:0 auto;padding:26px 28px 56px}
 .no-scrollbar{scrollbar-width:none;-ms-overflow-style:none}
@@ -75,25 +40,19 @@
 }
 .checkin-neon-btn:active{transform:scale(.98)}
 
-/* ============ 桌面侧边导航（fixed 固定实体，对标 julebu.co） ============ */
+/* ============ 桌面侧边导航 ============ */
 .db-sidenav{
   width:var(--db-sidenav-w);min-width:0;box-sizing:border-box;flex:none;
   background:var(--db-card);border-right:1px solid var(--db-border);
   padding:12px 12px;display:flex;flex-direction:column;
-  overflow-y:auto;
-  /* fixed：钉在顶栏下方左侧，随页面滚动不移动 */
-  position:fixed;top:50px;left:0;bottom:0;z-index:20;
-}
-@media(min-width:901px){
-  /* 占位符与 fixed 侧栏同步收起 */
-  .app-shell.shell-collapsed .shell-sidebar-ph{width:0}
+  position:sticky;top:0;overflow-y:auto;align-self:start;
 }
 .db-logo{display:flex;align-items:center;gap:10px;padding:2px 8px 16px;font-weight:800;font-size:18px;color:var(--db-text)}
 .db-logo .mark{width:32px;height:32px;border-radius:9px;background:var(--db-text);color:#fff;display:grid;place-items:center;font-size:17px;flex:none}
 .db-navgroup{font-size:14px;letter-spacing:1.5px;color:var(--db-text-3);padding:16px 10px 6px;font-weight:600}
 .db-navitem{
   display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--db-r-btn);
-  font-size:14px;color:var(--db-text-2);cursor:pointer;margin-bottom:2px;
+  font-size:15px;color:var(--db-text-2);cursor:pointer;margin-bottom:2px;
   text-decoration:none;transition:background .15s,color .15s;
 }
 .db-navitem .ic{width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center}
@@ -124,7 +83,7 @@
 .db-collapsible-head .label{flex:1;text-align:left}
 .db-collapsible-head .arrow{font-size:11px;color:var(--db-text-3);flex:none}
 .db-collapsible-items{padding-left:14px;display:flex;flex-direction:column;margin-top:2px}
-.db-collapsible-items .db-navitem{font-size:14px;padding:8px 10px}
+.db-collapsible-items .db-navitem{font-size:15px;padding:8px 10px}
 .db-sidefoot{margin-top:auto;background:var(--db-card-2);border:1px solid var(--db-border);border-radius:var(--db-r-card);padding:12px 13px}
 .db-sidefoot .t{font-size:12.5px;font-weight:700;display:flex;justify-content:space-between;color:var(--db-text)}
 .db-sidefoot .t span{color:var(--db-text-3);font-weight:500}
@@ -139,7 +98,6 @@
 @media(max-width:900px){
   .app-shell{display:block;height:auto;overflow:visible}
   .db-sidenav{display:none}
-  .shell-sidebar-ph{display:none}
   .shell-main{height:auto;min-height:100vh;overflow-x:hidden;padding-top:52px;padding-bottom:calc(60px + env(safe-area-inset-bottom))}
   .db-page{min-height:100vh}
   .db-container{padding:18px 16px 28px}
@@ -442,7 +400,7 @@
 @media(min-width:901px){
   .app-topbar{
     display:flex;align-items:center;gap:10px;
-    height:50px;padding:0 18px;
+    height:60px;padding:0 18px;
     background:#ffffff;
     position:sticky;top:0;z-index:30;
   }
@@ -478,39 +436,26 @@
 
 /* 商城页自带吸顶分类栏：桌面端吸在全局页眉(60px)下方，移动端仍吸顶 0 */
 .store-subbar{position:sticky;z-index:20;top:0}
-@media(min-width:901px){ .store-subbar{top:50px} }
-/* ================= ★★★ 主页布局（对标 julebu.co 嵌套网格） ★★★ ================= */
-/* 外层：主区 1fr + 右栏固定 --rc-w（gap 24px = julebu gap-6） */
+@media(min-width:901px){ .store-subbar{top:60px} }
+/* ================= ★★★ 主页三栏 + 右栏可调参数区（只改这里） ★★★ ================= */
 .home-grid {
-  --rc-w: 250px;                          /* ① 右栏宽度（julebu 固定 250px） */
-  --rc-card-bg: #ffffff;                  /* ② 右栏卡片整体底色 */
+  --rc-w: 250px;                          /* ① 右栏宽度：更宽→380px，更窄→300px */
+  --rc-card-bg: #ffffff;                  /* ② 右栏卡片整体底色，如 #f6f3ef/#f4f5fb */
   --rc-card-text: #18181b;                /* ③ 右栏标题/主文字色 */
   --rc-muted: #9ca3af;                    /* ④ 右栏次要说明文字的灰色 */
   --rc-radar: #7c3a2e;                    /* ⑤ 雷达图数据区颜色（多边形描边）*/
-  --rc-bar: #6d28d9;                      /* ⑥ 六格进度条颜色 */
-  --rc-invite-bg: oklch(95% 0.0081 61.42);/* ⑦ 邀请有礼卡片底色 */
+  --rc-bar: #6d28d9;                      /* ⑥ 六格进度条颜色（朱砂红）*/
+  --rc-invite-bg: oklch(95% 0.0081 61.42);/* ⑦ 邀请有礼卡片底色（默认浅暖灰）*/
   --rc-invite-btn:#6d28d9;                /* ⑧ 邀请有礼按钮底色 */
   --rc-invite-btn-text: #ffffff;          /* ⑨ 邀请有礼按钮文字色 */
-  display: grid;
-  gap: 24px;                              /* ⑩ 外层间距 24px（julebu gap-6） */
-  grid-template-columns: 1fr var(--rc-w); /* 主区弹性 + 右栏固定 250px */
-  width: 100%;
+  display: grid; gap: 10px; width: 100%;
+  /* 左、中弹性均分（随侧栏收展自动伸缩），右栏=①宽度 */
+  grid-template-columns: minmax(300px,1fr) minmax(300px,1fr) var(--rc-w);
 }
-/* 主区内部：左+中两列（gap 16px = julebu gap-4） */
-.home-main {
-  display: grid;
-  grid-template-columns: 1fr 1fr;         /* 左、中弹性均分 */
-  gap: 16px;                              /* 内层间距 16px */
-  align-items: start;
-  min-width: 0;
-}
-/* 右栏锁第2列（跨两行，宽度/颜色走上面变量） */
-.right-col { grid-column: 2; grid-row: 1 / span 2; min-width: 0; }
-/* “我的游戏”入口跨主区左中两列 */
-.col-entry { grid-column: 1 / span 2; }
+.right-col { grid-column: 3; grid-row: 1 / span 2; }   /* 右栏跨两行、锁第3列 */
+.col-entry { grid-column: 1 / span 2; grid-row: 2; }   /* “我的游戏”入口跨左中 */
 @media (max-width: 1023px){                              /* 窄屏回落单列 */
   .home-grid { grid-template-columns: 1fr; }
-  .home-main { grid-template-columns: 1fr; }
   .right-col, .col-entry { grid-column: auto; grid-row: auto; }
 }
 /* 右栏三张卡统一吃 ②③ */
@@ -522,30 +467,3 @@
 .rc-invite { background: var(--rc-invite-bg) !important; color: var(--rc-card-text); }
 .rc-invite-btn { background: var(--rc-invite-btn) !important; color: var(--rc-invite-btn-text) !important;
   border-radius: .6rem; padding: .42rem .95rem; font-size: .8rem; font-weight: 600; }
-/* ================= ★★★ Play 定稿同步（2026-09-22） ★★★ ================= */
-/* 侧边栏滚动条（句乐部同款：6px 浅灰、圆角3px） */
-.db-sidenav::-webkit-scrollbar{width:6px}
-.db-sidenav::-webkit-scrollbar-track{background:transparent}
-.db-sidenav::-webkit-scrollbar-thumb{background:rgba(209,213,219,.5);border-radius:3px}
-.db-sidenav::-webkit-scrollbar-thumb:hover{background:rgb(156 163 175)}
-.db-sidenav{scrollbar-width:thin;scrollbar-color:rgba(209,213,219,.5) transparent}
-
-/* 主页卡片对齐 Play 定稿：12px 圆角 / 1px #e5e7eb / 无阴影 */
-.home-grid .card{border-radius:12px;border:1px solid #e5e7eb;box-shadow:none}
-.home-grid .card-body{padding:16px}
-.home-grid .card .card-body{padding:16px}
-
-/* ===== 我的游戏（句乐部“我的课程”骨架：虚线框+加号，只占左+中列） ===== */
-.course-card{
-  grid-column:1 / span 2;display:block;text-decoration:none;color:inherit;
-  background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;
-}
-.course-card:hover{background:#fafafa}
-.course-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.course-title{font-size:20px;font-weight:500;margin:0}
-.course-btn{display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;border:none;border-radius:8px;padding:6px 12px;font-size:14px;color:#4b5563;cursor:pointer;font-family:inherit}
-.course-btn:hover{background:#e5e7eb}
-.course-empty{min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #d1d5db;border-radius:8px;background:rgba(255,255,255,.5)}
-.course-empty:hover{background:#f9fafb}
-.course-plus{width:48px;height:48px;border-radius:50%;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:24px;color:#6b7280;margin:0 auto 8px}
-.course-hint{text-align:center;font-size:14px;color:#6b7280;padding:12px;margin:0}

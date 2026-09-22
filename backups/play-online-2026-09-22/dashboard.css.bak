@@ -15,7 +15,7 @@
   --db-shadow:0 1px 2px rgba(24,24,27,.05),0 4px 14px rgba(24,24,27,.05);
   --db-shadow-pop:0 8px 30px rgba(24,24,27,.12);
   --db-r-btn:8px; --db-r-card:12px; --db-r-modal:16px;
-  --db-sidenav-w:256px;
+  --db-sidenav-w:300px;
   --db-font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
 }
 
@@ -38,9 +38,8 @@
   box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden;
 }
 .shell-card-header{
-  height:56px;display:flex;align-items:center;gap:12px;padding:0 12px;
-  background:#fafafa;
-  border-bottom:1px solid #e5e7eb;flex-shrink:0;
+  height:56px;display:flex;align-items:center;gap:12px;padding:0 24px;
+  border-bottom:1px solid #f0f0f0;flex-shrink:0;
 }
 .shell-card-toggle{
   flex:none;width:36px;height:36px;border-radius:8px;
@@ -49,7 +48,6 @@
   color:var(--db-text);font-size:16px;
 }
 .shell-card-hint{font-size:14px;color:#666;white-space:nowrap}
-.shell-card-title{font-size:18px;font-weight:700;color:#18181b;margin:0;white-space:nowrap}
 .shell-card-spacer{flex:1}
 .shell-card-btn{
   flex:none;width:36px;height:36px;border-radius:8px;
@@ -82,7 +80,7 @@
   padding:12px 12px;display:flex;flex-direction:column;
   overflow-y:auto;
   /* fixed：钉在顶栏下方左侧，随页面滚动不移动 */
-  position:fixed;top:50px;left:0;bottom:0;z-index:20;
+  position:fixed;top:60px;left:0;bottom:0;z-index:20;
 }
 @media(min-width:901px){
   /* 占位符与 fixed 侧栏同步收起 */
@@ -93,7 +91,7 @@
 .db-navgroup{font-size:14px;letter-spacing:1.5px;color:var(--db-text-3);padding:16px 10px 6px;font-weight:600}
 .db-navitem{
   display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--db-r-btn);
-  font-size:14px;color:var(--db-text-2);cursor:pointer;margin-bottom:2px;
+  font-size:15px;color:var(--db-text-2);cursor:pointer;margin-bottom:2px;
   text-decoration:none;transition:background .15s,color .15s;
 }
 .db-navitem .ic{width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center}
@@ -124,7 +122,7 @@
 .db-collapsible-head .label{flex:1;text-align:left}
 .db-collapsible-head .arrow{font-size:11px;color:var(--db-text-3);flex:none}
 .db-collapsible-items{padding-left:14px;display:flex;flex-direction:column;margin-top:2px}
-.db-collapsible-items .db-navitem{font-size:14px;padding:8px 10px}
+.db-collapsible-items .db-navitem{font-size:15px;padding:8px 10px}
 .db-sidefoot{margin-top:auto;background:var(--db-card-2);border:1px solid var(--db-border);border-radius:var(--db-r-card);padding:12px 13px}
 .db-sidefoot .t{font-size:12.5px;font-weight:700;display:flex;justify-content:space-between;color:var(--db-text)}
 .db-sidefoot .t span{color:var(--db-text-3);font-weight:500}
@@ -442,7 +440,7 @@
 @media(min-width:901px){
   .app-topbar{
     display:flex;align-items:center;gap:10px;
-    height:50px;padding:0 18px;
+    height:60px;padding:0 18px;
     background:#ffffff;
     position:sticky;top:0;z-index:30;
   }
@@ -478,7 +476,7 @@
 
 /* 商城页自带吸顶分类栏：桌面端吸在全局页眉(60px)下方，移动端仍吸顶 0 */
 .store-subbar{position:sticky;z-index:20;top:0}
-@media(min-width:901px){ .store-subbar{top:50px} }
+@media(min-width:901px){ .store-subbar{top:60px} }
 /* ================= ★★★ 主页布局（对标 julebu.co 嵌套网格） ★★★ ================= */
 /* 外层：主区 1fr + 右栏固定 --rc-w（gap 24px = julebu gap-6） */
 .home-grid {
@@ -522,30 +520,3 @@
 .rc-invite { background: var(--rc-invite-bg) !important; color: var(--rc-card-text); }
 .rc-invite-btn { background: var(--rc-invite-btn) !important; color: var(--rc-invite-btn-text) !important;
   border-radius: .6rem; padding: .42rem .95rem; font-size: .8rem; font-weight: 600; }
-/* ================= ★★★ Play 定稿同步（2026-09-22） ★★★ ================= */
-/* 侧边栏滚动条（句乐部同款：6px 浅灰、圆角3px） */
-.db-sidenav::-webkit-scrollbar{width:6px}
-.db-sidenav::-webkit-scrollbar-track{background:transparent}
-.db-sidenav::-webkit-scrollbar-thumb{background:rgba(209,213,219,.5);border-radius:3px}
-.db-sidenav::-webkit-scrollbar-thumb:hover{background:rgb(156 163 175)}
-.db-sidenav{scrollbar-width:thin;scrollbar-color:rgba(209,213,219,.5) transparent}
-
-/* 主页卡片对齐 Play 定稿：12px 圆角 / 1px #e5e7eb / 无阴影 */
-.home-grid .card{border-radius:12px;border:1px solid #e5e7eb;box-shadow:none}
-.home-grid .card-body{padding:16px}
-.home-grid .card .card-body{padding:16px}
-
-/* ===== 我的游戏（句乐部“我的课程”骨架：虚线框+加号，只占左+中列） ===== */
-.course-card{
-  grid-column:1 / span 2;display:block;text-decoration:none;color:inherit;
-  background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;
-}
-.course-card:hover{background:#fafafa}
-.course-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.course-title{font-size:20px;font-weight:500;margin:0}
-.course-btn{display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;border:none;border-radius:8px;padding:6px 12px;font-size:14px;color:#4b5563;cursor:pointer;font-family:inherit}
-.course-btn:hover{background:#e5e7eb}
-.course-empty{min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #d1d5db;border-radius:8px;background:rgba(255,255,255,.5)}
-.course-empty:hover{background:#f9fafb}
-.course-plus{width:48px;height:48px;border-radius:50%;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:24px;color:#6b7280;margin:0 auto 8px}
-.course-hint{text-align:center;font-size:14px;color:#6b7280;padding:12px;margin:0}
