@@ -161,7 +161,9 @@
         <!-- ⚠️ 修改点3：新增外层滚动区域，把内容都包进带边框的大卡片里 -->
         <div class="flex-1 overflow-y-auto">
           
-          <!-- 卡片网格 -->
+          <!-- 白壳：内容区外壳（句乐部同款：8px外边距/12px圆角/1px边框/白底/淡阴影） -->
+          <div class="rounded-xl border border-gray-200 bg-white shadow-sm m-2 min-h-full">
+            <!-- 卡片网格 -->
             <div class="grid grid-cols-1 gap-6 p-2 md:grid-cols-[1fr_250px] md:p-3 w-full items-start">
               
               <!-- 左侧主区域 -->
@@ -320,6 +322,7 @@
                 </div>
               </div>
             </div>
+          </div>
         </div>
       </main>
     </div>
