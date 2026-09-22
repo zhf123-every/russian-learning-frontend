@@ -131,7 +131,7 @@
   --db-warn-soft: #FEF3E2;
 }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; font-size: 20px; }
 body { -webkit-tap-highlight-color: transparent; }
 
 /* ---------- 通用组件类（@layer components，@apply v4 下直接可用） ---------- */
