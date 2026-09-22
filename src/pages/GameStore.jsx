@@ -127,13 +127,21 @@ export default function GameStore() {
 
       {/* ===== 顶部商城导航 ===== */}
       <header className="store-subbar bg-base-100 border-b border-base-200">
-        <div className="flex items-center gap-6 px-6 h-16 max-w-[1440px] mx-auto">
+        <div className="flex items-center gap-4 px-6 h-16 max-w-[1440px] mx-auto">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('app:toggle-sidebar'))}
+            aria-label="收起/展开侧边栏"
+            title="收起/展开侧边栏"
+            className="flex-none w-9 h-9 rounded-full inline-flex items-center justify-center border-none bg-transparent text-base-content cursor-pointer hover:bg-base-200 transition"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="9" y1="3" x2="9" y2="21" />
+            </svg>
+          </button>
           <details open={menuOpen} onToggle={(e) => setMenuOpen(e.currentTarget.open)} className="relative shrink-0 group">
             <summary className="list-none [&::-webkit-details-marker]:hidden flex items-center gap-2 font-extrabold text-lg text-base-content cursor-pointer select-none">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
-                <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
-              </svg>
               解锁游戏<span>{modeLabel}</span>
               <svg className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
             </summary>
