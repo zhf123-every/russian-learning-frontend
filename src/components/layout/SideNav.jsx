@@ -133,10 +133,6 @@ function TodayGoalMini() {
 export default function SideNav() {
   return (
     <aside className="db-sidenav">
-      <div className="db-logo">
-        <span className="mark ru">А</span>
-        俄语学习
-      </div>
       <nav style={{ display: 'flex', flexDirection: 'column' }}>
         <NavList />
       </nav>
