@@ -51,9 +51,9 @@ function CheckinWeek() {
               className={
                 'h-7 w-7 rounded-full border flex items-center justify-center text-xs transition-all ' +
                 (w.done
-                  ? 'border-[#c51db7] bg-[#c51db7] text-white'
+                  ? 'border-[#6d28d9] bg-[#6d28d9] text-white'
                   : w.today
-                    ? 'border-[#c51db7] text-[#c51db7] font-bold'
+                    ? 'border-[#6d28d9] text-[#6d28d9] font-bold'
                     : 'border-gray-500 text-transparent')
               }
             >
@@ -233,7 +233,7 @@ export default function Dashboard() {
                   <div>
                     <p className="text-base text-gray-400 mb-1 flex items-center gap-1">
                       连胜
-                      <svg className="h-4 w-4 text-[#C0392B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg className="h-4 w-4 text-[#6d28d9]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
                       </svg>
                     </p>
@@ -256,7 +256,7 @@ export default function Dashboard() {
                     <span className="font-semibold text-gray-700">{goalDone}/{goalTotal}</span>
                   </div>
                   <div className="h-2 rounded-full bg-base-200 overflow-hidden">
-                    <div className="h-full rounded-full bg-[#C0392B] transition-all" style={{ width: `${Math.min((goalDone / goalTotal) * 100, 100)}%` }} />
+                    <div className="h-full rounded-full bg-[#6d28d9] transition-all" style={{ width: `${Math.min((goalDone / goalTotal) * 100, 100)}%` }} />
                   </div>
                 </div>
                 <div className="flex-1">
@@ -265,7 +265,7 @@ export default function Dashboard() {
                   <div className="mt-3 flex justify-center">
                     <button
                       onClick={() => setShowMonthCalendar(true)}
-                      className="cursor-pointer inline-flex items-center gap-1 py-1 text-base text-[#b01010] hover:text-[#b75a65] underline-offset-2 hover:underline"
+                      className="cursor-pointer inline-flex items-center gap-1 py-1 text-base text-[#6d28d9] hover:text-[#b75a65] underline-offset-2 hover:underline"
                     >
                       打卡日历 »
                     </button>

@@ -29,9 +29,9 @@
 
 /* 每日打卡·立即打卡：荧光紫空心 + 四周霓虹发光（表面透明；未分层写法以盖过全局 button 重置） */
 .checkin-neon-btn{
-  border:2px solid #B026FF;
+  border:2px solid #8b5cf6;
   background:transparent;
-  color:#B026FF;
+  color:#8b5cf6;
   box-shadow:0 0 10px rgba(176,38,255,.65),0 0 22px rgba(176,38,255,.40),inset 0 0 8px rgba(176,38,255,.30);
   transition:box-shadow .2s ease,transform .08s ease;
 }
@@ -444,9 +444,9 @@
   --rc-card-text: #18181b;                /* ③ 右栏标题/主文字色 */
   --rc-muted: #9ca3af;                    /* ④ 右栏次要说明文字的灰色 */
   --rc-radar: #7c3a2e;                    /* ⑤ 雷达图数据区颜色（多边形描边）*/
-  --rc-bar: #C0392B;                      /* ⑥ 六格进度条颜色（朱砂红）*/
+  --rc-bar: #6d28d9;                      /* ⑥ 六格进度条颜色（朱砂红）*/
   --rc-invite-bg: oklch(95% 0.0081 61.42);/* ⑦ 邀请有礼卡片底色（默认浅暖灰）*/
-  --rc-invite-btn:#C0392B;                /* ⑧ 邀请有礼按钮底色 */
+  --rc-invite-btn:#6d28d9;                /* ⑧ 邀请有礼按钮底色 */
   --rc-invite-btn-text: #ffffff;          /* ⑨ 邀请有礼按钮文字色 */
   display: grid; gap: 20px; width: 100%;
   /* 左、中弹性均分（随侧栏收展自动伸缩），右栏=①宽度 */

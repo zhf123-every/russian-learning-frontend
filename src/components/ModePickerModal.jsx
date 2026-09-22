@@ -144,7 +144,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
                   display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', marginBottom: 6,
                   borderRadius: 12, cursor: m.ready ? 'pointer' : 'not-allowed',
                   background: on ? '#F5F3FF' : 'transparent',
-                  borderLeft: on ? '3px solid #B026FF' : '3px solid transparent',
+                  borderLeft: on ? '3px solid #8b5cf6' : '3px solid transparent',
                   opacity: m.ready ? 1 : 0.45,
                 }}
               >
@@ -153,7 +153,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#18181b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
                   {!m.ready && <div style={{ fontSize: 11, color: '#b91c1c', fontWeight: 600 }}>即将上线</div>}
                 </div>
-                {on && <span style={{ color: '#B026FF', fontSize: 16 }}>›</span>}
+                {on && <span style={{ color: '#8b5cf6', fontSize: 16 }}>›</span>}
               </div>
             )
           })}
@@ -179,7 +179,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
               {active.features.map((f) => (
                 <div key={f.title} style={{ background: '#f7f7fa', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 20, color: '#B026FF' }}>{f.icon}</div>
+                  <div style={{ fontSize: 20, color: '#8b5cf6' }}>{f.icon}</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#18181b', marginTop: 4 }}>{f.title}</div>
                   <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{f.sub}</div>
                 </div>
@@ -193,7 +193,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
             <button
               onClick={() => onStart && onStart(active)}
               style={{
-                flex: 1, background: '#C0392B', color: '#fff', border: 'none', borderRadius: 12,
+                flex: 1, background: '#6d28d9', color: '#fff', border: 'none', borderRadius: 12,
                 padding: '14px 20px', fontSize: 16, fontWeight: 800, cursor: 'pointer',
                 boxShadow: '0 6px 18px rgba(192,57,43,0.35)',
               }}
