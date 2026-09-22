@@ -211,7 +211,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-ui text-gray-900">
-      <main className="flex-1 p-3 overflow-auto">
+      <main className="flex-1 p-6 overflow-auto">
         {/* 主页布局：主区（左+中两列）+ 右栏，对标 julebu.co 嵌套网格。
             外层 .home-grid = 主区1fr + 右栏250px；主区内部 .home-main = 左+中两列。
             右栏宽度 → dashboard.css .home-grid 的 --rc-w；左中弹性均分无需改。 */}
