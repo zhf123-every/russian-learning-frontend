@@ -443,8 +443,8 @@
 @media(min-width:901px){
   .app-topbar{
     display:flex;align-items:center;gap:10px;
-    height:50px;padding:0 18px;
-    background:#ffffff;
+    height:50px;padding:0 12px;
+    background:#fafafa;
     position:sticky;top:0;z-index:30;
   }
 }
@@ -532,7 +532,7 @@
 .db-sidenav{scrollbar-width:thin;scrollbar-color:rgba(209,213,219,.5) transparent}
 
 /* 主页卡片对齐 Play 定稿：12px 圆角 / 1px #e5e7eb / 无阴影 */
-.home-grid .card{border-radius:12px;border:1px solid #e5e7eb;box-shadow:none}
+.home-grid .card{border-radius:12px;border:1px solid #e5e7eb;box-shadow:none;padding:0}
 .home-grid .card-body{padding:16px}
 .home-grid .card .card-body{padding:16px}
 
