@@ -93,7 +93,7 @@ export default function GameDetail() {
 
   return (
     <div className="db-page">
-      <div className="db-container" style={{ maxWidth: 880 }}>
+      <div className="db-container" style={{}}>
         {/* ===== 头部 ===== */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <button className="db-btn db-btn-ghost" onClick={() => navigate(-1)}>← 返回</button>

@@ -127,7 +127,7 @@ export default function GameStore() {
 
       {/* ===== 顶部商城导航 ===== */}
       <header className="store-subbar bg-base-100 border-b border-base-200">
-        <div className="flex items-center gap-4 px-6 h-16 max-w-[1440px] mx-auto">
+        <div className="flex items-center gap-4 px-6 h-16">
           <button
             type="button"
             onClick={() => window.dispatchEvent(new Event('app:toggle-sidebar'))}
@@ -175,7 +175,7 @@ export default function GameStore() {
         </div>
       </header>
 
-      <main className="px-6 py-7 max-w-[1440px] mx-auto">
+      <main className="px-6 py-7">
 
         {/* ===== 本周精选游戏 ===== */}
         <section>
