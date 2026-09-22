@@ -1,126 +1,70 @@
 /* ============================================================
-   Tailwind CSS v4 入口 · 俄语学习产品设计系统 B（冷灰靛蓝）
-   v4 语法：@import "tailwindcss" + @theme 定义设计 token
-   引入顺序：tailwind.css（先）→ styles.css（后，老页面兼容）
+   Tailwind CSS v4 入口 · 俄语学习产品
    ============================================================ */
 
 @import 'tailwindcss';
 @plugin "daisyui";
 
 @plugin "daisyui/theme" {
-  name: "autumn";
-  default: false;
+  name: "light";
+  default: true;
   prefersdark: false;
   color-scheme: "light";
-  --color-base-100: oklch(95.814% 0 0);
-  --color-base-200: oklch(89.107% 0 0);
-  --color-base-300: oklch(82.4% 0 0);
-  --color-base-content: oklch(19.162% 0 0);
-  --color-primary: oklch(40.723% 0.161 17.53);
-  --color-primary-content: oklch(88.144% 0.032 17.53);
-  --color-secondary: oklch(61.676% 0.169 23.865);
-  --color-secondary-content: oklch(12.335% 0.033 23.865);
-  --color-accent: oklch(73.425% 0.094 60.729);
-  --color-accent-content: oklch(14.685% 0.018 60.729);
-  --color-neutral: oklch(54.367% 0.037 51.902);
-  --color-neutral-content: oklch(90.873% 0.007 51.902);
-  --color-info: oklch(69.224% 0.097 207.284);
-  --color-info-content: oklch(13.844% 0.019 207.284);
-  --color-success: oklch(60.995% 0.08 174.616);
-  --color-success-content: oklch(12.199% 0.016 174.616);
-  --color-warning: oklch(70.081% 0.164 56.844);
-  --color-warning-content: oklch(14.016% 0.032 56.844);
-  --color-error: oklch(53.07% 0.241 24.16);
-  --color-error-content: oklch(90.614% 0.048 24.16);
-  --radius-selector: 1rem;
-  --radius-field: 0.5rem;
-  --radius-box: 1rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 0;
-}
-
-@plugin "daisyui/theme" {
-  name: "silk";
-  default: false;
-  prefersdark: false;
-  color-scheme: "light";
-  --color-base-100: oklch(97% 0.0035 67.78);
-  --color-base-200: oklch(95% 0.0081 61.42);
-  --color-base-300: oklch(90% 0.0081 61.42);
-  --color-base-content: oklch(40% 0.0081 61.42);
-  --color-primary: oklch(23.27% 0.0249 284.3);
-  --color-primary-content: oklch(94.22% 0.2505 117.44);
-  --color-secondary: oklch(23.27% 0.0249 284.3);
-  --color-secondary-content: oklch(73.92% 0.2135 50.94);
-  --color-accent: oklch(23.27% 0.0249 284.3);
-  --color-accent-content: oklch(88.92% 0.2061 189.9);
-  --color-neutral: oklch(20% 0 0);
-  --color-neutral-content: oklch(80% 0.0081 61.42);
-  --color-info: oklch(80.39% 0.1148 241.68);
-  --color-info-content: oklch(30.39% 0.1148 241.68);
-  --color-success: oklch(83.92% 0.0901 136.87);
-  --color-success-content: oklch(23.92% 0.0901 136.87);
-  --color-warning: oklch(83.92% 0.1085 80);
-  --color-warning-content: oklch(43.92% 0.1085 80);
-  --color-error: oklch(75.1% 0.1814 22.37);
-  --color-error-content: oklch(35.1% 0.1814 22.37);
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(98% 0 0);
+  --color-base-300: oklch(95% 0 0);
+  --color-base-content: oklch(20.8% 0.029 58.700);
+  --color-primary: oklch(45% 0.24 277.023);
+  --color-primary-content: oklch(93% 0.034 272.788);
+  --color-secondary: oklch(65% 0.241 354.308);
+  --color-secondary-content: oklch(94% 0.028 342.258);
+  --color-accent: oklch(77% 0.152 181.912);
+  --color-accent-content: oklch(38% 0.063 188.416);
+  --color-neutral: oklch(14% 0.005 285.823);
+  --color-neutral-content: oklch(92% 0.004 286.32);
+  --color-info: oklch(74% 0.16 232.661);
+  --color-info-content: oklch(29% 0.066 243.157);
+  --color-success: oklch(76% 0.177 163.223);
+  --color-success-content: oklch(37% 0.077 168.94);
+  --color-warning: oklch(82% 0.189 84.429);
+  --color-warning-content: oklch(41% 0.112 45.904);
+  --color-error: oklch(71% 0.194 13.428);
+  --color-error-content: oklch(27% 0.105 12.094);
   --radius-selector: 2rem;
-  --radius-field: 0.5rem;
+  --radius-field: 1rem;
   --radius-box: 1rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
+  --size-selector: 0.28125rem;
+  --size-field: 0.3125rem;
   --border: 2px;
   --depth: 1;
-  --noise: 0;
+  --noise: 1;
 }
 
-/* ---------- 品牌 token：注入 Tailwind 主题（可用 bg-brand / text-brand 等工具类） ---------- */
 @theme {
-  /* silk 主题：近黑微紫 primary + 暖白底 */
-  --color-brand: oklch(23.27% 0.0249 284.3);
-  --color-brand-hover: oklch(18% 0.0249 284.3);
-  --color-brand-soft: oklch(95% 0.0081 61.42);
-  --color-brand-dark: oklch(15% 0.0249 284.3);
-
+  --color-brand: oklch(45% 0.24 277.023);
+  --color-brand-hover: oklch(35% 0.24 277.023);
+  --color-brand-soft: oklch(93% 0.034 272.788);
+  --color-brand-dark: oklch(20% 0.029 58.700);
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-ru: 'PT Serif', Georgia, 'Times New Roman', 'Segoe UI', serif;
-
   --radius-card: 1.25rem;
   --radius-btn: 0.75rem;
-
   --shadow-card: 0 1px 2px rgb(24 24 27 / 0.04), 0 4px 14px rgb(24 24 27 / 0.04);
   --shadow-pop: 0 8px 30px rgb(24 24 27 / 0.12);
-
-  --animate-pop: pop 0.18s ease;
-  --animate-pulse-dot: pulse-dot 2.2s ease-in-out infinite;
-
-  @keyframes pop {
-    from { transform: translateY(8px) scale(0.98); opacity: 0; }
-    to { transform: none; opacity: 1; }
-  }
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.45; transform: scale(0.75); }
-  }
 }
 
-/* ---------- 页面级 CSS 变量（老样式渐进迁移时引用） ---------- */
 :root {
-  /* silk 浅色主题（与 daisyui silk 主题变量对齐） */
-  --db-bg: oklch(97% 0.0035 67.78);
+  --db-bg: oklch(100% 0 0);
   --db-card: #FFFFFF;
-  --db-card-2: oklch(95% 0.0081 61.42);
-  --db-border: oklch(90% 0.0081 61.42);
-  --db-border-strong: oklch(85% 0.0081 61.42);
-  --db-text: oklch(23.27% 0.0249 284.3);
-  --db-text-2: oklch(40% 0.0081 61.42);
-  --db-text-3: oklch(55% 0.0081 61.42);
-  --db-brand: oklch(23.27% 0.0249 284.3);
-  --db-brand-h: oklch(18% 0.0249 284.3);
-  --db-brand-soft: oklch(95% 0.0081 61.42);
+  --db-card-2: oklch(98% 0 0);
+  --db-border: oklch(95% 0 0);
+  --db-border-strong: oklch(90% 0 0);
+  --db-text: oklch(20.8% 0.029 58.700);
+  --db-text-2: oklch(40% 0.029 58.700);
+  --db-text-3: oklch(55% 0.029 58.700);
+  --db-brand: oklch(45% 0.24 277.023);
+  --db-brand-h: oklch(35% 0.24 277.023);
+  --db-brand-soft: oklch(93% 0.034 272.788);
   --db-amber: #B45309;
   --db-amber-soft: #FEF6EC;
   --db-ok: #059669;
@@ -134,20 +78,10 @@
 html { scroll-behavior: smooth; font-size: 20px; }
 body { -webkit-tap-highlight-color: transparent; }
 
-/* ---------- 通用组件类（@layer components，@apply v4 下直接可用） ---------- */
 @layer components {
-  /* 通用卡片 */
-  .card {
-    @apply rounded-card border border-zinc-100 bg-white shadow-card;
-  }
-  .card-soft {
-    @apply rounded-card border border-zinc-100 bg-zinc-50;
-  }
-  .card-head {
-    @apply mb-3 flex items-center justify-between text-sm font-semibold text-zinc-900;
-  }
-
-  /* 主按钮 */
+  .card { @apply rounded-card border border-zinc-100 bg-white shadow-card; }
+  .card-soft { @apply rounded-card border border-zinc-100 bg-zinc-50; }
+  .card-head { @apply mb-3 flex items-center justify-between text-sm font-semibold text-zinc-900; }
   .btn-primary {
     @apply inline-flex items-center justify-center gap-1.5 rounded-btn bg-brand px-4 py-2
       text-sm font-semibold text-white shadow-sm transition hover:bg-brand-hover
@@ -161,27 +95,20 @@ body { -webkit-tap-highlight-color: transparent; }
     @apply inline-flex items-center justify-center rounded-btn border border-zinc-200 bg-white
       p-2 text-zinc-500 transition hover:bg-zinc-50 hover:text-brand;
   }
-
-  /* 药丸标签 */
   .chip {
     @apply inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1
       text-xs font-medium text-brand-dark;
   }
-
-  /* 输入框 */
   .field {
     @apply w-full rounded-btn border border-zinc-200 bg-white px-3.5 py-2.5 text-sm
       text-zinc-900 outline-none transition focus:border-primary focus:ring-2
       focus:ring-primary-content;
   }
-
-  /* 空状态 */
   .empty-state {
     @apply flex flex-col items-center justify-center gap-3 rounded-card border border-dashed
       border-zinc-200 bg-white px-6 py-10 text-center text-sm text-zinc-500;
   }
 }
 
-/* ---------- 响应式容器 ---------- */
 .container-ui { width: 100%; margin-inline: auto; padding-inline: 1.5rem; }
 @media (min-width: 1280px) { .container-ui { max-width: 1280px; } }
