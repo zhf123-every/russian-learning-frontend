@@ -19,6 +19,13 @@ export default function AppShell() {
       <div className="shell-body" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         <SideNav />
         <main className="shell-main" style={{ flex: 1, minWidth: 0 }}>
+          {/* 内容页页眉：页面标题 + 右侧按钮 */}
+          <div style={{ height: 56, display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px', flexShrink: 0 }}>
+            <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>📋 我的主页</h1>
+            <div style={{ flex: 1 }} />
+            <button style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid #eee', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setCollapsed(v => !v)}>◧</button>
+            <button style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid #eee', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>⚙</button>
+          </div>
           <Outlet />
         </main>
       </div>

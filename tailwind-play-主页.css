@@ -1,4 +1,7 @@
-/* Tailwind Play CSS 面板 */
+/* ============================================
+   Tailwind Play CSS 面板 · 所有可调参数
+   ★ 标注的都可以改，右边实时看效果
+   ============================================ */
 @import "tailwindcss";
 @plugin "daisyui";
 
@@ -11,33 +14,44 @@
   --color-primary: oklch(45% 0.24 277);
 }
 
-/* ========== ★★★ 所有可调参数（只改这里）★★★ ========== */
+/* ========== ★ 全局 ========== */
+/* ① 全站字体大小（所有文字一起变） */
+html { font-size: 22px; }
 
-/* ① 全局字体大小（全站一起变） */
-html { font-size: 20px; }
+/* ========== ★ 顶栏（页眉） ========== */
+/* ② 顶栏高度 */
+header { height: 60px !important; }
+/* ③ 顶栏背景颜色 */
+header { background: #ffffff !important; }
 
-/* ② 导航栏字体大小 */
-.sidenav-logo { font-size: 16px; }        /* Logo "俄语学习" */
-.sidenav nav a { font-size: 14px; }       /* 菜单项（主页/解锁游戏...）*/
-.sidenav nav .navgroup-title { font-size: 12px; }  /* 分组标题（社区/通关存档）*/
-.sidefoot-text { font-size: 12px; }       /* 底部今日目标 */
+/* ========== ★ 侧边栏（导航栏） ========== */
+/* ④ 侧边栏宽度 */
+aside { width: 300px !important; }
+/* ⑤ 侧边栏背景颜色（和顶栏设成一样就没有分割线） */
+aside { background: #ffffff !important; }
+/* ⑥ 侧边栏菜单字体大小 */
+aside nav a, aside a { font-size: 15px !important; }
+/* ⑦ 侧边栏右边有没有分割线（内容区和侧边栏之间） */
+aside { border-right: 1px solid #eee !important; }
+/*    想去掉这条线改成：aside { border-right: none !important; } */
 
-/* ③ 导航栏宽度 */
-.sidenav { width: 232px; }
-
-/* ④ 顶部页眉高度 */
-.topbar { height: 60px; }
-
-/* ⑤ 主页三栏布局 */
+/* ========== ★ 主页三栏布局 ========== */
 .home-grid {
-  --rc-w: 200px;                   /* 右栏宽度 */
-  display: grid;
-  gap: 32px;                        /* 卡片间距 */
+  /* ⑧ 右栏宽度 */
+  --rc-w: 250px;
+  /* ⑨ 卡片之间间距 */
+  gap: 10px;
+  /* ⑩ 左中两栏最小宽度（两个数字） */
   grid-template-columns: minmax(300px,1fr) minmax(300px,1fr) var(--rc-w);
 }
 .right-col { grid-column: 3; grid-row: 1 / span 2; }
 .col-entry { grid-column: 1 / span 2; grid-row: 2; }
 @media (max-width: 1023px){
   .home-grid { grid-template-columns: 1fr; }
-  .right-col, .col-entry { grid-column: auto; grid-row: auto; }
 }
+
+/* ========== ★ 卡片样式 ========== */
+/* ⑪ 卡片圆角大小 */
+.card { border-radius: 16px; }
+/* ⑫ 内容区背景颜色 */
+main { background: #f5f5f5; }
