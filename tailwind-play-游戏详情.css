@@ -1,0 +1,17 @@
+/* ============================================
+   Tailwind Play CSS 面板 · 游戏详情页（解锁游戏 → 游戏卡进入）
+   使用：粘贴到 Play 的 CSS 面板（HTML 面板贴 tailwind-play-游戏详情.html）
+   本页所有样式都是 Tailwind 工具类（bg-primary/px-4/rounded-2xl...）
+   CSS 面板只需要这一份 DaisyUI 主题，让 bg-primary = 紫色
+   ============================================ */
+@import "tailwindcss";
+@plugin "daisyui";
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: "light";
+  --color-base-100: oklch(100% 0 0);
+  --color-base-content: oklch(20.8% 0.029 58.7);
+  /* ★ 主题紫色：所有 bg-primary / text-primary 都是这个色 */
+  --color-primary: oklch(45% 0.24 277);
+}

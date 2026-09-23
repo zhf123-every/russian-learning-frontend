@@ -1,0 +1,339 @@
+<!-- ============================================
+  Tailwind Play HTML 面板 · 游戏详情页（解锁游戏 → 游戏卡进入）
+  使用方法：
+  1) CSS 面板贴：tailwind-play-游戏详情.css（含 DaisyUI 主题，bg-primary 才能显示紫色）
+  2) HTML 面板贴：本文件内容
+  所有样式都是 Tailwind 工具类，直接在类里改（bg-primary 紫色 / px-4 内边距 / rounded-2xl 圆角...）
+============================================ -->
+
+<div class="min-h-full bg-base-100">
+  <main class="px-6 py-6 max-w-[1100px] mx-auto">
+
+    <!-- ===== ① 游戏头部：封面 + 信息 + 操作 ===== -->
+    <div class="flex flex-col md:flex-row gap-5 md:gap-8 mb-8">
+      <!-- 封面 -->
+      <div class="bg-gradient-to-br from-indigo-600 to-violet-700 w-full md:w-56 shrink-0 aspect-[4/3] md:aspect-[3/4] rounded-2xl overflow-hidden flex items-center justify-center p-4 shadow-sm">
+        <span class="text-2xl md:text-3xl font-extrabold leading-tight drop-shadow text-center text-white">Привет, Россия!</span>
+      </div>
+
+      <!-- 信息 -->
+      <div class="flex-1 min-w-0">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 leading-snug">Привет, Россия! A1</h1>
+          <div class="flex items-center gap-2 shrink-0">
+            <button class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" /></svg>
+              推荐好友
+            </button>
+            <button class="inline-flex items-center gap-1.5 rounded-full bg-primary text-white px-6 py-2 text-sm font-bold hover:brightness-110 active:scale-[.98] transition shadow-sm">
+              开始闯关
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            </button>
+          </div>
+        </div>
+
+        <p class="text-sm text-gray-600 mt-2 leading-relaxed max-w-2xl">从零开始学俄语：字母、发音、基本句型与日常会话，闯关式学习轻松入门。</p>
+
+        <!-- 标签 -->
+        <div class="flex flex-wrap gap-1.5 mt-3">
+          <span class="text-xs text-gray-500 bg-gray-100 rounded-md px-2.5 py-1">零基础入门</span>
+          <span class="text-xs text-gray-500 bg-gray-100 rounded-md px-2.5 py-1">语法</span>
+          <span class="text-xs text-gray-500 bg-gray-100 rounded-md px-2.5 py-1">句型</span>
+          <span class="text-xs text-gray-500 bg-gray-100 rounded-md px-2.5 py-1">成人学习</span>
+          <span class="text-xs text-gray-500 bg-gray-100 rounded-md px-2.5 py-1">文字</span>
+        </div>
+
+        <!-- 使用人数 + 评分 -->
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 text-sm text-gray-500">
+          <span class="flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            30.5 万人使用
+          </span>
+          <span class="flex items-center gap-1">
+            <span class="text-amber-500 font-semibold">4.6</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            <span>564 条评价</span>
+          </span>
+        </div>
+
+        <!-- 总进度（已解锁时展示） -->
+        <div class="mt-5 bg-gray-50 rounded-xl p-4 border border-gray-100">
+          <div class="flex justify-between text-xs font-semibold text-gray-600 mb-2">
+            <span>我的进度</span><span>0/12 关 · 0%</span>
+          </div>
+          <div class="h-2 rounded-full bg-gray-200 overflow-hidden">
+            <div class="h-full rounded-full bg-primary transition-all" style="width: 0%;"></div>
+          </div>
+          <div class="text-xs text-gray-400 mt-1.5">✅ 0 已完成 · 🔵 1 进行中</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ② 关卡大纲 ===== -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-extrabold text-gray-900">关卡 <span class="text-sm font-medium text-gray-400 ml-1">共 12 关</span></h2>
+        <button class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition cursor-pointer">
+          正序
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+        </button>
+      </div>
+
+      <div class="border border-gray-100 rounded-2xl divide-y divide-gray-100">
+
+        <!-- 关卡行模板：直接复制这一块改编号/标题/难度/状态 -->
+        <div class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition cursor-pointer">
+          <span class="text-xs font-bold text-gray-400 w-6 shrink-0">01</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-gray-900">第 1 课</span>
+              <span class="text-[11px] rounded px-1.5 py-0.5" style="color:#d97706;background:#FEF3C7;">中等</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-0.5 truncate">Привет, Россия! A1 · 第 1 课</div>
+          </div>
+          <span class="text-[11px] rounded px-1.5 py-0.5 shrink-0" style="color:#7c3aed;background:#EDE9FE;">进行中</span>
+        </div>
+
+        <div class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition cursor-pointer">
+          <span class="text-xs font-bold text-gray-400 w-6 shrink-0">02</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-gray-900">第 2 课</span>
+              <span class="text-[11px] rounded px-1.5 py-0.5" style="color:#16a34a;background:#DCFCE7;">简单</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-0.5 truncate">Привет, Россия! A1 · 第 2 课</div>
+          </div>
+          <span class="text-[11px] rounded px-1.5 py-0.5 shrink-0" style="color:#9ca3af;background:#F3F4F6;">未开始</span>
+        </div>
+
+        <div class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition cursor-pointer">
+          <span class="text-xs font-bold text-gray-400 w-6 shrink-0">03</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-gray-900">第 3 课</span>
+              <span class="text-[11px] rounded px-1.5 py-0.5" style="color:#16a34a;background:#DCFCE7;">简单</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-0.5 truncate">Привет, Россия! A1 · 第 3 课</div>
+          </div>
+          <span class="text-[11px] rounded px-1.5 py-0.5 shrink-0" style="color:#9ca3af;background:#F3F4F6;">未开始</span>
+        </div>
+
+        <div class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition cursor-pointer">
+          <span class="text-xs font-bold text-gray-400 w-6 shrink-0">04</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-gray-900">第 4 课</span>
+              <span class="text-[11px] rounded px-1.5 py-0.5" style="color:#d97706;background:#FEF3C7;">中等</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-0.5 truncate">Привет, Россия! A1 · 第 4 课</div>
+          </div>
+          <span class="text-[11px] rounded px-1.5 py-0.5 shrink-0" style="color:#9ca3af;background:#F3F4F6;">未开始</span>
+        </div>
+
+        <div class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition cursor-pointer">
+          <span class="text-xs font-bold text-gray-400 w-6 shrink-0">05</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-gray-900">第 5 课</span>
+              <span class="text-[11px] rounded px-1.5 py-0.5" style="color:#16a34a;background:#DCFCE7;">简单</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-0.5 truncate">Привет, Россия! A1 · 第 5 课</div>
+          </div>
+          <span class="text-[11px] rounded px-1.5 py-0.5 shrink-0" style="color:#9ca3af;background:#F3F4F6;">未开始</span>
+        </div>
+
+        <div class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition cursor-pointer">
+          <span class="text-xs font-bold text-gray-400 w-6 shrink-0">06</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-gray-900">第 6 课</span>
+              <span class="text-[11px] rounded px-1.5 py-0.5" style="color:#16a34a;background:#DCFCE7;">简单</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-0.5 truncate">Привет, Россия! A1 · 第 6 课</div>
+          </div>
+          <span class="text-[11px] rounded px-1.5 py-0.5 shrink-0" style="color:#9ca3af;background:#F3F4F6;">未开始</span>
+        </div>
+
+        <div class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition cursor-pointer">
+          <span class="text-xs font-bold text-gray-400 w-6 shrink-0">07</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-gray-900">第 7 课</span>
+              <span class="text-[11px] rounded px-1.5 py-0.5" style="color:#16a34a;background:#DCFCE7;">简单</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-0.5 truncate">Привет, Россия! A1 · 第 7 课</div>
+          </div>
+          <span class="text-[11px] rounded px-1.5 py-0.5 shrink-0" style="color:#9ca3af;background:#F3F4F6;">未开始</span>
+        </div>
+
+        <!-- 展开全部关卡 -->
+        <button class="w-full py-3.5 text-sm font-semibold text-primary hover:bg-primary/5 transition cursor-pointer">展开全部关卡 (5)</button>
+      </div>
+    </div>
+
+    <!-- ===== ③ 游戏包评价 ===== -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-extrabold text-gray-900">游戏包评价 <span class="text-sm font-medium text-gray-400 ml-1">564 条</span></h2>
+        <button class="inline-flex items-center gap-1.5 rounded-full bg-primary text-white px-5 py-2 text-sm font-bold hover:brightness-110 transition">写评价</button>
+      </div>
+
+      <!-- 评分总览 + 星级分布 -->
+      <div class="flex flex-col sm:flex-row gap-6 border border-gray-100 rounded-2xl p-5 mb-4">
+        <div class="flex items-center gap-4 shrink-0">
+          <div class="text-center">
+            <div class="text-4xl font-extrabold text-gray-900">4.6</div>
+            <div class="flex items-center justify-center gap-0.5 mt-1">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            </div>
+            <div class="text-xs text-gray-400 mt-1">564 条评价</div>
+          </div>
+          <div class="space-y-1.5 min-w-[160px] flex-1">
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+              <span class="w-7 shrink-0">5 星</span>
+              <div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-amber-400" style="width:52%;"></div></div>
+              <span class="w-8 text-right shrink-0 text-gray-400">296</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+              <span class="w-7 shrink-0">4 星</span>
+              <div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-amber-400" style="width:42%;"></div></div>
+              <span class="w-8 text-right shrink-0 text-gray-400">239</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+              <span class="w-7 shrink-0">3 星</span>
+              <div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-amber-400" style="width:3%;"></div></div>
+              <span class="w-8 text-right shrink-0 text-gray-400">15</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+              <span class="w-7 shrink-0">2 星</span>
+              <div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-amber-400" style="width:1%;"></div></div>
+              <span class="w-8 text-right shrink-0 text-gray-400">8</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+              <span class="w-7 shrink-0">1 星</span>
+              <div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-amber-400" style="width:0%;"></div></div>
+              <span class="w-8 text-right shrink-0 text-gray-400">1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 评价标签筛选 -->
+      <div class="flex flex-wrap gap-2 mb-4">
+        <button class="text-xs rounded-full px-3 py-1.5 transition cursor-pointer bg-primary text-white font-semibold">全部 564</button>
+        <button class="text-xs rounded-full px-3 py-1.5 transition cursor-pointer bg-gray-100 text-gray-600 hover:bg-gray-200">零基础 448</button>
+        <button class="text-xs rounded-full px-3 py-1.5 transition cursor-pointer bg-gray-100 text-gray-600 hover:bg-gray-200">入门提升 391</button>
+        <button class="text-xs rounded-full px-3 py-1.5 transition cursor-pointer bg-gray-100 text-gray-600 hover:bg-gray-200">难度适中 382</button>
+        <button class="text-xs rounded-full px-3 py-1.5 transition cursor-pointer bg-gray-100 text-gray-600 hover:bg-gray-200">词汇累计 347</button>
+        <button class="text-xs rounded-full px-3 py-1.5 transition cursor-pointer bg-gray-100 text-gray-600 hover:bg-gray-200">语法与句型 339</button>
+        <button class="text-xs rounded-full px-3 py-1.5 transition cursor-pointer bg-gray-100 text-gray-600 hover:bg-gray-200">听力提升 335</button>
+        <button class="text-xs rounded-full px-3 py-1.5 transition cursor-pointer bg-gray-100 text-gray-600 hover:bg-gray-200">口语表达 303</button>
+        <button class="text-xs rounded-full px-3 py-1.5 transition cursor-pointer bg-gray-100 text-gray-600 hover:bg-gray-200">跟读/模仿 208</button>
+      </div>
+
+      <!-- 评价列表 -->
+      <div class="space-y-3">
+        <div class="border border-gray-100 rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">B</div>
+              <span class="text-sm font-semibold text-gray-900">baiyi</span>
+            </div>
+            <span class="text-xs text-gray-400">1个月前</span>
+          </div>
+          <p class="text-sm text-gray-700 leading-relaxed">我觉得非常可以，我一直都在打。</p>
+          <div class="flex flex-wrap gap-1.5 mt-2.5">
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">口语表达</span>
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">留学/出国</span>
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">入门提升</span>
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">难度适中</span>
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">听力提升</span>
+            <span class="text-[11px] text-gray-400">+2</span>
+          </div>
+        </div>
+
+        <div class="border border-gray-100 rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">奶</div>
+              <span class="text-sm font-semibold text-gray-900">奶龙</span>
+            </div>
+            <span class="text-xs text-gray-400">1个月前</span>
+          </div>
+          <p class="text-sm text-gray-700 leading-relaxed">重复性过强但这也是一个特色</p>
+          <div class="flex flex-wrap gap-1.5 mt-2.5">
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">听力提升</span>
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">词汇累计</span>
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">零基础</span>
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">偏简单</span>
+          </div>
+        </div>
+
+        <div class="border border-gray-100 rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">K</div>
+              <span class="text-sm font-semibold text-gray-900">kin_ki</span>
+            </div>
+            <span class="text-xs text-gray-400">1个月前</span>
+          </div>
+          <p class="text-sm text-gray-700 leading-relaxed">已学一个来月，完全零基础也慢慢习得英语的基本造句规律及单词，非常有满足感。鼓励自己能继续坚持到听写能流畅为止！！</p>
+          <div class="flex flex-wrap gap-1.5 mt-2.5">
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">口语表达</span>
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">零基础</span>
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">写作表达</span>
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">词汇累计</span>
+            <span class="text-[11px] text-gray-500 bg-gray-100 rounded px-2 py-0.5">语法与句型</span>
+            <span class="text-[11px] text-gray-400">+2</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="w-full mt-4 py-3 text-sm font-semibold text-gray-500 hover:text-gray-900 border border-gray-200 rounded-xl hover:bg-gray-50 transition cursor-pointer">查看更多</button>
+    </div>
+
+    <!-- ===== ④ 学这个的人也在学 ===== -->
+    <div class="mb-10">
+      <h2 class="text-lg font-extrabold text-gray-900">学这个的人也在学</h2>
+      <p class="text-sm text-gray-400 mt-0.5 mb-4">为你精选的课程包</p>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+        <a class="group cursor-pointer block" href="#">
+          <div class="aspect-[16/10] rounded-xl overflow-hidden mb-2 bg-gradient-to-br from-sky-500 to-blue-700 flex items-center justify-center p-3 group-hover:shadow-lg transition relative">
+            <span class="text-sm font-extrabold leading-tight drop-shadow text-center text-white">Привет!</span>
+          </div>
+          <div class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">基础会话入门</div>
+          <div class="text-xs text-gray-400 mt-1 truncate">12 课</div>
+        </a>
+
+        <a class="group cursor-pointer block" href="#">
+          <div class="aspect-[16/10] rounded-xl overflow-hidden mb-2 bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center p-3 group-hover:shadow-lg transition relative">
+            <span class="text-sm font-extrabold leading-tight drop-shadow text-center text-white">Алфавит</span>
+          </div>
+          <div class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">俄语字母发音</div>
+          <div class="text-xs text-gray-400 mt-1 truncate">10 课</div>
+        </a>
+
+        <a class="group cursor-pointer block" href="#">
+          <div class="aspect-[16/10] rounded-xl overflow-hidden mb-2 bg-gradient-to-br from-amber-500 to-orange-700 flex items-center justify-center p-3 group-hover:shadow-lg transition relative">
+            <span class="text-sm font-extrabold leading-tight drop-shadow text-center text-white">Грамматика</span>
+          </div>
+          <div class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">核心语法速成</div>
+          <div class="text-xs text-gray-400 mt-1 truncate">8 课</div>
+        </a>
+
+        <a class="group cursor-pointer block" href="#">
+          <div class="aspect-[16/10] rounded-xl overflow-hidden mb-2 bg-gradient-to-br from-rose-500 to-pink-700 flex items-center justify-center p-3 group-hover:shadow-lg transition relative">
+            <span class="text-sm font-extrabold leading-tight drop-shadow text-center text-white">Слова</span>
+          </div>
+          <div class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">高频词汇闯关</div>
+          <div class="text-xs text-gray-400 mt-1 truncate">15 课</div>
+        </a>
+      </div>
+    </div>
+  </main>
+</div>

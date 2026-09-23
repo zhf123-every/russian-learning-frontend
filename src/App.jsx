@@ -22,6 +22,7 @@ import MyGames from './pages/MyGames'
 import GameDetail from './pages/GameDetail'
 import CourseDetail from './pages/CourseDetail'
 import QuestDictation from './pages/QuestDictation'
+import Journey from './pages/Journey'
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/my-games" element={<MyGames />} />
         <Route path="/game/:id" element={<GameDetail />} />
         <Route path="/course/:id" element={<CourseDetail />} />
+        <Route path="/journey" element={<Journey />} />
         <Route path="/square" element={<SquarePage />} />
         <Route path="/tutor" element={<TutorChat />} />
 

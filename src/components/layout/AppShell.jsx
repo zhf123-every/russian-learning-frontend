@@ -8,6 +8,7 @@ import { PageHeaderCtx } from './PageHeaderContext'
 // 路由 → 页眉标题（跟随导航栏）
 const TITLES = {
   '/': '我的主页',
+  '/journey': '通关之路',
   '/unlocked-games': '解锁游戏',
   '/my-games': '我的游戏',
   '/vocab': '复习关卡',

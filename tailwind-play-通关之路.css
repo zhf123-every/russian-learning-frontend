@@ -1,0 +1,235 @@
+/* ============================================
+   Tailwind Play CSS 面板 · 通关之路（俄语大陆 RPG 冒险）
+   HTML 面板贴 tailwind-play-通关之路.html
+   ★ 所有可调参数已标注，改数值右侧实时看效果
+   ============================================ */
+@import "tailwindcss";
+@plugin "daisyui";
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: "light";
+  --color-base-100: oklch(100% 0 0);
+  --color-base-content: oklch(20.8% 0.029 58.7);
+  /* ★ 主题紫（魔法主色） */
+  --color-primary: oklch(45% 0.24 277);
+}
+
+/* ========== 全局骨架 ========== */
+html { font-size: 16px; }
+.app {
+  display: flex; flex-direction: column; height: 100vh;
+  background: #f5f5f5; font-family: 'Nunito', 'PingFang SC', sans-serif;
+}
+.app-body { display: flex; flex: 1; min-height: 0; }
+
+/* ========== 顶栏 ========== */
+.topbar {
+  height: 50px; background: #fff; padding: 0 18px; gap: 12px;
+  display: flex; align-items: center; flex-shrink: 0; border-bottom: 1px solid #eee;
+}
+.topbar-hamburger { width: 36px; height: 36px; border: none; background: none; cursor: pointer; font-size: 16px; }
+.topbar-logo { display: flex; align-items: center; gap: 8px; font-weight: 800; text-decoration: none; color: #18181b; font-size: 18px; }
+.topbar-logo-badge {
+  display: inline-flex; width: 28px; height: 28px; border-radius: 8px;
+  background: #18181b; color: #fff; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 14px;
+}
+.topbar-spacer { flex: 1; }
+.topbar-text { font-size: 14px; color: #666; }
+.topbar-link { font-size: 14px; color: #6d28d9; font-weight: 600; }
+.topbar-sep { color: #ddd; }
+.topbar-dim { font-size: 14px; color: #999; opacity: .6; }
+.topbar-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,#fbbf24,#f97316); }
+
+/* ========== 侧边栏 ========== */
+.sidenav {
+  width: 256px; flex-shrink: 0; background: #fff;
+  border-right: 1px solid #eee; padding: 12px;
+  display: flex; flex-direction: column; overflow-y: auto;
+}
+.sidenav::-webkit-scrollbar { width: 6px; }
+.sidenav::-webkit-scrollbar-thumb { background: rgba(209,213,219,.5); border-radius: 3px; }
+.sidenav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 10px; color: #555;
+  font-size: 14px; text-decoration: none; margin-bottom: 2px;
+}
+.sidenav-item-active { background: #eef2ff; color: #4f46e5; font-weight: 700; }
+.sidenav-item.is-soon { color: #aaa; opacity: .6; }
+.sidenav-sub { padding-left: 36px; }
+.sidenav-group { padding: 12px 10px 4px; font-size: 12px; color: #999; font-weight: 600; }
+.soon-badge { font-size: 10px; font-style: normal; background: #f0f0f0; padding: 1px 6px; border-radius: 4px; margin-left: auto; }
+.sidenav-goal { margin-top: auto; padding: 12px; background: #fafafa; border-radius: 10px; font-size: 12px; }
+.goal-title { font-weight: 700; margin-bottom: 6px; }
+.goal-num { float: right; color: #4f46e5; }
+.goal-body { display: flex; align-items: center; gap: 8px; color: #999; }
+
+/* ========== 内容区 ========== */
+.content { flex: 1; min-width: 0; background: #f5f5f5; padding: 16px; }
+.shell {
+  background: #fff; border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  overflow: hidden; min-height: 100%;
+}
+.content-header {
+  display: flex; align-items: center; gap: 8px; height: 56px;
+  background: #fafafa; padding: 0 12px; border-bottom: 1px solid #e5e7eb;
+}
+.content-header-icon { color: #666; font-size: 16px; }
+.content-header-title { font-size: 18px; font-weight: 700; color: #18181b; margin: 0; white-space: nowrap; }
+/* 右上角时间范围 */
+.content-header-date { margin-left: auto; font-size: 13px; color: #999; }
+
+/* ========== 页内容通用 ========== */
+.content-pad { padding: 16px; }
+
+/* ========== ★ RPG 模块通用 ========== */
+.journey-section { margin-bottom: 28px; }
+.section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.section-title { font-size: 18px; font-weight: 800; color: #4c1d95; margin: 0; }
+.section-sub { font-size: 13px; color: #999; margin: 0; }
+.section-head .awaken-badge { margin-left: auto; }
+
+/* ★ 紫色魔法点缀：副标题前的小光点 */
+.section-sub::before { content: "✦"; color: #a78bfa; margin-right: 4px; }
+
+/* ========== 统计卡片（模块一/三通用） ========== */
+.stat-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.stat-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 900px) { .stat-grid-4, .stat-grid-3 { grid-template-columns: repeat(2, 1fr); } }
+
+.rpg-stat {
+  background: #fff; border: 1px solid #e9e4f5; border-radius: 12px;
+  padding: 16px; position: relative;
+  /* ★ 魔法卡边光 */
+  box-shadow: 0 1px 2px rgba(76,29,149,.05);
+}
+.rpg-stat::after {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, #a78bfa, #6d28d9); border-radius: 12px 0 0 12px;
+}
+.stat-label { font-size: 12px; color: #999; margin: 0 0 6px; }
+.stat-value { font-size: 30px; font-weight: 800; color: #4c1d95; line-height: 1; }
+.stat-unit { font-size: 14px; color: #999; font-weight: 600; margin-left: 2px; }
+.stat-note { font-size: 11px; color: #bbb; margin-top: 6px; }
+.fire { font-size: 14px; }
+
+/* ========== 冒险日志（模块二） ========== */
+.loot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .loot-grid { grid-template-columns: 1fr; } }
+.rpg-card {
+  background: #fff; border: 1px solid #e9e4f5; border-radius: 12px; padding: 16px;
+}
+.rpg-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.rpg-card-title { font-size: 16px; font-weight: 700; color: #18181b; }
+.rpg-card-link { font-size: 13px; color: #6d28d9; font-weight: 600; cursor: pointer; }
+/* ★ 战利品背包/副本通关内：每个统计项独立小框（卡中卡） */
+.loot-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+.loot-item { flex: 1; min-width: 120px; background: #fdfcff; border: 1px solid #e9e4f5; border-radius: 10px; padding: 14px 16px; }
+.loot-item .stat-value { font-size: 26px; }
+
+/* ========== 经验曲线（模块四） ========== */
+/* ★ 经验获取曲线外框：包住标题+筛选标签+曲线图整体 */
+.exp-card { background: #fff; border: 1px solid #e9e4f5; border-radius: 16px; padding: 20px; margin-bottom: 14px; }
+.exp-filters { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.exp-tab {
+  font-size: 13px; color: #666; background: #f5f3fa; border: none;
+  padding: 6px 16px; border-radius: 99px; cursor: pointer;
+  transition: all .15s;
+}
+.exp-tab.active { background: #6d28d9; color: #fff; font-weight: 700; }
+
+/* ★ 内框：只框曲线图（边框加深，一眼看出是两层框） */
+.exp-chart {
+  border: 1px solid #cbb7f0; border-radius: 12px; padding: 16px 16px 12px;
+  background: #faf7ff;
+}
+/* ★ 外框颜色调浅，内外对比更明显 */
+.exp-line { fill: none; stroke: #7c3aed; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px rgba(124,58,237,.4)); }
+.dot { fill: #fff; stroke: #7c3aed; stroke-width: 2.5; }
+.dot-high { fill: #7c3aed; stroke: #fff; stroke-width: 2.5; filter: drop-shadow(0 0 6px rgba(124,58,237,.7)); }
+.axis { font-size: 11px; fill: #bbb; text-anchor: end; }
+.axis-x { font-size: 12px; fill: #999; text-anchor: middle; }
+.peak-num { font-size: 12px; fill: #6d28d9; font-weight: 700; text-anchor: end; }
+.peak { font-size: 12px; fill: #6d28d9; font-weight: 700; text-anchor: end; }
+.chart-foot { display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-top: 8px; }
+.chart-total { color: #6d28d9; font-weight: 700; }
+
+/* ========== 变格天赋树（模块五） ========== */
+/* ★ 天赋树外框（对标句乐部热力图的外框容器） */
+.talent-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; background: #fff; border: 1px solid #e9e4f5; border-radius: 16px; padding: 24px; }
+@media (max-width: 900px) { .talent-layout { grid-template-columns: 1fr; } }
+/* ★ 内框①：六维战力雷达区 */
+.radar-wrap { max-width: 420px; margin: 0 auto; width: 100%; border: 1px solid #e9e4f5; border-radius: 12px; background: #fdfcff; padding: 16px; }
+/* ★ 内框②：觉醒度进度条区 */
+.talent-bars { border: 1px solid #e9e4f5; border-radius: 12px; background: #fdfcff; padding: 16px; }
+.radar-name { text-align: center; font-size: 13px; color: #6d28d9; font-weight: 700; margin-top: 8px; }
+
+.talent-label { font-size: 11px; fill: #6d28d9; font-weight: 600; }
+
+/* ★ 雷达数据面 */
+.radar-fill {
+  fill: rgba(124,58,237,.16);
+  stroke: #7c3aed; stroke-width: 2;
+  filter: drop-shadow(0 0 6px rgba(124,58,237,.35));
+}
+
+/* ★ 高掌握度：金光 + 燃烧脉动 */
+.glow-gold {
+  fill: #fbbf24; stroke: #fff; stroke-width: 2;
+  animation: goldPulse 1.6s ease-in-out infinite;
+}
+@keyframes goldPulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(251,191,36,.7)); }
+  50%      { filter: drop-shadow(0 0 12px rgba(251,191,36,1)); }
+}
+
+/* ★ 低掌握度：破碎 + 标红警告 */
+.warn-red {
+  fill: #fee2e2; stroke: #dc2626; stroke-width: 2;
+  filter: drop-shadow(0 0 5px rgba(220,38,38,.8));
+  animation: redAlert 1.6s ease-in-out infinite;
+}
+@keyframes redAlert {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .55; }
+}
+
+/* ★ 觉醒度进度条（经验条光泽感） */
+.bar-group { margin-bottom: 12px; }
+.bar-head { display: flex; justify-content: space-between; font-size: 12px; color: #6d28d9; font-weight: 600; margin-bottom: 4px; }
+.low-num { color: #dc2626; }
+.xp-track {
+  height: 12px; border-radius: 99px;
+  background: #f0ebfa; border: 1px solid #e9e4f5;
+  overflow: hidden;
+}
+.xp-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(180deg, #c4b5fd, #8b5cf6 55%, #6d28d9);
+  box-shadow: 0 0 8px rgba(139,92,246,.55);
+  position: relative;
+  transition: width .4s;
+}
+/* ★ 经验条顶部高光 */
+.xp-fill::after {
+  content: ""; position: absolute; left: 4px; right: 4px; top: 2px; height: 4px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,0));
+}
+/* ★ 低觉醒度：红色破损条 */
+.xp-fill-low {
+  background: linear-gradient(180deg, #fca5a5, #ef4444 55%, #dc2626);
+  box-shadow: 0 0 8px rgba(239,68,68,.5);
+}
+.awaken-note { font-size: 12px; color: #a78bfa; margin-top: 12px; text-align: center; }
+
+/* ★ 觉醒标签（右上角） */
+.awaken-badge {
+  font-size: 12px; font-weight: 800; color: #fff;
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  padding: 3px 12px; border-radius: 99px;
+  box-shadow: 0 0 10px rgba(251,191,36,.6);
+  animation: goldPulse 2s ease-in-out infinite;
+}

@@ -21,7 +21,7 @@ export const NAV_GROUPS = [
   { type: 'item', ...NAV_HOME },
   { type: 'item', to: '/unlocked-games', icon: ICONS.gamepad, label: '解锁游戏' },
   { type: 'item', to: '/my-games', icon: ICONS.play, label: '我的游戏' },
-  { type: 'item', to: '/journey', icon: ICONS.map, label: '通关之路', soon: true },
+  { type: 'item', to: '/journey', icon: ICONS.map, label: '通关之路' },
   {
     type: 'collapsible', label: '社区', icon: ICONS.users,
     items: [
@@ -44,7 +44,7 @@ export const NAV_GROUPS = [
 export const TABBAR = [
   { to: '/', icon: ICONS.home, label: '主页', end: true },
   { to: '/unlocked-games', icon: ICONS.gamepad, label: '游戏' },
-  { to: '/journey', icon: ICONS.map, label: '通关', soon: true },
+  { to: '/journey', icon: ICONS.map, label: '通关' },
   { to: '/me', icon: ICONS.users, label: '我的' },
 ]
 
