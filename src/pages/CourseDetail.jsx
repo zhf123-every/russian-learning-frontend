@@ -3,9 +3,8 @@
 // 与 /game/:id（GameDetail，学习路线+大纲）为两个独立页面
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { findGameById, GAME_CATALOG, FEATURED, GUIDES } from '../data/gameLibrary'
+import { findGameById, FEATURED, GUIDES } from '../data/gameLibrary'
 import { API_BASE } from '../lib/api'
-import ModePickerModal, { COURSE_MODES } from '../components/ModePickerModal'
 import { isCoursePurchased } from '../lib/courseAccess'
 
 const DIFF_META = {
@@ -51,7 +50,6 @@ export default function CourseDetail() {
   const [units, setUnits] = useState([])
   const [loading, setLoading] = useState(true)
   const [isDemo, setIsDemo] = useState(false)
-  const [pickedUnit, setPickedUnit] = useState(null)
   const [showAllOutline, setShowAllOutline] = useState(false)
   const [reviewTag, setReviewTag] = useState('全部 564')
 
@@ -92,17 +90,8 @@ export default function CourseDetail() {
   const outlineShown = showAllOutline ? units : units.slice(0, 7)
   const outlineHidden = units.length - 7
 
-  // 弹窗点"开始"：按模式跳对应学习页
-  const handleStart = (mode) => {
-    const u = pickedUnit
-    setPickedUnit(null)
-    if (!u) return
-    const packQ = game.packId ? `?pack=${game.packId}` : ''
-    if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}${packQ}`)
-    else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}${packQ}`)
-    else if (mode.key === 'speaking') navigate(`/quest/${game.packId || ''}?mode=speaking`)
-    else if (mode.key === 'reading') navigate(`/quest/${game.packId || ''}?mode=reading`)
-  }
+  // 点「开始闯关」/ 任意关卡 → 进我的游戏同款「游戏详情」学习页
+  const goLearn = () => navigate(`/game/${game.id}`)
 
   // "学这个的人也在学"：推荐其他课程包（课程类）
   const recs = [...FEATURED, ...GUIDES].filter((g) => g.id !== game.id && g.kind === 'cover').slice(0, 4)
@@ -142,7 +131,7 @@ export default function CourseDetail() {
                 </button>
                 <button
                   className="inline-flex items-center gap-1.5 rounded-full bg-primary text-white px-6 py-2 text-sm font-bold hover:brightness-110 active:scale-[.98] transition shadow-sm"
-                  onClick={() => setPickedUnit(units[0])}
+                  onClick={goLearn}
                 >
                   开始闯关
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
@@ -205,7 +194,7 @@ export default function CourseDetail() {
                 const dm = DIFF_META[u.difficulty] || DIFF_META.easy
                 const sm = STATUS_META[u.status] || STATUS_META['未开始']
                 return (
-                  <div key={u.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition cursor-pointer" onClick={() => setPickedUnit(u)}>
+                  <div key={u.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition cursor-pointer" onClick={goLearn}>
                     <span className="text-xs font-bold text-gray-400 w-6 shrink-0">{String(i + 1).padStart(2, '0')}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -313,15 +302,7 @@ export default function CourseDetail() {
         </div>
       </main>
 
-      {/* ===== 练习模式弹窗 ===== */}
-      {pickedUnit && (
-        <ModePickerModal
-          title={pickedUnit.title}
-          modes={COURSE_MODES}
-          onClose={() => setPickedUnit(null)}
-          onStart={handleStart}
-        />
-      )}
+
     </div>
   )
 }
