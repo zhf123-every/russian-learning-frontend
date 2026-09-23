@@ -22,6 +22,7 @@ const TITLES = {
 }
 const PREFIX_TITLES = [
   ['/game/', '游戏详情'],
+  ['/course/', '课程详情'],
   ['/quest-practice', '闯关练习'],
   ['/quest-dictation', '听写练习'],
   ['/square/', '精听学习'],

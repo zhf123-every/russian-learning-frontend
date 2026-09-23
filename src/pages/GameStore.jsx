@@ -59,7 +59,7 @@ function UnlockBar({ game, onVideoStart }) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
           已解锁
         </span>
-        <Link to={`/game/${game.id}`} className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-0.5">
+        <Link to={`/course/${game.id}`} className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-0.5">
           去学习 <ChevronRight />
         </Link>
       </div>
@@ -152,9 +152,9 @@ export default function GameStore() {
     return () => window.removeEventListener('rlearn:purchase-changed', sync)
   }, [])
 
-  // 课程类已解锁 → 进详情；未解锁 → 不响应点击（只能先解锁）
+  // 课程类已解锁 → 进商城版课程详情页 /course/:id；未解锁 → 不响应点击（只能先解锁）
   const onCoverCardClick = (it) => {
-    if (isCoursePurchased(it.id)) navigate(`/game/${it.id}`)
+    if (isCoursePurchased(it.id)) navigate(`/course/${it.id}`)
   }
   // 视频类已解锁 → 弹练习模式弹窗
   const onVideoCardClick = (v) => {

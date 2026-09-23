@@ -20,6 +20,7 @@ import CourseStore from './pages/CourseStore'
 import GameStore from './pages/GameStore'
 import MyGames from './pages/MyGames'
 import GameDetail from './pages/GameDetail'
+import CourseDetail from './pages/CourseDetail'
 import QuestDictation from './pages/QuestDictation'
 
 export default function App() {
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/unlocked-games" element={<GameStore />} />
         <Route path="/my-games" element={<MyGames />} />
         <Route path="/game/:id" element={<GameDetail />} />
+        <Route path="/course/:id" element={<CourseDetail />} />
         <Route path="/square" element={<SquarePage />} />
         <Route path="/tutor" element={<TutorChat />} />
 
