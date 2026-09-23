@@ -202,32 +202,22 @@ export default function GameStore() {
     if (uploaded || isCoursePurchased(v.id)) setVideoTarget(v)
   }
 
-  // 视频弹窗“开始”：有真实 videoUrl（投稿视频）→ 解析并播放；内建演示视频 → 提示即将接入
-  const [playUrl, setPlayUrl] = useState(null) // 当前要播放的视频地址
-  const [playTitle, setPlayTitle] = useState('')
-  const onVideoStart = async (mode) => {
+  // 视频弹窗“开始”：跳转五步学习页（盲听/听写/精读纠错/跟读/口语评测）
+  // 模式 key → step 映射：listen_overall/listen_segment→listen；intensive→dictate；
+  // follow→recite；speaking→speaking；其余 fallback listen
+  const MODE_TO_STEP = {
+    listen_overall: 'listen', listen_segment: 'listen',
+    intensive: 'dictate',
+    follow: 'recite',
+    speaking: 'speaking',
+  }
+  const onVideoStart = (mode) => {
     const v = videoTarget
     setVideoTarget(null)
-    if (v && v.videoUrl) {
-      try {
-        let url = v.videoUrl
-        if (url.startsWith('b2://')) {
-          const r = await apiFetch('/api/videos/resolve?url=' + encodeURIComponent(url))
-          const j = await r.json()
-          if (j.ok && j.url) url = j.url
-        }
-        setPlayTitle(v.title || '通关视频')
-        setPlayUrl(url)
-      } catch (e) {
-        toast('视频播放地址解析失败：' + (e.message || '请重试'))
-      }
-      return
-    }
-    toast(`「${mode.name}」已选好，演示视频正式素材即将上线`)
+    if (!v) return
+    const step = MODE_TO_STEP[mode.key] || 'listen'
+    navigate(`/video-study/${v.id}?step=${step}`)
   }
-
-  // 关闭播放器
-  const closePlayer = () => { setPlayUrl(null); setPlayTitle('') }
 
   return (
     <div className="min-h-full bg-base-100">
@@ -350,19 +340,6 @@ export default function GameStore() {
         )}
 
       </main>
-
-      {/* ===== 投稿视频 · 真实播放器弹窗 ===== */}
-      {playUrl && (
-        <div className="modal-mask" onClick={closePlayer}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 880, width: '92vw', padding: 0, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #eee' }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playTitle}</h2>
-              <button type="button" onClick={closePlayer} style={{ border: 'none', background: 'none', fontSize: 18, cursor: 'pointer', color: '#888' }}>✕</button>
-            </div>
-            <video src={playUrl} controls autoPlay style={{ width: '100%', maxHeight: '70vh', display: 'block', background: '#000' }} />
-          </div>
-        </div>
-      )}
 
       {/* ===== 视频类 · 练习模式弹窗 ===== */}
       {videoTarget && (

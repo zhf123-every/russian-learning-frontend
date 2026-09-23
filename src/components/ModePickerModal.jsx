@@ -59,7 +59,7 @@ export const COURSE_MODES = [
 
 export const VIDEO_MODES = [
   {
-    key: 'listen_overall', name: '整体盲听', emoji: '🎬', tag: '第1步',
+    key: 'listen_overall', name: '盲听', emoji: '🎬', tag: '第1步',
     desc: '隐藏字幕，反复听完整篇素材，感受整体语境与主旨。',
     features: [
       { icon: '🙈', title: '隐藏字幕', sub: '不看字幕硬听' },
@@ -69,42 +69,42 @@ export const VIDEO_MODES = [
     cta: '开始盲听', ready: true,
   },
   {
-    key: 'listen_segment', name: '逐段盲听', emoji: '🎞️', tag: '第2步',
-    desc: '单句循环播放，只听不写，逐句磨耳朵。',
+    key: 'intensive', name: '听写', emoji: '⌨️', tag: '第2步',
+    desc: '单句循环播放，把听到的敲入下划线输入框，正确按空格跳下一句。',
     features: [
-      { icon: '🔂', title: '逐句循环', sub: '一句话听透' },
-      { icon: '👂', title: '纯听训练', sub: '不输入只磨耳' },
-      { icon: '⏪', title: '自由回放', sub: '没懂倒回去' },
+      { icon: '🔂', title: '一句一停', sub: '读完自动暂停' },
+      { icon: '⌨️', title: '逐句听写', sub: '听一句敲一句' },
+      { icon: '⏎', title: '空格跳句', sub: '提交正确即下一句' },
     ],
-    cta: '开始听', ready: true,
+    cta: '开始听写', ready: true,
   },
   {
-    key: 'intensive', name: '精听', emoji: '📚', tag: '核心',
-    desc: '逐句听写 + 精读纠错，查生词、分析连读弱读差异。',
+    key: 'correct', name: '精读纠错', emoji: '📖', tag: '第3步',
+    desc: '视频下方显示字幕，随时暂停；悬停字幕查词，AI 解析同页完成。',
     features: [
-      { icon: '⌨️', title: '逐句听写', sub: '听一句敲一句' },
-      { icon: '📖', title: '原文对照', sub: '写完看原文' },
-      { icon: '🔖', title: '生词标注', sub: '生词语法点标记' },
+      { icon: '🖱️', title: '悬停查词', sub: '单词释义即指即查' },
+      { icon: '🤖', title: 'AI 解析', sub: '逐词/成分/语法' },
+      { icon: '⏸️', title: '随时暂停', sub: '边看边读边查' },
     ],
-    cta: '开始精听', ready: true,
+    cta: '开始精读', ready: true,
   },
   {
     key: 'follow', name: '跟读', emoji: '🪞', tag: '第4步',
-    desc: '原文显示，单句循环影子跟读，模仿重音、语调与语速。',
+    desc: '可分段跟读，也可整篇跟读；视频下方显示字幕跟随高亮。',
     features: [
       { icon: '👤', title: '影子跟读', sub: '贴着原声模仿' },
-      { icon: '🎯', title: '语调模仿', sub: '重音语气对齐' },
-      { icon: '🔂', title: '单句循环', sub: '一句练到位' },
+      { icon: '🔂', title: '分段跟读', sub: '一句练到位' },
+      { icon: '🎞️', title: '整篇跟读', sub: '连播字幕跟随' },
     ],
     cta: '开始跟读', ready: true,
   },
   {
-    key: 'speaking', name: '口语测评', emoji: '🎤', tag: 'AI',
-    desc: '录音复述，AI 把你的发音和原声逐句比对打分。',
+    key: 'speaking', name: '口语评测', emoji: '🎤', tag: 'AI',
+    desc: '录音复述，AI 把你的发音和原声逐词比对，按真实数据打分。',
     features: [
       { icon: '🎙️', title: '录音复述', sub: '录下你的复述' },
-      { icon: '🤖', title: 'AI 比对', sub: '和原声逐句比' },
-      { icon: '⭐', title: '发音打分', sub: '哪里差指出来' },
+      { icon: '📊', title: '逐词标注', sub: '读对/读错标出来' },
+      { icon: '⭐', title: 'AI 打分', sub: '按真实录音评分' },
     ],
     cta: '开始评测', ready: true,
   },

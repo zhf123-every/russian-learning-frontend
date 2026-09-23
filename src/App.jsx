@@ -23,6 +23,7 @@ import GameDetail from './pages/GameDetail'
 import CourseDetail from './pages/CourseDetail'
 import QuestDictation from './pages/QuestDictation'
 import Journey from './pages/Journey'
+import VideoStudy from './pages/VideoStudy'
 import SaveNotes from './pages/SaveNotes'
 import SaveProficiency from './pages/SaveProficiency'
 import SaveUnknown from './pages/SaveUnknown'
@@ -38,6 +39,7 @@ export default function App() {
       <Route path="/test-practice" element={<TestPractice />} />
       <Route path="/square/:videoId" element={<Study />} />
       <Route path="/study/:videoId" element={<Study />} />
+      <Route path="/video-study/:videoId" element={<VideoStudy />} />
 
       {/* 浏览类页面：统一套 AppShell（桌面侧栏 / 手机顶栏+底栏） */}
       <Route element={<AppShell />}>
