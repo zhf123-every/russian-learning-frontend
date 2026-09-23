@@ -214,7 +214,7 @@ export default function AnswerPanel({
                     </span>
                   )}
 
-                  {/* 重音符/音标（灰色小字） */}
+                  {/* 重音符（灰色小字） */}
                   <div style={styles.phonetic}>{displayWord}</div>
 
                   {/* 大字单词 */}

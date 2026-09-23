@@ -172,10 +172,10 @@ const speakPreview = (text, vol = 1, rate = 1) => {
   } catch (e) { /* 忽略 */ }
 }
 
-export default function SettingsModal({ onClose }) {
+export default function SettingsModal({ onClose, defaultTab }) {
   const { settings, save } = useSettingsStore()
   const [s, setS] = useState(settings)
-  const [tab, setTab] = useState('快捷键')   // 默认选中快捷键
+  const [tab, setTab] = useState(defaultTab || '快捷键')   // 默认选中快捷键；学习页传入'声音'
   const [hk, setHk] = useState(() => loadHotkeys())
   const [recId, setRecId] = useState(null)    // 正在录制的功能 id
   const [conflict, setConflict] = useState(null) // {id, newKeys, oldId, oldLabel}
@@ -301,7 +301,7 @@ export default function SettingsModal({ onClose }) {
       {/* 区块1：发音源设置 */}
       <div className="qs-sec">
         <div className="qs-sec-title">发音源设置</div>
-        <div className="qs-sec-sub">选择英语发音的来源和相关设置</div>
+        <div className="qs-sec-sub">选择俄语发音的来源和相关设置</div>
 
         <div className="qs-item">
           <div className="qs-item-left">
@@ -321,7 +321,7 @@ export default function SettingsModal({ onClose }) {
           </div>
           <div className="qs-item-right">
             <select value={s.ttsVoice || 'female'} onChange={e => { const v = e.target.value; set('ttsVoice', v); save({ ...s, ttsVoice: v }) }}>
-              <option value="female">Ava（美式-女）</option>
+              <option value="female">Svetlana（俄语-女）</option>
               <option value="male">Dmitry（俄语-男）</option>
             </select>
             <button type="button" className="qs-preview-btn" title="试听发音人" onClick={() => speakPreview('Привет! Это проверка звука.', (s.vol ?? 100) / 100, s.rate || 1)}>🔊</button>
@@ -624,11 +624,11 @@ export default function SettingsModal({ onClose }) {
                     </div>
                     <div className="qs-show-row">
                       <span className="qs-stage-k">显示内容</span>
-                      <span className="qs-show-item"><span>英文</span><Toggle on={ui.listenShowEn !== false} onChange={v => patchUi({ listenShowEn: v })} /></span>
+                      <span className="qs-show-item"><span>俄语</span><Toggle on={ui.listenShowEn !== false} onChange={v => patchUi({ listenShowEn: v })} /></span>
                       <span className="qs-show-item"><span>中文</span><Toggle on={ui.listenShowZh !== false} onChange={v => patchUi({ listenShowZh: v })} /></span>
-                      <span className="qs-show-item"><span>音标</span><Toggle on={ui.listenShowIpa !== false} onChange={v => patchUi({ listenShowIpa: v })} /></span>
+                      <span className="qs-show-item"><span>重音</span><Toggle on={ui.listenShowIpa !== false} onChange={v => patchUi({ listenShowIpa: v })} /></span>
                     </div>
-                    <div className="qs-stage-hint">至少保留英文或中文其一</div>
+                    <div className="qs-stage-hint">至少保留俄语或中文其一</div>
                   </div>
 
                   {/* 区块2：推进设置 */}
@@ -777,7 +777,7 @@ export default function SettingsModal({ onClose }) {
                   <div className="qs-sec">
                     <div className="qs-sec-title">词性颜色设置</div>
                     <div className="qs-sec-sub">自定义不同词性的显示颜色和可见性</div>
-                    <div className="qs-sub-note">中文（名词/动词/形容词/...）或英文（NOUN/VERB/ADJ/...）</div>
+                    <div className="qs-sub-note">中文（名词/动词/形容词/...）或俄语缩写（СУЩ/ГЛАГ/ПРИЛ/...）</div>
                     <div className="qs-pos-actions">
                       <button className="qs-pos-act qs-pos-act-blue" onClick={() => { const nv = {}; POS_ORDER.forEach(k => { nv[k] = true }); patchUi({ posVis: nv }) }}>全部显示</button>
                       <button className="qs-pos-act qs-pos-act-gray" onClick={() => { const nv = {}; POS_ORDER.forEach(k => { nv[k] = false }); patchUi({ posVis: nv }) }}>全部隐藏</button>
@@ -844,10 +844,10 @@ export default function SettingsModal({ onClose }) {
                     <div className="qs-sec-sub">调整口语评测的显示模式</div>
                     <div className="qs-sel-group">
                       <div className={'qs-sel-card' + ((ui.speakMode || 'en') === 'en' ? ' qs-sel-on' : '')} onClick={() => patchUi({ speakMode: 'en' })}>
-                        <span className="qs-sel-ico">Aa</span>
+                        <span className="qs-sel-ico">Аа</span>
                         <div className="qs-sel-body">
-                          <div className="qs-sel-title">显示英文</div>
-                          <div className="qs-sel-desc">看英文原句，练习朗读发音</div>
+                          <div className="qs-sel-title">显示俄语</div>
+                          <div className="qs-sel-desc">看俄语原句，练习朗读发音</div>
                         </div>
                         {(ui.speakMode || 'en') === 'en' && <span className="qs-sel-check">✓</span>}
                       </div>

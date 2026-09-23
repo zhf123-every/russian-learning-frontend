@@ -156,6 +156,17 @@ export default function DictationExam({
     const s = sentences[i]
     if (!s) return
     if (ttsMode) {
+      if ((settings.ttsSource || 'premium') === 'system' && window.speechSynthesis) {
+        try { window.speechSynthesis.cancel() } catch (e) {}
+        const u = new SpeechSynthesisUtterance(s.russian)
+        u.lang = 'ru-RU'
+        const voices = window.speechSynthesis.getVoices()
+        const hit = voices.find(x => x.lang && x.lang.toLowerCase().startsWith('ru'))
+        if (hit) u.voice = hit
+        u.rate = 0.95
+        window.speechSynthesis.speak(u)
+        return
+      }
       try { ttsAudioRef.current?.pause() } catch (e) { /* ignore */ }
       const audio = ttsAudioRef.current || (ttsAudioRef.current = new Audio())
       audio.src = ttsUrl(s.russian, v)

@@ -13,11 +13,15 @@ import { analyzeSentence, pronunciationScore } from '../lib/ai'
 import { useGameVideoStore } from '../store/gameVideoStore'
 import { useCourseStore } from '../store/courseStore'
 import { useSquareStore } from '../store/squareStore'
+import { useSettingsStore } from '../store/settingsStore'
 import { apiFetch } from '../lib/api'
 import { VIDEOS as BUILTIN_VIDEOS } from '../data/gameLibrary'
 import { toast } from '../lib/toast'
 import WordPop from '../components/WordPop'
 import ModePickerModal, { VIDEO_MODES } from '../components/ModePickerModal'
+import StudyToolbar, { Icon as StudyIcon } from '../components/quest/StudyToolbar'
+import SettingsModal from '../components/SettingsModal'
+import FullTextPanel from '../components/FullTextPanel'
 
 const STEPS = [
   { key: 'listen', label: '盲听', short: '盲听' },
@@ -62,12 +66,25 @@ export default function VideoStudy() {
   const [curIdx, setCurIdx] = useState(0)
   const [paused, setPaused] = useState(true)
   const [speed, setSpeed] = useState(1.0)
+  const { settings, save: saveSettings } = useSettingsStore()
+  // —— 设置弹窗关联：读「听力/视频/口语」面板配置（rlearn_quest_ui，与 RuQuest 同 key）——
+  const loadUiCfg = () => { try { return JSON.parse(localStorage.getItem('rlearn_quest_ui') || '{}') || {} } catch (e) { return {} } }
+  const [uiCfg, setUiCfg] = useState(loadUiCfg)
+  useEffect(() => { const h = () => setUiCfg(loadUiCfg()); window.addEventListener('storage', h); return () => window.removeEventListener('storage', h) }, [])
+  useEffect(() => { const h = () => setIsFs(!!document.fullscreenElement); document.addEventListener('fullscreenchange', h); return () => document.removeEventListener('fullscreenchange', h) }, [])
   const [videoError, setVideoError] = useState('')
   const [aiHtml, setAiHtml] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [popWord, setPopWord] = useState(null)
   const [modeOpen, setModeOpen] = useState(false)
   const [tooltipOn, setTooltipOn] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const [loopMode, setLoopMode] = useState(false)
+  const [showFullText, setShowFullText] = useState(false)
+  const [isFs, setIsFs] = useState(false)
+  const [coverH, setCoverH] = useState(60)                // 视频遮挡条高度（视频面板 videoCover）
+  const [showSettings2, setShowSettings2] = useState(false)
+  useEffect(() => { if (searchParams.get('s') === '1') setShowSettings2(true) }, [searchParams])
   const [recording, setRecording] = useState(false)
   const [recordingIdx, setRecordingIdx] = useState(-1)
   const [myAudioUrl, setMyAudioUrl] = useState(null)
@@ -82,6 +99,7 @@ export default function VideoStudy() {
   const [reciteMode, setReciteMode] = useState('segment')
   const [activeIdx, setActiveIdx] = useState(-1)
 
+  const rootRef = useRef(null)
   const videoRef = useRef(null)
   const pRef = useRef(null)
   const mediaRecorderRef = useRef(null)
@@ -98,6 +116,8 @@ export default function VideoStudy() {
   stepRef.current = step
   const reciteModeRef = useRef(reciteMode)
   reciteModeRef.current = reciteMode
+  const loopModeRef = useRef(loopMode)
+  loopModeRef.current = loopMode
   const sentencesRef = useRef([])
   sentencesRef.current = sentences
   const recordingIdxRef = useRef(-1)
@@ -189,11 +209,55 @@ export default function VideoStudy() {
     setSpeed(r)
     if (pRef.current) pRef.current.setRate(r)
     else if (videoRef.current) videoRef.current.playbackRate = r
+    saveSettings({ rate: r }) // 同步到设置存储（设置弹窗「播放」面板倍速）
   }
+  // 设置弹窗改倍速 -> 播放器实时生效
+  useEffect(() => {
+    const r = settings.rate || 1.0
+    setSpeed(r)
+    if (pRef.current) pRef.current.setRate(r)
+    else if (videoRef.current) videoRef.current.playbackRate = r
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.rate])
+
+  // ---------- 句乐部式工具栏回调 ----------
+  const toggleMute = () => {
+    setMuted(m => {
+      const next = !m
+      if (videoRef.current) videoRef.current.muted = next
+      return next
+    })
+  }
+  const toggleLoop = () => { setLoopMode(m => !m) }
+  const goFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {})
+      setIsFs(false)
+      return
+    }
+    setIsFs(true) // 点击瞬间立即收起页眉/控制行，不等 fullscreenchange 事件
+    const el = rootRef.current
+    if (el) el.requestFullscreen().catch(() => { setIsFs(false); toast('全屏失败') })
+  }
+  const doReset = () => {
+    stopPlay()
+    setCurIdx(0); setActiveIdx(-1)
+    setDictInput(''); setDictResult(null); setDictDone({})
+    setScoreResult(null); setMyAudioUrl(null); setMyBlob(null); setAiHtml('')
+    toast('已重置进度')
+  }
+  const jumpTo = (i) => { setCurIdx(i); setActiveIdx(-1) }
+
+  // ---------- 口语评测：自动播放当前段原文（口语面板 speakAutoPlay） ----------
+  useEffect(() => {
+    if (step === 'speaking' && uiCfg.speakAutoPlay && recordingIdx >= 0 && !recording && sentences[recordingIdx]) {
+      playSeg(recordingIdx, { loop: false })
+    }
+  }, [step, recordingIdx, uiCfg.speakAutoPlay, sentences.length]) // eslint-disable-line
 
   // ---------- 听写：进入句子自动播放一句（播完自动停，等输入提交） ----------
   useEffect(() => {
-    if (step === 'dictate' && sentences.length > 0) {
+    if (step === 'dictate' && sentences.length > 0 && uiCfg.listenSlow !== false) {
       playSeg(curIdx, { loop: false })
     }
   }, [step, curIdx, playSrc, sentences.length]) // eslint-disable-line
@@ -208,7 +272,7 @@ export default function VideoStudy() {
     const st = stepRef.current
     if (st === 'listen') { playFull(); return }
     if (st === 'recite' && reciteModeRef.current === 'full') { playFull(); return }
-    if (s[i]) playSeg(i, { loop: false })
+    if (s[i]) playSeg(i, { loop: loopModeRef.current, times: loopModeRef.current ? 999 : 3 })
   }, [playFull, playSeg, stopPlay])
 
   useEffect(() => {
@@ -267,7 +331,16 @@ export default function VideoStudy() {
     setDictResult({ correct, target: cur.russian, input })
     if (correct) {
       setDictDone(d => ({ ...d, [cur.id]: true }))
-      toast('正确！按空格继续下一句')
+      if (uiCfg.autoNextS) {
+        toast('正确！即将自动进入下一句')
+        setTimeout(() => {
+          setDictInput(''); setDictResult(null)
+          if (curIdxRef.current < sentences.length - 1) { setCurIdx(curIdxRef.current + 1); setActiveIdx(-1) }
+          else toast('全部句子听写完成 🎉')
+        }, 700)
+      } else {
+        toast('正确！按空格继续下一句')
+      }
     } else {
       toast('有错误，请再听一次')
     }
@@ -424,6 +497,8 @@ export default function VideoStudy() {
   }
 
   const stepMeta = STEPS.find(s => s.key === step) || STEPS[0]
+  const videoPos = uiCfg.videoPos || 'center'          // 视频面板：视频位置（center/side）
+  const studyBg = { default: '#fff', warm: '#faf3e7', green: '#eaf4ea' }[uiCfg.bgColor || 'default'] || '#fff'  // 外观面板「练习背景色」
   const stepIdx = STEPS.findIndex(s => s.key === step)
 
   const renderSub = (text) => (
@@ -476,57 +551,67 @@ export default function VideoStudy() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', display: 'flex', flexDirection: 'column', fontFamily: "'Nunito', 'Segoe UI', sans-serif" }}>
-      {/* ===== 顶部白底固定页眉（sticky，不随滚动） ===== */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 20, height: 56, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid #eee', background: '#fff', gap: 8 }}>
-        <button type="button" onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#555', display: 'flex', alignItems: 'center' }} aria-label="返回">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-        </button>
-        <span style={{ fontSize: 17, fontWeight: 700, color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {video.title || '视频学习'}
-        </span>
-        <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 600 }}>{stepMeta.label}</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 12, color: '#9ca3af' }}>{stepIdx + 1}/{STEPS.length}</span>
-          {sentences.length === 0 && (
-            <button type="button" onClick={genSubs} className="btn sm primary" style={{ fontSize: 12 }}>生成字幕</button>
-          )}
-          {/* 手柄标签：悬停提示"切换游戏模式"，点击弹选择模式弹窗 */}
-          <div
-            style={{ position: 'relative' }}
-            onMouseEnter={() => setTooltipOn(true)}
-            onMouseLeave={() => setTooltipOn(false)}
+    <div ref={rootRef} style={{ height: '100vh', overflowY: 'auto', background: studyBg, display: 'flex', flexDirection: 'column', fontFamily: "'Nunito', 'Segoe UI', sans-serif" }}>
+      {/* ===== 句乐部式顶部工具栏（sticky；全屏时收起） ===== */}
+      {!isFs && (
+        <StudyToolbar
+          title={video.title}
+          stepLabel={stepMeta.label}
+          stepIdx={stepIdx + 1}
+          stepTotal={STEPS.length}
+          curIdx={curIdx}
+          total={sentences.length}
+          paused={paused}
+          loopMode={loopMode}
+          muted={muted}
+          speed={speed}
+          sentences={sentences}
+          videoType={(getVideoPlay(playSrc) || {}).type}
+          onBack={() => navigate(-1)}
+          onTogglePlay={togglePlay}
+          onPrev={() => { if (curIdx > 0) { setCurIdx(curIdx - 1); setActiveIdx(-1) } }}
+          onNext={() => { if (curIdx < sentences.length - 1) { setCurIdx(curIdx + 1); setActiveIdx(-1) } }}
+          onOpenMode={() => setModeOpen(true)}
+          onReset={doReset}
+          onSetSpeed={setRate}
+          onToggleLoop={toggleLoop}
+          onToggleMute={toggleMute}
+          onFullscreen={goFullscreen}
+          onOpenFullText={() => setShowFullText(true)}
+          onJump={jumpTo}
+          onSettingsClose={() => setUiCfg(loadUiCfg())}
+        />
+      )}
+
+      {/* 完整设置弹窗（?s=1 直达 / 齿轮进入） */}
+      {showSettings2 && <SettingsModal onClose={() => setShowSettings2(false)} defaultTab={searchParams.get('tab') || '声音'} />}
+
+      {/* 播放控制行（七个分类标签下方，靠右，固定不随滚动；控件包在白色圆角卡片中，对标句乐部；全屏时保持显示） */}
+      <div style={{ position: 'sticky', top: 59, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '8px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '6px 8px', boxShadow: '0 1px 3px rgba(0,0,0,.05)' }}>
+          <button type="button" onClick={togglePlay} aria-label="播放/暂停" title="播放/暂停（空格）" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: paused === false ? '#f5f3ff' : 'transparent', color: '#555', width: 40, height: 40, borderRadius: 10, cursor: 'pointer', flexShrink: 0 }}>
+            {paused ? StudyIcon.play : StudyIcon.pause}
+          </button>
+          <select
+            value={speed}
+            onChange={e => setRate(parseFloat(e.target.value))}
+            aria-label="倍速"
+            style={{ padding: '5px 8px', borderRadius: 8, border: 'none', fontSize: 13, background: 'transparent', color: '#555', cursor: 'pointer', height: 36, flexShrink: 0 }}
           >
-            <button
-              type="button"
-              onClick={() => setModeOpen(true)}
-              aria-label="切换游戏模式"
-              style={{
-                width: 38, height: 38, borderRadius: 10, border: '1px solid #e5e7eb',
-                background: '#fafafa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="#18181b" aria-hidden="true">
-                <path d="M17 4H7C4.243 4 2 6.243 2 9v6c0 2.757 2.243 5 5 5 1.2 0 2.4-.45 3.33-1.27l1.67-1.48 1.67 1.48C14.6 19.55 15.8 20 17 20c2.757 0 5-2.243 5-5V9c0-2.757-2.243-5-5-5zm-6 4h-2v2H7v2h2v2h2v-2h2v-2h-2V8zm6.5 7a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm-2-3.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
-              </svg>
-            </button>
-            {tooltipOn && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 8px)', right: 0, whiteSpace: 'nowrap',
-                background: '#18181b', color: '#fff', fontSize: 12, padding: '6px 12px', borderRadius: 8,
-                boxShadow: '0 4px 16px rgba(0,0,0,0.18)', zIndex: 30,
-              }}>
-                切换游戏模式
-                <div style={{ position: 'absolute', top: -5, right: 14, width: 10, height: 10, background: '#18181b', transform: 'rotate(45deg)' }} />
-              </div>
-            )}
-          </div>
+            {[0.5, 0.75, 1.0, 1.25, 1.5].map(sp => <option key={sp} value={sp}>{sp}x</option>)}
+          </select>
+          <button type="button" onClick={toggleLoop} aria-label="循环" title={loopMode ? '循环中（关闭）' : '循环播放（开启）'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: loopMode ? '#f5f3ff' : 'transparent', color: loopMode ? '#6d28d9' : '#555', width: 40, height: 40, borderRadius: 10, cursor: 'pointer', flexShrink: 0 }}>
+            {StudyIcon.repeat}
+          </button>
+          <button type="button" onClick={toggleMute} aria-label={muted ? '取消静音' : '静音'} title={muted ? '取消静音' : '静音'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: muted ? '#f5f3ff' : 'transparent', color: muted ? '#6d28d9' : '#555', width: 40, height: 40, borderRadius: 10, cursor: 'pointer', flexShrink: 0 }}>
+            {muted ? StudyIcon.volOff : StudyIcon.volOn}
+          </button>
         </div>
       </div>
 
       {/* ===== 视频区（中上） ===== */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 16px 0' }}>
-        <div style={{ width: '100%', maxWidth: 760, aspectRatio: '16/9', background: '#000', borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: videoPos === 'side' ? 'flex-start' : 'center', padding: '16px 16px 0' }}>
+        <div style={{ width: '100%', maxWidth: videoPos === 'center' ? 760 : 560, aspectRatio: '16/9', background: '#000', borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
           {playSrc ? (
             getVideoPlay(playSrc).type === 'direct' ? (
               <video
@@ -551,6 +636,14 @@ export default function VideoStudy() {
               {videoError ? '视频无法播放：' + videoError : '视频加载中…'}
             </div>
           )}
+          {uiCfg.videoCover && (
+            <div
+              style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: coverH, background: 'rgba(24,24,27,0.82)', zIndex: 4, cursor: 'ns-resize', borderTop: '1px solid rgba(255,255,255,0.22)' }}
+              onMouseDown={(e) => { e.preventDefault(); const startY = e.clientY; const startH = coverH; const mv = (ev) => { const nh = Math.max(20, Math.min(220, startH + (ev.clientY - startY))); setCoverH(nh) }; const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up) }; window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up) }}
+            >
+              <div style={{ position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)', fontSize: 11, color: 'rgba(255,255,255,0.65)', background: 'rgba(0,0,0,0.35)', padding: '2px 8px', borderRadius: 999 }}>⤒ 拖拽遮挡字幕</div>
+            </div>
+          )}
           {videoError && playSrc && (
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(24,24,27,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#fff', zIndex: 5, textAlign: 'center', padding: 16 }}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>⚠️ 视频无法播放</div>
@@ -560,16 +653,13 @@ export default function VideoStudy() {
           )}
         </div>
 
-        {/* 快捷键提示 + 变速（暂停/播放/整篇连播按钮已移除，由空格控制） */}
+        {/* 快捷键提示（播放/暂停由空格控制） */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
           <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>
             {step === 'dictate'
               ? '视频自动播一句停一句 · Enter 提交 · 正确后空格跳下一句'
               : '空格 播放/暂停 · ← → 上一句/下一句'}
           </span>
-          <select value={speed} onChange={e => setRate(parseFloat(e.target.value))} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, background: '#fff' }}>
-            {SPEEDS.map(s => <option key={s} value={s}>{s}x</option>)}
-          </select>
         </div>
       </div>
 
@@ -579,7 +669,8 @@ export default function VideoStudy() {
         {sentences.length === 0 && (
           <div style={{ padding: 14, background: '#fef3c7', borderRadius: 10, color: '#92400e', fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>
             <b>该视频暂无字幕。</b>{' '}
-            {step === 'listen' ? '可先盲听整篇（按空格开始）；' : '精读/跟读/口语需要字幕断句，请先点右上角「生成字幕」。'}
+            {step === 'listen' ? '可先盲听整篇（按空格开始）；' : '精读/跟读/口语需要字幕断句：'}
+            <button type="button" className="btn sm primary" onClick={genSubs} style={{ fontSize: 12, marginTop: 6 }}>生成字幕</button>
           </div>
         )}
 
@@ -632,7 +723,7 @@ export default function VideoStudy() {
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 8 }}>
-                  <button className="btn primary" onClick={() => playSeg(curIdx, { loop: false })}>🔊 再听本句</button>
+                  <button className="btn primary" onClick={() => playSeg(curIdx, { loop: !!uiCfg.loopPlay, times: uiCfg.listenSlowTimes ?? 1 })}>🔊 再听本句</button>
                   <button className="btn" onClick={checkDict}>提交（Enter）</button>
                   <button className="btn" onClick={() => {
                     setDictDone(d => ({ ...d, [cur.id]: true }))
@@ -663,15 +754,17 @@ export default function VideoStudy() {
               <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>请先「生成字幕」再精读</div>
             ) : (
               <>
-                <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 18, lineHeight: 1.8, fontWeight: 500, color: '#18181b' }}>
-                  {renderSub(cur.russian)}
-                </div>
-                {cur.chinese && (
+                {uiCfg.listenShowEn !== false && (
+                  <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 18, lineHeight: 1.8, fontWeight: 500, color: '#18181b' }}>
+                    {renderSub(cur.russian)}
+                  </div>
+                )}
+                {uiCfg.listenShowZh !== false && cur.chinese && (
                   <div style={{ padding: '8px 4px', fontSize: 14, color: '#888' }}>{cur.chinese}</div>
                 )}
                 <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
                   <button className="btn sm primary" onClick={runAI} disabled={analyzing}>{analyzing ? '解析中…' : '✨ AI 解析'}</button>
-                  <button className="btn sm" onClick={() => playSeg(curIdx, { loop: true })}>🔁 循环本句</button>
+                  <button className="btn sm" onClick={() => playSeg(curIdx, { loop: true, times: uiCfg.listenAnsTimes ?? 1 })}>🔁 循环本句</button>
                 </div>
                 {aiHtml && (
                   <div style={{ marginTop: 10, padding: 14, background: '#f8f8fb', borderRadius: 10, border: '1px solid #eee', fontSize: 14, lineHeight: 1.7, textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: aiHtml }} />
@@ -703,9 +796,11 @@ export default function VideoStudy() {
                   <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>请先「生成字幕」再跟读</div>
                 ) : (
                   <>
-                    <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 18, lineHeight: 1.8, fontWeight: 500 }}>
-                      {renderSub(cur.russian)}
-                    </div>
+                    {uiCfg.listenShowEn !== false && (
+                      <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 18, lineHeight: 1.8, fontWeight: 500 }}>
+                        {renderSub(cur.russian)}
+                      </div>
+                    )}
                     <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'center' }}>
                       <button className="btn primary" onClick={() => playSeg(curIdx, { loop: true, times: 3 })}>🔁 循环跟读</button>
                       <button className="btn" onClick={() => playSeg(curIdx, { loop: false })}>听一次</button>
@@ -798,8 +893,8 @@ export default function VideoStudy() {
               <>
                 {recordingIdx >= 0 && !recording ? (
                   <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 18, lineHeight: 1.8, fontWeight: 500 }}>
-                    {renderSub(sentences[recordingIdx]?.russian || '')}
-                    {sentences[recordingIdx]?.chinese && <div style={{ marginTop: 6, fontSize: 13, color: '#888' }}>{sentences[recordingIdx].chinese}</div>}
+                    {uiCfg.speakMode !== 'zh' && uiCfg.speakMode !== 'blind' && renderSub(sentences[recordingIdx]?.russian || '')}
+                    {uiCfg.speakMode === 'zh' && <div style={{ fontSize: 18, fontWeight: 500 }}>{sentences[recordingIdx]?.chinese || ''}</div>}
                   </div>
                 ) : (
                   <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 16, lineHeight: 2, maxHeight: 260, overflowY: 'auto' }}>
@@ -851,6 +946,15 @@ export default function VideoStudy() {
 
       {/* 生词弹窗 */}
       {popWord && <WordPop word={popWord.word} x={popWord.x} y={popWord.y} onClose={() => setPopWord(null)} />}
+
+      {/* 课文全文对照面板（📖 图标） */}
+      {showFullText && (
+        <FullTextPanel
+          title={(video.title || '视频') + ' · 全文对照'}
+          sentences={sentences}
+          onClose={() => setShowFullText(false)}
+        />
+      )}
     </div>
   )
 }

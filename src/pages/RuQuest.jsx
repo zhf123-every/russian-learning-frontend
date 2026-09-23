@@ -205,7 +205,7 @@ const sfxRating = (label) => { // 结算评级成就音
 }
 
 // ================= 模块1.1 字体与字号体系 =================
-// 字体规则：俄文+中文统一系统默认无衬线；可选 Nunito/Fredoka 圆润英文字体切换（只覆盖拉丁字符，其余自动回退）
+// 字体规则：俄文+中文统一系统默认无衬线；可选 Nunito/Fredoka 圆润字体切换（只覆盖拉丁字符，其余自动回退）
 // P5 新增 Nunito（官方句乐部同款圆润字体）
 const FONT_STACK = {
   system: "-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei','Noto Sans','Helvetica Neue',sans-serif",
@@ -286,7 +286,7 @@ export default function RuQuest() {
   const [gameSettingOpen, setGameSettingOpen] = useState(false) // P4 游戏内设置弹窗（倍速/播放次数/间隔）
   const [dictTipVisible, setDictTipVisible] = useState(false)    // P5 听写模式答案提示显示状态
   const [wrongBookOpen, setWrongBookOpen] = useState(false)      // P6 错题本独立弹窗
-  const [petVisible, setPetVisible] = useState(true)              // P6 桌面宠物可见性
+  const [petVisible, setPetVisible] = useState(() => { try { const u = JSON.parse(localStorage.getItem('rlearn_quest_ui') || '{}'); return u.petShow !== false } catch (e) { return true } })  // P6 桌面宠物可见性（设置「宠物」面板 petShow）
   const [comboPop, setComboPop] = useState(null)         // 连击浮动文字 {n, high}
   const [comboBreak, setComboBreak] = useState(false)    // 连击中断回落
   const [perfect, setPerfect] = useState(0)
@@ -362,6 +362,12 @@ export default function RuQuest() {
     setUi(n)
     try { localStorage.setItem('rlearn_quest_ui', JSON.stringify(n)) } catch { /* 忽略 */ }
   }, [uiCfg])
+  // 设置弹窗/其他标签页保存 rlearn_quest_ui 后实时刷新（背景色/词性颜色等即时生效）
+  useEffect(() => {
+    const h = () => { try { setUi({ ...UI_DEFAULT, ...(JSON.parse(localStorage.getItem('rlearn_quest_ui') || '{}') || {}) }) } catch (e) { /* 忽略 */ } }
+    window.addEventListener('storage', h)
+    return () => window.removeEventListener('storage', h)
+  }, [])
   // 选择 Fredoka 时动态加载字体（加载失败自动回退系统字体）
   useEffect(() => {
     if (uiCfg.font === 'fredoka' && !document.getElementById('fredoka-font')) {
@@ -787,13 +793,14 @@ export default function RuQuest() {
       setCombo(0)
       sfxError()
       if (petVisible) { petSpeak('wrong', 4000); petSetMood('thinking') } // P6 宠物答错鼓励
+      if (petVisible && ui.petHelp !== false && wc >= (parseInt(ui.petHint || '3', 10) || 3)) petSpeak('help', 6000) // 设置「宠物」面板：连续答错宠物询问是否 AI 求助
       if (wc >= revealThreshold) showAnswerNow()    // 「自动显示答案」：错误 N 次后自动展示答案
       else if (wc >= 3) setStuckOpen(true)          // 未开启自动显示时，保留原「答错3次提示看答案」
       // 官方 Fix 修复流：标记错误词并进入修复模式（按任意键清空第一个错误词重打）
       setSlotState({ incorrect: incorrectIdx, active: -1 })
       setFixMode('fix')
     }
-  }, [done, cur, typed, fixMode, combo, wrongCount, speak, fetchAnalysis, uiCfg.answerSpeak, uiCfg.autoNext, uiCfg.wrongRec, uiCfg.autoReveal, recThreshold, revealThreshold])
+  }, [done, cur, typed, fixMode, combo, wrongCount, speak, fetchAnalysis, uiCfg.answerSpeak, uiCfg.autoNext, uiCfg.wrongRec, uiCfg.autoReveal, recThreshold, revealThreshold, ui.petHelp, ui.petHint])
 
   // —— 撤销：回退上一步输入（Ctrl+Z，仅标准输入模式；须在全局快捷键 effect 之前定义） ——
   const undo = useCallback(() => {
@@ -1985,13 +1992,13 @@ export default function RuQuest() {
       </div>
 
       {/* 连击动效：Perfect × N 浮动文字（3-9 基础 / 10+ 高亮发光+全屏闪效） */}
-      {comboPop && (
+      {(SFX_CFG.combo !== false) && comboPop && (
         <div key={'cp' + comboPop.n} style={{ ...styles.comboPop, color: T.brand, ...(comboPop.high ? { textShadow: '0 0 16px ' + T.brand + ', 0 0 44px ' + T.brand } : {}) }}>
           Perfect × {comboPop.n}
         </div>
       )}
-      {comboPop?.high && <div key={'cf' + comboPop.n} style={{ ...styles.comboFlash, background: 'radial-gradient(circle at 50% 40%, rgba(255,255,255,.5), rgba(255,255,255,0) 62%)' }} />}
-      {comboBreak && <div key={'cb' + Date.now()} style={styles.comboBreak}>连击中断</div>}
+      {(SFX_CFG.combo !== false) && comboPop?.high && <div key={'cf' + comboPop.n} style={{ ...styles.comboFlash, background: 'radial-gradient(circle at 50% 40%, rgba(255,255,255,.5), rgba(255,255,255,0) 62%)' }} />}
+      {(SFX_CFG.combo !== false) && comboBreak && <div key={'cb' + Date.now()} style={styles.comboBreak}>连击中断</div>}
 
       {/* P4 暂停弹窗（对齐官方 GamePauseModal.vue：随机鼓励语 + 继续游戏） */}
       <GamePauseModal
@@ -2276,7 +2283,7 @@ export default function RuQuest() {
       )}
 
       {/* 设置弹窗：快捷键/播放/听力/学习等配置（归属俄语闯关页，工具栏 ⚙ 设置 / Ctrl+, 打开） */}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModal onClose={() => { setShowSettings(false); try { setUi({ ...UI_DEFAULT, ...(JSON.parse(localStorage.getItem('rlearn_quest_ui') || '{}') || {}) }) } catch (e) { /* 忽略 */ } }} />}
     </div>
   )
 }
@@ -2508,7 +2515,7 @@ const styles = {
   stuckBtns: { display: 'flex', gap: 10, justifyContent: 'center' },
   stuckNo: { padding: '6px 16px', borderRadius: 16, background: 'transparent', border: '1px solid rgba(255,255,255,.25)', color: '#B9AFCB', fontSize: 12.5, cursor: 'pointer' },
   stuckYes: { padding: '6px 16px', borderRadius: 16, background: 'oklch(23.27% 0.0249 284.3)', border: 'none', color: '#fff', fontSize: 12.5, cursor: 'pointer' },
-  // 官方 Answer.vue：逐词大字号可点击发音 + 整句喇叭 + 音标 + 中文 + 再来一次/下一题（原地渲染，无遮罩卡片）
+  // 官方 Answer.vue：逐词大字号可点击发音 + 整句喇叭 + 重音 + 中文 + 再来一次/下一题（原地渲染，无遮罩卡片）
   answerWords: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 4, fontSize: 48, fontWeight: 400, lineHeight: 1.2, margin: '0 0 4px' },
   answerWord: { cursor: 'pointer', padding: 4, transition: 'color .12s' },
   answerSpeaker: { marginLeft: 8, fontSize: 28, cursor: 'pointer', color: '#6b7280', transition: 'color .12s' },

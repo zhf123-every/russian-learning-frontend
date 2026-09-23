@@ -301,6 +301,21 @@ export default function TutorChat() {
         stopMic()
       }
     }
+    // 「声音」面板 → 发音源：system = 浏览器系统发音（speechSynthesis）；premium = 后端高级发音人
+    if ((settings.ttsSource || 'premium') === 'system' && window.speechSynthesis) {
+      try { window.speechSynthesis.cancel() } catch (e) {}
+      const u = new SpeechSynthesisUtterance(text)
+      u.lang = 'ru-RU'
+      const voices = window.speechSynthesis.getVoices()
+      const hit = voices.find(x => x.lang && x.lang.toLowerCase().startsWith('ru'))
+      if (hit) u.voice = hit
+      u.rate = 0.95
+      setTtsPlaying(true)
+      u.onend = () => { setTtsPlaying(false); resumeMicAfterTts() }
+      u.onerror = () => { setTtsPlaying(false); resumeMicAfterTts() }
+      window.speechSynthesis.speak(u)
+      return
+    }
     if (!audioRef.current) audioRef.current = new Audio()
     const audio = audioRef.current
     const token = ++ttsTokenRef.current
