@@ -144,7 +144,7 @@ export default function CourseDetail() {
                   className="inline-flex items-center gap-1.5 rounded-full bg-primary text-white px-6 py-2 text-sm font-bold hover:brightness-110 active:scale-[.98] transition shadow-sm"
                   onClick={() => setPickedUnit(units[0])}
                 >
-                  开始学习
+                  开始闯关
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                 </button>
               </div>
@@ -176,7 +176,7 @@ export default function CourseDetail() {
             {isCoursePurchased(game.id) && (
               <div className="mt-5 bg-gray-50 rounded-xl p-4 border border-gray-100">
                 <div className="flex justify-between text-xs font-semibold text-gray-600 mb-2">
-                  <span>我的进度</span><span>{doneCount}/{units.length} 课 · {progress}%</span>
+                  <span>我的进度</span><span>{doneCount}/{units.length} 关 · {progress}%</span>
                 </div>
                 <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
                   <div className="h-full rounded-full bg-primary transition-all" style={{ width: progress + '%' }} />
@@ -190,7 +190,7 @@ export default function CourseDetail() {
         {/* ===== ② 大纲 ===== */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-extrabold text-gray-900">大纲 <span className="text-sm font-medium text-gray-400 ml-1">共 {units.length} 课</span></h2>
+            <h2 className="text-lg font-extrabold text-gray-900">关卡 <span className="text-sm font-medium text-gray-400 ml-1">共 {units.length} 关</span></h2>
             <button className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition cursor-pointer">
               正序
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
@@ -220,7 +220,7 @@ export default function CourseDetail() {
               })}
               {outlineHidden > 0 && (
                 <button className="w-full py-3.5 text-sm font-semibold text-primary hover:bg-primary/5 transition cursor-pointer" onClick={() => setShowAllOutline((v) => !v)}>
-                  {showAllOutline ? '收起大纲' : `展开全部大纲 (${outlineHidden})`}
+                  {showAllOutline ? '收起关卡' : `展开全部关卡 (${outlineHidden})`}
                 </button>
               )}
             </div>
