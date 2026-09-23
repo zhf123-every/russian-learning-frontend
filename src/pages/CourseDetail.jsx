@@ -6,6 +6,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { findGameById, FEATURED, GUIDES } from '../data/gameLibrary'
 import { API_BASE } from '../lib/api'
 import { isCoursePurchased } from '../lib/courseAccess'
+import { usePageHeader } from '../components/layout/PageHeaderContext'
 
 const DIFF_META = {
   easy: { label: '简单', color: '#16a34a', bg: '#DCFCE7' },
@@ -45,6 +46,7 @@ const DEMO_TAGS = ['全部 564', '零基础 448', '入门提升 391', '难度适
 export default function CourseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { setHeaderLeft } = usePageHeader() // 页眉左侧插槽（替换收起按钮）
   const game = findGameById(id)
 
   const [units, setUnits] = useState([])
@@ -71,6 +73,16 @@ export default function CourseDetail() {
       setUnits(makeDemoUnits(game)); setIsDemo(true); setLoading(false)
     }
   }, [game])
+
+  // 页眉左侧：收起侧边栏 → 返回箭头（返回商城）
+  useEffect(() => {
+    setHeaderLeft(
+      <button type="button" className="shell-card-back" aria-label="返回" onClick={() => navigate('/unlocked-games')}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+      </button>
+    )
+    return () => setHeaderLeft(null)
+  }, [setHeaderLeft, navigate])
 
   if (!game) {
     return (

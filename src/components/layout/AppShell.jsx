@@ -40,6 +40,7 @@ function resolveTitle(path) {
 
 export default function AppShell() {
   const [collapsed, setCollapsed] = useState(false)
+  const [headerLeft, setHeaderLeft] = useState(null)
   const [headerRight, setHeaderRight] = useState(null)
   const [titleOverride, setTitleOverride] = useState(null)
   const location = useLocation()
@@ -63,19 +64,21 @@ export default function AppShell() {
         <main className="shell-main">
           {/* 白色大卡片容器：页眉 + 所有内容都在里面 */}
           <div className="shell-card">
-            {/* 内容页页眉：[◧ 收起] + 当前页面标题（跟随导航栏） */}
+            {/* 内容页页眉：[◧ 收起] 或页面注入的左侧按钮 + 当前页面标题（跟随导航栏） */}
             <div className="shell-card-header">
-              <button
-                type="button"
-                className="shell-card-toggle"
-                onClick={() => setCollapsed(v => !v)}
-                aria-label="收起侧边栏"
-              >◧</button>
+              {headerLeft || (
+                <button
+                  type="button"
+                  className="shell-card-toggle"
+                  onClick={() => setCollapsed(v => !v)}
+                  aria-label="收起侧边栏"
+                >◧</button>
+              )}
               {titleOverride || <h1 className="shell-card-title">{pageTitle}</h1>}
               {/* 页面注入的标题右侧工具栏（分类标签/搜索等，紧贴标题） */}
               {headerRight}
             </div>
-            <PageHeaderCtx.Provider value={{ setHeaderRight, setTitleOverride }}>
+            <PageHeaderCtx.Provider value={{ setHeaderLeft, setHeaderRight, setTitleOverride }}>
               <Outlet />
             </PageHeaderCtx.Provider>
           </div>
