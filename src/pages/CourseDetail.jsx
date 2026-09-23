@@ -119,11 +119,6 @@ export default function CourseDetail() {
   return (
     <div className="min-h-full bg-base-100">
       <main className="px-6 py-6 max-w-[1100px] mx-auto">
-        {/* ===== 返回 ===== */}
-        <button className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 mb-5 cursor-pointer transition" onClick={() => navigate('/unlocked-games')}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-          返回商城
-        </button>
 
         {/* ===== ① 课程头部：封面 + 信息 + 操作 ===== */}
         <div className="flex flex-col md:flex-row gap-5 md:gap-8 mb-8">

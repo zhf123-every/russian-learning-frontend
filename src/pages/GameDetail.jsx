@@ -106,10 +106,6 @@ export default function GameDetail() {
   return (
     <div className="db-page">
       <div className="db-container" style={{}}>
-        {/* ===== 头部 ===== */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <button className="db-btn db-btn-ghost" onClick={() => navigate(-1)}>← 返回</button>
-        </div>
 
         <div style={{ background: 'linear-gradient(135deg,#4f46e5 0%,#7c3aed 60%,#9333ea 100%)', borderRadius: 16, padding: 24, marginBottom: 20, color: '#fff' }}>
           <div style={{ fontSize: 30, fontWeight: 900 }}>{game.big || game.title}</div>
