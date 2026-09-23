@@ -94,16 +94,23 @@ export default function ContributeModal({ onClose, onSubmit }) {
       })
       const pj = await pr.json()
       if (!pj.ok) { setUploadOk(false); toast('获取上传授权失败：' + (pj.error || '未知错误')); return }
-      const ok = await new Promise((resolve) => {
+      const res = await new Promise((resolve) => {
         const xhr = new XMLHttpRequest()
         xhr.open('PUT', pj.uploadUrl, true)
         xhr.setRequestHeader('Content-Type', pj.contentType)
         xhr.upload.onprogress = (e) => { if (e.lengthComputable) setUploadPct(Math.round(e.loaded / e.total * 100)) }
-        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300)
-        xhr.onerror = () => resolve(false)
+        xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, body: (xhr.responseText || '').slice(0, 200) })
+        xhr.onerror = () => resolve({ ok: false, status: 0, body: '' })
         xhr.send(file)
       })
-      if (!ok) { setUploadOk(false); toast('视频上传失败，请检查网络或桶 CORS 设置'); return }
+      if (!res.ok) {
+        setUploadOk(false)
+        const why = res.status === 0
+          ? '浏览器拦截（多为 B2 桶未配置 CORS）或网络异常'
+          : 'B2 返回 HTTP ' + res.status + (res.body ? '：' + res.body.replace(/\s+/g, ' ').slice(0, 120) : '')
+        toast('视频上传失败（' + why + '）')
+        return
+      }
       setForm(prev => ({ ...prev, videoUrl: pj.objectUrl }))
       setUploadPct(100)
       setUploadOk(true)
