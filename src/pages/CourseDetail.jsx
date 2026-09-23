@@ -198,7 +198,7 @@ export default function CourseDetail() {
           </div>
 
           {loading ? (
-            <div className="py-12 text-center text-gray-400">加载大纲…</div>
+            <div className="py-12 text-center text-gray-400">加载关卡…</div>
           ) : (
             <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100">
               {outlineShown.map((u, i) => {
@@ -227,10 +227,10 @@ export default function CourseDetail() {
           )}
         </div>
 
-        {/* ===== ③ 课程包评价 ===== */}
+        {/* ===== ③ 游戏包评价 ===== */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-extrabold text-gray-900">课程包评价 <span className="text-sm font-medium text-gray-400 ml-1">{DEMO_RATING.count} 条</span></h2>
+            <h2 className="text-lg font-extrabold text-gray-900">游戏包评价 <span className="text-sm font-medium text-gray-400 ml-1">{DEMO_RATING.count} 条</span></h2>
             <button className="inline-flex items-center gap-1.5 rounded-full bg-primary text-white px-5 py-2 text-sm font-bold hover:brightness-110 transition">写评价</button>
           </div>
 
