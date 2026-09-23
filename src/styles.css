@@ -336,9 +336,21 @@ display:flex;align-items:center;justify-content:center;font-size:16px}
   -webkit-backdrop-filter:blur(4px);z-index:50;
   display:flex;align-items:flex-start;justify-content:center;padding:48px 16px;overflow-y:auto;
 }
-.modal{
-  background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-lg);
-  width:100%;max-width:640px;padding:24px;animation:pop .18s ease;
+/* 强制弹窗卡片可见：daisyUI 的 .modal 默认 opacity:0/visibility:hidden（需 modal-open），
+   本站在 daisyUI 页面（如解锁游戏）复用 .modal 时会被覆盖成隐藏，这里用更高优先级恢复显示 */
+.modal-mask > .modal{
+  opacity:1 !important;
+  visibility:visible !important;
+  position:relative !important;
+  z-index:auto !important;
+  display:block !important;
+  background:#fff;
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-lg);
+  width:100%;
+  max-width:640px;
+  padding:24px;
+  animation:pop .18s ease;
 }
 @keyframes pop{from{transform:translateY(12px) scale(.98);opacity:0}to{transform:none;opacity:1}}
 .modal h2{margin:0 0 8px;font-size:20px;font-weight:600;color:var(--text)}
