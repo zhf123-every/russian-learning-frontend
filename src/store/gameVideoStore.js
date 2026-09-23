@@ -9,11 +9,12 @@ const LS_GAME_VIDEOS = 'rlearn_v1_game_videos'
 export const useGameVideoStore = create((set, get) => ({
   videos: loadLS(LS_GAME_VIDEOS, []),
 
-  // 投稿：新视频排最前
+  // 投稿：新视频排最前；localStorage 保存失败时返回 false（内存仍更新）
   submit(item) {
     const videos = [item, ...get().videos]
-    saveLS(LS_GAME_VIDEOS, videos)
+    const ok = saveLS(LS_GAME_VIDEOS, videos)
     set({ videos })
+    return ok
   },
 
   remove(id) {

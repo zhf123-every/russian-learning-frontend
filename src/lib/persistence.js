@@ -12,6 +12,11 @@ export function loadLS(key, def) {
 }
 
 export function saveLS(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)) }
-  catch (e) { /* 忽略：配额满/隐私模式 */ }
+  try {
+    localStorage.setItem(key, JSON.stringify(val))
+    return true
+  } catch (e) {
+    console.error('[persistence] save failed', key, e)
+    return false
+  }
 }

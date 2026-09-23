@@ -161,7 +161,13 @@ export default function ContributeModal({ onClose, onSubmit }) {
         createdAt: Date.now(),
         tags: ['mp4', form.category, form.level]
       }
-      useGameVideoStore.getState().submit(payload)
+      const saved = useGameVideoStore.getState().submit(payload)
+      if (!saved) {
+        toast('⚠️ 投稿已记录但本地保存失败（浏览器存储不可用），换设备后看不到。请检查浏览器是否隐私模式或禁用了存储')
+        onClose()
+        navigate('/unlocked-games')
+        return
+      }
       if (sentences.length) {
         toast('投稿成功！已发布到解锁游戏·通关视频，含 ' + sentences.length + ' 句字幕')
       } else {
