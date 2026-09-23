@@ -32,10 +32,10 @@ export const NAV_GROUPS = [
   {
     type: 'collapsible', label: '通关存档', icon: ICONS.database,
     items: [
-      { to: '/save/proficiency', icon: ICONS.barChart, label: '关卡熟练度', soon: true },
+      { to: '/save/proficiency', icon: ICONS.barChart, label: '关卡熟练度' },
       { to: '/vocab', icon: ICONS.book, label: '复习关卡', badgeKey: 'vocabDue' },
-      { to: '/save/notes', icon: ICONS.fileText, label: '关卡笔记', soon: true },
-      { to: '/save/unknown', icon: ICONS.help, label: '陌生关卡', soon: true },
+      { to: '/save/notes', icon: ICONS.fileText, label: '关卡笔记' },
+      { to: '/save/unknown', icon: ICONS.help, label: '陌生关卡' },
     ],
   },
 ]

@@ -9,6 +9,9 @@ import { PageHeaderCtx } from './PageHeaderContext'
 const TITLES = {
   '/': '我的主页',
   '/journey': '通关之路',
+  '/save/proficiency': '关卡熟练度',
+  '/save/notes': '关卡笔记',
+  '/save/unknown': '陌生关卡',
   '/unlocked-games': '解锁游戏',
   '/my-games': '我的游戏',
   '/vocab': '复习关卡',

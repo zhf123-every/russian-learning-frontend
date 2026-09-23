@@ -23,6 +23,9 @@ import GameDetail from './pages/GameDetail'
 import CourseDetail from './pages/CourseDetail'
 import QuestDictation from './pages/QuestDictation'
 import Journey from './pages/Journey'
+import SaveNotes from './pages/SaveNotes'
+import SaveProficiency from './pages/SaveProficiency'
+import SaveUnknown from './pages/SaveUnknown'
 
 export default function App() {
   return (
@@ -57,6 +60,9 @@ export default function App() {
 
         {/* 工具 */}
         <Route path="/vocab" element={<Vocab />} />
+        <Route path="/save/notes" element={<SaveNotes />} />
+        <Route path="/save/proficiency" element={<SaveProficiency />} />
+        <Route path="/save/unknown" element={<SaveUnknown />} />
         <Route path="/dictionary" element={<Dictionary />} />
         <Route path="/profile" element={<Profile />} />
 
