@@ -8,6 +8,7 @@ import { useGameVideoStore } from '../store/gameVideoStore'
 import { useAdminStore } from '../store/adminStore'
 import { toast } from '../lib/toast'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
+import { apiFetch } from '../lib/api'
 
 // 解锁游戏 · 课程包商城（总入口）
 // 课程类（kind=cover）：已解锁点卡片 → 课程详情页 /game/:id（学习路线+大纲）
@@ -92,12 +93,26 @@ export default function GameStore() {
   const [adminInput, setAdminInput] = useState('')
   const { setHeaderRight, setTitleOverride } = usePageHeader() // 页眉插槽
   const uploadedVideos = useGameVideoStore(s => s.videos) // 用户投稿的视频（优先展示）
+  const [cloudVideos, setCloudVideos] = useState([]) // 云端共享名单（所有访客可见）
+
+  // 页面加载时拉取云端投稿名单，合并展示
+  useEffect(() => {
+    let alive = true
+    apiFetch('/api/videos/list')
+      .then(r => r.json())
+      .then(j => { if (alive && j.ok && Array.isArray(j.videos)) setCloudVideos(j.videos) })
+      .catch(() => { /* 后端不可用时仅显示本地 */ })
+    return () => { alive = false }
+  }, [])
   const adminKey = useAdminStore(s => s.adminKey)
   const adminLogin = useAdminStore(s => s.login)
   const adminLogout = useAdminStore(s => s.logout)
 
-  // 通关视频区 = 投稿视频（前） + 内置视频（后）
-  const allVideos = [...uploadedVideos, ...VIDEOS]
+  // 通关视频区 = 云端投稿（前） + 本地投稿（去重） + 内置视频（后）
+  const mergedVideos = [...cloudVideos, ...uploadedVideos]
+  const seen = new Set()
+  const dedup = mergedVideos.filter(v => { if (seen.has(v.id)) return false; seen.add(v.id); return true })
+  const allVideos = [...dedup, ...VIDEOS]
 
   // 点「上传视频」：未登录管理员 → 先登录；已登录 → 打开投稿弹窗
   const openContribute = () => {

@@ -162,6 +162,17 @@ export default function ContributeModal({ onClose, onSubmit }) {
         tags: ['mp4', form.category, form.level]
       }
       const saved = useGameVideoStore.getState().submit(payload)
+      // 同步到云端：把完整名单写入 B2，所有访客都能看到
+      try {
+        const latest = useGameVideoStore.getState().videos
+        const sr = await apiFetch('/api/videos/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videos: latest, adminKey })
+        })
+        const sj = await sr.json()
+        if (!sj.ok) console.warn('云端名单同步失败:', sj.error)
+      } catch (e) { console.warn('云端名单同步异常:', e.message) }
       if (!saved) {
         toast('⚠️ 投稿已记录但本地保存失败（浏览器存储不可用），换设备后看不到。请检查浏览器是否隐私模式或禁用了存储')
         onClose()
