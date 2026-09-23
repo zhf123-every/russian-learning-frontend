@@ -15,6 +15,7 @@ import { useGameVideoStore } from '../store/gameVideoStore'
 import { useCourseStore } from '../store/courseStore'
 import { useSquareStore } from '../store/squareStore'
 import { apiFetch } from '../lib/api'
+import { VIDEOS as BUILTIN_VIDEOS } from '../data/gameLibrary'
 import { toast } from '../lib/toast'
 import WordPop from '../components/WordPop'
 
@@ -93,8 +94,8 @@ export default function VideoStudy() {
   useEffect(() => {
     let alive = true
     const load = async () => {
-      // 1. 本地投稿 / 内置课程 / 学习广场素材
-      let v = uploaded || courseVideo || squareVideo
+      // 1. 本地投稿 / 内置课程 / 学习广场素材 / 内置通关视频（gameLibrary）
+      let v = uploaded || courseVideo || squareVideo || BUILTIN_VIDEOS.find(x => x.id === videoId)
       // 2. 云端投稿名单（可能本地没有，但云端有）
       if (!v) {
         try {
@@ -106,9 +107,10 @@ export default function VideoStudy() {
           }
         } catch (e) { /* 后端不可用 */ }
       }
-      // 3. 学习广场服务端素材（square 刷新场景）
+      // 3. 学习广场服务端素材（square 刷新场景）——带 6s 超时兜底，避免一直加载
       if (!v && !courseVideo && !squareVideo) {
-        try { await fetchServer() } catch (e) { /* 忽略 */ }
+        const timeout = new Promise((res) => setTimeout(() => res('timeout'), 6000))
+        try { await Promise.race([fetchServer(), timeout]) } catch (e) { /* 忽略 */ }
         const sv = useSquareStore.getState().getItem(videoId)
         if (alive && sv) v = sv
       }
