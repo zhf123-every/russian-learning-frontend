@@ -192,9 +192,9 @@ export default function GameStore() {
     return () => window.removeEventListener('rlearn:purchase-changed', sync)
   }, [])
 
-  // 课程类已解锁 → 进商城版课程详情页 /course/:id；未解锁 → 不响应点击（只能先解锁）
+  // 课程类已解锁 → 进游戏详情页 /game/:id（解锁游戏入口）；未解锁 → 不响应点击（只能先解锁）
   const onCoverCardClick = (it) => {
-    if (isCoursePurchased(it.id)) navigate(`/course/${it.id}`)
+    if (isCoursePurchased(it.id)) navigate(`/game/${it.id}`)
   }
   // 视频类已解锁 → 弹练习模式弹窗；投稿视频视为已解锁
   const onVideoCardClick = (v) => {
