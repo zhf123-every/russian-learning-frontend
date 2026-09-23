@@ -88,12 +88,28 @@ export default function GameStore() {
   const [, setTick] = useState(0)
   const [videoTarget, setVideoTarget] = useState(null) // 视频类卡片 → 弹窗
   const [showContribute, setShowContribute] = useState(false) // 上传视频弹窗
+  const [showAdmin, setShowAdmin] = useState(false) // 管理员登录弹窗
+  const [adminInput, setAdminInput] = useState('')
   const { setHeaderRight, setTitleOverride } = usePageHeader() // 页眉插槽
   const uploadedVideos = useGameVideoStore(s => s.videos) // 用户投稿的视频（优先展示）
   const adminKey = useAdminStore(s => s.adminKey)
+  const adminLogin = useAdminStore(s => s.login)
+  const adminLogout = useAdminStore(s => s.logout)
 
   // 通关视频区 = 投稿视频（前） + 内置视频（后）
   const allVideos = [...uploadedVideos, ...VIDEOS]
+
+  // 点「上传视频」：未登录管理员 → 先登录；已登录 → 打开投稿弹窗
+  const openContribute = () => {
+    if (!adminKey) { setShowAdmin(true); return }
+    setShowContribute(true)
+  }
+
+  const doAdminLogin = async () => {
+    const ok = await adminLogin(adminInput)
+    if (ok) { setShowAdmin(false); setAdminInput(''); toast('已进入管理模式'); setShowContribute(true) }
+    else { toast('密钥错误') }
+  }
 
   // 分类标签（含"全部"）：mode=all 显示全部，否则按当前模式过滤
   const visibleCats = mode === 'all' ? CATS : CATS.filter(c => c.cat === 'both' || c.cat === mode)
@@ -208,13 +224,21 @@ export default function GameStore() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-extrabold">通关视频</h2>
               <div className="flex items-center gap-3">
-                {adminKey && (
+                {adminKey ? (
                   <button
                     type="button"
                     onClick={() => setShowContribute(true)}
                     className="text-sm text-primary font-semibold flex items-center gap-1 cursor-pointer hover:underline"
                   >
                     ＋ 上传视频
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowAdmin(true)}
+                    className="text-sm text-primary font-semibold flex items-center gap-1 cursor-pointer hover:underline"
+                  >
+                    🔑 管理登录
                   </button>
                 )}
                 <a className="text-sm text-gray-400 hover:text-primary flex items-center gap-1 cursor-pointer">
@@ -304,6 +328,28 @@ export default function GameStore() {
       {/* ===== 上传视频弹窗（投稿到通关视频） ===== */}
       {showContribute && (
         <ContributeModal onClose={() => setShowContribute(false)} />
+      )}
+
+      {/* ===== 管理员登录弹窗 ===== */}
+      {showAdmin && (
+        <div className="modal-mask" onClick={() => setShowAdmin(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+            <h2>管理登录</h2>
+            <p className="hint">输入管理员密钥后可上传本地视频到通关视频区。</p>
+            <input
+              autoFocus
+              value={adminInput}
+              onChange={e => setAdminInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') doAdminLogin() }}
+              placeholder="管理员密钥"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', marginBottom: 12 }}
+            />
+            <div className="mfoot">
+              <button className="btn" onClick={() => setShowAdmin(false)}>取消</button>
+              <button className="btn primary" onClick={doAdminLogin}>登录</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
