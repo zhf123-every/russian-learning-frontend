@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from '../lib/toast'
 import { apiFetch } from '../lib/api'
 import { useAdminStore } from '../store/adminStore'
+import { useGameVideoStore } from '../store/gameVideoStore'
 
-const CATEGORIES = ['shopping', 'daily', 'vlog', 'speech', 'intro', 'campus', 'work', 'transport']
+// 投稿到「解锁游戏 → 通关视频」的分类标签（影视音乐 / 听力训练 / 日常对话 / 动画 / 综合）
+const CATEGORIES = ['影视音乐', '听力训练', '日常对话', '动画', '综合']
 const LEVELS = ['A1', 'A2', 'B1', 'B2']
 
 // 本地视频文件 → 截帧生成封面（video + canvas，复用 thumbnail 思路）
@@ -47,7 +49,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     title: '',
-    category: 'shopping',
+    category: '影视音乐',
     level: 'A1',
     videoUrl: '',
     thumbnail: '',
@@ -122,7 +124,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
     }
     setSubmitting(true)
     try {
-      const id = 'square_' + Date.now()
+      const id = 'game_video_' + Date.now()
 
       // 手动粘贴字幕（兜底）：点击展开后粘贴 SRT/VTT/纯文本，逐行断句
       let sentences = []
@@ -134,12 +136,16 @@ export default function ContributeModal({ onClose, onSubmit }) {
 
       const payload = {
         id,
+        section: 'video', // 通关视频区
+        kind: 'video',
+        category: form.category, // 分类标签：影视音乐等
         title: form.title,
-        category: form.category,
         level: form.level,
         source: 'mp4',
         videoUrl: form.videoUrl,
-        description: '',
+        desc: '',
+        eps: '1 集',
+        total: 1,
         thumbnail: cover || `https://picsum.photos/seed/${id}/400/280`,
         posterUrl: cover || `https://picsum.photos/seed/${id}/1280/720`,
         sentences,
@@ -148,14 +154,14 @@ export default function ContributeModal({ onClose, onSubmit }) {
         createdAt: Date.now(),
         tags: ['mp4', form.category, form.level]
       }
-      await onSubmit(payload)
+      useGameVideoStore.getState().submit(payload)
       if (sentences.length) {
-        toast('投稿成功！已含 ' + sentences.length + ' 句字幕')
+        toast('投稿成功！已发布到解锁游戏·通关视频，含 ' + sentences.length + ' 句字幕')
       } else {
-        toast('投稿成功！素材已发布到广场，可到卡片上「生成字幕」自动转写')
+        toast('投稿成功！已发布到解锁游戏·通关视频·' + form.category)
       }
       onClose()
-      navigate('/square')
+      navigate('/unlocked-games')
     } catch (e) {
       toast('投稿失败：' + (e.message || '请重试'))
     } finally {
@@ -166,8 +172,8 @@ export default function ContributeModal({ onClose, onSubmit }) {
   return (
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
-        <h2>投稿素材</h2>
-        <p className="hint">上传本地视频，直传云端永久保存；封面自动从视频画面提取。</p>
+        <h2>投稿到通关视频</h2>
+        <p className="hint">上传本地视频，直传云端永久保存；发布后出现在「解锁游戏 → 通关视频」分类中。</p>
 
         <div className="field">
           <label>标题</label>
@@ -217,7 +223,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
         </div>
 
         <div className="field">
-          <label>分类</label>
+          <label>分类（通关视频标签）</label>
           <select value={form.category} onChange={handleChange('category')}>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -243,7 +249,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
                 placeholder={'没有字幕时兜底用：\n\nSRT 例子：\n1\n00:00:01,000 --> 00:00:04,000\nПривет, как дела?'}
               />
               <div className="hint" style={{ marginTop: 4 }}>
-                不贴也可以：投稿后到广场卡片点「生成字幕」，自动转写 B2 视频。
+                不贴也可以：投稿后到解锁游戏视频卡点「生成字幕」，自动转写 B2 视频。
               </div>
             </>
           )}

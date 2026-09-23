@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { FEATURED, VIDEOS, GUIDES } from '../data/gameLibrary'
 import { isCoursePurchased, savePurchase } from '../lib/courseAccess'
 import ModePickerModal, { VIDEO_MODES } from '../components/ModePickerModal'
+import ContributeModal from '../components/ContributeModal'
+import { useGameVideoStore } from '../store/gameVideoStore'
+import { useAdminStore } from '../store/adminStore'
 import { toast } from '../lib/toast'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 
@@ -84,7 +87,13 @@ export default function GameStore() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [, setTick] = useState(0)
   const [videoTarget, setVideoTarget] = useState(null) // 视频类卡片 → 弹窗
+  const [showContribute, setShowContribute] = useState(false) // 上传视频弹窗
   const { setHeaderRight, setTitleOverride } = usePageHeader() // 页眉插槽
+  const uploadedVideos = useGameVideoStore(s => s.videos) // 用户投稿的视频（优先展示）
+  const adminKey = useAdminStore(s => s.adminKey)
+
+  // 通关视频区 = 投稿视频（前） + 内置视频（后）
+  const allVideos = [...uploadedVideos, ...VIDEOS]
 
   // 分类标签（含"全部"）：mode=all 显示全部，否则按当前模式过滤
   const visibleCats = mode === 'all' ? CATS : CATS.filter(c => c.cat === 'both' || c.cat === mode)
@@ -156,9 +165,10 @@ export default function GameStore() {
   const onCoverCardClick = (it) => {
     if (isCoursePurchased(it.id)) navigate(`/course/${it.id}`)
   }
-  // 视频类已解锁 → 弹练习模式弹窗
+  // 视频类已解锁 → 弹练习模式弹窗；投稿视频视为已解锁
   const onVideoCardClick = (v) => {
-    if (isCoursePurchased(v.id)) setVideoTarget(v)
+    const uploaded = uploadedVideos.some(u => u.id === v.id)
+    if (uploaded || isCoursePurchased(v.id)) setVideoTarget(v)
   }
 
   // 视频弹窗“开始”：演示视频暂无真实素材，提示即将接入
@@ -197,23 +207,55 @@ export default function GameStore() {
           <section className="mt-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-extrabold">通关视频</h2>
-              <a className="text-sm text-gray-400 hover:text-primary flex items-center gap-1 cursor-pointer">
-                更多视频 <ChevronRight />
-              </a>
+              <div className="flex items-center gap-3">
+                {adminKey && (
+                  <button
+                    type="button"
+                    onClick={() => setShowContribute(true)}
+                    className="text-sm text-primary font-semibold flex items-center gap-1 cursor-pointer hover:underline"
+                  >
+                    ＋ 上传视频
+                  </button>
+                )}
+                <a className="text-sm text-gray-400 hover:text-primary flex items-center gap-1 cursor-pointer">
+                  更多视频 <ChevronRight />
+                </a>
+              </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              {VIDEOS.map((v) => {
-                const unlocked = isCoursePurchased(v.id)
+              {allVideos.map((v) => {
+                const uploaded = uploadedVideos.some(u => u.id === v.id)
+                const unlocked = uploaded || isCoursePurchased(v.id)
                 return (
                   <div key={v.id} className="group" onClick={() => onVideoCardClick(v)} style={{ cursor: unlocked ? 'pointer' : 'default' }}>
-                    <div className={`aspect-video rounded-xl overflow-hidden mb-2 bg-gradient-to-br ${v.cover} flex items-center justify-center group-hover:shadow-lg transition relative`}>
+                    <div
+                      className={`aspect-video rounded-xl overflow-hidden mb-2 flex items-center justify-center group-hover:shadow-lg transition relative ${
+                        v.thumbnail && uploaded ? '' : `bg-gradient-to-br ${v.cover}`
+                      }`}
+                      style={v.thumbnail && uploaded ? { backgroundImage: `url(${v.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                    >
                       <span className="w-9 h-9 rounded-full bg-white/25 backdrop-blur flex items-center justify-center">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="6 4 20 12 6 20 6 4" /></svg>
                       </span>
-                      <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{v.eps}</span>
+                      <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{v.eps || '1 集'}</span>
+                      {uploaded && (
+                        <span className="absolute top-1.5 left-2 text-[10px] text-white bg-primary/80 rounded px-1.5 py-0.5">投稿</span>
+                      )}
                     </div>
                     <div className="text-sm font-semibold">{v.title}</div>
-                    <UnlockBar game={v} />
+                    {uploaded && (
+                      <div className="text-xs text-gray-400 mt-0.5">{v.category || '影视音乐'} · {v.level || 'A1'}</div>
+                    )}
+                    {uploaded ? (
+                      <div className="mt-2.5 flex items-center">
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-success">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                          已上线 · 点卡片选模式
+                        </span>
+                      </div>
+                    ) : (
+                      <UnlockBar game={v} />
+                    )}
                   </div>
                 )
               })}
@@ -257,6 +299,11 @@ export default function GameStore() {
           onClose={() => setVideoTarget(null)}
           onStart={onVideoStart}
         />
+      )}
+
+      {/* ===== 上传视频弹窗（投稿到通关视频） ===== */}
+      {showContribute && (
+        <ContributeModal onClose={() => setShowContribute(false)} />
       )}
     </div>
   )
