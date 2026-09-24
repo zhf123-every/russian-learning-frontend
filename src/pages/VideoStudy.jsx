@@ -135,7 +135,7 @@ export default function VideoStudy() {
           const r = await apiFetch('/api/videos/list')
           const j = await r.json()
           if (alive && j.ok && Array.isArray(j.videos)) {
-            const hit = j.videos.find(x => x.id === videoId)
+            const hit = j.videos.find(x => x.id === videoId && x.title && x.videoUrl)
             if (hit) v = hit
           }
         } catch (e) { /* 后端不可用 */ }
@@ -438,7 +438,7 @@ export default function VideoStudy() {
 
   // 生成字幕
   const genSubs = async () => {
-    if (!video?.videoUrl) { toast('视频地址缺失'); return }
+    if (!video?.videoUrl) { toast('该视频没有可用的播放地址（可能是测试残留记录）。请在解锁游戏页重新投稿该视频后再试'); return }
     toast('正在转写，可能需要 30-60 秒…')
     try {
       const r = await apiFetch('/api/transcribe', {

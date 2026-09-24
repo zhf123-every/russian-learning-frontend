@@ -124,6 +124,37 @@ export default function ContributeModal({ onClose, onSubmit }) {
     }
   }
 
+  // 封面 dataURL → 上传 B2（thumbs 目录）→ 返回 b2:// URL（避免把 base64 大图塞进云端名单）
+  const uploadCoverToB2 = async (dataUrl, fallbackUrl) => {
+    try {
+      const pr = await apiFetch('/api/upload/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: 'cover.jpg', kind: 'image', contentType: 'image/jpeg', adminKey })
+      })
+      const pj = await pr.json()
+      if (!pj.ok || !pj.uploadUrl) return fallbackUrl
+      const blob = await (await fetch(dataUrl)).blob()
+      const res = await new Promise((resolve) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('PUT', pj.uploadUrl, true)
+        xhr.setRequestHeader('Content-Type', 'image/jpeg')
+        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300)
+        xhr.onerror = () => resolve(false)
+        xhr.send(blob)
+      })
+      return res ? pj.objectUrl : fallbackUrl
+    } catch (e) { return fallbackUrl }
+  }
+
+  // 云端名单清洗：去掉 dataURL 大字段，保证 sync body 小且干净
+  const sanitizeForCloud = (list) => list.map(v => {
+    const c = { ...v }
+    if (c.thumbnail && String(c.thumbnail).startsWith('data:')) c.thumbnail = ''
+    if (c.posterUrl && String(c.posterUrl).startsWith('data:')) c.posterUrl = ''
+    return c
+  })
+
   const handleSubmit = async () => {
     if (!form.title || !form.videoUrl) {
       toast('请填写标题并上传视频')
@@ -141,6 +172,13 @@ export default function ContributeModal({ onClose, onSubmit }) {
         sentences = parsed.map((s, i) => ({ id: i + 1, russian: s.text, chinese: '' }))
       }
 
+      // 封面若是本地提取的 base64，先传到 B2 拿云端地址，避免名单体积过大
+      let thumbUrl = cover || `https://picsum.photos/seed/${id}/400/280`
+      let posterUrl = cover || `https://picsum.photos/seed/${id}/1280/720`
+      if (cover && String(cover).startsWith('data:')) {
+        const up = await uploadCoverToB2(cover, thumbUrl)
+        if (up) { thumbUrl = up; posterUrl = up }
+      }
       const payload = {
         id,
         section: 'video', // 通关视频区
@@ -153,8 +191,8 @@ export default function ContributeModal({ onClose, onSubmit }) {
         desc: '',
         eps: '1 集',
         total: 1,
-        thumbnail: cover || `https://picsum.photos/seed/${id}/400/280`,
-        posterUrl: cover || `https://picsum.photos/seed/${id}/1280/720`,
+        thumbnail: thumbUrl,
+        posterUrl,
         sentences,
         author: '管理员',
         views: 0,
@@ -162,17 +200,21 @@ export default function ContributeModal({ onClose, onSubmit }) {
         tags: ['mp4', form.category, form.level]
       }
       const saved = useGameVideoStore.getState().submit(payload)
-      // 同步到云端：把完整名单写入 B2，所有访客都能看到
+      // 同步到云端：清洗后的完整名单写入 B2，所有访客都能看到；失败必须让用户知道
+      let cloudOk = true
       try {
         const latest = useGameVideoStore.getState().videos
         const sr = await apiFetch('/api/videos/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ videos: latest, adminKey })
+          body: JSON.stringify({ videos: sanitizeForCloud(latest), adminKey })
         })
         const sj = await sr.json()
-        if (!sj.ok) console.warn('云端名单同步失败:', sj.error)
-      } catch (e) { console.warn('云端名单同步异常:', e.message) }
+        if (!sj.ok) { cloudOk = false; console.warn('云端名单同步失败:', sj.error) }
+      } catch (e) { cloudOk = false; console.warn('云端名单同步异常:', e.message) }
+      if (!cloudOk) {
+        toast('⚠️ 视频已保存到本机，但云端共享失败（可能是管理员密钥失效或后端异常）。请退出后重新登录管理员，再投稿一次即可让所有人看到。')
+      }
       if (!saved) {
         toast('⚠️ 投稿已记录但本地保存失败（浏览器存储不可用），换设备后看不到。请检查浏览器是否隐私模式或禁用了存储')
         onClose()

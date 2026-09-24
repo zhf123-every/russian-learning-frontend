@@ -100,7 +100,7 @@ export default function GameStore() {
     let alive = true
     apiFetch('/api/videos/list')
       .then(r => r.json())
-      .then(j => { if (alive && j.ok && Array.isArray(j.videos)) setCloudVideos(j.videos) })
+      .then(j => { if (alive && j.ok && Array.isArray(j.videos)) setCloudVideos(j.videos.filter(v => v && v.title && v.videoUrl)) })
       .catch(() => { /* 后端不可用时仅显示本地 */ })
     return () => { alive = false }
   }, [])
