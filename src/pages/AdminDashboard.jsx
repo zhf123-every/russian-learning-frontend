@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 
-// ===== 站长专属后台 · 课程包管理 MVP =====
+// ===== 站长专属后台 · 课程包管理（第一步：课程档案 · 草稿/已发布） =====
 
 // 一级分类（与商城/投稿分类体系一致）
 const CATS = ['教材同步', '考试备考', '少儿俄语', '基础俄语', '场景俄语', '阅读听力', '影视俄语', '音乐俄语']
 // 角标选项
 const BADGES = ['', '精选', '热销', '新', '备考', '衔接']
+// 难度
+const DIFFS = ['入门', '初级', '中级', '高级']
 // 二级标签池（按一级分类联动；年级/教材版本已单列）
 const TAG_POOL = {
   '教材同步': ['走遍俄罗斯', '大学俄语', '东方俄语', '新概念俄语', '黑大俄语', '北外俄语', '人教版初中', '人教版高中', '自编课'],
@@ -27,6 +29,7 @@ const emptyForm = () => ({
   category: '教材同步',
   grade: '通用',
   textbook: '走遍俄罗斯',
+  difficulty: '入门',
   badge: '',
   lessons: 12,
   students: 0,
@@ -39,6 +42,7 @@ const emptyForm = () => ({
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const [form, setForm] = useState(emptyForm)
+  const [editingId, setEditingId] = useState('')       // 非空 = 正在编辑某条档案
   const [courses, setCourses] = useState([])
   const [toast, setToast] = useState('')
 
@@ -77,32 +81,93 @@ export default function AdminDashboard() {
     }))
   }
 
-  // 发布上架
-  const publish = () => {
+  // 组装课程档案对象
+  const buildCourse = (status) => {
     const title = form.title.trim()
-    if (!title) { flash('请先填写课程标题'); return }
-    const item = {
-      id: 'course_' + Date.now(),
+    if (!title) { flash('请先填写课程标题'); return null }
+    const now = Date.now()
+    const base = {
       title,
       subtitle: form.subtitle.trim(),
       category: form.category,
       grade: form.grade || '通用',
       textbook: form.textbook || '自编课',
+      difficulty: form.difficulty,
       badge: form.badge,
       author: '管理员',
       lessons: Number(form.lessons) || 1,
       students: Number(form.students) || 0,
       tags: form.tags,
-      cover: form.coverUrl || 'https://picsum.photos/seed/course_' + Date.now() + '/400/280',
+      cover: form.coverUrl || 'https://picsum.photos/seed/course_' + now + '/400/280',
       materials: form.materials,
-      createdAt: Date.now(),
+      units: [], // 第二步「课程序」再填充
+      status,
+      updatedAt: now,
     }
+    return base
+  }
+
+  // 保存草稿（第一步核心：先建档案，不上架）
+  const saveDraft = () => {
+    const base = buildCourse('draft')
+    if (!base) return
     const list = getCourses()
-    list.push(item)
+    if (editingId) {
+      const i = list.findIndex(c => c.id === editingId)
+      if (i >= 0) list[i] = { ...list[i], ...base, id: editingId }
+      flash('草稿已更新')
+    } else {
+      base.id = 'course_' + Date.now()
+      base.createdAt = Date.now()
+      list.push(base)
+      flash('课程档案已保存（草稿），下一步搭课程序')
+    }
     if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
-    flash('上架成功！共 ' + list.length + ' 个课程')
     setForm(emptyForm())
+    setEditingId('')
     refresh()
+  }
+
+  // 直接发布上架（第四步会改成「审核发布」流程）
+  const publish = () => {
+    const base = buildCourse('published')
+    if (!base) return
+    const list = getCourses()
+    if (editingId) {
+      const i = list.findIndex(c => c.id === editingId)
+      if (i >= 0) list[i] = { ...list[i], ...base, id: editingId }
+      flash('已更新并发布上架！')
+    } else {
+      base.id = 'course_' + Date.now()
+      base.createdAt = Date.now()
+      list.push(base)
+      flash('已发布上架！共 ' + list.length + ' 个课程')
+    }
+    if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
+    setForm(emptyForm())
+    setEditingId('')
+    refresh()
+  }
+
+  // 继续编辑（把档案填回表单）
+  const edit = (c) => {
+    setForm({
+      title: c.title || '',
+      subtitle: c.subtitle || '',
+      category: c.category || '教材同步',
+      grade: c.grade || '通用',
+      textbook: c.textbook || '自编课',
+      difficulty: c.difficulty || '入门',
+      badge: c.badge || '',
+      lessons: c.lessons || 12,
+      students: c.students || 0,
+      tags: c.tags || [],
+      coverUrl: c.cover || '',
+      coverName: '',
+      materials: c.materials || [],
+    })
+    setEditingId(c.id)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // 删除课程
@@ -115,7 +180,7 @@ export default function AdminDashboard() {
     <main className="min-h-full bg-base-100 px-6 py-7">
       <div className="mx-auto max-w-[1100px]">
         <h1 className="text-2xl font-extrabold text-gray-900">课程包管理后台</h1>
-        <p className="mt-1 text-sm text-gray-400">站长专属 · 发布课程后回到「游戏商城」即可看到（本地库优先）</p>
+        <p className="mt-1 text-sm text-gray-400">第一步：建课程档案（草稿）→ 第二步搭课程序 → 第三步挂内容 → 第四步发布</p>
 
         {toast && (
           <div className="alert alert-success mt-4 shadow-lg" style={{ padding: '10px 16px' }}>
@@ -123,10 +188,13 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ===== 新增课程表单 ===== */}
+        {/* ===== ① 课程档案表单 ===== */}
         <div className="card mt-5 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
           <div className="card-body p-6">
-            <h2 className="card-title text-base text-gray-900">新增课程</h2>
+            <h2 className="card-title text-base text-gray-900">
+              {editingId ? '编辑课程档案' : '① 新建课程档案'}
+              {editingId && <span className="badge badge-warning badge-sm ml-1">编辑中</span>}
+            </h2>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="form-control sm:col-span-2">
@@ -170,6 +238,13 @@ export default function AdminDashboard() {
                 <label className="label"><span className="label-text">一级分类</span></label>
                 <select className="select select-bordered" value={form.category} onChange={e => setField('category', e.target.value)}>
                   {CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div className="form-control">
+                <label className="label"><span className="label-text">难度</span></label>
+                <select className="select select-bordered" value={form.difficulty} onChange={e => setField('difficulty', e.target.value)}>
+                  {DIFFS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
 
@@ -223,31 +298,40 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="mt-5 flex items-center gap-3">
-              <button className="btn btn-primary" onClick={publish}>🚀 发布上架</button>
-              <button className="btn btn-ghost" onClick={() => { setForm(emptyForm()); flash('表单已清空') }}>清空表单</button>
+            <div className="mt-5 flex items-center gap-3 flex-wrap">
+              <button className="btn btn-primary" onClick={saveDraft}>💾 保存草稿</button>
+              <button className="btn btn-outline" onClick={publish}>🚀 发布上架</button>
+              <button className="btn btn-ghost" onClick={() => { setForm(emptyForm()); setEditingId(''); flash('表单已清空') }}>清空表单</button>
               <button className="btn btn-outline btn-sm ml-auto" onClick={() => navigate('/game-mall')}>去商城查看 →</button>
+            </div>
+            <div className="mt-3 text-xs text-gray-400">
+              💡 第一步只建「课程档案」：保存草稿后不会出现在商城，可随时回来「编辑」继续完善；搭课程序在下一步做。
             </div>
           </div>
         </div>
 
-        {/* ===== 已有课程列表 ===== */}
+        {/* ===== ② 已有课程列表 ===== */}
         <div className="card mt-6 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
           <div className="card-body p-6">
-            <h2 className="card-title text-base text-gray-900">已有课程列表（{courses.length}）</h2>
+            <h2 className="card-title text-base text-gray-900">已有课程（{courses.length}）</h2>
             {courses.length === 0 ? (
-              <p className="py-6 text-center text-sm text-gray-400">还没有发布过课程，先填上面表单上架一个试试。</p>
+              <p className="py-6 text-center text-sm text-gray-400">还没有课程，先填上面表单保存一个草稿试试。</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="table table-zebra table-sm">
                   <thead>
                     <tr className="text-xs text-gray-400">
-                      <th>封面</th><th>标题</th><th>分类</th><th>年级</th><th>教材</th><th>课时</th><th>标签</th><th>操作</th>
+                      <th>状态</th><th>封面</th><th>标题</th><th>分类</th><th>年级</th><th>教材</th><th>课时</th><th>标签</th><th>操作</th>
                     </tr>
                   </thead>
                   <tbody>
                     {courses.map(c => (
                       <tr key={c.id}>
+                        <td>
+                          {c.status === 'published' || !c.status
+                            ? <span className="badge badge-success badge-sm">已发布</span>
+                            : <span className="badge badge-warning badge-sm">草稿</span>}
+                        </td>
                         <td>
                           <img src={c.cover} alt="" className="h-10 w-16 rounded object-cover"
                             onError={e => { e.currentTarget.style.visibility = 'hidden' }} />
@@ -266,7 +350,10 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td>
-                          <button className="btn btn-error btn-xs btn-outline" onClick={() => remove(c.id)}>删除</button>
+                          <div className="flex gap-1">
+                            <button className="btn btn-primary btn-xs btn-outline" onClick={() => edit(c)}>编辑</button>
+                            <button className="btn btn-error btn-xs btn-outline" onClick={() => remove(c.id)}>删除</button>
+                          </div>
                         </td>
                       </tr>
                     ))}

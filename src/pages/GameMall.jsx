@@ -19,9 +19,10 @@ export default function GameMall() {
   const [currentGrade, setCurrentGrade] = useState('全部')        // 年级筛选
   const [currentTextbook, setCurrentTextbook] = useState('全部')  // 教材版本筛选
 
-  // ② 数据源：后台发布的本地课程优先；没有才用硬编码 COURSES
+  // ② 数据源：后台「已发布」的本地课程优先（草稿不上架）；没有才用硬编码 COURSES
   const localCourses = useMemo(() => getCourses(), [])
-  const dataCourses = localCourses.length ? localCourses : COURSES
+  const localPublished = useMemo(() => localCourses.filter(c => c.status !== 'draft'), [localCourses])
+  const dataCourses = localPublished.length ? localPublished : COURSES
 
   // ③ 计算属性：先按 年级 AND 教材版本 过滤，再按排序
   const filteredCourses = useMemo(() => {
