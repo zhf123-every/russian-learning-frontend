@@ -19,6 +19,7 @@ import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { analyzeSentence } from "../lib/ai";
+import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -240,55 +241,67 @@ export default function QuestPractice() {
   const currentSequence = sequences[currentSequenceIndex];
   const currentStatement = currentSequence?.units?.[currentUnitIndex];
 
-  // ---- 答对后按需精析：为本地课程句子补词性颜色/重音/性数格标注（按句子原文缓存） ----
+  // ---- 答对后按需精析：词典标注（词性颜色/重音/性数格，本地确定性） + AI 补充（成分/翻译/语法） ----
   const [analysisCache, setAnalysisCache] = useState({});
-  const ensureAnalysis = useCallback(async (stmt) => {
-    if (!stmt || stmt.spellWord || !stmt.russian) return;
-    // 已有标注（词性非空）就跳过
-    if (Array.isArray(stmt.words) && stmt.words.some(w => w.pos || w.grammarLabel)) return;
-    const key = String(stmt.russian).trim();
-    if (analysisCache[key]) { applyAnalysis(key, analysisCache[key]); return; }
-    try {
-      const res = await analyzeSentence(stmt.russian);
-      if (res && Array.isArray(res.words) && res.words.length) {
-        setAnalysisCache(c => ({ ...c, [key]: res }));
-        applyAnalysis(key, res);
-      }
-    } catch (e) { /* 精析失败不影响答题 */ }
-  }, [analysisCache]);
-
-  const applyAnalysis = useCallback((key, res) => {
+  const patchWords = useCallback((key, getWs) => {
     setSequences(seqs => seqs.map((s, si) => {
       if (si !== currentSequenceIndex) return s;
       return {
         ...s,
         units: (s.units || []).map((u, ui) => {
           if (ui !== currentUnitIndex || String(u.russian || "").trim() !== key) return u;
-          const roleMap = {};
-          (res.components || []).forEach(c => {
-            const t = String(c.text || "").trim().toLowerCase();
-            if (t && !roleMap[t]) roleMap[t] = c.role || "";
-          });
-          const ws = (res.words || []).map((w, i) => {
-            const pos = w.pos || "";
-            const oldW = (u.words && u.words[i]) || {};
-            return {
-              ...oldW, ...w,
-              order: i,
-              form: w.stressed || oldW.form || w.word || "",
-              lemma: w.word || oldW.lemma || "",
-              pos,
-              posColor: pos ? getPosColor(pos) : (oldW.posColor || ""),
-              grammarLabel: [w.gender && w.gender !== "无" ? w.gender : "", w.grammar_case && w.grammar_case !== "无" ? w.grammar_case : "", w.number === "复数" ? "复数" : ""].filter(Boolean).join("·"),
-              roleLabel: roleMap[String(w.word || "").trim().toLowerCase()] || oldW.roleLabel || "",
-              chinese: w.mean || oldW.chinese || "",
-            };
-          });
+          const oldWs = Array.isArray(u.words) ? u.words : [];
+          const ws = getWs(oldWs);
           return { ...u, words: ws, stressMarked: ws.map(x => x.form).filter(Boolean).join(" ") };
         }),
       };
     }));
   }, [currentSequenceIndex, currentUnitIndex]);
+
+  const ensureAnalysis = useCallback(async (stmt) => {
+    if (!stmt || stmt.spellWord || !stmt.russian) return;
+    // 已有标注（词性非空）就跳过
+    if (Array.isArray(stmt.words) && stmt.words.some(w => w.pos || w.grammarLabel)) return;
+    const key = String(stmt.russian).trim();
+    // 1) 词典标注（本地，立即生效；首次先加载全词典）
+    await ensureDictFull();
+    const dictWords = annotateWords(stmt.russian);
+    if (dictWords.length) {
+      patchWords(key, (oldWs) => dictWords.map((w, i) => {
+        const oldW = oldWs[i] || {};
+        return { ...oldW, ...w, order: i, roleLabel: oldW.roleLabel || "" };
+      }));
+    }
+    // 2) AI 补充（成分 roleLabel / 中译 / 语法解析），失败不影响词典标注
+    if (analysisCache[key]) { applyAI(key, analysisCache[key]); return; }
+    try {
+      const res = await analyzeSentence(stmt.russian);
+      if (res) {
+        setAnalysisCache(c => ({ ...c, [key]: res }));
+        applyAI(key, res);
+      }
+    } catch (e) { /* 精析失败不影响答题 */ }
+  }, [analysisCache, patchWords]);
+
+  const applyAI = useCallback((key, res) => {
+    patchWords(key, (oldWs) => {
+      const roleMap = {};
+      (res.components || []).forEach(c => {
+        const t = String(c.text || "").trim().toLowerCase();
+        if (t && !roleMap[t]) roleMap[t] = c.role || "";
+      });
+      return oldWs.map((w, i) => {
+        const aiW = (res.words && res.words[i]) || {};
+        return {
+          ...w,
+          roleLabel: roleMap[String(w.lemma || aiW.word || "").trim().toLowerCase()] || w.roleLabel || "",
+          chinese: w.chinese || aiW.mean || "",
+          translation: res.translation || "",
+          grammar: res.grammar || "",
+        };
+      });
+    });
+  }, [patchWords]);
   const totalUnits = sequences.reduce((sum, s) => sum + (s.totalUnits || s.units?.length || 0), 0);
   const currentGlobalUnitIndex = sequences.slice(0, currentSequenceIndex).reduce((sum, s) => sum + (s.totalUnits || s.units?.length || 0), 0) + currentUnitIndex;
   const isLastUnit = currentSequenceIndex === sequences.length - 1 && currentUnitIndex === (currentSequence?.units?.length || 1) - 1;
@@ -496,6 +509,14 @@ export default function QuestPractice() {
       setTimeout(() => inputRef.current?.focus(), 200);
     }
   }, [loading, loadError, currentSequenceIndex, currentUnitIndex, currentStatement]);
+
+  // ---- 预加载全词典 + 构建词形索引（后台预热，答对时标注即时生效）----
+  useEffect(() => {
+    if (!loading && !loadError && sequences.length) {
+      const t = setTimeout(async () => { await ensureDictFull(); warmUpIndex(); }, 600);
+      return () => clearTimeout(t);
+    }
+  }, [loading, loadError, sequences.length]);
 
   // ---- 跳转下一题（双层索引：先unit后sequence）----
   const goToNext = useCallback(() => {
