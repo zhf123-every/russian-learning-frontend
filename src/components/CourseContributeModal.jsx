@@ -150,8 +150,8 @@ export default function CourseContributeModal({ onClose }) {
           ...ll,
           name: ll.name || (r.title || '').slice(0, 30),
           desc: ll.desc || (r.description || '').slice(0, 60),
-          words: r.words.slice(0, 40),
-          sentences: r.sentences.slice(0, 30),
+          words: r.words,
+          sentences: r.sentences,
         } : ll)
         return { ...prev, lessons }
       })
@@ -222,8 +222,8 @@ export default function CourseContributeModal({ onClose }) {
       const lesson = {
         name: (r.title || (form.title.trim() || '第 1 课')).slice(0, 30),
         desc: (r.description || '').slice(0, 60),
-        words: r.words.slice(0, 40),
-        sentences: r.sentences.slice(0, 30),
+        words: r.words,
+        sentences: r.sentences,
       }
       setForm(prev => ({
         ...prev,
