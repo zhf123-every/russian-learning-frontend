@@ -86,27 +86,99 @@ function adaptBuildSteps(data) {
 }
 
 // 本地投稿课程：lesson.sentences（AI 渐进例句）→ 答题引擎 sequence/unit 结构
-// 一句话 = 一个 step/unit；整课 = 一个 sequence；先学单词（顶部单词卡），再逐句渐进
+// 学习流程 = 逐词推进：出一个单词 → 打字拼写该词 → 紧接着打该词相关的渐进句（每词 2-3 句，短→中→长）
+// 生词少的课每词多配几句凑够渐进梯度；词表缺失时退回「全部句子渐进」
 function adaptLocalLesson(lesson) {
   const sentences = Array.isArray(lesson.sentences) ? lesson.sentences.filter(x => x && x.ru) : [];
-  const units = sentences.map((st, idx) => {
-    const tokens = String(st.ru || "").trim().split(/\s+/).filter(Boolean);
-    const words = tokens.map((w, i) => ({
+  const words = Array.isArray(lesson.words) ? lesson.words.filter(w => w && w.ru) : [];
+
+  const buildUnit = (ru, zh, idx) => {
+    const tokens = String(ru || "").trim().split(/\s+/).filter(Boolean);
+    const ws = tokens.map((w, i) => ({
       order: i, form: w, lemma: w, pos: "", posColor: "", grammarLabel: "", roleLabel: "",
     }));
-    const wordOrder = tokens.map((_, i) => i);
     return {
       id: `local_${idx + 1}`,
       sequenceId: "local",
       sequenceOrder: idx + 1,
-      russian: st.ru || "",
+      russian: ru || "",
       stressMarked: tokens.join(" "),
-      chinese: st.zh || "",
+      chinese: zh || "",
       action: "", grammarNote: "", newElement: "",
-      words,
-      acceptableAnswers: [{ wordOrder, wordVariants: {}, isDefault: true, note: "" }],
+      words: ws,
+      acceptableAnswers: [{ wordOrder: tokens.map((_, i) => i), wordVariants: {}, isDefault: true, note: "" }],
     };
+  };
+
+  // 无词表：退回「全部句子渐进」（一句话一题）
+  if (!words.length) {
+    const units = sentences.map((st, idx) => buildUnit(st.ru, st.zh, idx));
+    return [{
+      id: "local", name: lesson.title || "本课", familyName: lesson.title || "本课",
+      units, totalUnits: units.length, fullSentence: "",
+    }];
+  }
+
+  // 词 ↔ 句子匹配：句子分词后 token 与词相同、或以词开头（覆盖 дома→дом 等词形变化）
+  const normTok = (t) => String(t).toLowerCase().replace(/[.,!?;:«»"']/g, "");
+  const matchedByWord = words.map(w => {
+    const wl = String(w.ru).toLowerCase();
+    const idxs = [];
+    sentences.forEach((s, si) => {
+      const toks = String(s.ru).toLowerCase().split(/\s+/).map(normTok).filter(Boolean);
+      const hit = wl.length >= 3
+        ? toks.some(t => t === wl || t.startsWith(wl) || wl.startsWith(t))
+        : toks.some(t => t === wl); // 短词（я/ты/в/на/и/а）精确匹配，避免抢走长句
+      if (hit) idxs.push(si);
+    });
+    return { w, idxs }; // idxs 按渐进顺序
   });
+
+  const units = [];
+  const assigned = new Set();
+  let uid = 0;
+  const MAX_PER_WORD = 3;
+  const MIN_PER_WORD = 2;
+
+  // 第一轮：每词 拼写题 + 2~3 句（短、中、长梯度）
+  for (const { w, idxs } of matchedByWord) {
+    uid += 1;
+    units.push({ ...buildUnit(w.ru, w.zh, uid - 1), spellWord: true, spellTotal: words.length });
+    const avail = idxs.filter(i => !assigned.has(i));
+    if (!avail.length) continue;
+    const pick = [];
+    if (avail[0] !== undefined) pick.push(avail[0]);               // 最短（渐进首位）
+    if (avail.length > 1) pick.push(avail[avail.length - 1]);      // 最长（渐进末位）
+    if (avail.length > 2 && pick.length < MAX_PER_WORD) {
+      const mid = avail[Math.floor(avail.length / 2)];
+      if (!pick.includes(mid)) pick.push(mid);                      // 中段
+    }
+    for (const si of pick) {
+      if (!assigned.has(si)) {
+        assigned.add(si);
+        uid += 1;
+        units.push(buildUnit(sentences[si].ru, sentences[si].zh, uid - 1));
+      }
+    }
+  }
+
+  // 第二、三轮：未分配的句子按渐进顺序继续补（生词少的课多配、梯度更满）
+  let leftovers = sentences.map((_, i) => i).filter(i => !assigned.has(i));
+  let pass = 0;
+  while (leftovers.length && pass < 3) {
+    pass += 1;
+    for (const { w } of matchedByWord) {
+      if (!leftovers.length) break;
+      const myCount = units.filter(u => u.words.length === 1 && !u.spellWord && u.russian === w.ru).length;
+      if (myCount >= MAX_PER_WORD + 1) continue;
+      const si = leftovers[0];
+      assigned.add(si);
+      leftovers.shift();
+      uid += 1;
+      units.push(buildUnit(sentences[si].ru, sentences[si].zh, uid - 1));
+    }
+  }
+
   return [{
     id: "local",
     name: lesson.title || "本课",
@@ -166,6 +238,11 @@ export default function QuestPractice() {
   // ---- 当前题目计算（双层索引）----
   const currentSequence = sequences[currentSequenceIndex];
   const currentStatement = currentSequence?.units?.[currentUnitIndex];
+  // 已完成的单词拼写数（用于词进度提示）
+  const spellDoneCount = sequences
+    .slice(0, currentSequenceIndex)
+    .reduce((n, s) => n + (s.units || []).filter(u => u.spellWord).length, 0)
+    + (currentSequence?.units || []).slice(0, currentUnitIndex).filter(u => u.spellWord).length;
   const totalUnits = sequences.reduce((sum, s) => sum + (s.totalUnits || s.units?.length || 0), 0);
   const currentGlobalUnitIndex = sequences.slice(0, currentSequenceIndex).reduce((sum, s) => sum + (s.totalUnits || s.units?.length || 0), 0) + currentUnitIndex;
   const isLastUnit = currentSequenceIndex === sequences.length - 1 && currentUnitIndex === (currentSequence?.units?.length || 1) - 1;
@@ -603,19 +680,14 @@ export default function QuestPractice() {
         </span>
       </div>
 
-      {/* 本地投稿课程：本课单词热身区（先学单词，再进入渐进例句） */}
-      {isLocalMode && !loading && !loadError && Array.isArray(localLesson?.words) && localLesson.words.length > 0 && (
-        <div style={{ margin: '14px 18px 0', padding: '14px 16px', borderRadius: 14, background: '#F5F3FF', border: '1px solid #EDE9FE' }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: '#5b21b6', marginBottom: 10 }}>
-            📖 本课单词（{localLesson.words.length} 个）— 先记词，再渐进学句
+      {/* 本地投稿课程：当前词进度提示（词拼写题时显示；不直接展示全部词表，词需打字拼写） */}
+      {isLocalMode && !loading && !loadError && currentStatement?.spellWord && (
+        <div style={{ margin: '14px 18px 0', padding: '12px 16px', borderRadius: 14, background: '#F5F3FF', border: '1px solid #EDE9FE' }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#5b21b6' }}>
+            ✏️ 单词拼写 {spellDoneCount + 1}/{currentStatement.spellTotal || (localLesson?.words?.length || 0)}
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {localLesson.words.map((w, i) => (
-              <span key={i} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, background: '#fff', border: '1px solid #E9D5FF', borderRadius: 999, padding: '4px 12px', fontSize: 13 }}>
-                <span style={{ fontWeight: 700, color: '#3b0764', fontFamily: '"PT Serif",Georgia,serif' }}>{w.ru}</span>
-                {w.zh && <span style={{ color: '#6d28d9', fontSize: 12 }}>{w.zh}</span>}
-              </span>
-            ))}
+          <div style={{ marginTop: 6, fontSize: 12, color: '#7c3aed' }}>
+            看中文释义打出俄语单词，打对后进入该词的渐进句
           </div>
         </div>
       )}

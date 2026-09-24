@@ -13,3 +13,22 @@ Port 5173 is in use, trying another one...
 /*! 🌼 daisyUI 5.7.42 */
 [2m22:55:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
 [2m22:55:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
+node.exe : [2m23:21:18[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/course-lesson-gen[39m
+所在位置 行:1 字符: 1
++ & "C:\Users\张宏飞\AppData\Local\Doubao\User Data\sandbox_runtime\bases\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([2m23:21:18[2...lesson-gen[39m:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Error: socket hang up
+    at TLSSocket.socketOnEnd (node:_http_client:599:25)
+    at TLSSocket.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+[2m23:22:42[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/course-lesson-gen[39m
+Error: Client network socket disconnected before secure TLS connection was established
+    at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
+    at TLSSocket.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+[2m00:00:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
