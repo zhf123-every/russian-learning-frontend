@@ -95,16 +95,54 @@ export default function GameStore() {
   const uploadedVideos = useGameVideoStore(s => s.videos) // 用户投稿的视频（优先展示）
   const [cloudVideos, setCloudVideos] = useState([]) // 云端共享名单（所有访客可见）
 
-  // 页面加载时拉取云端投稿名单，合并展示
+  const adminKey = useAdminStore(s => s.adminKey)
+  // 云端名单清洗：去掉 dataURL 大字段，保证 sync body 小且干净
+  const sanitizeForCloud = (list) => list.map(v => {
+    const c = { ...v }
+    if (c.thumbnail && String(c.thumbnail).startsWith('data:')) c.thumbnail = ''
+    if (c.posterUrl && String(c.posterUrl).startsWith('data:')) c.posterUrl = ''
+    return c
+  })
+
+  // 页面加载时拉取云端投稿名单，合并展示；若本地有投稿而云端缺失，用管理员密钥自动补同步（所有人可见）
   useEffect(() => {
     let alive = true
-    apiFetch('/api/videos/list')
-      .then(r => r.json())
-      .then(j => { if (alive && j.ok && Array.isArray(j.videos)) setCloudVideos(j.videos.filter(v => v && v.title && v.videoUrl)) })
-      .catch(() => { /* 后端不可用时仅显示本地 */ })
+    const loadCloud = async () => {
+      let cloud = []
+      try {
+        const r = await apiFetch('/api/videos/list')
+        const j = await r.json()
+        if (j.ok && Array.isArray(j.videos)) cloud = j.videos.filter(v => v && v.title && v.videoUrl)
+      } catch (e) { /* 后端不可用时仅显示本地 */ }
+      if (!alive) return
+      setCloudVideos(cloud)
+      // 自动补同步：登录过管理员 且 本地有投稿，云端缺本地视频或云端有本地没有的记录 → 推本地完整名单上云
+      const local = useGameVideoStore.getState().videos
+      if (adminKey && local.length) {
+        const cloudIds = new Set(cloud.map(v => v.id))
+        const localIds = new Set(local.map(v => v.id))
+        const needSync = local.some(v => !cloudIds.has(v.id)) || cloud.some(v => !localIds.has(v.id))
+        if (needSync) {
+          try {
+            const sr = await apiFetch('/api/videos/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ videos: sanitizeForCloud(local), adminKey })
+            })
+            const sj = await sr.json()
+            if (alive && sj.ok) {
+              setCloudVideos(local.filter(v => v && v.title && v.videoUrl))
+              toast('已将你投稿的视频同步到云端，所有访客可见')
+            } else if (alive && !sj.ok) {
+              toast('⚠️ 云端同步失败：' + (sj.error || '未知错误') + '。请退出后重新登录管理员再试')
+            }
+          } catch (e) { if (alive) toast('⚠️ 云端同步异常，请重新登录管理员后再试') }
+        }
+      }
+    }
+    loadCloud()
     return () => { alive = false }
-  }, [])
-  const adminKey = useAdminStore(s => s.adminKey)
+  }, [adminKey])
   const adminLogin = useAdminStore(s => s.login)
   const adminLogout = useAdminStore(s => s.logout)
 
