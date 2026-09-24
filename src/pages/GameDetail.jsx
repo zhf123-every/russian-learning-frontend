@@ -138,6 +138,11 @@ export default function GameDetail() {
       else toast('该模式暂仅支持内置课程包，投稿课程支持「中译俄 / 听写」两种模式')
       return
     }
+    // 后台课程课时但没有挂内容 → 提示，不进学习页（避免跳到不存在的后端单元）
+    if (!game.packId && !(Array.isArray(u.sentences) && u.sentences.length)) {
+      toast('该课时还没有内容：请先在后台上传生词表并生成渐进例句')
+      return
+    }
     const packQ = game.packId ? `?pack=${game.packId}` : ''
     if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}${packQ}`)
     else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}${packQ}`)

@@ -31,4 +31,17 @@ export function deleteCourse(id) {
   return saveCourses(list)
 }
 
+// 按课时 id 在本地课程库中查找课时（学习页本地模式兜底，不依赖 sessionStorage）
+export function findLocalUnitById(unitId) {
+  if (!unitId) return null
+  const list = getCourses()
+  for (const c of list) {
+    if (Array.isArray(c.units)) {
+      const u = c.units.find(x => x.id === unitId)
+      if (u) return u
+    }
+  }
+  return null
+}
+
 export { STORAGE_KEY }

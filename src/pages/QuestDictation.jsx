@@ -19,6 +19,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { checkUnitAccess } from "../lib/courseAccess";
+import { findLocalUnitById } from "../utils/storage";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -183,12 +184,17 @@ export default function QuestDictation() {
     async function loadCourse() {
       setLoading(true);
       setLoadError(null);
-      // 本地投稿课程：直接消费 lesson.sentences 逐句听写，不依赖后端
+      // 本地投稿课程：直接消费课时数据（单词 + 渐进例句）逐句听写，不依赖后端
+      // 数据源：① sessionStorage（投稿链路写入）→ ② 本地课程库（后台课时，持久化兜底）
       try {
         const isLocal = new URLSearchParams(window.location.search).get("src") === "local";
-        if (isLocal) {
+        const isBackendUnit = String(effectiveCourseId).startsWith("unit_");
+        if (isLocal || isBackendUnit) {
           let stored = null
           try { stored = JSON.parse(sessionStorage.getItem("rlearn_local_lesson_" + effectiveCourseId) || "null") } catch (e) { stored = null }
+          if (!(stored && Array.isArray(stored.sentences) && stored.sentences.length)) {
+            stored = findLocalUnitById(effectiveCourseId)
+          }
           if (stored && Array.isArray(stored.sentences) && stored.sentences.length) {
             const items = stored.sentences.filter(x => x && x.ru).map((st, i) => ({
               id: `local_${i + 1}`,
