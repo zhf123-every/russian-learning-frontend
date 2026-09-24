@@ -59,6 +59,13 @@ export default function CourseDetail() {
 
   useEffect(() => {
     if (!game) { setLoading(false); return }
+    // 后台「搭课程序」的真实课时优先展示
+    if (Array.isArray(game.units) && game.units.length) {
+      setUnits(game.units.map((u, i) => ({ ...u, subtitle: u.desc || u.subtitle, status: i === 0 ? '进行中' : '未开始', demo: false })))
+      setIsDemo(false)
+      setLoading(false)
+      return
+    }
     if (game.packId) {
       const isLocal = /^localhost|^127\./.test(location.hostname)
       const base = isLocal ? '' : (API_BASE || '')

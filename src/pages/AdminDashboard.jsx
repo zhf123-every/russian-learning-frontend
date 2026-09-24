@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { GRADES, TEXTBOOKS } from '../data/gameMallData'
+import { API_BASE } from '../lib/api'
 
-// ===== 站长专属后台 · 课程包管理（第一步：课程档案 · 草稿/已发布） =====
+// ===== 站长专属后台 · 课程包管理（第二步：课程档案 + 课程序） =====
 
 // 一级分类（与商城/投稿分类体系一致）
 const CATS = ['教材同步', '考试备考', '少儿俄语', '基础俄语', '场景俄语', '阅读听力', '影视俄语', '音乐俄语']
@@ -41,10 +42,18 @@ const emptyForm = () => ({
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
+  const [view, setView] = useState('list')          // list=档案列表 | units=某课程的课程序
   const [form, setForm] = useState(emptyForm)
-  const [editingId, setEditingId] = useState('')       // 非空 = 正在编辑某条档案
+  const [editingId, setEditingId] = useState('')    // 非空 = 正在编辑某条档案
   const [courses, setCourses] = useState([])
   const [toast, setToast] = useState('')
+
+  // —— 课程序管理状态 ——
+  const [active, setActive] = useState(null)        // 当前管理课程序的课程
+  const [units, setUnits] = useState([])            // 该课程的课时
+  const [newUnitTitle, setNewUnitTitle] = useState('')
+  const [importText, setImportText] = useState('')
+  const [importing, setImporting] = useState(false)
 
   // 刷新课程列表
   const refresh = () => setCourses(getCourses())
@@ -100,14 +109,14 @@ export default function AdminDashboard() {
       tags: form.tags,
       cover: form.coverUrl || 'https://picsum.photos/seed/course_' + now + '/400/280',
       materials: form.materials,
-      units: [], // 第二步「课程序」再填充
+      units: [], // 第二步「课程序」填充
       status,
       updatedAt: now,
     }
     return base
   }
 
-  // 保存草稿（第一步核心：先建档案，不上架）
+  // 保存草稿
   const saveDraft = () => {
     const base = buildCourse('draft')
     if (!base) return
@@ -128,7 +137,7 @@ export default function AdminDashboard() {
     refresh()
   }
 
-  // 直接发布上架（第四步会改成「审核发布」流程）
+  // 直接发布上架
   const publish = () => {
     const base = buildCourse('published')
     if (!base) return
@@ -167,6 +176,7 @@ export default function AdminDashboard() {
       materials: c.materials || [],
     })
     setEditingId(c.id)
+    setView('list')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -176,11 +186,191 @@ export default function AdminDashboard() {
     refresh()
   }
 
+  // ========== 第二步：课程序管理 ==========
+
+  // 进入课程序管理
+  const manageUnits = (c) => {
+    setActive(c)
+    setUnits(c.units || [])
+    setNewUnitTitle('')
+    setImportText('')
+    setView('units')
+    window.scrollTo({ top: 0 })
+  }
+
+  // 持久化课时并同步 active
+  const persistUnits = (next) => {
+    setUnits(next)
+    const list = getCourses()
+    const i = list.findIndex(x => x.id === active.id)
+    if (i >= 0) {
+      const updated = { ...list[i], units: next, lessons: next.length || list[i].lessons, updatedAt: Date.now() }
+      list[i] = updated
+      saveCourses(list)
+      setActive(updated)
+      refresh()
+    }
+  }
+
+  // 手动添加课时
+  const addUnit = () => {
+    const t = newUnitTitle.trim() || ('第 ' + (units.length + 1) + ' 课')
+    persistUnits([...units, { id: 'unit_' + Date.now(), title: t, desc: '', imported: false }])
+    setNewUnitTitle('')
+  }
+
+  // 上移 / 下移
+  const moveUnit = (idx, dir) => {
+    const to = idx + dir
+    if (to < 0 || to >= units.length) return
+    const next = [...units]
+    ;[next[idx], next[to]] = [next[to], next[idx]]
+    persistUnits(next)
+  }
+
+  // 删除课时
+  const removeUnit = (idx) => {
+    persistUnits(units.filter((_, i) => i !== idx))
+  }
+
+  // AI 切课导入：粘贴整书文本 → 后端切课 → 追加为课时
+  const doImport = async () => {
+    const text = importText.trim()
+    if (!text) { flash('请先粘贴要切课的文本'); return }
+    setImporting(true)
+    try {
+      const isLocal = /^localhost|^127\./.test(location.hostname)
+      const base = isLocal ? '' : (API_BASE || '')
+      const res = await fetch(`${base}/api/course-split`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: active.title, category: active.category, level: active.difficulty || 'A1', text }),
+      })
+      const r = await res.json()
+      let lessons = Array.isArray(r.lessons) ? r.lessons : null
+      if (!lessons && r.content) {
+        try { lessons = JSON.parse(r.content).lessons } catch (e) { /* ignore */ }
+      }
+      if (!Array.isArray(lessons) || !lessons.length) {
+        flash('切课失败：' + (r.error || '未能识别出课，请确认文本包含「Урок N」标题行'))
+        setImporting(false)
+        return
+      }
+      const added = lessons.map((l, idx) => ({
+        id: 'unit_' + Date.now() + '_' + idx,
+        title: l.name || ('第 ' + (l.num || idx + 1) + ' 课'),
+        desc: l.desc || '',
+        vocab: l.vocab || '',
+        imported: true,
+      }))
+      persistUnits([...units, ...added])
+      flash(`已导入 ${added.length} 个课时（追加）`)
+    } catch (e) {
+      flash('切课请求失败：' + (e.message || '网络错误'))
+    }
+    setImporting(false)
+  }
+
+  // ========== 渲染 ==========
+
+  // —— 视图二：课程序管理 ——
+  if (view === 'units' && active) {
+    return (
+      <main className="min-h-full bg-base-100 px-6 py-7">
+        <div className="mx-auto max-w-[1000px]">
+          {toast && (
+            <div className="alert alert-success mb-4 shadow-lg" style={{ padding: '10px 16px' }}>
+              <span>✅ {toast}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <button className="btn btn-ghost btn-sm -ml-2 text-gray-500" onClick={() => setView('list')}>← 返回课程列表</button>
+              <h1 className="text-xl font-extrabold text-gray-900 mt-1">{active.title}</h1>
+              <p className="text-xs text-gray-400 mt-0.5">第二步 · 搭课程序：共 {units.length} 个课时</p>
+            </div>
+            <button className="btn btn-outline btn-sm" onClick={() => navigate('/game-mall')}>去商城查看 →</button>
+          </div>
+
+          {/* 课时列表 */}
+          <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
+            <div className="card-body p-5">
+              <h2 className="card-title text-base text-gray-900">课时列表</h2>
+              {units.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">还没有课时。手动添加，或用下方「AI 导入」把整本书切成课时。</p>
+              ) : (
+                <div className="space-y-2">
+                  {units.map((u, i) => (
+                    <div key={u.id} className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                      <span className="text-xs font-bold text-gray-400 w-6 shrink-0">{String(i + 1).padStart(2, '0')}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-800 truncate">{u.title}</span>
+                          {u.imported && <span className="badge badge-info badge-xs shrink-0">AI导入</span>}
+                        </div>
+                        {u.desc && <div className="text-xs text-gray-400 mt-0.5 truncate">{u.desc}</div>}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button className="btn btn-ghost btn-xs" disabled={i === 0} onClick={() => moveUnit(i, -1)}>↑</button>
+                        <button className="btn btn-ghost btn-xs" disabled={i === units.length - 1} onClick={() => moveUnit(i, 1)}>↓</button>
+                        <button className="btn btn-error btn-xs btn-outline" onClick={() => removeUnit(i)}>删除</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 手动添加 */}
+          <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
+            <div className="card-body p-5">
+              <h2 className="card-title text-base text-gray-900">手动添加课时</h2>
+              <div className="flex gap-2 mt-2">
+                <input
+                  className="input input-bordered flex-1"
+                  value={newUnitTitle}
+                  onChange={e => setNewUnitTitle(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addUnit() }}
+                  placeholder={'课时标题，留空自动命名「第 ' + (units.length + 1) + ' 课」'}
+                />
+                <button className="btn btn-primary" onClick={addUnit}>+ 添加</button>
+              </div>
+            </div>
+          </div>
+
+          {/* AI 导入 */}
+          <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
+            <div className="card-body p-5">
+              <h2 className="card-title text-base text-gray-900">✨ AI 导入课时（按「Урок N」自动切课）</h2>
+              <p className="text-xs text-gray-400 mt-1">粘贴整本书/多课文本，后端按「Урок N · 课名」标题行切分，每课变成一个课时（追加到列表）。</p>
+              <textarea
+                className="textarea textarea-bordered mt-3 w-full"
+                rows={4}
+                value={importText}
+                onChange={e => setImportText(e.target.value)}
+                placeholder={'粘贴文本，例如：\nУрок 1 · 字母与问候\nдом | 房子\nмама | 妈妈\n...'}
+              />
+              <div className="mt-3 flex items-center gap-2">
+                <button className="btn btn-primary" onClick={doImport} disabled={importing}>
+                  {importing ? '切课中…' : '✨ 切课并导入'}
+                </button>
+                <span className="text-xs text-gray-400">导入的是课时骨架；每课的词汇/例句在下一步「挂内容」时再处理。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  // —— 视图一：档案表单 + 课程列表 ——
   return (
     <main className="min-h-full bg-base-100 px-6 py-7">
       <div className="mx-auto max-w-[1100px]">
         <h1 className="text-2xl font-extrabold text-gray-900">课程包管理后台</h1>
-        <p className="mt-1 text-sm text-gray-400">第一步：建课程档案（草稿）→ 第二步搭课程序 → 第三步挂内容 → 第四步发布</p>
+        <p className="mt-1 text-sm text-gray-400">第一步：建课程档案 → 第二步：搭课程序 → 第三步：挂内容 → 第四步：发布</p>
 
         {toast && (
           <div className="alert alert-success mt-4 shadow-lg" style={{ padding: '10px 16px' }}>
@@ -305,7 +495,7 @@ export default function AdminDashboard() {
               <button className="btn btn-outline btn-sm ml-auto" onClick={() => navigate('/game-mall')}>去商城查看 →</button>
             </div>
             <div className="mt-3 text-xs text-gray-400">
-              💡 第一步只建「课程档案」：保存草稿后不会出现在商城，可随时回来「编辑」继续完善；搭课程序在下一步做。
+              💡 第一步只建「课程档案」：保存草稿后不会出现在商城；保存后点下方列表的「搭课程序」进入第二步。
             </div>
           </div>
         </div>
@@ -321,7 +511,7 @@ export default function AdminDashboard() {
                 <table className="table table-zebra table-sm">
                   <thead>
                     <tr className="text-xs text-gray-400">
-                      <th>状态</th><th>封面</th><th>标题</th><th>分类</th><th>年级</th><th>教材</th><th>课时</th><th>标签</th><th>操作</th>
+                      <th>状态</th><th>封面</th><th>标题</th><th>分类</th><th>课时</th><th>大纲</th><th>操作</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -341,17 +531,16 @@ export default function AdminDashboard() {
                           <div className="text-[11px] text-gray-400">{c.subtitle || '—'}</div>
                         </td>
                         <td className="text-xs">{c.category}</td>
-                        <td className="text-xs">{c.grade}</td>
-                        <td className="text-xs">{c.textbook}</td>
-                        <td className="text-xs">{c.lessons} 课</td>
+                        <td className="text-xs">{Array.isArray(c.units) && c.units.length ? c.units.length + ' 课' : (c.lessons || 0) + ' 课'}</td>
                         <td className="text-xs">
-                          <div className="flex max-w-[160px] flex-wrap gap-1">
-                            {(c.tags || []).map(t => <span key={t} className="badge badge-outline badge-xs">{t}</span>)}
-                          </div>
+                          {Array.isArray(c.units) && c.units.length
+                            ? <span className="badge badge-success badge-sm">已搭大纲</span>
+                            : <span className="badge badge-ghost badge-sm">未搭</span>}
                         </td>
                         <td>
                           <div className="flex gap-1">
-                            <button className="btn btn-primary btn-xs btn-outline" onClick={() => edit(c)}>编辑</button>
+                            <button className="btn btn-primary btn-xs" onClick={() => manageUnits(c)}>搭课程序</button>
+                            <button className="btn btn-ghost btn-xs" onClick={() => edit(c)}>编辑</button>
                             <button className="btn btn-error btn-xs btn-outline" onClick={() => remove(c.id)}>删除</button>
                           </div>
                         </td>

@@ -67,6 +67,13 @@ export default function GameDetail() {
 
   useEffect(() => {
     if (!game) { setLoading(false); return }
+    // 后台「搭课程序」的真实课时优先展示
+    if (Array.isArray(game.units) && game.units.length) {
+      setUnits(game.units.map((u, i) => ({ ...u, status: i === 0 ? '进行中' : '未开始', demo: false })))
+      setIsDemo(false)
+      setLoading(false)
+      return
+    }
     // 投稿课程：直接用投稿时填写的关卡大纲（真实内容，不走演示占位）
     if (game.kind === 'course' && Array.isArray(game.lessons) && game.lessons.length) {
       setUnits(game.lessons.map((l, i) => ({ ...l, status: i === 0 ? '进行中' : '未开始', demo: false })))
