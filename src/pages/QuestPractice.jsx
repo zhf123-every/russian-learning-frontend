@@ -238,11 +238,6 @@ export default function QuestPractice() {
   // ---- 当前题目计算（双层索引）----
   const currentSequence = sequences[currentSequenceIndex];
   const currentStatement = currentSequence?.units?.[currentUnitIndex];
-  // 已完成的单词拼写数（用于词进度提示）
-  const spellDoneCount = sequences
-    .slice(0, currentSequenceIndex)
-    .reduce((n, s) => n + (s.units || []).filter(u => u.spellWord).length, 0)
-    + (currentSequence?.units || []).slice(0, currentUnitIndex).filter(u => u.spellWord).length;
   const totalUnits = sequences.reduce((sum, s) => sum + (s.totalUnits || s.units?.length || 0), 0);
   const currentGlobalUnitIndex = sequences.slice(0, currentSequenceIndex).reduce((sum, s) => sum + (s.totalUnits || s.units?.length || 0), 0) + currentUnitIndex;
   const isLastUnit = currentSequenceIndex === sequences.length - 1 && currentUnitIndex === (currentSequence?.units?.length || 1) - 1;
@@ -679,18 +674,6 @@ export default function QuestPractice() {
           步骤 {currentUnitIndex + 1}/{currentSequence?.units?.length || 0}
         </span>
       </div>
-
-      {/* 本地投稿课程：当前词进度提示（词拼写题时显示；不直接展示全部词表，词需打字拼写） */}
-      {isLocalMode && !loading && !loadError && currentStatement?.spellWord && (
-        <div style={{ margin: '14px 18px 0', padding: '12px 16px', borderRadius: 14, background: '#F5F3FF', border: '1px solid #EDE9FE' }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: '#5b21b6' }}>
-            ✏️ 单词拼写 {spellDoneCount + 1}/{currentStatement.spellTotal || (localLesson?.words?.length || 0)}
-          </div>
-          <div style={{ marginTop: 6, fontSize: 12, color: '#7c3aed' }}>
-            看中文释义打出俄语单词，打对后进入该词的渐进句
-          </div>
-        </div>
-      )}
 
       {/* 主内容区 */}
       <div style={styles.mainContent}>
