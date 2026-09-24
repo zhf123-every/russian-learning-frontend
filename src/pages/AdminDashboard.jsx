@@ -200,6 +200,34 @@ export default function AdminDashboard() {
     refresh()
   }
 
+  // ========== 课程数据跨浏览器迁移（导出 / 导入） ==========
+  const exportCourses = () => {
+    const raw = localStorage.getItem('rb_admin_courses') || '[]'
+    const blob = new Blob([raw], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'rb_admin_courses_backup.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  const importCoursesFile = (file) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const text = String(reader.result || '')
+        const arr = JSON.parse(text)
+        if (!Array.isArray(arr)) throw new Error('格式不是数组')
+        localStorage.setItem('rb_admin_courses', JSON.stringify(arr))
+        setCourses(getCourses())
+        setCloudMsg(`已导入 ${arr.length} 门课程，请刷新页面确认后再同步`)
+      } catch (e) {
+        setCloudMsg('导入失败：' + e.message)
+      }
+    }
+    reader.readAsText(file)
+  }
   // ========== 全网可见：后台课程同步到云端（B2 videos/index.json，访客 GET /api/videos/list 可读） ==========
   const syncToCloud = async () => {
     if (cloudBusy) return
@@ -794,6 +822,14 @@ export default function AdminDashboard() {
               </div>
             </div>
             {cloudMsg && <div className="mt-3 text-sm text-gray-600">{cloudMsg}</div>}
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+              <span className="text-xs text-gray-500">课程数据迁移（换浏览器/正式站时使用）：</span>
+              <button className="btn btn-xs btn-outline" onClick={exportCourses}>📤 导出课程数据</button>
+              <label className="btn btn-xs btn-outline cursor-pointer">
+                📥 导入课程数据
+                <input type="file" accept=".json,application/json" className="hidden" onChange={e => { importCoursesFile(e.target.files && e.target.files[0]); e.target.value = '' }} />
+              </label>
+            </div>
             {cloudCount >= 0 && <div className="mt-2 text-xs text-gray-400">云端名单共 {cloudCount} 项（视频 + 课程）</div>}
             <div className="mt-3 text-xs text-gray-400">
               提示：只有「已发布」状态的课程会同步；草稿不会上云。同步前请确保密钥与后端 ADMIN_KEY 一致。
