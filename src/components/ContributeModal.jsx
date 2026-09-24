@@ -2,12 +2,27 @@ import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '../lib/toast'
 import { apiFetch } from '../lib/api'
+import { parseAIJSON } from '../lib/ai'
 import { useAdminStore } from '../store/adminStore'
 import { useGameVideoStore } from '../store/gameVideoStore'
 
-// 投稿到「解锁游戏 → 通关视频」的分类标签（影视音乐 / 听力训练 / 日常对话 / 动画 / 综合）
-const CATEGORIES = ['影视音乐', '听力训练', '日常对话', '动画', '综合']
+// ===== 投稿分类（对标句乐部：主分类 + 子分类两层，与课程投稿一致） =====
+const MAIN_CATS = ['教材同步', '考试备考', '少儿俄语', '基础俄语', '场景俄语', '阅读听力', '影视俄语', '音乐俄语']
+const SUBCATS = {
+  '推荐': ['全部'],
+  '教材同步': ['全部', '走遍俄罗斯', '新概念俄语', '大学俄语', '东方俄语', '黑大俄语', '北外俄语', '人教版初中', '人教版高中', '自编课'],
+  '考试备考': ['全部', '中高考', '专四专八', '考研', 'ТРКИ等级', '留学预科', 'CATTI', '职业俄语'],
+  '少儿俄语': ['全部', '少儿启蒙', '动画分级', '分级阅读', '动画绘本', '儿歌童谣', '字母拼读', '少儿词汇'],
+  '基础俄语': ['全部', '零基础路线', '字母发音', '基础语法', '基础词汇', '核心句型', '经典教材', '综合提升'],
+  '场景俄语': ['全部', '日常对话', '商务职场', '外贸商务', '旅游出行', '面试校园', '社交口语', '写作邮件'],
+  '阅读听力': ['全部', '短文精读', '俄语故事', '名著简写', '新闻短文', '文化科普', '专业阅读'],
+  '影视俄语': ['全部', '情景剧', '影视台词', '电影片段', '动画片段', '经典教材剧'],
+  '音乐俄语': ['全部', '俄语歌曲'],
+  '全部': ['全部'],
+}
 const LEVELS = ['A1', 'A2', 'B1', 'B2']
+// 学历向学段（方案B）：投稿视频/课程都归入一个学段，前端按学段筛选
+const STAGES = ['零基础', '初中', '高中', '大学', '成人', '留学']
 
 // 本地视频文件 → 截帧生成封面（video + canvas，复用 thumbnail 思路）
 function extractVideoCover(file) {
@@ -49,8 +64,10 @@ export default function ContributeModal({ onClose, onSubmit }) {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     title: '',
-    category: '影视音乐',
+    cat: '影视俄语',
+    subcat: '全部',
     level: 'A1',
+    stage: '零基础',
     videoUrl: '',
     thumbnail: '',
     posterUrl: '',
@@ -69,6 +86,37 @@ export default function ContributeModal({ onClose, onSubmit }) {
 
   const handleChange = (field) => (e) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }))
+  }
+  const setCat = (val) => setForm(prev => ({ ...prev, cat: val, subcat: (SUBCATS[val] || ['全部'])[0] || '全部' }))
+
+  // 🤖 AI 自动打标二级筛选标签：根据主分类 + 标题/内容，后端 /api/course-tag 精准判断
+  const [autoTagging, setAutoTagging] = useState(false)
+  const autoTag = async () => {
+    if (autoTagging) return
+    setAutoTagging(true)
+    try {
+      const title = (form.title || '').trim()
+      if (!title) { toast('请先填写视频标题，AI 才能判断二级标签'); return }
+      const res = await apiFetch('/api/course-tag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: form.cat,
+          text: '视频标题：' + title + '\n主分类：' + form.cat + '\n难度：' + form.level,
+        }),
+      })
+      const j = await res.json()
+      if (!j.ok) throw new Error(j.error || 'AI 打标失败')
+      const r = parseAIJSON(j.content)
+      if (!r || !r.subcat) { toast('AI 未能判断出二级标签，请重试或手动选择'); return }
+      setForm(prev => ({ ...prev, subcat: r.subcat === '全部' ? '全部' : r.subcat }))
+      const conf = typeof r.confidence === 'number' ? Math.round(r.confidence * 100) + '%' : ''
+      toast('AI 打标完成：' + r.subcat + (conf ? ' · 置信度 ' + conf : '') + (r.reason ? '（' + r.reason + '）' : ''))
+    } catch (e) {
+      toast('AI 打标失败：' + (e.message || '请稍后重试'))
+    } finally {
+      setAutoTagging(false)
+    }
   }
 
   const pickFile = () => fileInputRef.current && fileInputRef.current.click()
@@ -183,9 +231,13 @@ export default function ContributeModal({ onClose, onSubmit }) {
         id,
         section: 'video', // 通关视频区
         kind: 'video',
-        category: form.category, // 分类标签：影视音乐等
+        cat: form.cat,
+        subcat: form.subcat,
+        category: form.cat, // 兼容旧字段
         title: form.title,
         level: form.level,
+        stage: form.stage,
+        textbook: form.cat === '教材同步' && form.subcat !== '全部' ? form.subcat : '',
         source: 'mp4',
         videoUrl: form.videoUrl,
         desc: '',
@@ -197,7 +249,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
         author: '管理员',
         views: 0,
         createdAt: Date.now(),
-        tags: ['mp4', form.category, form.level]
+        tags: ['mp4', form.cat, form.subcat, form.level, form.stage]
       }
       const saved = useGameVideoStore.getState().submit(payload)
       // 同步到云端：清洗后的完整名单写入 B2，所有访客都能看到；失败必须让用户知道
@@ -224,7 +276,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
       if (sentences.length) {
         toast('投稿成功！已发布到解锁游戏·通关视频，含 ' + sentences.length + ' 句字幕')
       } else {
-        toast('投稿成功！已发布到解锁游戏·通关视频·' + form.category)
+        toast('投稿成功！已发布到解锁游戏·通关视频·' + form.cat + (form.subcat && form.subcat !== '全部' ? ' / ' + form.subcat : ''))
       }
       onClose()
       navigate('/unlocked-games')
@@ -237,7 +289,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
 
   return (
     <div className="modal-mask" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520, maxHeight: '88vh', overflowY: 'auto' }}>
         <h2>投稿到通关视频</h2>
         <p className="hint">上传本地视频，直传云端永久保存；发布后出现在「解锁游戏 → 通关视频」分类中。</p>
 
@@ -289,16 +341,41 @@ export default function ContributeModal({ onClose, onSubmit }) {
         </div>
 
         <div className="field">
-          <label>分类（通关视频标签）</label>
-          <select value={form.category} onChange={handleChange('category')}>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          <label>主分类</label>
+          <select value={form.cat} onChange={e => setCat(e.target.value)}>
+            {MAIN_CATS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+        </div>
+
+        <div className="field">
+          <label>二级筛选标签（AI 自动判断，可手动修改）</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              list="rb-subcats"
+              value={form.subcat}
+              onChange={handleChange('subcat')}
+              placeholder={form.cat === '教材同步' ? 'AI 识别教材名，如：走遍俄罗斯' : 'AI 判断二级标签，可手动修改'}
+              style={{ flex: 1, minWidth: 0 }}
+            />
+            <button type="button" className="btn sm" onClick={autoTag} disabled={autoTagging} style={{ flexShrink: 0 }}>
+              {autoTagging ? 'AI 分析中…' : '✨ AI 打标'}
+            </button>
+          </div>
+          <datalist id="rb-subcats">
+            {(SUBCATS[form.cat] || ['全部']).map(c => <option key={c} value={c} />)}
+          </datalist>
+          <div className="hint" style={{ marginTop: 4 }}>AI 根据标题与内容自动判断二级标签；教材同步会识别教材名并自动生成筛选标签。</div>
         </div>
 
         <div className="field">
           <label>难度</label>
           <select value={form.level} onChange={handleChange('level')}>
             {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+
+          <label>学段（学历方向）</label>
+          <select value={form.stage} onChange={handleChange('stage')}>
+            {STAGES.map(st => <option key={st} value={st}>{st}</option>)}
           </select>
         </div>
 

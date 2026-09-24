@@ -43,6 +43,9 @@ export default function QuestDictation() {
   const [statements, setStatements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  // 本地投稿课程（?src=local）：lesson.sentences 逐句听写
+  const [localLesson, setLocalLesson] = useState(null);
+  const [isLocalMode, setIsLocalMode] = useState(false);
   const [questionIndex, setQuestionIndex] = useState(0);
 
   // ---- 计时器 ----
@@ -180,6 +183,30 @@ export default function QuestDictation() {
     async function loadCourse() {
       setLoading(true);
       setLoadError(null);
+      // 本地投稿课程：直接消费 lesson.sentences 逐句听写，不依赖后端
+      try {
+        const isLocal = new URLSearchParams(window.location.search).get("src") === "local";
+        if (isLocal) {
+          let stored = null
+          try { stored = JSON.parse(sessionStorage.getItem("rlearn_local_lesson_" + effectiveCourseId) || "null") } catch (e) { stored = null }
+          if (stored && Array.isArray(stored.sentences) && stored.sentences.length) {
+            const items = stored.sentences.filter(x => x && x.ru).map((st, i) => ({
+              id: `local_${i + 1}`,
+              russian: st.ru || "",
+              chinese: st.zh || "",
+              words: [],
+            }));
+            if (!cancelled) {
+              setLocalLesson(stored);
+              setIsLocalMode(true);
+              setStatements(items);
+            }
+            if (!cancelled) setLoading(false);
+            return;
+          }
+          if (!cancelled) setIsLocalMode(false);
+        }
+      } catch (e) { /* 忽略，走 API */ }
       try {
         const res = await fetch(`${API_BASE}/api/units/${effectiveCourseId}/build-steps`);
         const json = await res.json();
@@ -404,6 +431,23 @@ export default function QuestDictation() {
               <span style={{ margin: "0 8px", color: "#D4C9BE" }}>·</span>
               <span>Enter 提交</span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 本地投稿课程：本课单词热身区（先学单词，再逐句听写渐进） */}
+      {isLocalMode && !loading && !loadError && Array.isArray(localLesson?.words) && localLesson.words.length > 0 && (
+        <div style={{ margin: '14px 18px 0', padding: '14px 16px', borderRadius: 14, background: '#F5F3FF', border: '1px solid #EDE9FE' }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#5b21b6', marginBottom: 10 }}>
+            📖 本课单词（{localLesson.words.length} 个）— 先记词，再逐句听写
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {localLesson.words.map((w, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, background: '#fff', border: '1px solid #E9D5FF', borderRadius: 999, padding: '4px 12px', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: '#3b0764', fontFamily: '"PT Serif",Georgia,serif' }}>{w.ru}</span>
+                {w.zh && <span style={{ color: '#6d28d9', fontSize: 12 }}>{w.zh}</span>}
+              </span>
+            ))}
           </div>
         </div>
       )}

@@ -27,6 +27,7 @@ import VideoStudy from './pages/VideoStudy'
 import SaveNotes from './pages/SaveNotes'
 import SaveProficiency from './pages/SaveProficiency'
 import SaveUnknown from './pages/SaveUnknown'
+import GameMall from './pages/GameMall'
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/quest/:packId" element={<RuQuest />} />
         <Route path="/quest-store" element={<CourseStore />} />
         <Route path="/unlocked-games" element={<GameStore />} />
+        <Route path="/game-mall" element={<GameMall />} />
         <Route path="/my-games" element={<MyGames />} />
         <Route path="/game/:id" element={<GameDetail />} />
         <Route path="/course/:id" element={<CourseDetail />} />

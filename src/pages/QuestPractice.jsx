@@ -83,6 +83,38 @@ function adaptBuildSteps(data) {
   });
 }
 
+// 本地投稿课程：lesson.sentences（AI 渐进例句）→ 答题引擎 sequence/unit 结构
+// 一句话 = 一个 step/unit；整课 = 一个 sequence；先学单词（顶部单词卡），再逐句渐进
+function adaptLocalLesson(lesson) {
+  const sentences = Array.isArray(lesson.sentences) ? lesson.sentences.filter(x => x && x.ru) : [];
+  const units = sentences.map((st, idx) => {
+    const tokens = String(st.ru || "").trim().split(/\s+/).filter(Boolean);
+    const words = tokens.map((w, i) => ({
+      order: i, form: w, lemma: w, pos: "", posColor: "", grammarLabel: "", roleLabel: "",
+    }));
+    const wordOrder = tokens.map((_, i) => i);
+    return {
+      id: `local_${idx + 1}`,
+      sequenceId: "local",
+      sequenceOrder: idx + 1,
+      russian: st.ru || "",
+      stressMarked: tokens.join(" "),
+      chinese: st.zh || "",
+      action: "", grammarNote: "", newElement: "",
+      words,
+      acceptableAnswers: [{ wordOrder, wordVariants: {}, isDefault: true, note: "" }],
+    };
+  });
+  return [{
+    id: "local",
+    name: lesson.title || "本课",
+    familyName: lesson.title || "本课",
+    units,
+    totalUnits: units.length,
+    fullSentence: "",
+  }];
+}
+
 export default function QuestPractice() {
   const navigate = useNavigate();
   const { courseId } = useParams();
@@ -96,6 +128,9 @@ export default function QuestPractice() {
   const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
   const [unitMeta, setUnitMeta] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // ---- 本地投稿课程模式（?src=local + sessionStorage 里的 lesson）----
+  const [localLesson, setLocalLesson] = useState(null);
+  const [isLocalMode, setIsLocalMode] = useState(false);
 
   // ---- 计时器 ----
   const [elapsed, setElapsed] = useState(0);
@@ -235,6 +270,29 @@ export default function QuestPractice() {
     async function loadUnit() {
       setLoading(true);
       setLoadError(null);
+      // 本地投稿课程：直接消费 sessionStorage 里的 lesson（单词 + 渐进例句），不依赖后端
+      try {
+        const isLocal = new URLSearchParams(window.location.search).get("src") === "local";
+        if (isLocal) {
+          let stored = null
+          try { stored = JSON.parse(sessionStorage.getItem("rlearn_local_lesson_" + effectiveCourseId) || "null") } catch (e) { stored = null }
+          if (stored && Array.isArray(stored.sentences) && stored.sentences.length) {
+            const adapted = adaptLocalLesson(stored);
+            if (!cancelled) {
+              setLocalLesson(stored);
+              setIsLocalMode(true);
+              setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
+              setSequences(adapted);
+              setCurrentSequenceIndex(0);
+              setCurrentUnitIndex(0);
+            }
+            if (!cancelled) setLoading(false);
+            return;
+          }
+          // 本地标记但无数据 → 清标记走 API 兜底
+          if (!cancelled) setIsLocalMode(false);
+        }
+      } catch (e) { /* 忽略，走 API */ }
       try {
         const data = await fetchJsonRetry(
           `${API_BASE}/api/units/${effectiveCourseId}/build-steps`
@@ -508,6 +566,23 @@ export default function QuestPractice() {
           步骤 {currentUnitIndex + 1}/{currentSequence?.units?.length || 0}
         </span>
       </div>
+
+      {/* 本地投稿课程：本课单词热身区（先学单词，再进入渐进例句） */}
+      {isLocalMode && !loading && !loadError && Array.isArray(localLesson?.words) && localLesson.words.length > 0 && (
+        <div style={{ margin: '14px 18px 0', padding: '14px 16px', borderRadius: 14, background: '#F5F3FF', border: '1px solid #EDE9FE' }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#5b21b6', marginBottom: 10 }}>
+            📖 本课单词（{localLesson.words.length} 个）— 先记词，再渐进学句
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {localLesson.words.map((w, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, background: '#fff', border: '1px solid #E9D5FF', borderRadius: 999, padding: '4px 12px', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: '#3b0764', fontFamily: '"PT Serif",Georgia,serif' }}>{w.ru}</span>
+                {w.zh && <span style={{ color: '#6d28d9', fontSize: 12 }}>{w.zh}</span>}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 主内容区 */}
       <div style={styles.mainContent}>

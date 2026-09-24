@@ -13,6 +13,7 @@ const TITLES = {
   '/save/notes': '关卡笔记',
   '/save/unknown': '陌生关卡',
   '/unlocked-games': '解锁游戏',
+  '/game-mall': '游戏商城',
   '/my-games': '我的游戏',
   '/vocab': '复习关卡',
   '/quest-store': '游戏化学习',

@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { findGameById } from '../data/gameLibrary'
-import { API_BASE } from '../lib/api'
+import { useGameCourseStore } from '../store/gameCourseStore'
+import { API_BASE, apiFetch } from '../lib/api'
 import ModePickerModal, { COURSE_MODES } from '../components/ModePickerModal'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
+import { toast } from '../lib/toast'
 
 // 难度 / 状态 样式（与 RuQuest 对齐）
 const DIFF_META = {
@@ -35,7 +37,25 @@ function makeDemoUnits(game) {
 export default function GameDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const game = findGameById(id)
+  // 课程来源：静态目录 → 本地投稿课程 → 云端投稿课程（kind=course）
+  const [game, setGame] = useState(() => findGameById(id) || useGameCourseStore.getState().find(id))
+
+  // 云端投稿课程补充（本地没有时）
+  useEffect(() => {
+    if (game) return
+    let alive = true
+    apiFetch('/api/videos/list')
+      .then(r => r.json())
+      .then(j => {
+        if (!alive) return
+        if (j.ok && Array.isArray(j.videos)) {
+          const hit = j.videos.find(v => v.kind === 'course' && v.id === id)
+          if (hit) setGame(hit)
+        }
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [game, id])
 
   const [units, setUnits] = useState([])
   const [loading, setLoading] = useState(true)
@@ -45,6 +65,13 @@ export default function GameDetail() {
 
   useEffect(() => {
     if (!game) { setLoading(false); return }
+    // 投稿课程：直接用投稿时填写的关卡大纲（真实内容，不走演示占位）
+    if (game.kind === 'course' && Array.isArray(game.lessons) && game.lessons.length) {
+      setUnits(game.lessons.map((l, i) => ({ ...l, status: i === 0 ? '进行中' : '未开始', demo: false })))
+      setIsDemo(false)
+      setLoading(false)
+      return
+    }
     if (game.packId) {
       // 本地预览（localhost）走相对路径，由 vite proxy 转发避免跨域；线上 Netlify 用 API_BASE 完整地址
       const isLocal = /^localhost|^127\./.test(location.hostname)
@@ -93,6 +120,15 @@ export default function GameDetail() {
     const u = pickedUnit
     setPickedUnit(null)
     if (!u) return
+    // 投稿课程（无 packId）：自带本课内容（单词 + 渐进例句），走本地学习模式，学习页直接消费 lesson 数据
+    const isLocalCourse = !game.packId && Array.isArray(u.sentences) && u.sentences.length > 0
+    if (isLocalCourse) {
+      try { sessionStorage.setItem('rlearn_local_lesson_' + u.id, JSON.stringify(u)) } catch (e) { /* 忽略 */ }
+      if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}?src=local`)
+      else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}?src=local`)
+      else toast('该模式暂仅支持内置课程包，投稿课程支持「中译俄 / 听写」两种模式')
+      return
+    }
     const packQ = game.packId ? `?pack=${game.packId}` : ''
     if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}${packQ}`)
     else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}${packQ}`)
@@ -169,7 +205,14 @@ export default function GameDetail() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 15, fontWeight: 800 }}>{u.title}</span>
-                    <span style={{ fontSize: 11, color: dm.color, background: dm.bg, borderRadius: 6, padding: '2px 8px' }}>{dm.label}</span>
+                    <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {Array.isArray(u.sentences) && u.sentences.length > 0 && (
+                        <span style={{ fontSize: 11, color: '#7c3aed', background: '#EDE9FE', borderRadius: 999, padding: '2px 8px' }}>
+                          {(Array.isArray(u.words) ? u.words.length : 0) + ' 词 · ' + u.sentences.length + ' 句'}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 11, color: dm.color, background: dm.bg, borderRadius: 6, padding: '2px 8px' }}>{dm.label}</span>
+                    </span>
                   </div>
                   {(u.subtitle || u.description) && <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 6 }}>{u.subtitle || u.description}</div>}
                   <div style={{ marginTop: 10 }}>
