@@ -65,6 +65,12 @@ export default function CourseContributeModal({ onClose }) {
   const genFromText = () => {
     const lines = (form.bulkText || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
     if (!lines.length) { toast('请先粘贴俄中对照文本（每行一句，用 | 分隔）'); return }
+    // ⚠️ 生词表格式检测：整段都是「单词 | 短中文释义」→ 引导用方式一（合成一课），避免每词拆成一关
+    const vocabLike = lines.length > 2 && lines.every(l => /^[а-яёА-ЯЁa-zA-Z][а-яёА-ЯЁa-zA-Z\-']*\s*[|｜]\s*[\u4e00-\u9fa5]{1,8}$/.test(l))
+    if (vocabLike) {
+      toast('⚠️ 检测到这是「生词表」（词 | 释义）。生词表请用上方「方式一 ✨ AI 渐进生成」——会把全部单词合成 1 课；这里按行拆课会导致每词一关')
+      return
+    }
     const lessons = lines.map((line, i) => {
       const [ru = '', zh = ''] = line.split(/\s*[|｜]\s*/)
       return { name: (ru || line).slice(0, 24), desc: (zh || '').slice(0, 40) }
@@ -286,7 +292,7 @@ export default function CourseContributeModal({ onClose }) {
 
         {/* 方式一（推荐）：粘贴本课生词表 → AI 渐进生成（先学单词，再逐句渐进） */}
         <div className="field" style={{ border: '1px dashed #ddd', borderRadius: 10, padding: 12 }}>
-          <label>方式一 · 粘贴本课生词表 → ✨ AI 渐进生成（推荐）</label>
+          <label>方式一 · 粘贴本课生词表 → ✨ AI 渐进生成（推荐，整课=1 关）</label>
           <textarea
             value={form.wordsText}
             onChange={e => setField('wordsText', e.target.value)}
@@ -298,13 +304,13 @@ export default function CourseContributeModal({ onClose }) {
             <button type="button" className="btn sm primary" onClick={aiGenLesson} disabled={aiGen} style={{ flexShrink: 0 }}>
               {aiGen ? 'AI 生成中…' : '✨ AI 渐进生成一课'}
             </button>
-            <span className="hint" style={{ margin: 0 }}>AI 为每个单词配例句，并按 短→长 / 易→难 渐进排序</span>
+            <span className="hint" style={{ margin: 0 }}>无论多少生词，都合成 <b>1 关（1 课）</b>：全部单词 + 渐进例句都在这一课里</span>
           </div>
         </div>
 
         {/* 方式二：粘贴俄中对照文本 → 按行拆课（每行一句，一行一关，适合已有成句内容） */}
         <div className="field">
-          <label>方式二 · 粘贴俄中对照文本（每行一句，用 | 分隔，按行拆课）</label>
+          <label>方式二 · 粘贴俄中对照文本（仅限「一句一行」的成句内容；生词表请用方式一）</label>
           <textarea
             value={form.bulkText}
             onChange={e => setField('bulkText', e.target.value)}
