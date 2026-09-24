@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
 import Header from '../components/Header'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
-import { COURSES } from '../data/gameMallData'
+import { COURSES, GRADES, TEXTBOOKS } from '../data/gameMallData'
+import { getCourses } from '../utils/storage'
 
-// ===== 游戏商城页面（第一步：筛选区 + 卡片占位） =====
+// ===== 游戏商城页面（筛选区 + 卡片列表） =====
 export default function GameMall() {
   // 把导航+搜索注入全局页眉"游戏商城"右侧（headerRight 插槽）
   const { setHeaderRight } = usePageHeader()
@@ -12,35 +13,62 @@ export default function GameMall() {
     return () => setHeaderRight(null)
   }, [setHeaderRight])
 
-  // ① 排序状态（年级/版本已去掉：由投稿时 AI 自动生成，仅作卡片标签展示）
+  // ① 排序 / 年级 / 教材版本 筛选状态
   const [currentSort, setCurrentSort] = useState('推荐')         // 排序：推荐 / 最热
+  const [currentGrade, setCurrentGrade] = useState('全部')        // 年级筛选
+  const [currentTextbook, setCurrentTextbook] = useState('全部')  // 教材版本筛选
 
-  // ② 计算属性：排序（推荐 = 默认顺序；最热 = 学习人数降序）
+  // ② 数据源：后台发布的本地课程优先；没有才用硬编码 COURSES
+  const localCourses = useMemo(() => getCourses(), [])
+  const dataCourses = localCourses.length ? localCourses : COURSES
+
+  // ③ 计算属性：先按 年级 AND 教材版本 过滤，再按排序
   const filteredCourses = useMemo(() => {
+    let list = dataCourses
+    if (currentGrade !== '全部') list = list.filter(c => c.grade === currentGrade)
+    if (currentTextbook !== '全部') list = list.filter(c => c.textbook === currentTextbook)
     if (currentSort === '最热') {
-      return [...COURSES].sort((a, b) => b.students - a.students)
+      return [...list].sort((a, b) => (b.students || 0) - (a.students || 0))
     }
-    return COURSES
-  }, [currentSort])
+    return list
+  }, [currentSort, currentGrade, currentTextbook, dataCourses])
 
 
   return (
     <main className="px-6 py-7 bg-base-100 min-h-full">
       <div className="max-w-[1200px] mx-auto">
 
-        {/* ===== 工具行：共 X 个课程包 + 排序下拉（年级/版本筛选已去除，AI 投稿自动打标） ===== */}
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div className="text-sm text-gray-400">
-            共 <span className="font-semibold text-gray-700">{filteredCourses.length}</span> 个课程包
+        {/* ===== 工具行：筛选 + 共 X 个课程包 + 排序 ===== */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={currentGrade}
+              onChange={(e) => setCurrentGrade(e.target.value)}
+              className="select select-sm select-bordered text-sm"
+            >
+              {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+            <select
+              value={currentTextbook}
+              onChange={(e) => setCurrentTextbook(e.target.value)}
+              className="select select-sm select-bordered text-sm"
+            >
+              {TEXTBOOKS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
           </div>
-          <select
-            value={currentSort}
-            onChange={(e) => setCurrentSort(e.target.value)}
-            className="select select-sm select-bordered text-sm"
-          >
-            <option value="推荐">推荐排序</option>
-            <option value="最热">最热排序</option>
-          </select>
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-400">
+              共 <span className="font-semibold text-gray-700">{filteredCourses.length}</span> 个课程包
+            </div>
+            <select
+              value={currentSort}
+              onChange={(e) => setCurrentSort(e.target.value)}
+              className="select select-sm select-bordered text-sm"
+            >
+              <option value="推荐">推荐排序</option>
+              <option value="最热">最热排序</option>
+            </select>
+          </div>
         </div>
 
         {/* ===== 卡片列表（对标句乐部：封面框 + 封面图 + 底部信息区） ===== */}
@@ -62,9 +90,18 @@ export default function GameMall() {
               </div>
               {/* 封面图展示区 */}
               <div className="px-3 pt-3">
-                <div
-                  className="h-24 rounded-lg bg-gray-100 bg-cover bg-center transition-transform duration-200 group-hover:scale-[1.02]"
-                  style={{ backgroundImage: `url(${c.cover})` }}
+                <img
+                  src={c.cover}
+                  alt={c.title}
+                  loading="lazy"
+                  className="h-24 w-full rounded-lg bg-gray-100 object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                  onError={(e) => {
+                    if (String(e.currentTarget.src).startsWith('data:') || String(e.currentTarget.src).startsWith('blob:')) {
+                      e.currentTarget.src = 'https://picsum.photos/seed/' + c.id + '/400/280'
+                    } else {
+                      e.currentTarget.style.visibility = 'hidden'
+                    }
+                  }}
                 />
               </div>
               {/* 底部信息区：分隔线 + 标题 + 作者信息 + 标签 */}
