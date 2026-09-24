@@ -43,12 +43,12 @@ te_source/russian-learning-frontend-main/src/pages/Dictionary.jsx, C:/Users/张�
 computing gzip size...
 [2mdist/[22m[32mindex.html                 [39m[1m[2m  3.64 kB[22m[1m[22m[2m │ gzip:   1.74 kB[22m
 [2mdist/[22m[35massets/index-D72BQYC5.css  [39m[1m[2m293.27 kB[22m[1m[22m[2m │ gzip:  46.67 kB[22m
-[2mdist/[22m[36massets/srt-CKKvmMhI.js     [39m[1m[2m  4.10 kB[22m[1m[22m[2m │ gzip:   1.96 kB[22m
-[2mdist/[22m[36massets/index-BWoPU_pc.js   [39m[1m[33m805.75 kB[39m[22m[2m │ gzip: 254.45 kB[22m
+[2mdist/[22m[36massets/srt-FBRRVG5m.js     [39m[1m[2m  4.10 kB[22m[1m[22m[2m │ gzip:   1.96 kB[22m
+[2mdist/[22m[36massets/index-GbZeNonc.js   [39m[1m[33m806.07 kB[39m[22m[2m │ gzip: 254.60 kB[22m
 [33m
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-m
 anualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
-[32m✓ built in 5.50s[39m
+[32m✓ built in 5.84s[39m

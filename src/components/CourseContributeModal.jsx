@@ -90,11 +90,12 @@ export default function CourseContributeModal({ onClose }) {
   // ===== 方式三 · AI 自动切课：整本书/多课连续文本 → 按课标题切分，每课一关 =====
   const [splitText, setSplitText] = useState('')
   const [splitting, setSplitting] = useState(false)
+  const [appendMode, setAppendMode] = useState(false) // true=追加到已有关卡（分批切课合并成一个大课程包）
   const splitCourse = async () => {
     if (splitting) return
     const text = (splitText || '').trim()
     if (!text) { toast('请先粘贴整本书或连续多课的文本（每课以「Урок N」或课标题开头）'); return }
-    if (form.lessons.length && !window.confirm('当前已有 ' + form.lessons.length + ' 个关卡，自动切课会用切分结果覆盖它们，继续？')) return
+    if (form.lessons.length && !appendMode && !window.confirm('当前已有 ' + form.lessons.length + ' 个关卡，切课将覆盖它们，继续？')) return
     setSplitting(true)
     try {
       const res = await apiFetch('/api/course-split', {
@@ -106,15 +107,18 @@ export default function CourseContributeModal({ onClose }) {
       if (!jj.ok) throw new Error(jj.error || '切课失败')
       const r = parseAIJSON(jj.content)
       if (!r || !Array.isArray(r.lessons) || !r.lessons.length) { toast('切课失败：未能识别出课，请检查文本是否包含课标题（如 Урок 1）'); return }
-      const lessons = r.lessons.map(l => ({
+      const fresh = r.lessons.map(l => ({
         name: (l.name || ('第 ' + (l.num || 0) + ' 课')).slice(0, 30),
         desc: (l.desc || '').slice(0, 60),
         vocab: (l.vocab || '').trim(),
         words: [],
         sentences: [],
       }))
-      setForm(prev => ({ ...prev, lessons, title: prev.title.trim() || (r.bookTitle || '走遍俄罗斯') }))
-      toast('✅ 自动切课完成：识别出 ' + lessons.length + ' 课。每关可点「✨例句」或「⚡ 批量生成」补内容')
+      setForm(prev => {
+        const lessons = appendMode ? [...prev.lessons, ...fresh] : fresh
+        return { ...prev, lessons, title: prev.title.trim() || (r.bookTitle || '走遍俄罗斯') }
+      })
+      toast('✅ 自动切课完成：识别出 ' + fresh.length + ' 课' + (appendMode ? '，已追加到现有 ' + form.lessons.length + ' 关之后' : '') + '。可点每关「✨例句」或「⚡ 批量生成」补内容')
     } catch (e) {
       toast('自动切课失败：' + (e.message || '请稍后重试'))
     } finally {
@@ -454,6 +458,10 @@ export default function CourseContributeModal({ onClose }) {
             )}
             <span className="hint" style={{ margin: 0 }}>AI 按「Урок N」识别每课边界 → 每课 1 关；切完可逐关/批量生成例句</span>
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12.5, color: '#555' }}>
+            <input type="checkbox" checked={appendMode} onChange={e => setAppendMode(e.target.checked)} />
+            追加到已有关卡（不覆盖）—— 分 3 批切课时勾选，合并成 1 个课程包（共 13 关）
+          </label>
         </div>
 
         <div className="field">
