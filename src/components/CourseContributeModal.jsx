@@ -86,6 +86,118 @@ export default function CourseContributeModal({ onClose }) {
   // ✨ AI 渐进生成：粘贴生词表 → AI 生成一课（单词 + 按难度渐进排列的例句）
   // 教学法：先学单词 → 每个单词配例句 → 例句由短到长、由易到难渐进学习
   const [aiGen, setAiGen] = useState(false)
+
+  // ===== 方式三 · AI 自动切课：整本书/多课连续文本 → 按课标题切分，每课一关 =====
+  const [splitText, setSplitText] = useState('')
+  const [splitting, setSplitting] = useState(false)
+  const splitCourse = async () => {
+    if (splitting) return
+    const text = (splitText || '').trim()
+    if (!text) { toast('请先粘贴整本书或连续多课的文本（每课以「Урок N」或课标题开头）'); return }
+    if (form.lessons.length && !window.confirm('当前已有 ' + form.lessons.length + ' 个关卡，自动切课会用切分结果覆盖它们，继续？')) return
+    setSplitting(true)
+    try {
+      const res = await apiFetch('/api/course-split', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: form.title.trim(), category: form.cat, level: form.level, text }),
+      })
+      const jj = await res.json()
+      if (!jj.ok) throw new Error(jj.error || '切课失败')
+      const r = parseAIJSON(jj.content)
+      if (!r || !Array.isArray(r.lessons) || !r.lessons.length) { toast('切课失败：未能识别出课，请检查文本是否包含课标题（如 Урок 1）'); return }
+      const lessons = r.lessons.map(l => ({
+        name: (l.name || ('第 ' + (l.num || 0) + ' 课')).slice(0, 30),
+        desc: (l.desc || '').slice(0, 60),
+        vocab: (l.vocab || '').trim(),
+        words: [],
+        sentences: [],
+      }))
+      setForm(prev => ({ ...prev, lessons, title: prev.title.trim() || (r.bookTitle || '走遍俄罗斯') }))
+      toast('✅ 自动切课完成：识别出 ' + lessons.length + ' 课。每关可点「✨例句」或「⚡ 批量生成」补内容')
+    } catch (e) {
+      toast('自动切课失败：' + (e.message || '请稍后重试'))
+    } finally {
+      setSplitting(false)
+    }
+  }
+
+  // 为指定关卡调用 AI 生成例句（用该关的生词表）
+  const [genIdx, setGenIdx] = useState(-1) // -1=空闲；>=0 表示正在生成第几关
+  const genLessonFor = async (i) => {
+    const l = form.lessons[i]
+    if (!l || !(l.vocab || '').trim()) { toast('该关没有生词表，无法生成例句（可手动填写）'); return }
+    if (genIdx >= 0) return
+    setGenIdx(i)
+    try {
+      const res = await apiFetch('/api/course-lesson-gen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: l.name || ('第 ' + (i + 1) + ' 课'), category: form.cat, level: form.level, words: l.vocab }),
+      })
+      const jj = await res.json()
+      if (!jj.ok) throw new Error(jj.error || '生成失败')
+      const r = parseAIJSON(jj.content)
+      if (!r || !Array.isArray(r.words) || !Array.isArray(r.sentences) || !r.sentences.length) {
+        toast('第 ' + (i + 1) + ' 关生成失败：未能解析出句子，请重试'); return
+      }
+      setForm(prev => {
+        const lessons = prev.lessons.map((ll, idx) => idx === i ? {
+          ...ll,
+          name: ll.name || (r.title || '').slice(0, 30),
+          desc: ll.desc || (r.description || '').slice(0, 60),
+          words: r.words.slice(0, 40),
+          sentences: r.sentences.slice(0, 30),
+        } : ll)
+        return { ...prev, lessons }
+      })
+      toast('✅ 第 ' + (i + 1) + ' 关已生成：' + r.words.length + ' 词 · ' + r.sentences.length + ' 句')
+    } catch (e) {
+      toast('第 ' + (i + 1) + ' 关生成失败：' + (e.message || '请稍后重试'))
+    } finally {
+      setGenIdx(-1)
+    }
+  }
+
+  // 批量生成：逐关串行调用 AI 生成例句
+  const [genAllBusy, setGenAllBusy] = useState(false)
+  const genAllLessons = async () => {
+    if (genAllBusy) return
+    const need = form.lessons.filter(l => (l.vocab || '').trim() && !l.sentences.length).length
+    if (!need) { toast('没有需要生成的关卡（每关都要有生词表）'); return }
+    if (!window.confirm('将为 ' + need + ' 个关卡逐个生成例句（每关约 10-20 秒），预计 ' + Math.ceil(need * 15 / 60) + ' 分钟，期间请勿关闭页面。继续？')) return
+    setGenAllBusy(true)
+    let okCnt = 0, failCnt = 0
+    for (let i = 0; i < form.lessons.length; i++) {
+      const l = form.lessons[i]
+      if (!(l.vocab || '').trim() || l.sentences.length) continue
+      setGenIdx(i)
+      try {
+        const res = await apiFetch('/api/course-lesson-gen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: l.name || ('第 ' + (i + 1) + ' 课'), category: form.cat, level: form.level, words: l.vocab }),
+        })
+        const jj = await res.json()
+        if (!jj.ok) throw new Error(jj.error || '生成失败')
+        const r = parseAIJSON(jj.content)
+        if (!r || !Array.isArray(r.words) || !Array.isArray(r.sentences) || !r.sentences.length) { failCnt++; continue }
+        okCnt++
+        setForm(prev => {
+          const lessons = prev.lessons.map((ll, idx) => idx === i ? {
+            ...ll,
+            name: ll.name || (r.title || '').slice(0, 30),
+            desc: ll.desc || (r.description || '').slice(0, 60),
+            words: r.words.slice(0, 40),
+            sentences: r.sentences.slice(0, 30),
+          } : ll)
+          return { ...prev, lessons }
+        })
+      } catch (e) { failCnt++ }
+    }
+    setGenIdx(-1); setGenAllBusy(false)
+    toast('批量生成完成：成功 ' + okCnt + ' 关' + (failCnt ? '，失败 ' + failCnt + ' 关（可逐个重试）' : ''))
+  }
   const aiGenLesson = async () => {
     if (aiGen) return
     const words = (form.wordsText || '').trim()
@@ -321,6 +433,29 @@ export default function CourseContributeModal({ onClose }) {
           <button type="button" className="btn sm" onClick={genFromText} style={{ marginTop: 6 }}>✨ 一键生成关卡（{form.lessons.length ? '已生成 ' + form.lessons.length + ' 关' : '当前 0 关'}）</button>
         </div>
 
+        {/* 方式三：粘贴整本书/多课文本 → AI 自动切课（每课一关） */}
+        <div className="field" style={{ border: '1px dashed #ddd', borderRadius: 10, padding: 12 }}>
+          <label>方式三 · 粘贴整本书/连续多课文本 → ✨ AI 自动切课（每课一关）</label>
+          <textarea
+            value={splitText}
+            onChange={e => setSplitText(e.target.value)}
+            rows={5}
+            placeholder={"Урок 1 · 字母与问候\nэто | 这是\nдом | 房子\n…\nУрок 2 · 这是谁\nкто | 谁\n…\n（每课以「Урок N」或课标题开头，AI 自动识别边界，一次最多约 5 课）"}
+            style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }}
+          />
+          <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button type="button" className="btn sm primary" onClick={splitCourse} disabled={splitting} style={{ flexShrink: 0 }}>
+              {splitting ? 'AI 切课中…' : '✨ AI 自动切课'}
+            </button>
+            {form.lessons.some(l => (l.vocab || '').trim() && !l.sentences.length) && (
+              <button type="button" className="btn sm" onClick={genAllLessons} disabled={genAllBusy} style={{ flexShrink: 0 }}>
+                {genAllBusy ? '批量生成中…' : '⚡ 批量生成全部例句'}
+              </button>
+            )}
+            <span className="hint" style={{ margin: 0 }}>AI 按「Урок N」识别每课边界 → 每课 1 关；切完可逐关/批量生成例句</span>
+          </div>
+        </div>
+
         <div className="field">
           <label>主分类</label>
           <select value={form.cat} onChange={e => setCat(e.target.value)}>
@@ -407,6 +542,11 @@ export default function CourseContributeModal({ onClose }) {
                 <span style={{ flexShrink: 0, fontSize: 11.5, color: '#7c3aed', background: '#EDE9FE', borderRadius: 999, padding: '2px 8px' }}>
                   {(Array.isArray(l.words) ? l.words.length : 0) + ' 词 · ' + l.sentences.length + ' 句'}
                 </span>
+              )}
+              {(l.vocab || '').trim() && !(Array.isArray(l.sentences) && l.sentences.length) && (
+                <button type="button" className="btn sm" disabled={genIdx >= 0} onClick={() => genLessonFor(i)} style={{ flexShrink: 0 }}>
+                  {genIdx === i ? '生成中…' : '✨例句'}
+                </button>
               )}
               <input
                 value={l.desc}
