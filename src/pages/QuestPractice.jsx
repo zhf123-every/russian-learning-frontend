@@ -18,6 +18,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
+import { analyzeSentence } from "../lib/ai";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -238,6 +239,56 @@ export default function QuestPractice() {
   // ---- 当前题目计算（双层索引）----
   const currentSequence = sequences[currentSequenceIndex];
   const currentStatement = currentSequence?.units?.[currentUnitIndex];
+
+  // ---- 答对后按需精析：为本地课程句子补词性颜色/重音/性数格标注（按句子原文缓存） ----
+  const [analysisCache, setAnalysisCache] = useState({});
+  const ensureAnalysis = useCallback(async (stmt) => {
+    if (!stmt || stmt.spellWord || !stmt.russian) return;
+    // 已有标注（词性非空）就跳过
+    if (Array.isArray(stmt.words) && stmt.words.some(w => w.pos || w.grammarLabel)) return;
+    const key = String(stmt.russian).trim();
+    if (analysisCache[key]) { applyAnalysis(key, analysisCache[key]); return; }
+    try {
+      const res = await analyzeSentence(stmt.russian);
+      if (res && Array.isArray(res.words) && res.words.length) {
+        setAnalysisCache(c => ({ ...c, [key]: res }));
+        applyAnalysis(key, res);
+      }
+    } catch (e) { /* 精析失败不影响答题 */ }
+  }, [analysisCache]);
+
+  const applyAnalysis = useCallback((key, res) => {
+    setSequences(seqs => seqs.map((s, si) => {
+      if (si !== currentSequenceIndex) return s;
+      return {
+        ...s,
+        units: (s.units || []).map((u, ui) => {
+          if (ui !== currentUnitIndex || String(u.russian || "").trim() !== key) return u;
+          const roleMap = {};
+          (res.components || []).forEach(c => {
+            const t = String(c.text || "").trim().toLowerCase();
+            if (t && !roleMap[t]) roleMap[t] = c.role || "";
+          });
+          const ws = (res.words || []).map((w, i) => {
+            const pos = w.pos || "";
+            const oldW = (u.words && u.words[i]) || {};
+            return {
+              ...oldW, ...w,
+              order: i,
+              form: w.stressed || oldW.form || w.word || "",
+              lemma: w.word || oldW.lemma || "",
+              pos,
+              posColor: pos ? getPosColor(pos) : (oldW.posColor || ""),
+              grammarLabel: [w.gender && w.gender !== "无" ? w.gender : "", w.grammar_case && w.grammar_case !== "无" ? w.grammar_case : "", w.number === "复数" ? "复数" : ""].filter(Boolean).join("·"),
+              roleLabel: roleMap[String(w.word || "").trim().toLowerCase()] || oldW.roleLabel || "",
+              chinese: w.mean || oldW.chinese || "",
+            };
+          });
+          return { ...u, words: ws, stressMarked: ws.map(x => x.form).filter(Boolean).join(" ") };
+        }),
+      };
+    }));
+  }, [currentSequenceIndex, currentUnitIndex]);
   const totalUnits = sequences.reduce((sum, s) => sum + (s.totalUnits || s.units?.length || 0), 0);
   const currentGlobalUnitIndex = sequences.slice(0, currentSequenceIndex).reduce((sum, s) => sum + (s.totalUnits || s.units?.length || 0), 0) + currentUnitIndex;
   const isLastUnit = currentSequenceIndex === sequences.length - 1 && currentUnitIndex === (currentSequence?.units?.length || 1) - 1;
@@ -282,6 +333,7 @@ export default function QuestPractice() {
       setShowAnswerPanel(true);
       recordCorrect();
       playRightSound();
+      ensureAnalysis(currentStatement);
     },
     onWrong: (result) => {
       setCurrentErrors(result.errors || []);
