@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { API_BASE } from '../lib/api'
+import { parseAIJSON } from '../lib/ai'
 
-// ===== 站长专属后台 · 课程包管理（第二步：课程档案 + 课程序） =====
+// ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
 
 // 一级分类（与商城/投稿分类体系一致）
 const CATS = ['教材同步', '考试备考', '少儿俄语', '基础俄语', '场景俄语', '阅读听力', '影视俄语', '音乐俄语']
@@ -42,7 +43,7 @@ const emptyForm = () => ({
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
-  const [view, setView] = useState('list')          // list=档案列表 | units=某课程的课程序
+  const [view, setView] = useState('list')          // list=档案列表 | units=课程序 | unit=课时内容
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState('')    // 非空 = 正在编辑某条档案
   const [courses, setCourses] = useState([])
@@ -54,6 +55,12 @@ export default function AdminDashboard() {
   const [newUnitTitle, setNewUnitTitle] = useState('')
   const [importText, setImportText] = useState('')
   const [importing, setImporting] = useState(false)
+
+  // —— 课时内容管理状态 ——
+  const [activeUnit, setActiveUnit] = useState(null) // 当前编辑内容的课时
+  const [genning, setGenning] = useState(false)
+  const [newSentRu, setNewSentRu] = useState('')
+  const [newSentZh, setNewSentZh] = useState('')
 
   // 刷新课程列表
   const refresh = () => setCourses(getCourses())
@@ -198,7 +205,7 @@ export default function AdminDashboard() {
     window.scrollTo({ top: 0 })
   }
 
-  // 持久化课时并同步 active
+  // 持久化课时列表并同步 active
   const persistUnits = (next) => {
     setUnits(next)
     const list = getCourses()
@@ -215,7 +222,7 @@ export default function AdminDashboard() {
   // 手动添加课时
   const addUnit = () => {
     const t = newUnitTitle.trim() || ('第 ' + (units.length + 1) + ' 课')
-    persistUnits([...units, { id: 'unit_' + Date.now(), title: t, desc: '', imported: false }])
+    persistUnits([...units, { id: 'unit_' + Date.now(), title: t, desc: '', vocab: '', imported: false }])
     setNewUnitTitle('')
   }
 
@@ -271,7 +278,192 @@ export default function AdminDashboard() {
     setImporting(false)
   }
 
+  // ========== 第三步：课时内容管理 ==========
+
+  // 进入课时内容
+  const openUnit = (u) => {
+    setActiveUnit({ ...u })
+    setNewSentRu('')
+    setNewSentZh('')
+    setView('unit')
+    window.scrollTo({ top: 0 })
+  }
+
+  // 更新 activeUnit 副本
+  const patchUnit = (patch) => setActiveUnit(prev => ({ ...prev, ...patch }))
+
+  // 保存课时内容（写回课程 units）
+  const saveUnit = () => {
+    if (!activeUnit) return
+    const nextUnits = units.map(u => (u.id === activeUnit.id ? activeUnit : u))
+    persistUnits(nextUnits)
+    flash('课时内容已保存')
+    setView('units')
+  }
+
+  // ✨ AI 生成渐进例句：生词表 → 每词至少 1 句长句
+  const genSentences = async () => {
+    const vocab = (activeUnit.vocab || '').trim()
+    if (!vocab) { flash('请先填写本课生词表（每行：词 | 释义）'); return }
+    if (genning) return
+    setGenning(true)
+    try {
+      const isLocal = /^localhost|^127\./.test(location.hostname)
+      const base = isLocal ? '' : (API_BASE || '')
+      const res = await fetch(`${base}/api/course-lesson-gen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: active.title, category: active.category, level: active.difficulty || 'A1', words: vocab }),
+      })
+      const jj = await res.json()
+      if (!jj.ok) throw new Error(jj.error || 'AI 生成失败')
+      const r = parseAIJSON(jj.content)
+      if (!r || !Array.isArray(r.words) || !Array.isArray(r.sentences) || !r.sentences.length) {
+        throw new Error('未能解析出句子，请重试')
+      }
+      patchUnit({ words: r.words, sentences: r.sentences })
+      flash(`✨ 已生成 ${r.words.length} 个单词 · ${r.sentences.length} 句渐进例句（记得点「保存课时内容」）`)
+    } catch (e) {
+      flash('AI 生成失败：' + (e.message || '请稍后重试'))
+    }
+    setGenning(false)
+  }
+
+  // 手动添加例句
+  const addSentence = () => {
+    const ru = newSentRu.trim()
+    const zh = newSentZh.trim()
+    if (!ru || !zh) { flash('例句需同时填写俄语和中文'); return }
+    patchUnit({ sentences: [...(activeUnit.sentences || []), { ru, zh }] })
+    setNewSentRu('')
+    setNewSentZh('')
+  }
+
+  // 删除例句
+  const removeSentence = (idx) => {
+    patchUnit({ sentences: (activeUnit.sentences || []).filter((_, i) => i !== idx) })
+  }
+
+  // 课时素材上传（视频/音频/PDF）
+  const onPickUnitMaterial = (e) => {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    const items = files.map(f => ({ name: f.name, type: f.type || f.name.split('.').pop(), url: URL.createObjectURL(f) }))
+    patchUnit({ materials: [...(activeUnit.materials || []), ...items] })
+    e.target.value = ''
+  }
+
   // ========== 渲染 ==========
+
+  // —— 视图三：课时内容管理 ——
+  if (view === 'unit' && activeUnit) {
+    return (
+      <main className="min-h-full bg-base-100 px-6 py-7">
+        <div className="mx-auto max-w-[1000px]">
+          {toast && (
+            <div className="alert alert-success mb-4 shadow-lg" style={{ padding: '10px 16px' }}>
+              <span>✅ {toast}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <button className="btn btn-ghost btn-sm -ml-2 text-gray-500" onClick={() => setView('units')}>← 返回课程序</button>
+              <h1 className="text-xl font-extrabold text-gray-900 mt-1">{active.title} · {activeUnit.title}</h1>
+              <p className="text-xs text-gray-400 mt-0.5">第三步 · 挂内容：生词表 + 渐进例句 + 素材</p>
+            </div>
+            <button className="btn btn-primary btn-sm" onClick={saveUnit}>💾 保存课时内容</button>
+          </div>
+
+          {/* ① 生词表 */}
+          <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
+            <div className="card-body p-5">
+              <h2 className="card-title text-base text-gray-900">① 本课生词表（每行：词 | 释义）</h2>
+              <p className="text-xs text-gray-400 mt-0.5">AI 导入课时时已自动填入；可手动增删。</p>
+              <textarea
+                className="textarea textarea-bordered mt-3 w-full font-mono"
+                rows={6}
+                value={activeUnit.vocab || ''}
+                onChange={e => patchUnit({ vocab: e.target.value })}
+                placeholder={'дом | 房子\nмама | 妈妈\n...'}
+              />
+              <div className="mt-2 text-xs text-gray-400">已填 {((activeUnit.vocab || '').trim().split(/\r?\n/).filter(Boolean)).length} 个词条</div>
+            </div>
+          </div>
+
+          {/* ② AI 生成渐进例句 */}
+          <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
+            <div className="card-body p-5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h2 className="card-title text-base text-gray-900">② 渐进例句（AI 生成）</h2>
+                <button className="btn btn-primary btn-sm" onClick={genSentences} disabled={genning}>
+                  {genning ? '生成中…' : '✨ AI 生成渐进例句'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                每个生词至少 1 句、完整成分的长句（主谓宾+情景状语+时态），按句型家族渐进梯度生成，句数 = 词数 × 1.2（上限 120 句）。
+              </p>
+
+              {(!activeUnit.sentences || !activeUnit.sentences.length) ? (
+                <p className="py-8 text-center text-sm text-gray-400">还没有例句。填好词表后点「✨ AI 生成渐进例句」。</p>
+              ) : (
+                <>
+                  <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                    <span className="badge badge-success badge-sm">{activeUnit.sentences.length} 句</span>
+                    <span className="badge badge-ghost badge-sm">{((activeUnit.words || []).length) || '-'} 词</span>
+                  </div>
+                  <div className="mt-3 space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                    {(activeUnit.sentences || []).map((s, i) => (
+                      <div key={i} className="flex items-start gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
+                        <span className="text-xs font-bold text-gray-400 w-6 shrink-0 pt-0.5">{String(i + 1).padStart(2, '0')}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm text-gray-900">{s.ru}</div>
+                          <div className="text-xs text-gray-400 mt-0.5">{s.zh}</div>
+                        </div>
+                        <button className="btn btn-error btn-xs btn-outline shrink-0" onClick={() => removeSentence(i)}>删</button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* 手动添加例句 */}
+              <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                <input className="input input-bordered flex-1 text-sm" placeholder="俄语例句" value={newSentRu} onChange={e => setNewSentRu(e.target.value)} />
+                <input className="input input-bordered flex-1 text-sm" placeholder="中文翻译" value={newSentZh} onChange={e => setNewSentZh(e.target.value)} />
+                <button className="btn btn-outline btn-sm" onClick={addSentence}>+ 添加</button>
+              </div>
+            </div>
+          </div>
+
+          {/* ③ 课时素材 */}
+          <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
+            <div className="card-body p-5">
+              <h2 className="card-title text-base text-gray-900">③ 课时素材（视频 / 音频 / PDF）</h2>
+              <input type="file" multiple accept=".pdf,.doc,.docx,.mp3,.mp4,audio/*,video/*" className="file-input file-input-bordered file-input-sm mt-2" onChange={onPickUnitMaterial} />
+              {(activeUnit.materials || []).length === 0 ? (
+                <p className="mt-3 text-sm text-gray-400">还没有素材。可挂本课的视频、音频、课件 PDF。</p>
+              ) : (
+                <ul className="mt-3 space-y-1">
+                  {(activeUnit.materials || []).map((m, i) => (
+                    <li key={i} className="flex items-center gap-2 rounded-lg bg-gray-50 px-2 py-1 text-xs text-gray-600">
+                      <span className="badge badge-ghost badge-xs">{String(m.type).split('/').pop()}</span>
+                      <span className="truncate flex-1">{m.name}</span>
+                      <a href={m.url} target="_blank" rel="noreferrer" className="link link-primary">预览</a>
+                      <button className="btn btn-ghost btn-xs text-gray-400" onClick={() => patchUnit({ materials: (activeUnit.materials || []).filter((_, j) => j !== i) })}>✕</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-4">
+                <button className="btn btn-primary" onClick={saveUnit}>💾 保存课时内容</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   // —— 视图二：课程序管理 ——
   if (view === 'units' && active) {
@@ -301,23 +493,28 @@ export default function AdminDashboard() {
                 <p className="py-8 text-center text-sm text-gray-400">还没有课时。手动添加，或用下方「AI 导入」把整本书切成课时。</p>
               ) : (
                 <div className="space-y-2">
-                  {units.map((u, i) => (
-                    <div key={u.id} className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
-                      <span className="text-xs font-bold text-gray-400 w-6 shrink-0">{String(i + 1).padStart(2, '0')}</span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-800 truncate">{u.title}</span>
-                          {u.imported && <span className="badge badge-info badge-xs shrink-0">AI导入</span>}
+                  {units.map((u, i) => {
+                    const hasContent = (u.sentences && u.sentences.length) || (u.materials && u.materials.length)
+                    return (
+                      <div key={u.id} className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                        <span className="text-xs font-bold text-gray-400 w-6 shrink-0">{String(i + 1).padStart(2, '0')}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-800 truncate">{u.title}</span>
+                            {u.imported && <span className="badge badge-info badge-xs shrink-0">AI导入</span>}
+                            {hasContent && <span className="badge badge-success badge-xs shrink-0">已挂内容</span>}
+                          </div>
+                          {u.desc && <div className="text-xs text-gray-400 mt-0.5 truncate">{u.desc}</div>}
                         </div>
-                        {u.desc && <div className="text-xs text-gray-400 mt-0.5 truncate">{u.desc}</div>}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button className="btn btn-primary btn-xs" onClick={() => openUnit(u)}>内容</button>
+                          <button className="btn btn-ghost btn-xs" disabled={i === 0} onClick={() => moveUnit(i, -1)}>↑</button>
+                          <button className="btn btn-ghost btn-xs" disabled={i === units.length - 1} onClick={() => moveUnit(i, 1)}>↓</button>
+                          <button className="btn btn-error btn-xs btn-outline" onClick={() => removeUnit(i)}>删除</button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button className="btn btn-ghost btn-xs" disabled={i === 0} onClick={() => moveUnit(i, -1)}>↑</button>
-                        <button className="btn btn-ghost btn-xs" disabled={i === units.length - 1} onClick={() => moveUnit(i, 1)}>↓</button>
-                        <button className="btn btn-error btn-xs btn-outline" onClick={() => removeUnit(i)}>删除</button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -356,7 +553,7 @@ export default function AdminDashboard() {
                 <button className="btn btn-primary" onClick={doImport} disabled={importing}>
                   {importing ? '切课中…' : '✨ 切课并导入'}
                 </button>
-                <span className="text-xs text-gray-400">导入的是课时骨架；每课的词汇/例句在下一步「挂内容」时再处理。</span>
+                <span className="text-xs text-gray-400">导入后点课时行「内容」可编辑词表、AI 生成渐进例句、挂素材。</span>
               </div>
             </div>
           </div>

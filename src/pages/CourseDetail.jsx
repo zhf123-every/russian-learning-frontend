@@ -1,7 +1,7 @@
 // 课程详情页（商城版，仿句乐部课程包详情页）
 // 路由：/course/:id —— 由「解锁游戏」商城课程卡进入
 // 与 /game/:id（GameDetail，学习路线+大纲）为两个独立页面
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { findGameById, FEATURED, GUIDES } from '../data/gameLibrary'
 import { COURSES } from '../data/gameMallData'
@@ -49,7 +49,10 @@ export default function CourseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { setHeaderLeft } = usePageHeader() // 页眉左侧插槽（替换收起按钮）
-  const game = findGameById(id) || getCourses().find(c => c.id === id) || COURSES.find(c => c.id === id)
+  const game = useMemo(
+    () => findGameById(id) || getCourses().find(c => c.id === id) || COURSES.find(c => c.id === id),
+    [id],
+  )
 
   const [units, setUnits] = useState([])
   const [loading, setLoading] = useState(true)
