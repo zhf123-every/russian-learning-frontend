@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import Header from '../components/Header'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { COURSES, GRADES, TEXTBOOKS } from '../data/gameMallData'
@@ -74,8 +75,9 @@ export default function GameMall() {
         {/* ===== 卡片列表（对标句乐部：封面框 + 封面图 + 底部信息区） ===== */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {filteredCourses.map((c) => (
-            <div
+            <Link
               key={c.id}
+              to={`/course/${c.id}`}
               className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
             >
               {/* 封面框：主题色渐变背景 + 大号标题 + 副标题 + 角标 */}
@@ -118,7 +120,7 @@ export default function GameMall() {
                 </div>
                 <div className="mt-1 text-[11px] text-gray-300">{c.grade} · {c.textbook}</div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
 

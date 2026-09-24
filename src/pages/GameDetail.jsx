@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { findGameById } from '../data/gameLibrary'
+import { COURSES } from '../data/gameMallData'
+import { getCourses } from '../utils/storage'
 import { useGameCourseStore } from '../store/gameCourseStore'
 import { API_BASE, apiFetch } from '../lib/api'
 import ModePickerModal, { COURSE_MODES } from '../components/ModePickerModal'
@@ -23,7 +25,7 @@ const STATUS_META = {
 
 // 演示课程：没有后端大纲时，生成示例单元（标“演示”）
 function makeDemoUnits(game) {
-  const total = game.total || 10
+  const total = game.total || game.lessons || 10
   return Array.from({ length: total }, (_, i) => ({
     id: 'demo-' + (game.id) + '-' + (i + 1),
     title: `第 ${i + 1} 课`,
@@ -38,7 +40,7 @@ export default function GameDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   // 课程来源：静态目录 → 本地投稿课程 → 云端投稿课程（kind=course）
-  const [game, setGame] = useState(() => findGameById(id) || useGameCourseStore.getState().find(id))
+  const [game, setGame] = useState(() => findGameById(id) || getCourses().find(c => c.id === id) || COURSES.find(c => c.id === id) || useGameCourseStore.getState().find(id))
 
   // 云端投稿课程补充（本地没有时）
   useEffect(() => {

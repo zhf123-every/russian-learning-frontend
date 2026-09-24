@@ -4,6 +4,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { findGameById, FEATURED, GUIDES } from '../data/gameLibrary'
+import { COURSES } from '../data/gameMallData'
+import { getCourses } from '../utils/storage'
 import { API_BASE } from '../lib/api'
 import { isCoursePurchased } from '../lib/courseAccess'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
@@ -20,7 +22,7 @@ const STATUS_META = {
 }
 
 function makeDemoUnits(game) {
-  const total = game.total || 10
+  const total = game.total || game.lessons || 10
   return Array.from({ length: total }, (_, i) => ({
     id: 'demo-' + (game.id) + '-' + (i + 1),
     title: `第 ${i + 1} 课`,
@@ -47,7 +49,7 @@ export default function CourseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { setHeaderLeft } = usePageHeader() // 页眉左侧插槽（替换收起按钮）
-  const game = findGameById(id)
+  const game = findGameById(id) || getCourses().find(c => c.id === id) || COURSES.find(c => c.id === id)
 
   const [units, setUnits] = useState([])
   const [loading, setLoading] = useState(true)
