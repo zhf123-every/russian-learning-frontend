@@ -4,6 +4,7 @@ import Header from '../components/Header'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { COURSES, GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { getCourses } from '../utils/storage'
+import { apiFetch } from '../lib/api'
 
 // ===== 游戏商城页面（筛选区 + 卡片列表） =====
 export default function GameMall() {
@@ -19,10 +20,40 @@ export default function GameMall() {
   const [currentGrade, setCurrentGrade] = useState('全部')        // 年级筛选
   const [currentTextbook, setCurrentTextbook] = useState('全部')  // 教材版本筛选
 
-  // ② 数据源：后台「已发布」的本地课程优先（草稿不上架）；没有才用硬编码 COURSES
+  // ② 数据源：本地后台课程 ∪ 云端课程（全网可见），本地同 id 优先；全空才用硬编码 COURSES
+  const [cloudCourses, setCloudCourses] = useState([])
+  const [cloudLoading, setCloudLoading] = useState(true)
+  useEffect(() => {
+    let alive = true
+    apiFetch('/api/videos/list')
+      .then(r => r.json())
+      .then(j => {
+        if (alive && j.ok && Array.isArray(j.videos)) {
+          setCloudCourses(j.videos.filter(v => v.kind === 'course' && v.id))
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (alive) setCloudLoading(false) })
+    return () => { alive = false }
+  }, [])
   const localCourses = useMemo(() => getCourses(), [])
   const localPublished = useMemo(() => localCourses.filter(c => c.status !== 'draft'), [localCourses])
-  const dataCourses = localPublished.length ? localPublished : COURSES
+  const dataCourses = useMemo(() => {
+    // 云端名单未返回时不显示内置课程，避免「先内置后云端」闪变
+    if (cloudLoading) return []
+    // 归一化：兼容云端投稿课程（desc/total/thumbnail）与后台课程（subtitle/lessons/students）两套字段
+    const norm = (c) => ({
+      ...c,
+      subtitle: c.subtitle || c.desc || '',
+      lessons: typeof c.lessons === 'number' ? c.lessons : (c.total || (Array.isArray(c.units) ? c.units.length : 1)),
+      students: c.students || c.views || 0,
+      cover: [c.cover, c.thumbnail, c.posterUrl].find(v => v && String(v).startsWith('http')) || '',
+    })
+    const byId = new Map()
+    ;[...cloudCourses, ...localPublished].forEach(c => byId.set(c.id, c))
+    const merged = Array.from(byId.values()).map(norm)
+    return merged.length ? merged : COURSES
+  }, [cloudCourses, localPublished, cloudLoading])
 
   // ③ 计算属性：先按 年级 AND 教材版本 过滤，再按排序
   const filteredCourses = useMemo(() => {
@@ -128,7 +159,7 @@ export default function GameMall() {
         {/* 空态 */}
         {filteredCourses.length === 0 && (
           <div className="py-16 text-center text-gray-400 text-sm">
-            该筛选条件下暂无课程包，试试切换年级或版本
+            {cloudLoading ? '正在加载课程…' : '该筛选条件下暂无课程包，试试切换年级或版本'}
           </div>
         )}
       </div>

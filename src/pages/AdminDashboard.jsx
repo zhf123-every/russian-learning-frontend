@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { GRADES, TEXTBOOKS } from '../data/gameMallData'
-import { API_BASE } from '../lib/api'
+import { API_BASE, apiFetch } from '../lib/api'
 import { parseAIJSON } from '../lib/ai'
+import { useAdminStore } from '../store/adminStore'
 
 // ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
 
@@ -48,6 +49,12 @@ export default function AdminDashboard() {
   const [editingId, setEditingId] = useState('')    // 非空 = 正在编辑某条档案
   const [courses, setCourses] = useState([])
   const [toast, setToast] = useState('')
+  // —— 云端同步状态 ——
+  const { adminKey, login, logout } = useAdminStore()
+  const [adminInput, setAdminInput] = useState(adminKey || '')
+  const [cloudBusy, setCloudBusy] = useState(false)
+  const [cloudMsg, setCloudMsg] = useState('')
+  const [cloudCount, setCloudCount] = useState(-1)
 
   // —— 课程序管理状态 ——
   const [active, setActive] = useState(null)        // 当前管理课程序的课程
@@ -191,6 +198,72 @@ export default function AdminDashboard() {
   const remove = (id) => {
     deleteCourse(id)
     refresh()
+  }
+
+  // ========== 全网可见：后台课程同步到云端（B2 videos/index.json，访客 GET /api/videos/list 可读） ==========
+  const syncToCloud = async () => {
+    if (cloudBusy) return
+    if (!adminKey) { setCloudMsg('请先输入管理员密钥并登录'); return }
+    const localPub = getCourses().filter(c => c.status !== 'draft')
+    if (!localPub.length) { setCloudMsg('没有已发布的课程可同步'); return }
+    setCloudBusy(true)
+    setCloudMsg('同步中…')
+    try {
+      // 1) 现有云端名单（含投稿视频/投稿课程）
+      let cloud = []
+      try {
+        const r = await apiFetch('/api/videos/list')
+        const j = await r.json()
+        if (j.ok && Array.isArray(j.videos)) cloud = j.videos
+      } catch (e) { /* 读不到就当空 */ }
+      // 2) 后台已发布课程 → 云端对象（带 units 课时内容），与投稿课程同结构（kind='course'）
+      const localObj = localPub.map(c => ({
+        ...c,
+        kind: 'course',
+        section: 'guide',
+        cat: c.category,
+        category: c.category,
+        level: c.difficulty,
+        stage: c.grade,
+        grade: c.grade,
+        textbook: c.textbook,
+        eps: (Array.isArray(c.units) ? c.units.length : (c.lessons || 1)) + ' 关',
+        total: Array.isArray(c.units) ? c.units.length : (c.lessons || 1),
+        thumbnail: c.cover,
+        posterUrl: c.cover,
+        views: c.students || 0,
+        tags: ['course', c.category, c.grade, c.textbook],
+      }))
+      // 3) 合并：保留云端非本地上传的项，本地上传的同 id 覆盖
+      const mineIds = new Set(localObj.map(x => x.id))
+      const keep = cloud.filter(v => !(v.kind === 'course' && mineIds.has(v.id)))
+      const merged = [...keep, ...localObj]
+      // 4) 全量写回 B2
+      const sr = await apiFetch('/api/videos/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videos: merged, adminKey }),
+      })
+      const sj = await sr.json()
+      if (sj.ok) {
+        setCloudCount(merged.length)
+        setCloudMsg('✅ 已同步 ' + localObj.length + ' 门课程到云端，访客可公开访问（名单共 ' + merged.length + ' 项）')
+        // 打标 cloudSynced
+        const list = getCourses().map(c => localObj.some(x => x.id === c.id) ? { ...c, cloudSynced: true } : c)
+        saveCourses(list)
+        refresh()
+      } else {
+        setCloudMsg('同步失败：' + (sj.error || '未知错误'))
+      }
+    } catch (e) {
+      setCloudMsg('同步失败：' + (e.message || '网络错误'))
+    }
+    setCloudBusy(false)
+  }
+
+  const doAdminLogin = async () => {
+    const ok = await login(adminInput)
+    setCloudMsg(ok ? '✅ 管理员已登录，可以同步到云端' : '密钥无效，请检查')
   }
 
   // ========== 第二步：课程序管理 ==========
@@ -697,6 +770,37 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* ===== ①.5 全网可见 · 云端同步 ===== */}
+        <div className="card mt-6 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
+          <div className="card-body p-6">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h2 className="card-title text-base text-gray-900">🌐 全网可见 · 同步到云端</h2>
+              <span className="text-xs text-gray-400">后台课程目前只存在你的浏览器；同步后所有访客可见、可学</span>
+            </div>
+            <div className="mt-3 flex flex-col sm:flex-row items-center gap-2">
+              <input
+                type="password"
+                className="input input-bordered input-sm flex-1"
+                placeholder="管理员密钥（与投稿弹窗同一把密钥）"
+                value={adminInput}
+                onChange={e => setAdminInput(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button className="btn btn-sm btn-outline" onClick={doAdminLogin} disabled={cloudBusy}>{adminKey ? '已登录 ✓' : '登录'}</button>
+                <button className="btn btn-sm btn-primary" onClick={syncToCloud} disabled={cloudBusy || !adminKey}>
+                  {cloudBusy ? '同步中…' : '🚀 同步到云端'}
+                </button>
+                {adminKey && <button className="btn btn-sm btn-ghost" onClick={() => { logout(); setAdminInput(''); setCloudMsg('已退出管理员') }}>退出</button>}
+              </div>
+            </div>
+            {cloudMsg && <div className="mt-3 text-sm text-gray-600">{cloudMsg}</div>}
+            {cloudCount >= 0 && <div className="mt-2 text-xs text-gray-400">云端名单共 {cloudCount} 项（视频 + 课程）</div>}
+            <div className="mt-3 text-xs text-gray-400">
+              提示：只有「已发布」状态的课程会同步；草稿不会上云。同步前请确保密钥与后端 ADMIN_KEY 一致。
+            </div>
+          </div>
+        </div>
+
         {/* ===== ② 已有课程列表 ===== */}
         <div className="card mt-6 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
           <div className="card-body p-6">
@@ -718,6 +822,7 @@ export default function AdminDashboard() {
                           {c.status === 'published' || !c.status
                             ? <span className="badge badge-success badge-sm">已发布</span>
                             : <span className="badge badge-warning badge-sm">草稿</span>}
+                          {c.cloudSynced && <span className="badge badge-info badge-sm ml-1">云端</span>}
                         </td>
                         <td>
                           <img src={c.cover} alt="" className="h-10 w-16 rounded object-cover"

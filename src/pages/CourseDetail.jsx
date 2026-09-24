@@ -6,6 +6,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { findGameById, FEATURED, GUIDES } from '../data/gameLibrary'
 import { COURSES } from '../data/gameMallData'
 import { getCourses } from '../utils/storage'
+import { apiFetch } from '../lib/api'
 import { API_BASE } from '../lib/api'
 import { isCoursePurchased } from '../lib/courseAccess'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
@@ -49,10 +50,25 @@ export default function CourseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { setHeaderLeft } = usePageHeader() // 页眉左侧插槽（替换收起按钮）
-  const game = useMemo(
-    () => findGameById(id) || getCourses().find(c => c.id === id) || COURSES.find(c => c.id === id),
-    [id],
+  const [game, setGame] = useState(
+    () => findGameById(id) || getCourses().find(c => c.id === id) || COURSES.find(c => c.id === id)
   )
+  // 云端课程兜底（全网可见：访客没有 localStorage，从 B2 名单拉）
+  useEffect(() => {
+    if (game) return
+    let alive = true
+    apiFetch('/api/videos/list')
+      .then(r => r.json())
+      .then(j => {
+        if (!alive) return
+        if (j.ok && Array.isArray(j.videos)) {
+          const hit = j.videos.find(v => v.kind === 'course' && v.id === id)
+          if (hit) setGame(hit)
+        }
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [game, id])
 
   const [units, setUnits] = useState([])
   const [loading, setLoading] = useState(true)
@@ -65,6 +81,13 @@ export default function CourseDetail() {
     // 后台「搭课程序」的真实课时优先展示
     if (Array.isArray(game.units) && game.units.length) {
       setUnits(game.units.map((u, i) => ({ ...u, subtitle: u.desc || u.subtitle, status: i === 0 ? '进行中' : '未开始', demo: false })))
+      setIsDemo(false)
+      setLoading(false)
+      return
+    }
+    // 云端投稿课程：自带 lessons 大纲（真实内容，不走演示占位）
+    if (game.kind === 'course' && Array.isArray(game.lessons) && game.lessons.length) {
+      setUnits(game.lessons.map((l, i) => ({ ...l, subtitle: l.description || l.subtitle, status: i === 0 ? '进行中' : '未开始', demo: false })))
       setIsDemo(false)
       setLoading(false)
       return

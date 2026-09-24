@@ -17,6 +17,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
+import { apiFetch } from "../lib/api";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -299,6 +300,35 @@ export default function QuestPractice() {
           if (!cancelled) setIsLocalMode(false);
         }
       } catch (e) { /* 忽略，走 API */ }
+
+      // 云端课程库兜底（全网可见）：后台课程已同步到 B2，访客浏览器无 localStorage，从云端名单找课时
+      if (String(effectiveCourseId).startsWith("unit_")) {
+        try {
+          const cloudRes = await apiFetch('/api/videos/list')
+          const cloudJson = await cloudRes.json()
+          if (cloudJson.ok && Array.isArray(cloudJson.videos)) {
+            for (const v of cloudJson.videos) {
+              if (v && v.kind === 'course' && Array.isArray(v.units)) {
+                const u = v.units.find(x => x.id === effectiveCourseId)
+                if (u && Array.isArray(u.sentences) && u.sentences.length) {
+                  const adapted = adaptLocalLesson(u)
+                  if (!cancelled) {
+                    setLocalLesson(u)
+                    setIsLocalMode(true)
+                    setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
+                    setSequences(adapted)
+                    setCurrentSequenceIndex(0)
+                    setCurrentUnitIndex(0)
+                  }
+                  if (!cancelled) setLoading(false)
+                  return
+                }
+              }
+            }
+          }
+        } catch (e) { /* 云端不可用，走后端 */ }
+      }
+
       try {
         const data = await fetchJsonRetry(
           `${API_BASE}/api/units/${effectiveCourseId}/build-steps`
