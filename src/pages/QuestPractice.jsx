@@ -20,6 +20,7 @@ import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
+import { expandSequencesWithChunks } from "../lib/chunking";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -343,6 +344,14 @@ export default function QuestPractice() {
     isComposingRef,
     onCorrect: (result, resultType) => {
       setCurrentErrors([]);
+      // Chunking：中间步答对不弹答对面板，直接自动推进到下一步；完整句（最后一步）才显示精析面板
+      const stmt = currentStatement;
+      if (stmt?.chunkOf && !stmt.chunkIsFinal) {
+        recordCorrect();
+        playRightSound();
+        setCurrentUnitIndex((i) => i + 1);
+        return;
+      }
       setShowAnswerPanel(true);
       recordCorrect();
       playRightSound();
@@ -426,7 +435,7 @@ export default function QuestPractice() {
               setLocalLesson(stored);
               setIsLocalMode(true);
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
-              setSequences(adapted);
+              setSequences(expandSequencesWithChunks(adapted, stored?.words));
               setCurrentSequenceIndex(0);
               setCurrentUnitIndex(0);
             }
@@ -453,7 +462,7 @@ export default function QuestPractice() {
                     setLocalLesson(u)
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
-                    setSequences(adapted)
+                    setSequences(expandSequencesWithChunks(adapted, u?.words))
                     setCurrentSequenceIndex(0)
                     setCurrentUnitIndex(0)
                   }
@@ -476,7 +485,7 @@ export default function QuestPractice() {
             setLoadError("该单元没有可学习的步骤");
           } else {
             setUnitMeta(data.unit || null);
-            setSequences(adapted);
+            setSequences(expandSequencesWithChunks(adapted, null));
             setCurrentSequenceIndex(0);
             setCurrentUnitIndex(0);
           }
@@ -761,6 +770,21 @@ export default function QuestPractice() {
           />
         ) : (
         <>
+        {/* Chunking 面包屑：已掌握块 ✓ / 当前块高亮 / 未到块 */}
+        {currentStatement?.chunkOf && (
+          <div style={styles.chunkBar}>
+            {currentStatement.chunkList.map((c, i) => {
+              const isDone = i < currentStatement.chunkStepIndex;
+              const isCur = i === currentStatement.chunkStepIndex;
+              return (
+                <span key={i} style={{ ...styles.chunkPill, ...(isDone ? styles.chunkDone : {}), ...(isCur ? styles.chunkCur : {}) }}>
+                  {isDone ? "\u2713 " : ""}{isCur ? "\u25CF " : ""}{c}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
         {/* 中文释义 */}
         <div style={styles.hintCard}>
           <div style={styles.hintText}>{currentStatement?.chinese}</div>
@@ -950,6 +974,33 @@ const styles = {
     height: "100%",
     background: "linear-gradient(90deg, oklch(23.27% 0.0249 284.3), oklch(18% 0.0249 284.3))",
     transition: "width 0.3s ease",
+  },
+  chunkBar: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 10,
+    alignItems: "center",
+  },
+  chunkPill: {
+    padding: "3px 10px",
+    borderRadius: 999,
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#9CA3AF",
+    background: "#F3F4F6",
+    border: "1px solid #E5E7EB",
+  },
+  chunkDone: {
+    color: "#059669",
+    background: "#ECFDF5",
+    borderColor: "#A7F3D0",
+  },
+  chunkCur: {
+    color: "#6D28D9",
+    background: "#F3E8FF",
+    borderColor: "#C4B5FD",
+    boxShadow: "0 0 0 2px rgba(109,40,217,0.15)",
   },
   familyBar: {
     display: "flex",

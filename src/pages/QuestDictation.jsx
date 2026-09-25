@@ -21,6 +21,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
+import { expandUnitToChunkSteps, buildZhIndex } from "../lib/chunking";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -35,6 +36,15 @@ import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, che
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 无 courseId 时的默认单元：privet_rossiya_a1 课程包第一单元（u1），后端已确证存在
 const DEFAULT_UNIT_ID = "u1";
+
+// Chunking：把拍平的 statements 逐句展开为滚雪球步骤（听写页无 spellWord 单词环节，全部句子切块）
+function expandStatements(items, wordList) {
+  const zhIdx = buildZhIndex(wordList);
+  return (Array.isArray(items) ? items : []).flatMap((it) => {
+    const steps = expandUnitToChunkSteps(it, zhIdx);
+    return steps || [it];
+  });
+}
 
 export default function QuestDictation() {
   const navigate = useNavigate();
@@ -129,6 +139,14 @@ export default function QuestDictation() {
     isComposingRef,
     onCorrect: (result) => {
       setCurrentErrors([]);
+      // Chunking：中间步答对不弹答对面板，自动推进；完整句（最后一步）才显示面板
+      const stmt = currentStatement;
+      if (stmt?.chunkOf && !stmt.chunkIsFinal) {
+        recordCorrect();
+        playRightSound();
+        setQuestionIndex((i) => i + 1);
+        return;
+      }
       setShowAnswerPanel(true);
       recordCorrect();
       playRightSound();
@@ -206,7 +224,7 @@ export default function QuestDictation() {
             if (!cancelled) {
               setLocalLesson(stored);
               setIsLocalMode(true);
-              setStatements(items);
+              setStatements(expandStatements(items, stored.words));
             }
             if (!cancelled) setLoading(false);
             return;
@@ -225,14 +243,17 @@ export default function QuestDictation() {
               if (v && v.kind === 'course' && Array.isArray(v.units)) {
                 const u = v.units.find(x => x.id === effectiveCourseId)
                 if (u && Array.isArray(u.sentences) && u.sentences.length) {
-                  const adapted = adaptLocalLesson(u)
+                  const items = u.sentences.filter(x => x && x.ru).map((st, i) => ({
+                    id: `cloud_${i + 1}`,
+                    russian: st.ru || "",
+                    chinese: st.zh || "",
+                    words: [],
+                  }));
                   if (!cancelled) {
                     setLocalLesson(u)
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
-                    setSequences(adapted)
-                    setCurrentSequenceIndex(0)
-                    setCurrentUnitIndex(0)
+                    setStatements(expandStatements(items, u.words))
                   }
                   if (!cancelled) setLoading(false)
                   return
@@ -263,7 +284,7 @@ export default function QuestDictation() {
             if (items.length === 0) {
               setLoadError("该单元没有可听写的句子");
             } else {
-              setStatements(items);
+              setStatements(expandStatements(items, null));
             }
           } else {
             setLoadError("课程数据格式异常");
@@ -527,6 +548,21 @@ export default function QuestDictation() {
 
       {/* 主内容区 */}
       <div style={styles.mainContent}>
+        {/* Chunking 面包屑：已掌握块 ✓ / 当前块高亮 / 未到块 */}
+        {currentStatement?.chunkOf && (
+          <div style={styles.chunkBar}>
+            {currentStatement.chunkList.map((c, i) => {
+              const isDone = i < currentStatement.chunkStepIndex;
+              const isCur = i === currentStatement.chunkStepIndex;
+              return (
+                <span key={i} style={{ ...styles.chunkPill, ...(isDone ? styles.chunkDone : {}), ...(isCur ? styles.chunkCur : {}) }}>
+                  {isDone ? "\u2713 " : ""}{isCur ? "\u25CF " : ""}{c}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
         {/* 播放按钮（替代中文释义） */}
         <div style={styles.playSection}>
           <button
@@ -745,6 +781,33 @@ const styles = {
     maxWidth: 800,
     margin: "0 auto",
     width: "100%",
+  },
+  chunkBar: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6,
+    justifyContent: "center",
+    width: "100%",
+  },
+  chunkPill: {
+    padding: "3px 10px",
+    borderRadius: 999,
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#9CA3AF",
+    background: "#F3F4F6",
+    border: "1px solid #E5E7EB",
+  },
+  chunkDone: {
+    color: "#059669",
+    background: "#ECFDF5",
+    borderColor: "#A7F3D0",
+  },
+  chunkCur: {
+    color: "#6D28D9",
+    background: "#F3E8FF",
+    borderColor: "#C4B5FD",
+    boxShadow: "0 0 0 2px rgba(109,40,217,0.15)",
   },
   playSection: {
     width: "100%",
