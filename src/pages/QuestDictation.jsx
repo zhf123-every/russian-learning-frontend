@@ -139,14 +139,7 @@ export default function QuestDictation() {
     isComposingRef,
     onCorrect: (result) => {
       setCurrentErrors([]);
-      // Chunking：中间步答对不弹答对面板，自动推进；完整句（最后一步）才显示面板
-      const stmt = currentStatement;
-      if (stmt?.chunkOf && !stmt.chunkIsFinal) {
-        recordCorrect();
-        playRightSound();
-        setQuestionIndex((i) => i + 1);
-        return;
-      }
+      // Chunking：每一步答对都显示答对面板（含中间步），用户点「下一题」进入下一步
       setShowAnswerPanel(true);
       recordCorrect();
       playRightSound();
@@ -804,10 +797,10 @@ const styles = {
     borderColor: "#A7F3D0",
   },
   chunkCur: {
-    color: "#6D28D9",
-    background: "#F3E8FF",
-    borderColor: "#C4B5FD",
-    boxShadow: "0 0 0 2px rgba(109,40,217,0.15)",
+    color: "#111827",
+    background: "#FFFFFF",
+    borderColor: "#374151",
+    fontWeight: 700,
   },
   playSection: {
     width: "100%",

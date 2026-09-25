@@ -166,12 +166,12 @@ export function expandUnitToChunkSteps(unit, zhIdx) {
   return steps;
 }
 
-/** 展开整个 sequences：spellWord 拼写题保留原样，句子题展开 chunking */
+/** 展开整个 sequences：单词拼写题不再单独出（与句子块1单打重复），全部句子切块 chunking */
 export function expandSequencesWithChunks(sequences, wordList) {
   const zhIdx = buildZhIndex(wordList);
   return (Array.isArray(sequences) ? sequences : []).map((seq) => {
     const units = (seq.units || []).flatMap((u) => {
-      if (u && u.spellWord) return [u]; // 单词拼写环节不切块
+      if (u && u.spellWord) return []; // 拼写单词已融入 chunking（块1单打=打第一个词），去掉避免「Это→Это」重复
       const steps = expandUnitToChunkSteps(u, zhIdx);
       return steps || [u];
     });
