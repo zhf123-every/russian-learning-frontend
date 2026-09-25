@@ -56,28 +56,78 @@ export default function CourseDetail() {
   const previewCount = Math.min(Math.max(freeTrialCount + 2, 4), totalLessons)
   const visible = showAll ? sorted : sorted.slice(0, previewCount)
   const pad = (n) => String(n + 1).padStart(2, '0')
+  // 人数格式化（万单位）
+  const fmtViews = (n) => { const v = Number(n) || 0; return v >= 10000 ? (v / 10000).toFixed(1) + '万' : String(v) }
   // 点击「可试学」课时 → 跳到游戏详情页（/game/:id，学习路线+大纲）
   const goGameDetail = () => navigate(`/game/${course.id}`)
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
-      {/* ===== 顶部：课程标题 + 试学副标题 + 操作按钮 ===== */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 leading-snug">{course.title}</h1>
-            <p className="mt-1.5 text-sm text-gray-500">
-              前 <span className="text-amber-600 font-semibold">{freeTrialCount}</span> 课可试学 · 共 <span className="font-semibold text-gray-700">{totalLessons}</span> 课
+      {/* ===== 顶部 Hero：对标句乐部课程详情卡片 ===== */}
+      <div className="detail-hero-pc flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm md:flex-row">
+        {/* 封面 */}
+        <div className={`detail-cover relative flex w-full shrink-0 items-center justify-center overflow-hidden md:w-[300px] ${typeof course.cover === 'string' && course.cover.startsWith('bg-') ? course.cover : 'bg-gradient-to-br from-violet-100 to-purple-200'}`}>
+          {course.posterUrl || course.thumbnail ? (
+            <img src={course.posterUrl || course.thumbnail} alt={course.title} className="h-full w-full object-cover" onError={e => { e.currentTarget.style.display = 'none' }} />
+          ) : (
+            <span className="select-none text-7xl font-black text-purple-700/60">{String(course.title || '课').charAt(0)}</span>
+          )}
+          {course.badge && (
+            <span className="absolute left-3 top-3 rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">{course.badge}</span>
+          )}
+        </div>
+        {/* 右侧正文 */}
+        <div className="detail-body min-w-0 flex-1 p-5 md:p-6">
+          {/* 标题行 + 推荐好友 */}
+          <div className="detail-title-row flex items-start justify-between gap-3">
+            <h2 className="detail-title text-xl font-extrabold leading-snug text-gray-900 md:text-2xl">{course.title}</h2>
+            <button type="button" className="detail-share-btn flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:bg-gray-50">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98" /></svg>
+              推荐好友
+            </button>
+          </div>
+          {/* 描述（保留试学信息） */}
+          <div className="detail-desc-wrap mt-2">
+            <p className="detail-desc text-sm leading-relaxed text-gray-500">
+              {course.subtitle || course.desc || '适合零基础入门的俄语课程'}
+            </p>
+            <p className="mt-1.5 text-xs text-gray-400">
+              前 <span className="font-semibold text-amber-600">{freeTrialCount}</span> 课可试学 · 共 <span className="font-semibold text-gray-700">{totalLessons}</span> 课
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2.5">
-            <button type="button" className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white hover:brightness-110 transition shadow-sm">
-              开通会员
-            </button>
-            <button type="button" className="inline-flex items-center gap-1.5 rounded-full border border-amber-400 bg-amber-50 px-5 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-100 transition">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4" /></svg>
-              试学前 {freeTrialCount} 课
-            </button>
+          {/* 标签行 */}
+          <div className="detail-tag-row mt-3 flex flex-wrap gap-1.5">
+            {(course.tags || []).filter(t => t !== 'course').slice(0, 6).map(t => (
+              <span key={t} className="detail-tag rounded-full bg-gray-100 px-2.5 py-1 text-[11px] text-gray-500">{t}</span>
+            ))}
+          </div>
+          {/* 底部：统计 + CTA */}
+          <div className="detail-footer-bottom mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-3">
+            <div className="detail-stats flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+              <span className="detail-author inline-flex items-center gap-1.5">
+                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                  {String(course.author || '管').charAt(0)}
+                </span>
+                <span className="truncate">{course.author || '管理员'}</span>
+              </span>
+              <span className="detail-stat-usage inline-flex items-center gap-1">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                {fmtViews(course.views ?? course.students ?? 0)} 人使用
+              </span>
+              <span className="detail-rating-link inline-flex items-center gap-1 text-gray-400">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                暂无评价
+              </span>
+            </div>
+            <div className="detail-cta-col flex shrink-0 items-center gap-2.5">
+              <button type="button" className="detail-btn-ghost rounded-full border border-gray-300 px-5 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
+                开通会员
+              </button>
+              <button type="button" className="detail-btn-primary inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:brightness-110">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4" /></svg>
+                试学前 {freeTrialCount} 课
+              </button>
+            </div>
           </div>
         </div>
       </div>
