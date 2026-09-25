@@ -541,20 +541,6 @@ export default function QuestDictation() {
 
       {/* 主内容区 */}
       <div style={styles.mainContent}>
-        {/* Chunking 面包屑：已掌握块 ✓ / 当前块高亮 / 未到块 */}
-        {currentStatement?.chunkOf && (
-          <div style={styles.chunkBar}>
-            {currentStatement.chunkList.map((c, i) => {
-              const isDone = i < currentStatement.chunkStepIndex;
-              const isCur = i === currentStatement.chunkStepIndex;
-              return (
-                <span key={i} style={{ ...styles.chunkPill, ...(isDone ? styles.chunkDone : {}), ...(isCur ? styles.chunkCur : {}) }}>
-                  {isDone ? "\u2713 " : ""}{isCur ? "\u25CF " : ""}{c}
-                </span>
-              );
-            })}
-          </div>
-        )}
 
         {/* 播放按钮（替代中文释义） */}
         <div style={styles.playSection}>
@@ -775,33 +761,7 @@ const styles = {
     margin: "0 auto",
     width: "100%",
   },
-  chunkBar: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 6,
-    justifyContent: "center",
-    width: "100%",
-  },
-  chunkPill: {
-    padding: "3px 10px",
-    borderRadius: 999,
-    fontSize: 13,
-    fontWeight: 600,
-    color: "#9CA3AF",
-    background: "#F3F4F6",
-    border: "1px solid #E5E7EB",
-  },
-  chunkDone: {
-    color: "#059669",
-    background: "#ECFDF5",
-    borderColor: "#A7F3D0",
-  },
-  chunkCur: {
-    color: "#111827",
-    background: "#FFFFFF",
-    borderColor: "#374151",
-    fontWeight: 700,
-  },
+
   playSection: {
     width: "100%",
     padding: "24px 24px 20px",

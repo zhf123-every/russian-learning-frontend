@@ -763,21 +763,6 @@ export default function QuestPractice() {
           />
         ) : (
         <>
-        {/* Chunking 面包屑：已掌握块 ✓ / 当前块高亮 / 未到块 */}
-        {currentStatement?.chunkOf && (
-          <div style={styles.chunkBar}>
-            {currentStatement.chunkList.map((c, i) => {
-              const isDone = i < currentStatement.chunkStepIndex;
-              const isCur = i === currentStatement.chunkStepIndex;
-              return (
-                <span key={i} style={{ ...styles.chunkPill, ...(isDone ? styles.chunkDone : {}), ...(isCur ? styles.chunkCur : {}) }}>
-                  {isDone ? "\u2713 " : ""}{isCur ? "\u25CF " : ""}{c}
-                </span>
-              );
-            })}
-          </div>
-        )}
-
         {/* 中文释义 */}
         <div style={styles.hintCard}>
           <div style={styles.hintText}>{currentStatement?.chinese}</div>
@@ -968,33 +953,7 @@ const styles = {
     background: "linear-gradient(90deg, oklch(23.27% 0.0249 284.3), oklch(18% 0.0249 284.3))",
     transition: "width 0.3s ease",
   },
-  chunkBar: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 6,
-    marginBottom: 10,
-    alignItems: "center",
-  },
-  chunkPill: {
-    padding: "3px 10px",
-    borderRadius: 999,
-    fontSize: 13,
-    fontWeight: 600,
-    color: "#9CA3AF",
-    background: "#F3F4F6",
-    border: "1px solid #E5E7EB",
-  },
-  chunkDone: {
-    color: "#059669",
-    background: "#ECFDF5",
-    borderColor: "#A7F3D0",
-  },
-  chunkCur: {
-    color: "#111827",
-    background: "#FFFFFF",
-    borderColor: "#374151",
-    fontWeight: 700,
-  },
+
   familyBar: {
     display: "flex",
     justifyContent: "space-between",
