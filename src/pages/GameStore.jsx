@@ -489,8 +489,7 @@ export default function GameStore() {
         {/* ===== 通关视频 ===== */}
         {mode !== 'guide' && (
           <section className="mt-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-extrabold">通关视频</h2>
+            <div className="flex items-center justify-end mb-4">
               <div className="flex items-center gap-3">
                 {adminKey ? (
                   <>
@@ -518,9 +517,7 @@ export default function GameStore() {
                     🔑 管理登录
                   </button>
                 ) : null}
-                <a className="text-sm text-gray-400 hover:text-primary flex items-center gap-1 cursor-pointer" onClick={() => toast('已为你展示全部视频')}>
-                  更多视频 <ChevronRight />
-                </a>
+
               </div>
             </div>
             {filteredVideos.length === 0 ? (
@@ -569,8 +566,7 @@ export default function GameStore() {
         {/* ===== 通关秘籍 ===== */}
         {mode !== 'video' && (
           <section className="mt-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-extrabold">通关秘籍</h2>
+            <div className="flex items-center justify-end mb-4">
               <div className="flex items-center gap-3">
                 {adminKey ? (
                   <>
@@ -598,9 +594,7 @@ export default function GameStore() {
                     🔑 管理登录
                   </button>
                 ) : null}
-                <a className="text-sm text-gray-400 hover:text-primary flex items-center gap-1 cursor-pointer" onClick={() => toast('已为你展示全部课程')}>
-                  更多课程 <ChevronRight />
-                </a>
+
               </div>
             </div>
             {filteredGuides.length === 0 ? (
