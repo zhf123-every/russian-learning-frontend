@@ -99,7 +99,8 @@ function ChevronRight() {
 
 // 解锁 / 已解锁操作区
 function UnlockBar({ game, onVideoStart }) {
-  const unlocked = isCoursePurchased(game.id)
+  // 投稿课程（kind=course，管理员发布）直接开放学习，无需解锁
+  const unlocked = isCoursePurchased(game.id) || game.kind === 'course'
   if (unlocked) {
     // 视频类：卡片点击本身弹弹窗，这里不再放“去学习”
     if (game.kind === 'video') {
@@ -193,10 +194,13 @@ export default function GameStore() {
         const needSync = localAll.some(v => !cloudIds.has(v.id)) || cloud.some(v => !localIds.has(v.id))
         if (needSync) {
           try {
+            // 合并式：云端已有条目保留（尤其云端课程），本地新增补齐——绝不用本机残缺名单覆盖云端
+            const seenSync = new Set()
+            const mergedAll = [...localAll, ...cloud].filter(v => { if (seenSync.has(v.id)) return false; seenSync.add(v.id); return true })
             const sr = await apiFetch('/api/videos/sync', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ videos: sanitizeForCloud(localAll), adminKey })
+              body: JSON.stringify({ videos: sanitizeForCloud(mergedAll), adminKey })
             })
             const sj = await sr.json()
             if (alive && sj.ok) {
@@ -342,7 +346,8 @@ export default function GameStore() {
 
   // 课程类已解锁 → 进游戏详情页 /game/:id（解锁游戏入口）；未解锁 → 不响应点击（只能先解锁）
   const onCoverCardClick = (it) => {
-    if (isCoursePurchased(it.id)) navigate(`/game/${it.id}`)
+    // 投稿课程（kind=course）直接可学；内置课程需解锁
+    if (it.kind === 'course' || isCoursePurchased(it.id)) navigate(`/game/${it.id}`)
   }
   // 视频类已解锁 → 弹练习模式弹窗；投稿视频视为已解锁
   const onVideoCardClick = (v) => {
@@ -604,7 +609,7 @@ export default function GameStore() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
               {filteredGuides.map((g) => {
                 const uploaded = uploadedCourses.some(u => u.id === g.id) || cloudCourses.some(c => c.id === g.id)
-                const unlocked = uploaded || isCoursePurchased(g.id)
+                const unlocked = uploaded || g.kind === 'course' || isCoursePurchased(g.id)
                 return (
                   <div key={g.id} className="group" onClick={() => onCoverCardClick(g)} style={{ cursor: unlocked ? 'pointer' : 'default' }}>
                     <div

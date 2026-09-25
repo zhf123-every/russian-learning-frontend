@@ -252,14 +252,30 @@ export default function ContributeModal({ onClose, onSubmit }) {
         tags: ['mp4', form.cat, form.subcat, form.level, form.stage]
       }
       const saved = useGameVideoStore.getState().submit(payload)
-      // 同步到云端：清洗后的完整名单写入 B2，所有访客都能看到；失败必须让用户知道
+      // 同步到云端：合并式写入（云端已有条目 + 本机新增），绝不用本机残缺名单覆盖云端，所有访客都能看到
       let cloudOk = true
       try {
-        const latest = useGameVideoStore.getState().videos
+        // 1) 先取云端现有名单
+        let cloudList = []
+        try {
+          const cr = await apiFetch('/api/videos/list')
+          const cj = await cr.json()
+          if (cj.ok && Array.isArray(cj.videos)) cloudList = cj.videos
+        } catch (e) { /* 云端不可读时按空处理 */ }
+        const cloudVids = cloudList.filter(v => v.kind !== 'course')
+        const cloudCrs = cloudList.filter(v => v.kind === 'course')
+        // 2) 合并：本机视频优先（同 id 覆盖云端旧版）+ 云端独有视频保留 + 本机课程 + 云端独有课程保留
+        const localVids = useGameVideoStore.getState().videos
+        const localCrs = useGameCourseStore.getState().courses
+        const seenV = new Set()
+        const mergedVideos = [...localVids, ...cloudVids].filter(v => { if (seenV.has(v.id)) return false; seenV.add(v.id); return true })
+        const seenC = new Set()
+        const mergedCourses = [...localCrs, ...cloudCrs].filter(c => { if (seenC.has(c.id)) return false; seenC.add(c.id); return true })
+        const mergedAll = [...mergedVideos, ...mergedCourses]
         const sr = await apiFetch('/api/videos/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ videos: sanitizeForCloud(latest), adminKey })
+          body: JSON.stringify({ videos: sanitizeForCloud(mergedAll), adminKey })
         })
         const sj = await sr.json()
         if (!sj.ok) { cloudOk = false; console.warn('云端名单同步失败:', sj.error) }
