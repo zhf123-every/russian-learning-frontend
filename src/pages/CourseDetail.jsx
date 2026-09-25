@@ -56,6 +56,8 @@ export default function CourseDetail() {
   const previewCount = Math.min(Math.max(freeTrialCount + 2, 4), totalLessons)
   const visible = showAll ? sorted : sorted.slice(0, previewCount)
   const pad = (n) => String(n + 1).padStart(2, '0')
+  // 点击「可试学」课时 → 跳到游戏详情页（/game/:id，学习路线+大纲）
+  const goGameDetail = () => navigate(`/game/${course.id}`)
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
@@ -108,7 +110,7 @@ export default function CourseDetail() {
           {visible.map((l, i) => {
             const isFree = Boolean(l.isFree)
             return (
-              <li key={l.lessonId || i} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${isFree ? 'bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-gray-50'}`}>
+              <li key={l.lessonId || i} onClick={isFree ? goGameDetail : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${isFree ? 'cursor-pointer bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-gray-50'}`}>
                 <span className={`w-8 shrink-0 text-sm font-bold ${isFree ? 'text-amber-600' : 'text-gray-300'}`}>{pad(i)}</span>
                 <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isFree ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400'}`}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M16 13H8" /><path d="M16 17H8" /></svg>
@@ -120,7 +122,7 @@ export default function CourseDetail() {
                   )}
                 </div>
                 {isFree ? (
-                  <span className="shrink-0 rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white">可试学</span>
+                  <span className="shrink-0 rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white">可试学 →</span>
                 ) : (
                   <span className="shrink-0 text-lg text-gray-300" title="已锁定">🔒</span>
                 )}
