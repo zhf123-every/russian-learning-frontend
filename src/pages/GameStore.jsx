@@ -163,6 +163,8 @@ export default function GameStore() {
   const [cloudCourses, setCloudCourses] = useState([]) // 云端共享名单-课程（所有访客可见）
 
   const adminKey = useAdminStore(s => s.adminKey)
+  // 云端名单本地缓存：二次打开商城即时渲染，不等待云端大 JSON 下载
+  const CLOUD_CACHE_KEY = 'rlearn_cloud_list_cache'
   // 云端名单清洗：去掉 dataURL 大字段，保证 sync body 小且干净
   const sanitizeForCloud = (list) => list.map(v => {
     const c = { ...v }
@@ -175,6 +177,18 @@ export default function GameStore() {
   useEffect(() => {
     let alive = true
     const loadCloud = async () => {
+      // ① 先读本地缓存 → 立即渲染卡片（不白屏不等待）
+      try {
+        const cached = localStorage.getItem(CLOUD_CACHE_KEY)
+        if (cached) {
+          const j = JSON.parse(cached)
+          if (j && Array.isArray(j.list) && j.list.length) {
+            setCloudVideos(j.list.filter(v => v && v.title && (v.videoUrl || v.kind === 'course') && v.kind !== 'course'))
+            setCloudCourses(j.list.filter(v => v && v.kind === 'course' && v.title))
+          }
+        }
+      } catch (e) { /* 缓存损坏忽略 */ }
+      // ② 再拉云端名单（后台静默刷新，成功后写回缓存）
       let cloud = []
       try {
         const r = await apiFetch('/api/videos/list')
@@ -184,6 +198,7 @@ export default function GameStore() {
       if (!alive) return
       setCloudVideos(cloud.filter(v => v && v.title && (v.videoUrl || v.kind === 'course') && v.kind !== 'course'))
       setCloudCourses(cloud.filter(v => v && v.kind === 'course' && v.title))
+      try { localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify({ list: cloud, ts: Date.now() })) } catch (e) { /* 容量不足忽略 */ }
       // 自动补同步：登录过管理员 且 本地有投稿（视频或课程），云端缺本地记录 → 推本地完整名单上云
       const localVideos = useGameVideoStore.getState().videos
       const localCourses = useGameCourseStore.getState().courses

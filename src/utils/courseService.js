@@ -11,6 +11,17 @@ import { useGameCourseStore } from '../store/gameCourseStore'
  */
 export async function getCourseById(courseId) {
   if (!courseId) return null
+  // 0) 本地缓存优先（商城页已把云端名单缓存到 localStorage，二次访问即时）
+  try {
+    const cached = localStorage.getItem('rlearn_cloud_list_cache')
+    if (cached) {
+      const j = JSON.parse(cached)
+      if (j && Array.isArray(j.list)) {
+        const hit = j.list.find(v => v.kind === 'course' && v.id === courseId)
+        if (hit) return hit
+      }
+    }
+  } catch (e) { /* 缓存损坏忽略 */ }
   // 1) 云端共享名单（管理员投稿/后台发布的课程都在这里，含大纲结构）
   try {
     const r = await apiFetch('/api/videos/list')
