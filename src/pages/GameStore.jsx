@@ -344,10 +344,10 @@ export default function GameStore() {
     return () => window.removeEventListener('rlearn:purchase-changed', sync)
   }, [])
 
-  // 课程类已解锁 → 进游戏详情页 /game/:id（游戏商城入口）；未解锁 → 不响应点击（只能先解锁）
+  // 课程类已解锁 → 进课程大纲页 /course/:id（阶段二：大纲试学）；未解锁 → 不响应点击（只能先解锁）
   const onCoverCardClick = (it) => {
     // 投稿课程（kind=course）直接可学；内置课程需解锁
-    if (it.kind === 'course' || isCoursePurchased(it.id)) navigate(`/game/${it.id}`)
+    if (it.kind === 'course' || isCoursePurchased(it.id)) navigate(`/course/${it.id}`)
   }
   // 视频类已解锁 → 弹练习模式弹窗；投稿视频视为已解锁
   const onVideoCardClick = (v) => {
