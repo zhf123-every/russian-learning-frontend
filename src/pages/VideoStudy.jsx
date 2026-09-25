@@ -438,7 +438,7 @@ export default function VideoStudy() {
 
   // 生成字幕
   const genSubs = async () => {
-    if (!video?.videoUrl) { toast('该视频没有可用的播放地址（可能是测试残留记录）。请在解锁游戏页重新投稿该视频后再试'); return }
+    if (!video?.videoUrl) { toast('该视频没有可用的播放地址（可能是测试残留记录）。请在游戏商城页重新投稿该视频后再试'); return }
     toast('正在转写，可能需要 30-60 秒…')
     try {
       const r = await apiFetch('/api/transcribe', {
@@ -491,7 +491,7 @@ export default function VideoStudy() {
       <div style={{ minHeight: '100vh', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#555' }}>
         <div style={{ fontSize: 44 }}>🎬</div>
         <div style={{ fontSize: 18, fontWeight: 600 }}>视频不存在或已下线</div>
-        <button className="btn sm primary" onClick={() => navigate('/unlocked-games')}>回解锁游戏</button>
+        <button className="btn sm primary" onClick={() => navigate('/unlocked-games')}>回游戏商城</button>
       </div>
     )
   }

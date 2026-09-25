@@ -1,5 +1,5 @@
 // 课程详情页（商城版，仿句乐部课程包详情页）
-// 路由：/course/:id —— 由「解锁游戏」商城课程卡进入
+// 路由：/course/:id —— 由「游戏商城」商城课程卡进入
 // 与 /game/:id（GameDetail，学习路线+大纲）为两个独立页面
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'

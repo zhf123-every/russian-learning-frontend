@@ -337,7 +337,7 @@ display:flex;align-items:center;justify-content:center;font-size:16px}
   display:flex;align-items:flex-start;justify-content:center;padding:48px 16px;overflow-y:auto;
 }
 /* 强制弹窗卡片可见：daisyUI 的 .modal 默认 opacity:0/visibility:hidden（需 modal-open），
-   本站在 daisyUI 页面（如解锁游戏）复用 .modal 时会被覆盖成隐藏，这里用更高优先级恢复显示 */
+   本站在 daisyUI 页面（如游戏商城）复用 .modal 时会被覆盖成隐藏，这里用更高优先级恢复显示 */
 .modal-mask > .modal{
   opacity:1 !important;
   visibility:visible !important;

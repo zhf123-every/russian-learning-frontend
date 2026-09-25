@@ -290,9 +290,9 @@ export default function ContributeModal({ onClose, onSubmit }) {
         return
       }
       if (sentences.length) {
-        toast('投稿成功！已发布到解锁游戏·通关视频，含 ' + sentences.length + ' 句字幕')
+        toast('投稿成功！已发布到游戏商城·通关视频，含 ' + sentences.length + ' 句字幕')
       } else {
-        toast('投稿成功！已发布到解锁游戏·通关视频·' + form.cat + (form.subcat && form.subcat !== '全部' ? ' / ' + form.subcat : ''))
+        toast('投稿成功！已发布到游戏商城·通关视频·' + form.cat + (form.subcat && form.subcat !== '全部' ? ' / ' + form.subcat : ''))
       }
       onClose()
       navigate('/unlocked-games')
@@ -307,7 +307,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520, maxHeight: '88vh', overflowY: 'auto' }}>
         <h2>投稿到通关视频</h2>
-        <p className="hint">上传本地视频，直传云端永久保存；发布后出现在「解锁游戏 → 通关视频」分类中。</p>
+        <p className="hint">上传本地视频，直传云端永久保存；发布后出现在「游戏商城 → 通关视频」分类中。</p>
 
         <div className="field">
           <label>标题</label>
@@ -408,7 +408,7 @@ export default function ContributeModal({ onClose, onSubmit }) {
                 placeholder={'没有字幕时兜底用：\n\nSRT 例子：\n1\n00:00:01,000 --> 00:00:04,000\nПривет, как дела?'}
               />
               <div className="hint" style={{ marginTop: 4 }}>
-                不贴也可以：投稿后到解锁游戏视频卡点「生成字幕」，自动转写 B2 视频。
+                不贴也可以：投稿后到游戏商城视频卡点「生成字幕」，自动转写 B2 视频。
               </div>
             </>
           )}

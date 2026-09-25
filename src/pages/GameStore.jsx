@@ -12,7 +12,7 @@ import { toast } from '../lib/toast'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { apiFetch } from '../lib/api'
 
-// 解锁游戏 · 课程包商城（总入口）
+// 游戏商城 · 课程包商城（总入口）
 // 课程类（kind=cover）：已解锁点卡片 → 课程详情页 /game/:id（学习路线+大纲）
 // 视频类（kind=video）：已解锁点卡片 → 直接弹练习模式弹窗（整体盲听/逐段盲听/精听/跟读/口语测评）
 
@@ -290,12 +290,12 @@ export default function GameStore() {
     </button>
   )
 
-  // 页眉：标题"解锁游戏▾"可点开子菜单（全部内容/通关视频/通关秘籍）；分类标签紧贴标题；搜索框最右
+  // 页眉：标题"游戏商城▾"可点开子菜单（全部内容/通关视频/通关秘籍）；分类标签紧贴标题；搜索框最右
   useEffect(() => {
     setTitleOverride(
       <details open={menuOpen} onToggle={(e) => setMenuOpen(e.currentTarget.open)} className="relative shrink-0 group">
         <summary className="list-none [&::-webkit-details-marker]:hidden flex items-center gap-2 font-bold text-lg text-base-content cursor-pointer select-none whitespace-nowrap">
-          解锁游戏
+          游戏商城
           <svg className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
         </summary>
         <div className="absolute left-0 top-full mt-2 w-52 bg-base-100 border border-base-200 rounded-2xl shadow-xl overflow-hidden z-30 py-1.5">
@@ -344,7 +344,7 @@ export default function GameStore() {
     return () => window.removeEventListener('rlearn:purchase-changed', sync)
   }, [])
 
-  // 课程类已解锁 → 进游戏详情页 /game/:id（解锁游戏入口）；未解锁 → 不响应点击（只能先解锁）
+  // 课程类已解锁 → 进游戏详情页 /game/:id（游戏商城入口）；未解锁 → 不响应点击（只能先解锁）
   const onCoverCardClick = (it) => {
     // 投稿课程（kind=course）直接可学；内置课程需解锁
     if (it.kind === 'course' || isCoursePurchased(it.id)) navigate(`/game/${it.id}`)

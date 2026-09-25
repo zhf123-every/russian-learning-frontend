@@ -384,7 +384,7 @@ export default function CourseContributeModal({ onClose }) {
       } else if (!cloudOk) {
         toast('⚠️ 课程已发布到本机，但云端共享失败（可能是管理员密钥失效）。请退出后重新登录管理员，再投稿一次即可让所有人看到')
       } else {
-        toast('课程投稿成功！已发布到解锁游戏 · ' + form.cat + (form.subcat && form.subcat !== '全部' ? ' / ' + form.subcat : ''))
+        toast('课程投稿成功！已发布到游戏商城 · ' + form.cat + (form.subcat && form.subcat !== '全部' ? ' / ' + form.subcat : ''))
       }
       onClose()
       navigate('/unlocked-games')
@@ -399,7 +399,7 @@ export default function CourseContributeModal({ onClose }) {
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560, maxHeight: '88vh', overflowY: 'auto' }}>
         <h2>投稿课程</h2>
-        <p className="hint">创建真实课程：填写标题、分类、难度和关卡大纲，投稿后出现在「解锁游戏」页，点卡片进入游戏详情学习。</p>
+        <p className="hint">创建真实课程：填写标题、分类、难度和关卡大纲，投稿后出现在「游戏商城」页，点卡片进入游戏详情学习。</p>
 
         <div className="field">
           <label>课程标题（粘贴文本后自动生成，可改）</label>

@@ -1,5 +1,5 @@
 // 通关课程 · 用户投稿课程库（本地持久化）
-// 投稿后的课程会出现在「解锁游戏」页（带"投稿"标记），点击进入游戏详情页显示真实关卡大纲
+// 投稿后的课程会出现在「游戏商城」页（带"投稿"标记），点击进入游戏详情页显示真实关卡大纲
 // 云端名单与视频共用 B2 videos/index.json（kind='course' 区分），sync 时与视频合并传输
 import { create } from 'zustand'
 import { loadLS, saveLS } from '../lib/persistence'

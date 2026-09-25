@@ -12,7 +12,7 @@ const TITLES = {
   '/save/proficiency': '关卡熟练度',
   '/save/notes': '关卡笔记',
   '/save/unknown': '陌生关卡',
-  '/unlocked-games': '解锁游戏',
+  '/unlocked-games': '游戏商城',
   '/game-mall': '游戏商城',
   '/my-games': '我的游戏',
   '/vocab': '复习关卡',

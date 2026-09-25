@@ -151,7 +151,7 @@ export default function AdminDashboard() {
     refresh()
   }
 
-  // 直接发布上架（发布后自动同步到云端，全网可见，解锁游戏页/商城立即可见）
+  // 直接发布上架（发布后自动同步到云端，全网可见，游戏商城页/商城立即可见）
   const publish = async () => {
     const base = buildCourse('published')
     if (!base) return

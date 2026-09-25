@@ -137,7 +137,7 @@ export default function MyGames() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-primary">
             <path d="M6 11h4M8 9v4M15 12h.01M18 10h.01M2 16a2 2 0 002 2h16a2 2 0 002-2V10a2 2 0 00-2-2H4a2 2 0 00-2 2z" />
           </svg>
-          <span className="text-sm text-gray-700">想添加新游戏？去<span className="text-primary font-semibold">解锁游戏</span>商城挑选课程包</span>
+          <span className="text-sm text-gray-700">想添加新游戏？去<span className="text-primary font-semibold">游戏商城</span>商城挑选课程包</span>
           <span className="ml-auto"><ChevronRight /></span>
         </Link>
 
@@ -172,7 +172,7 @@ export default function MyGames() {
             </div>
             <p className="text-sm text-gray-400 mt-1.5 max-w-md mx-auto leading-relaxed">
               {unlockedGames.length === 0
-                ? '去「解锁游戏」商城挑选课程包，解锁后会同步显示在这里'
+                ? '去「游戏商城」商城挑选课程包，解锁后会同步显示在这里'
                 : '换个关键词试试'}
             </p>
             <Link to="/unlocked-games" className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-primary text-white text-sm font-bold px-6 py-2.5 hover:brightness-110 transition">

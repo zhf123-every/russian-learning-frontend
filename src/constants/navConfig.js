@@ -19,7 +19,7 @@ export const NAV_HOME = { to: '/', icon: ICONS.home, label: '主页', end: true 
 
 export const NAV_GROUPS = [
   { type: 'item', ...NAV_HOME },
-  { type: 'item', to: '/unlocked-games', icon: ICONS.gamepad, label: '解锁游戏' },
+  { type: 'item', to: '/unlocked-games', icon: ICONS.gamepad, label: '游戏商城' },
   { type: 'item', to: '/my-games', icon: ICONS.play, label: '我的游戏' },
   { type: 'item', to: '/journey', icon: ICONS.map, label: '通关之路' },
   {
@@ -43,7 +43,7 @@ export const NAV_GROUPS = [
 // 手机底部 Tab
 export const TABBAR = [
   { to: '/', icon: ICONS.home, label: '主页', end: true },
-  { to: '/unlocked-games', icon: ICONS.gamepad, label: '游戏' },
+  { to: '/unlocked-games', icon: ICONS.gamepad, label: '游戏商城' },
   { to: '/journey', icon: ICONS.map, label: '通关' },
   { to: '/me', icon: ICONS.users, label: '我的' },
 ]
