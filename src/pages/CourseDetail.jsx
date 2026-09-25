@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getCourseById, getTrialConfig, getLessonsList } from '../utils/courseService'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
+import { toast } from '../lib/toast'
 
 export default function CourseDetail() {
   const { id } = useParams()
@@ -120,10 +121,10 @@ export default function CourseDetail() {
               </span>
             </div>
             <div className="detail-cta-col flex shrink-0 items-center gap-2.5">
-              <button type="button" className="detail-btn-ghost rounded-full border border-gray-300 px-5 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
+              <button type="button" onClick={() => toast('会员功能即将上线，先试试学吧')} className="detail-btn-ghost rounded-full border border-gray-300 px-5 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
                 开通会员
               </button>
-              <button type="button" className="detail-btn-primary inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:brightness-110">
+              <button type="button" onClick={() => navigate(`/game/${course.id}`)} className="detail-btn-primary inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:brightness-110">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4" /></svg>
                 试学前 {freeTrialCount} 课
               </button>

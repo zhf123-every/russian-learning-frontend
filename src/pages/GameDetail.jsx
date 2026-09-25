@@ -9,6 +9,7 @@ import { useGameCourseStore } from '../store/gameCourseStore'
 import { API_BASE, apiFetch } from '../lib/api'
 import ModePickerModal, { COURSE_MODES } from '../components/ModePickerModal'
 import { getCourseById } from '../utils/courseService'
+import { getUnitDoneMap } from '../lib/lessonProgress'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { toast } from '../lib/toast'
 
@@ -60,16 +61,17 @@ export default function GameDetail() {
 
   useEffect(() => {
     if (!game) { setLoading(false); return }
+    const doneMap = getUnitDoneMap()
     // 后台「搭课程序」的真实课时优先展示
     if (Array.isArray(game.units) && game.units.length) {
-      setUnits(game.units.map((u, i) => ({ ...u, status: i === 0 ? '进行中' : '未开始', demo: false })))
+      setUnits(game.units.map((u, i) => ({ ...u, status: doneMap[u.id] ? '已完成' : (i === 0 ? '进行中' : '未开始'), demo: false })))
       setIsDemo(false)
       setLoading(false)
       return
     }
     // 投稿课程：直接用投稿时填写的关卡大纲（真实内容，不走演示占位）
     if (game.kind === 'course' && Array.isArray(game.lessons) && game.lessons.length) {
-      setUnits(game.lessons.map((l, i) => ({ ...l, status: i === 0 ? '进行中' : '未开始', demo: false })))
+      setUnits(game.lessons.map((l, i) => ({ ...l, status: doneMap[l.id] ? '已完成' : (i === 0 ? '进行中' : '未开始'), demo: false })))
       setIsDemo(false)
       setLoading(false)
       return
@@ -173,7 +175,7 @@ export default function GameDetail() {
                 {units.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setPickedUnit(units[0])}
+                    onClick={() => setPickedUnit(units.find((u) => u.status !== '已完成') || units[0])}
                     className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:brightness-110"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z" /></svg>

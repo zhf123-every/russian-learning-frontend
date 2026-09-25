@@ -21,6 +21,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
+import { markUnitDone } from "../lib/lessonProgress";
 import { expandUnitToChunkSteps, buildZhIndex } from "../lib/chunking";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -344,6 +345,8 @@ export default function QuestDictation() {
       setCurrentErrors([]);
       setShowSubtitle(false);
     } else {
+      // 全部完成 —— 记录课时完成（详情页进度打通）
+      markUnitDone(courseId);
       setShowSummary(true);
     }
   }, [questionIndex, statements.length]);

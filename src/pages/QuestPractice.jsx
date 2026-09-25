@@ -18,6 +18,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
+import { markUnitDone } from "../lib/lessonProgress";
 import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
 import { expandSequencesWithChunks } from "../lib/chunking";
@@ -536,7 +537,8 @@ export default function QuestPractice() {
       setCurrentErrors([]);
       setShowAnswer(false);
     } else {
-      // 全部完成，显示结算页
+      // 全部完成，显示结算页 —— 记录课时完成（详情页进度打通）
+      markUnitDone(effectiveCourseId);
       setShowSummary(true);
     }
   }, [currentSequenceIndex, currentUnitIndex, sequences]);
