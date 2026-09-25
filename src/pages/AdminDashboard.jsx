@@ -880,6 +880,7 @@ export default function AdminDashboard() {
                         <td>
                           <div className="flex gap-1">
                             <button className="btn btn-primary btn-xs" onClick={() => manageUnits(c)}>搭课程序</button>
+                            <button className="btn btn-outline btn-xs" onClick={() => navigate(`/admin/lessons/${c.id}`)}>管理大纲</button>
                             <button className="btn btn-ghost btn-xs" onClick={() => edit(c)}>编辑</button>
                             <button className="btn btn-error btn-xs btn-outline" onClick={() => remove(c.id)}>删除</button>
                           </div>

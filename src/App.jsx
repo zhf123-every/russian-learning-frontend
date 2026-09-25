@@ -28,6 +28,7 @@ import SaveNotes from './pages/SaveNotes'
 import SaveProficiency from './pages/SaveProficiency'
 import SaveUnknown from './pages/SaveUnknown'
 import AdminDashboard from './pages/AdminDashboard'
+import AdminLessons from './pages/AdminLessons'
 
 export default function App() {
   return (
@@ -55,6 +56,7 @@ export default function App() {
         <Route path="/quest-store" element={<CourseStore />} />
         <Route path="/unlocked-games" element={<GameStore />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/lessons/:id" element={<AdminLessons />} />
         <Route path="/my-games" element={<MyGames />} />
         <Route path="/game/:id" element={<GameDetail />} />
         <Route path="/course/:id" element={<CourseDetail />} />
