@@ -151,8 +151,8 @@ export default function AdminDashboard() {
     refresh()
   }
 
-  // 直接发布上架
-  const publish = () => {
+  // 直接发布上架（发布后自动同步到云端，全网可见，解锁游戏页/商城立即可见）
+  const publish = async () => {
     const base = buildCourse('published')
     if (!base) return
     const list = getCourses()
@@ -170,6 +170,8 @@ export default function AdminDashboard() {
     setForm(emptyForm())
     setEditingId('')
     refresh()
+    // 发布即全网可见：自动同步到云端（需已登录管理员）
+    await syncToCloud()
   }
 
   // 继续编辑（把档案填回表单）
