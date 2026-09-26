@@ -23,7 +23,7 @@ import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
 import { addStudyTime } from "../lib/learningStats";
-import { recordPeak, addDailyExp } from "../lib/questStats";
+import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { expandUnitToChunkSteps, buildZhIndex } from "../lib/chunking";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -65,11 +65,6 @@ export default function QuestDictation() {
     }
   }, [studyCourseId])
 
-  // ---- 巅峰连斩 ----
-  useEffect(() => {
-    if (maxCombo > 0) recordPeak({ maxCombo })
-  }, [maxCombo])
-
   // ---- 课程数据 ----
   const [statements, setStatements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,6 +104,11 @@ export default function QuestDictation() {
     getAccuracy,
     getGrade,
   } = useGameStats();
+
+  // ---- 巅峰连斩 ----
+  useEffect(() => {
+    if (maxCombo > 0) recordPeak({ maxCombo })
+  }, [maxCombo])
 
   // ---- 俄语发音（Web Speech API）----
   const playAudio = useCallback((text) => {
@@ -162,11 +162,19 @@ export default function QuestDictation() {
       setShowAnswerPanel(true);
       recordCorrect();
       playRightSound();
+      // 通关之路：六格天赋树（听写模式同样积累；仅语法课程的词句带 grammar_case 标注时起效）
+      if (Array.isArray(currentStatement?.words)) {
+        currentStatement.words.forEach((w) => { if (w && w.grammar_case) recordCase(w.grammar_case, true) })
+      }
     },
     onWrong: (result) => {
       setCurrentErrors(result.errors || []);
       recordWrong();
       playErrorSound();
+      // 通关之路：六格天赋树（答错 → 该句各词格的答题数+1，不计正确）
+      if (Array.isArray(currentStatement?.words)) {
+        currentStatement.words.forEach((w) => { if (w && w.grammar_case) recordCase(w.grammar_case, false) })
+      }
     },
   });
 
