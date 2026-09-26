@@ -868,7 +868,7 @@ export default function QuestPractice() {
         <div style={styles.toolbarRight}>
           <button style={styles.iconBtn} onClick={() => setShowSettings(true)} title="设置">⚙</button>
           <button style={{ ...styles.iconBtn, color: showAnswerMode ? "#7C3AED" : undefined }} onClick={() => setShowAnswerMode((v) => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}>{showAnswerMode ? "📖✓" : "📖"}</button>
-          <button style={styles.iconBtn} onClick={openLearning} title="学习内容">📋</button>
+          <button style={styles.iconBtn} onClick={openLearning} title="查看课程学习内容（Ctrl+1）">📋</button>
           <button style={styles.iconBtn} onClick={openTree} title="句子树">🔗</button>
           <button style={styles.iconBtn} onClick={() => setShowModePicker(true)} title="切换游戏模式">🎮</button>
           <button style={styles.iconBtn} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}>{shuffled ? "🔀✓" : "🔀"}</button>
@@ -910,6 +910,30 @@ export default function QuestPractice() {
           modes={COURSE_MODES}
           onClose={() => setShowModePicker(false)}
           onStart={handleModeStart}
+        />
+      )}
+
+      {/* 学习内容弹窗 */}
+      {showLearning && (
+        <LearningContentModal
+          title={unitMeta?.title || "学习内容"}
+          sentences={bookSentences}
+          onClose={() => setShowLearning(false)}
+          onPractice={practiceSentence}
+        />
+      )}
+      {/* 句子树弹窗 */}
+      {showTree && (
+        <SentenceTreeModal
+          sentence={currentStatement}
+          onClose={() => setShowTree(false)}
+        />
+      )}
+      {/* 报告错误弹窗 */}
+      {showReport && (
+        <ReportErrorModal
+          sentence={currentStatement}
+          onClose={() => setShowReport(false)}
         />
       )}
 
