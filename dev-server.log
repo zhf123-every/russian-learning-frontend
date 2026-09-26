@@ -3,7 +3,7 @@
 > vite
 
 
-  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1075[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1137[22m[2m[0m ms[22m
 
   [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
   [32m➜[39m  [1mNetwork[22m: [36mhttp://198.18.0.1:[1m5173[22m/[39m
@@ -11,24 +11,3 @@
   [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.8:[1m5173[22m/[39m
 [2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
 /*! 🌼 daisyUI 5.7.42 */
-[2m15:09:05[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/reviews/list?courseId=course_1790271085005[39m
-Error: Client network socket disconnected before secure TLS connection was established
-    at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
-    at TLSSocket.emit (node:events:531:35)
-    at endReadableNT (node:internal/streams/readable:1698:12)
-    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
-[2m15:09:38[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/videos/list[39m
-Error: Client network socket disconnected before secure TLS connection was established
-    at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
-    at TLSSocket.emit (node:events:531:35)
-    at endReadableNT (node:internal/streams/readable:1698:12)
-    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
-[2m15:20:34[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/videos/list[39m
-Error: Client network socket disconnected before secure TLS connection was established
-    at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
-    at TLSSocket.emit (node:events:531:35)
-    at endReadableNT (node:internal/streams/readable:1698:12)
-    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
-[2m15:22:06[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/videos/list[39m
-Error: connect ETIMEDOUT 198.18.0.96:443
-    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1638:16)

@@ -228,7 +228,7 @@ export default function QuestPractice() {
     let alive = true
     getCourseById(studyCourseId).then((info) => {
       if (!alive) return
-      const g = !!(info && info.isGrammar)
+      const g = !!(info && (info.isGrammar || info.category === '语法专项'))
       grammarOnRef.current = g
     }).catch(() => { grammarOnRef.current = false })
     return () => { alive = false }

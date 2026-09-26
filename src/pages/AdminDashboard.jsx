@@ -9,7 +9,7 @@ import { useAdminStore } from '../store/adminStore'
 // ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
 
 // 一级分类（与商城/投稿分类体系一致）
-const CATS = ['教材同步', '考试备考', '少儿俄语', '基础俄语', '场景俄语', '阅读听力', '影视俄语', '音乐俄语']
+const CATS = ['教材同步', '考试备考', '少儿俄语', '基础俄语', '语法专项', '场景俄语', '阅读听力', '影视俄语', '音乐俄语']
 // 角标选项
 const BADGES = ['', '精选', '热销', '新', '备考', '衔接']
 // 难度
@@ -20,6 +20,7 @@ const TAG_POOL = {
   '考试备考': ['中高考', '专四专八', '考研', 'ТРКИ等级', '留学预科', 'CATTI', '职业俄语'],
   '少儿俄语': ['少儿启蒙', '动画分级', '分级阅读', '动画绘本', '儿歌童谣', '字母拼读', '少儿词汇'],
   '基础俄语': ['零基础路线', '字母发音', '基础语法', '基础词汇', '核心句型', '经典教材', '综合提升'],
+  '语法专项': ['主格·起源之力', '属格·剥夺之网', '与格·赋权之赐', '宾格·直击之矛', '工具格·创造之锤', '前置格·空间之钥'],
   '场景俄语': ['日常对话', '商务职场', '外贸商务', '旅游出行', '面试校园', '社交口语', '写作邮件'],
   '阅读听力': ['短文精读', '俄语故事', '名著简写', '新闻短文', '文化科普', '专业阅读'],
   '影视俄语': ['情景剧', '影视台词', '电影片段', '动画片段', '经典教材剧'],
@@ -37,7 +38,6 @@ const emptyForm = () => ({
   lessons: 12,
   students: 0,
   tags: [],
-  isGrammar: false, // 语法课程标记（学习该课答题点亮「变格天赋树」六格数据）
   coverUrl: '',
   coverName: '',
   materials: [], // { name, type, url }
@@ -124,7 +124,7 @@ export default function AdminDashboard() {
       tags: form.tags,
       cover: form.coverUrl || 'https://picsum.photos/seed/course_' + now + '/400/280',
       materials: form.materials,
-      isGrammar: !!form.isGrammar,
+      isGrammar: form.category === '语法专项', // 一级分类为「语法专项」即语法课程（点亮变格天赋树）
       units: [], // 第二步「课程序」填充
       status,
       updatedAt: now,
@@ -192,7 +192,6 @@ export default function AdminDashboard() {
       coverUrl: c.cover || '',
       coverName: '',
       materials: c.materials || [],
-      isGrammar: !!c.isGrammar,
     })
     setEditingId(c.id)
     setView('list')
@@ -753,15 +752,6 @@ export default function AdminDashboard() {
                 <select className="select select-bordered" value={form.textbook} onChange={e => setField('textbook', e.target.value)}>
                   {TEXTBOOKS.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
-              </div>
-
-              <div className="form-control sm:col-span-2">
-                <label className="label"><span className="label-text">课程类型</span></label>
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                  <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" checked={!!form.isGrammar} onChange={e => setField('isGrammar', e.target.checked)} />
-                  <span className="text-sm font-medium">语法课程</span>
-                  <span className="text-xs text-gray-400">勾选后，学习该课程的答题数据会点亮「通关之路 · 变格天赋树」（六格掌握度）；非语法课程不记六格</span>
-                </label>
               </div>
 
               <div className="form-control">
