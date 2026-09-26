@@ -87,10 +87,10 @@ export const THEME_OF = (ui) => {
       text: '#f1f5f9',
       sub: '#a8b2c1',
       border: '#64748b',
-      active: '#E2E8F0',
+      active: '#7C3AED',
       vars: {
         '--qs-bg': '#0f172a', '--qs-surface': '#111827', '--qs-surface2': '#1f2937',
-        '--qs-text': '#f1f5f9', '--qs-sub': '#a8b2c1', '--qs-border': '#64748b', '--qs-active': '#E2E8F0',
+        '--qs-text': '#f1f5f9', '--qs-sub': '#a8b2c1', '--qs-border': '#64748b', '--qs-active': '#7C3AED',
       },
     }
   }
@@ -99,10 +99,10 @@ export const THEME_OF = (ui) => {
   const border = bgColor === 'warm' ? '#e7ddc8' : bgColor === 'green' ? '#cfe0d3' : '#e5e7eb'
   return {
     dark: false,
-    bg, surface: bg, surface2, text: '#111827', sub: '#6b7280', border, active: '#1F2937',
+    bg, surface: bg, surface2, text: '#111827', sub: '#6b7280', border, active: '#7C3AED',
     vars: {
       '--qs-bg': bg, '--qs-surface': bg, '--qs-surface2': surface2,
-      '--qs-text': '#111827', '--qs-sub': '#6b7280', '--qs-border': border, '--qs-active': '#1F2937',
+      '--qs-text': '#111827', '--qs-sub': '#6b7280', '--qs-border': border, '--qs-active': '#7C3AED',
     },
   }
 }

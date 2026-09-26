@@ -226,7 +226,7 @@ export default function AnswerPanel({
                   <div style={styles.phonetic}>{displayWord}</div>
 
                   {/* 大字单词 */}
-                  <div className="word-card-bigword" style={styles.bigWord}>
+                  <div className="word-card-bigword" style={{ ...styles.bigWord, color: effColor }}>
                     {displayWord}
                   </div>
 
@@ -377,7 +377,7 @@ const styles = {
     fontFamily: '"Nunito", sans-serif',
     fontSize: "2.5rem",
     fontWeight: 700,
-    color: "#1F2937",
+    color: "var(--qs-text, #1F2937)",
   },
   sentenceChinese: {
     fontSize: "1.75rem",
