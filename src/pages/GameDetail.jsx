@@ -279,7 +279,7 @@ export default function GameDetail() {
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>加载大纲…</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 20, marginBottom: 40 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 14, marginBottom: 40 }}>
             {units.map((u, i) => {
               const dm = DIFF_META[u.difficulty] || DIFF_META.easy
               const sm = STATUS_META[u.status] || STATUS_META['未开始']
@@ -291,7 +291,7 @@ export default function GameDetail() {
                 <div
                   key={u.id}
                   onClick={() => setPickedUnit(u)}
-                  className="relative h-full cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white p-3 pr-8 transition-all hover:scale-[1.02] hover:bg-gray-100/80 hover:shadow-xl hover:shadow-purple-100/20 sm:p-5 sm:pr-10"
+                  className="relative flex h-full min-h-[150px] cursor-pointer flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-3 pr-8 transition-all hover:scale-[1.02] hover:bg-gray-100/80 hover:shadow-xl hover:shadow-purple-100/20 sm:p-5 sm:pr-10"
                 >
                   {/* 右上角序号 */}
                   <div className="absolute right-2 top-2 z-0 sm:right-3 sm:top-3">
@@ -308,7 +308,7 @@ export default function GameDetail() {
                     </p>
                   )}
                   {/* 底部信息 */}
-                  <div className="mt-2 flex items-center gap-3 text-[10px] text-gray-500 sm:text-xs">
+                  <div className="mt-auto flex items-center gap-3 pt-3 text-[10px] text-gray-500 sm:text-xs">
                     <div className="flex items-center gap-1">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                       {stats}
