@@ -235,9 +235,8 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
         {/* ===== 右栏：hero 横幅 + 内容区 + 底部按钮（对标句乐部） ===== */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: '#fff' }}>
           {/* hero 横幅：模式图背景 + 渐变遮罩 + 标题/标签 */}
-          <div className="relative h-44 md:h-48 w-full flex-shrink-0 group overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent z-10 pointer-events-none"></div>
-            <img src={MODE_IMG[active.key]} alt={active.name} className="size-full object-cover opacity-65 transition-transform duration-700 group-hover:scale-105 pointer-events-none" style={{ objectPosition: '50% 22%' }} />
+          <div className="relative h-44 md:h-48 w-full flex-shrink-0 overflow-hidden" style={{ background: 'linear-gradient(100deg, #f5f3ff 0%, #ede9fe 45%, #ddd6fe 100%)' }}>
+            <img src="/images/game-modes/hero.png" alt={active.name} className="absolute right-0 top-0 h-full w-auto object-contain pointer-events-none" />
             <div className="absolute bottom-3 left-6 md:left-8 z-20 flex items-center gap-2.5 flex-wrap pr-12">
               <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">{active.name}</h1>
               {active.heroTag && (
