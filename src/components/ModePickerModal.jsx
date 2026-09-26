@@ -237,7 +237,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
           {/* hero 横幅：模式图背景 + 渐变遮罩 + 标题/标签 */}
           <div className="relative h-44 md:h-48 w-full flex-shrink-0 group overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent z-10 pointer-events-none"></div>
-            <img src={MODE_IMG[active.key]} alt={active.name} className="size-full object-cover opacity-65 transition-transform duration-700 group-hover:scale-105 pointer-events-none" />
+            <img src={MODE_IMG[active.key]} alt={active.name} className="size-full object-cover opacity-65 transition-transform duration-700 group-hover:scale-105 pointer-events-none" style={{ objectPosition: '50% 22%' }} />
             <div className="absolute bottom-3 left-6 md:left-8 z-20 flex items-center gap-2.5 flex-wrap pr-12">
               <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">{active.name}</h1>
               {active.heroTag && (
@@ -279,7 +279,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
           {/* 底部按钮 */}
           <div className="mt-auto pt-4 flex items-center gap-3 px-6 md:px-8 pb-6">
             <button onClick={onClose} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground cursor-pointer h-9 px-4 py-2">重新开始</button>
-            <button onClick={() => onStart && onStart(active)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground shadow hover:bg-primary-hover cursor-pointer h-9 px-4 py-2 flex-1">{active.cta}</button>
+            <button onClick={() => onStart && onStart(active)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-purple-600 text-white shadow hover:bg-purple-700 cursor-pointer h-9 px-4 py-2 flex-1">{active.cta}</button>
           </div>
         </div>
 
