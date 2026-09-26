@@ -99,10 +99,10 @@ export const THEME_OF = (ui) => {
   const border = bgColor === 'warm' ? '#e7ddc8' : bgColor === 'green' ? '#cfe0d3' : '#e5e7eb'
   return {
     dark: false,
-    bg, surface: bg, surface2, text: '#111827', sub: '#6b7280', border, active: '#5B21B6',
+    bg, surface: bg, surface2, text: '#111827', sub: '#6b7280', border, active: '#1F2937',
     vars: {
       '--qs-bg': bg, '--qs-surface': bg, '--qs-surface2': surface2,
-      '--qs-text': '#111827', '--qs-sub': '#6b7280', '--qs-border': border, '--qs-active': '#5B21B6',
+      '--qs-text': '#111827', '--qs-sub': '#6b7280', '--qs-border': border, '--qs-active': '#1F2937',
     },
   }
 }

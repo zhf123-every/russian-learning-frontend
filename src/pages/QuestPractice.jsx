@@ -1204,7 +1204,7 @@ const styles = {
   },
   progressBarFill: {
     height: "100%",
-    background: "linear-gradient(90deg, oklch(23.27% 0.0249 284.3), oklch(18% 0.0249 284.3))",
+    background: "linear-gradient(90deg, #22C55E, #16A34A)",
     transition: "width 0.3s ease",
   },
 

@@ -72,7 +72,7 @@ export default function QuestionInput({
           line-height: 1;
           font-weight: 400;
           color: var(--qs-sub, rgba(32, 32, 32, 0.6));
-          min-width: 4ch;
+          min-width: 7rem;
           text-align: center;
           transition: color 0.15s ease, border-color 0.15s ease;
           display: inline-flex;
@@ -139,7 +139,7 @@ export default function QuestionInput({
           .quest-word-punct {
             font-size: 1.8em;
             height: 2.5rem;
-            min-width: 2ch;
+            min-width: 4.5rem;
           }
           .quest-input-row {
             min-height: 2.5rem;
