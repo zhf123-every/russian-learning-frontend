@@ -5,6 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getCourseById, getTrialConfig, getLessonsList } from '../utils/courseService'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { toast } from '../lib/toast'
+import { savePurchase, isCoursePurchased } from '../lib/courseAccess'
 
 export default function CourseDetail() {
   const { id } = useParams()
@@ -14,6 +15,13 @@ export default function CourseDetail() {
   const [loading, setLoading] = useState(true)
   const [sortOrder, setSortOrder] = useState('asc') // 大纲排序：asc 正序 / desc 倒序
   const [showAll, setShowAll] = useState(false)     // 是否展开全部课时
+  const [showVipModal, setShowVipModal] = useState(false) // 开通会员确认弹窗
+  const [vipUnlocked, setVipUnlocked] = useState(false)   // 会员已解锁（模拟购买）
+
+  // 会员状态初始化（已购买/已开通会员则全解锁）
+  useEffect(() => {
+    setVipUnlocked(isCoursePurchased(course?.id))
+  }, [course])
 
   // 读取完整课程（云端含大纲 lessonsList）
   useEffect(() => {
@@ -62,6 +70,27 @@ export default function CourseDetail() {
   // 点击「可试学」课时 → 跳到游戏详情页（/game/:id，学习路线+大纲）
   const goGameDetail = () => navigate(`/game/${course.id}`)
 
+  // 开通会员（模拟购买解锁）：写入购买记录 → 全课时解锁
+  const handleOpenVip = () => {
+    savePurchase(course.id, { kind: 'vip', courseTitle: course.title })
+    setVipUnlocked(true)
+    setShowVipModal(false)
+    toast('会员已开通，全部课时已解锁')
+  }
+
+  // 推荐好友：复制课程链接
+  const handleShare = () => {
+    const url = window.location.href
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(
+        () => toast('课程链接已复制，快去分享给好友吧'),
+        () => toast('复制失败，请手动复制地址栏链接')
+      )
+    } else {
+      toast('复制失败，请手动复制地址栏链接')
+    }
+  }
+
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6">
       {/* ===== 顶部 Hero：对标句乐部课程详情卡片 ===== */}
@@ -82,7 +111,7 @@ export default function CourseDetail() {
           {/* 标题行 + 推荐好友 */}
           <div className="detail-title-row flex items-start justify-between gap-3">
             <h2 className="detail-title text-xl font-extrabold leading-snug text-gray-900 md:text-2xl">{course.title}</h2>
-            <button type="button" className="detail-share-btn flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:bg-gray-50">
+            <button type="button" onClick={handleShare} className="detail-share-btn flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98" /></svg>
               推荐好友
             </button>
@@ -121,7 +150,7 @@ export default function CourseDetail() {
               </span>
             </div>
             <div className="detail-cta-col flex shrink-0 items-center gap-2.5">
-              <button type="button" onClick={() => toast('会员功能即将上线，先试试学吧')} className="detail-btn-ghost rounded-full border border-gray-300 px-5 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
+              <button type="button" onClick={() => setShowVipModal(true)} className="detail-btn-ghost rounded-full border border-gray-300 px-5 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
                 开通会员
               </button>
               <button type="button" onClick={() => navigate(`/game/${course.id}`)} className="detail-btn-primary inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:brightness-110">
@@ -139,7 +168,7 @@ export default function CourseDetail() {
           <div className="flex items-baseline gap-2.5">
             <h2 className="text-lg font-extrabold text-gray-900">大纲</h2>
             <span className="text-xs text-gray-400">
-              共 <span className="font-semibold text-gray-600">{totalLessons}</span> 课 · 前 <span className="font-semibold text-amber-600">{freeTrialCount}</span> 课免费试学
+              共 <span className="font-semibold text-gray-600">{totalLessons}</span> 课{vipUnlocked ? <span className="ml-1 font-semibold text-primary">· 会员已解锁全部课时</span> : <> · 前 <span className="font-semibold text-amber-600">{freeTrialCount}</span> 课免费试学</>}
             </span>
           </div>
           <button
@@ -159,20 +188,20 @@ export default function CourseDetail() {
         {/* 课时列表 */}
         <ul className="px-4 md:px-6 py-3">
           {visible.map((l, i) => {
-            const isFree = Boolean(l.isFree)
+            const isOpen = Boolean(l.isFree) || vipUnlocked
             return (
-              <li key={l.lessonId || i} onClick={isFree ? goGameDetail : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${isFree ? 'cursor-pointer bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-gray-50'}`}>
-                <span className={`w-8 shrink-0 text-sm font-bold ${isFree ? 'text-amber-600' : 'text-gray-300'}`}>{pad(i)}</span>
-                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isFree ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400'}`}>
+              <li key={l.lessonId || i} onClick={isOpen ? goGameDetail : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${isOpen ? 'cursor-pointer bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-gray-50'}`}>
+                <span className={`w-8 shrink-0 text-sm font-bold ${isOpen ? 'text-amber-600' : 'text-gray-300'}`}>{pad(i)}</span>
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isOpen ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400'}`}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M16 13H8" /><path d="M16 17H8" /></svg>
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className={`truncate text-sm font-semibold ${isFree ? 'text-gray-900' : 'text-gray-700'}`}>{l.title}</div>
+                  <div className={`truncate text-sm font-semibold ${isOpen ? 'text-gray-900' : 'text-gray-700'}`}>{l.title}</div>
                   {l.subtitle && l.subtitle !== l.title && (
                     <div className="mt-0.5 truncate text-xs text-gray-400">{l.subtitle}</div>
                   )}
                 </div>
-                {isFree ? (
+                {isOpen ? (
                   <span className="shrink-0 rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white">可试学 →</span>
                 ) : (
                   <span className="shrink-0 text-lg text-gray-300" title="已锁定">🔒</span>
@@ -197,8 +226,31 @@ export default function CourseDetail() {
 
       {isVipOnly && (
         <p className="mt-4 text-center text-xs text-gray-400">
-          💎 本课程为会员专享，试学 {freeTrialCount} 课后开通会员可继续学习
+          {vipUnlocked ? '✅ 会员已开通，全部课时已解锁，尽情学习吧' : '💎 本课程为会员专享，试学 {freeTrialCount} 课后开通会员可继续学习'}
         </p>
+      )}
+
+      {/* ===== 开通会员确认弹窗 ===== */}
+      {showVipModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowVipModal(false)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-lg">💎</span>
+              <h3 className="text-lg font-extrabold text-gray-900">开通会员</h3>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-gray-500">
+              开通后解锁全部 <span className="font-semibold text-primary">{totalLessons}</span> 课，包含所有课时与完整学习路线，随时回看。
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button type="button" onClick={() => setShowVipModal(false)} className="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
+                暂不
+              </button>
+              <button type="button" onClick={handleOpenVip} className="flex-1 rounded-full bg-primary py-2.5 text-sm font-bold text-white transition hover:brightness-110">
+                确认开通
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
