@@ -23,6 +23,7 @@ import GameDetail from './pages/GameDetail'
 import CourseDetail from './pages/CourseDetail'
 import QuestDictation from './pages/QuestDictation'
 import QuestListening from './pages/QuestListening'
+import QuestSpeaking from './pages/QuestSpeaking'
 import Journey from './pages/Journey'
 import VideoStudy from './pages/VideoStudy'
 import SaveNotes from './pages/SaveNotes'
@@ -41,6 +42,8 @@ export default function App() {
       <Route path="/quest-dictation/:courseId" element={<QuestDictation />} />
       <Route path="/quest-listening" element={<QuestListening />} />
       <Route path="/quest-listening/:courseId" element={<QuestListening />} />
+      <Route path="/quest-speaking" element={<QuestSpeaking />} />
+      <Route path="/quest-speaking/:courseId" element={<QuestSpeaking />} />
       <Route path="/test-practice" element={<TestPractice />} />
       <Route path="/square/:videoId" element={<Study />} />
       <Route path="/study/:videoId" element={<Study />} />

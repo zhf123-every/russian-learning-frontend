@@ -486,6 +486,7 @@ export default function RuQuest() {
     setShowModeModal(false)
     const packQ = pack ? '?pack=' + encodeURIComponent(pack.id) : ''
     if (mk === 'dictation') navigate('/quest-dictation/' + encodeURIComponent(u.id) + packQ)
+    if (mk === 'speaking') navigate('/quest-speaking/' + encodeURIComponent(u.id) + packQ)
     if (mk === 'listening') navigate('/quest-listening/' + encodeURIComponent(u.id) + packQ)
     else navigate('/quest-practice/' + encodeURIComponent(u.id) + packQ)
   }

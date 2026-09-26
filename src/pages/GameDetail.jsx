@@ -236,6 +236,7 @@ export default function GameDetail() {
       try { sessionStorage.setItem('rlearn_local_lesson_' + u.id, JSON.stringify(u)) } catch (e) { /* 忽略 */ }
       if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}?src=local&courseId=${game.id}`)
       else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}?src=local&courseId=${game.id}`)
+      else if (mode.key === 'speaking') navigate(`/quest-speaking/${u.id}?src=local&courseId=${game.id}`)
       else toast('该模式暂仅支持内置课程包，投稿课程支持「中译俄 / 听写」两种模式')
       return
     }
@@ -247,7 +248,7 @@ export default function GameDetail() {
     const packQ = game.packId ? `?pack=${game.packId}` : ''
     if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}${packQ}${packQ ? '&' : '?'}courseId=${game.id}`)
     else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}${packQ}${packQ ? '&' : '?'}courseId=${game.id}`)
-    else if (mode.key === 'speaking') navigate(`/quest/${game.packId || ''}?mode=speaking`)
+    else if (mode.key === 'speaking') navigate(`/quest-speaking/${u.id}${packQ}${packQ ? '&' : '?'}courseId=${game.id}`)
     else if (mode.key === 'reading') navigate(`/quest/${game.packId || ''}?mode=reading`)
   }
 

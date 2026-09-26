@@ -723,6 +723,7 @@ export default function QuestPractice() {
     const suffix = isLocal ? `?src=local&courseId=${effectiveCourseId}` : `?courseId=${effectiveCourseId}`;
     setShowModePicker(false);
     if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u}${suffix}`);
+    if (mode.key === 'speaking') navigate(`/quest-speaking/${u}${suffix}`);
     if (mode.key === 'listening') navigate(`/quest-listening/${u}${suffix}`);
 
     else if (mode.key === 'dictation') navigate(`/quest-dictation/${u}${suffix}`);
