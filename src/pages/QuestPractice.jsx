@@ -537,7 +537,9 @@ export default function QuestPractice() {
             setLoadError("该单元没有可学习的步骤");
           } else {
             setUnitMeta(data.unit || null);
-            setSequences(expandSequencesWithChunks(adapted, null));
+            // 云端词表：从各句 words 提取 {ru, zh}，供 chunking 块中文翻译（缺词不再兜底俄语）
+            const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
+            setSequences(expandSequencesWithChunks(adapted, cloudWords));
             setCurrentSequenceIndex(0);
             setCurrentUnitIndex(0);
           }
@@ -1019,7 +1021,7 @@ export default function QuestPractice() {
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.russian}</span>
             </div>
           )}
-          <div style={styles.hintText}>{currentStatement?.chunkFullZh || currentStatement?.chinese}</div>
+          <div style={styles.hintText}>{currentStatement?.chinese}</div>
           {showAnswer && currentStatement?.stressMarked && (
             <div style={styles.answerReveal}>
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.stressMarked}</span>

@@ -126,7 +126,7 @@ export function expandUnitToChunkSteps(unit, zhIdx) {
   const N = chunks.length;
   const zhList = chunks.map((c) => chunkZhOf(c, zhIdx));
   const cum = (k) => chunks.slice(0, k + 1).join(" ");
-  const cumZh = (k) => zhList.slice(0, k + 1).filter(Boolean).join("，");
+  const cumZh = (k) => zhList.slice(0, k + 1).filter(Boolean).join("");
 
   const makeStep = (k, targetRu, targetZh, isNew, isFinal) => {
     const tokens = String(targetRu).trim().split(/\s+/).filter(Boolean);
