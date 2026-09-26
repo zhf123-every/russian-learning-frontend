@@ -685,7 +685,7 @@ export default function QuestListening() {
 
       {/* ===== 游戏区 ===== */}
       <div style={{ flex: 1, padding: 6, display: "flex", minHeight: 0 }}>
-        <div className="game-layers" style={{ flex: 1, borderRadius: 16, background: "oklch(0.97 0.0035 67.78)", padding: "6px 24px", display: "flex", position: "relative" }}>
+        <div className="game-layers" style={{ flex: 1, borderRadius: 16, background: "#fff", padding: "6px 24px", display: "flex", position: "relative" }}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "16px 0", position: "relative" }}>
             {/* 倍速区（顶部居中） */}
             <div style={{ position: "absolute", left: "50%", top: 4, transform: "translateX(-50%)", zIndex: 50 }}>
@@ -762,6 +762,10 @@ export default function QuestListening() {
                           {showZh && <div style={{ fontSize: 14, color: "#4B5563", fontWeight: 500 }}>{w.chinese || current.chinese}</div>}
                           {grammarLabel && <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>{grammarLabel}</div>}
                           {pl !== "其他" && <div style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 500, marginTop: 2 }}>{pl}</div>}
+                          {/* 卡片底部：笔记按钮（与顶栏笔记同款图标） */}
+                          <button onClick={() => setShowNote(true)} title="笔记" aria-label="笔记" style={{ marginTop: 8, width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer", color: "#6b7280" }}>
+                            <Icon name="notebook" size={16} />
+                          </button>
                         </div>
                       );
                     })}
@@ -773,8 +777,8 @@ export default function QuestListening() {
                   {annot.length > 1 && current.chinese && (
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 24, animation: "listen-fade .3s .06s ease both" }}>
                       <span style={{ whiteSpace: "pre-wrap", fontSize: 16, color: "#4B5563", fontWeight: 500 }}>{current.chinese}</span>
-                      <button onClick={() => setShowNote(true)} title="笔记" aria-label="笔记" style={{ width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 14 }}>
-                        ✎
+                      <button onClick={() => setShowNote(true)} title="笔记" aria-label="笔记" style={{ width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer", color: "#6b7280" }}>
+                        <Icon name="notebook" size={15} />
                       </button>
                     </div>
                   )}
