@@ -518,9 +518,13 @@ export default function QuestSpeaking() {
     mr.stop();
   }
 
-  const handleStart = () => {
-    loadASR().catch(() => {}); // 预热本地语音模型
+  const handleStart = async () => {
+    loadASR().catch(() => {});
     setReady(true);
+    if (!current) return;
+    try {
+      await ensureTtsUrl(current.russian);
+    } catch (e) { /* 忽略 */ }
     if (current) runStageChain(current.russian);
   };
 
@@ -833,6 +837,15 @@ export default function QuestSpeaking() {
 
   return (
     <>
+      {ready && modelStatus === "loading" && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "linear-gradient(160deg, #0b0b12 0%, #17102b 55%, #2a1a4d 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
+          <div style={{ fontSize: 17, color: "#fff", letterSpacing: 0.5 }}>正在连接语音评测服务，请稍候</div>
+          <div style={{ width: 240, height: 5, borderRadius: 999, background: "rgba(255,255,255,0.14)", overflow: "hidden" }}>
+            <div style={{ width: Math.max(modelProgress, 8) + "%", height: "100%", borderRadius: 999, background: "#A78BFA", transition: "width .3s" }} />
+          </div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", fontVariantNumeric: "tabular-nums" }}>{modelProgress}%</div>
+        </div>
+      )}
       <style>{`@keyframes speak-pulse { 0% { box-shadow: 0 0 0 0 rgba(124,58,237,0.45); } 70% { box-shadow: 0 0 0 28px rgba(124,58,237,0); } 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); } }`}</style>
     <div style={{ position: "fixed", inset: 0, background: "#fff", display: "flex", flexDirection: "column", zIndex: 100 }}>
       {/* ===== 顶栏 h-16（对标句乐部） ===== */}

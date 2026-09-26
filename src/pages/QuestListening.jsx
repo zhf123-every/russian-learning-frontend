@@ -164,6 +164,7 @@ export default function QuestListening() {
   const [showAnswerMode, setShowAnswerMode] = useState(false);
   const [showAi, setShowAi] = useState(false);
   const [showNote, setShowNote] = useState(false);
+  const [coverText, setCoverText] = useState(null); // 进模式前遮罩
 
   // 倍速设置
   const [cfg, setCfg] = useState({ ...DEFAULT_CFG });
@@ -390,9 +391,15 @@ export default function QuestListening() {
     }
   }, [loading, loadError, currentIdx, current, ready, runStageChain]);
 
-  const handleStart = () => {
+  const handleStart = async () => {
     setReady(true);
-    if (current) runStageChain(current.russian);
+    if (!current) return;
+    setCoverText("正在连接语音服务，请稍候…");
+    try {
+      await ensureTtsUrl(current.russian);
+    } catch (e) { /* 忽略 */ }
+    setCoverText(null);
+    runStageChain(current.russian);
   };
 
   // ---- 学习时长上报 ----
@@ -697,6 +704,16 @@ export default function QuestListening() {
   }
 
   return (
+    <>
+      {coverText && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "linear-gradient(160deg, #0b0b12 0%, #17102b 55%, #2a1a4d 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
+          <div style={{ fontSize: 17, color: "#fff", letterSpacing: 0.5 }}>{coverText}</div>
+          <div style={{ width: 240, height: 5, borderRadius: 999, background: "rgba(255,255,255,0.14)", overflow: "hidden" }}>
+            <div style={{ width: "45%", height: "100%", borderRadius: 999, background: "#A78BFA", animation: "listenCoverSlide 1.1s ease-in-out infinite" }} />
+          </div>
+          <style>{`@keyframes listenCoverSlide { 0% { margin-left: -45%; } 100% { margin-left: 100%; } }`}</style>
+        </div>
+      )}
     <div style={{ position: "fixed", inset: 0, background: "#fff", display: "flex", flexDirection: "column", zIndex: 100 }}>
       {/* ===== 顶栏 h-16（对标句乐部） ===== */}
       <div style={{ position: "relative", display: "flex", height: 64, alignItems: "center", justifyContent: "space-between", padding: "0 24px" }}>
@@ -982,6 +999,7 @@ export default function QuestListening() {
         @keyframes listen-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
+    </>
   );
 }
 
