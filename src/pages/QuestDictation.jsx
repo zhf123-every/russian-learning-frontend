@@ -102,6 +102,11 @@ export default function QuestDictation() {
   const [showSettings, setShowSettings] = useState(false);
   const [showModePicker, setShowModePicker] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [showBook, setShowBook] = useState(false);
+  const [shuffled, setShuffled] = useState(false);
+  const originalSeqRef = useRef(null);
+  const [hint, setHint] = useState(null);
+  const hintTimerRef = useRef(null);
   const [needsInteraction, setNeedsInteraction] = useState(true); // 浏览器自动播放限制引导
 
   const currentStatement = statements[questionIndex];
@@ -468,6 +473,57 @@ export default function QuestDictation() {
     else alert('该模式暂未开放，当前支持「中译俄 / 听写」两种模式');
   };
 
+  // ---- 顶栏补全适配（乱序/教材数据）----
+  const seqsNow = () => statements;
+  const setSeqsNow = (arr) => setStatements(arr);
+  const resetIndexNow = () => setQuestionIndex(0);
+  const bookSentences = (localLesson?.sentences || []).filter((x) => x && x.ru);
+
+  // ---- 补全图标逻辑：教材 / 笔记 / 大纲 / 乱序 / 陌生句 ----
+  const showHint = (text) => {
+    setHint({ text, id: Date.now() });
+    clearTimeout(hintTimerRef.current);
+    hintTimerRef.current = setTimeout(() => setHint(null), 1800);
+  };
+
+  const goNotes = () => { navigate('/save/notes'); };
+
+  const goOutline = () => {
+    let cid = null;
+    try { cid = new URLSearchParams(window.location.search).get('courseId') } catch (e) { cid = null }
+    const target = cid || effectiveCourseId;
+    if (String(target).startsWith('course_')) navigate('/game/' + target);
+    else showHint('当前课程暂无大纲页');
+  };
+
+  const toggleShuffle = () => {
+    if (!originalSeqRef.current) originalSeqRef.current = [...seqsNow()];
+    if (shuffled) { setSeqsNow([...originalSeqRef.current]); }
+    else {
+      const arr = [...seqsNow()];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      setSeqsNow(arr);
+    }
+    setShuffled(!shuffled);
+    resetIndexNow();
+  };
+
+  const toggleMarkUnknown = () => {
+    const cur = currentStatement?.russian || '';
+    if (!cur) { showHint('当前没有可标记的句子'); return; }
+    try {
+      const key = 'rlearn_unknown_sentences';
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
+      const exists = list.includes(cur);
+      const next = exists ? list.filter((x) => x !== cur) : [...list, cur];
+      localStorage.setItem(key, JSON.stringify(next));
+      showHint(exists ? '已取消陌生标记' : '已标记为陌生句（' + next.length + '）');
+    } catch (e) { showHint('标记失败'); }
+  };
+
   // ---- 格式化时间 ----
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60);
@@ -602,9 +658,14 @@ export default function QuestDictation() {
         </div>
         <div style={styles.toolbarRight}>
           <button style={styles.iconBtn} onClick={() => setShowSettings(true)} title="设置">⚙</button>
+          <button style={styles.iconBtn} onClick={() => setShowBook(true)} title="教材">📖</button>
+          <button style={styles.iconBtn} onClick={goNotes} title="笔记">📓</button>
+          <button style={styles.iconBtn} onClick={goOutline} title="大纲">🗂</button>
           <button style={styles.iconBtn} onClick={() => setShowModePicker(true)} title="切换游戏模式">🎮</button>
+          <button style={styles.iconBtn} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}>{shuffled ? "🔀✓" : "🔀"}</button>
           <button style={styles.iconBtn} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? "▶" : "⏸"}</button>
           <button style={styles.iconBtn} onClick={handleResetProgress} title="重置当前课程进度">↺</button>
+          <button style={styles.iconBtn} onClick={toggleMarkUnknown} title="标记陌生句">⚠</button>
           <button style={styles.iconBtn} onClick={toggleFullscreen} title="全屏">⛶</button>
         </div>
       </div>
@@ -641,6 +702,31 @@ export default function QuestDictation() {
           onClose={() => setShowModePicker(false)}
           onStart={handleModeStart}
         />
+      )}
+
+      {/* 教材阅读浮层 */}
+      {showBook && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setShowBook(false)}>
+          <div style={{ width: '100%', maxWidth: 720, maxHeight: '80vh', overflowY: 'auto', background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 12px 40px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>📖 {localLesson?.title || '教材'}</h3>
+              <button style={{ border: 0, background: 'none', fontSize: 24, cursor: 'pointer', color: '#888' }} onClick={() => setShowBook(false)} title="关闭">×</button>
+            </div>
+            {bookSentences.length === 0 ? (
+              <p style={{ color: '#999', textAlign: 'center', padding: '30px 0' }}>本课暂无教材文本</p>
+            ) : bookSentences.map((x, i) => (
+              <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid #F0F0F0' }}>
+                <div style={{ fontSize: 17, fontWeight: 600, fontFamily: '"PT Serif",Georgia,serif', lineHeight: 1.5 }}>{x.ru}</div>
+                <div style={{ fontSize: 14, color: '#666', marginTop: 2 }}>{x.zh}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 轻提示 */}
+      {hint && (
+        <div style={{ position: 'fixed', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 200, background: '#333', color: '#fff', padding: '8px 18px', borderRadius: 999, fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', whiteSpace: 'nowrap' }}>{hint.text}</div>
       )}
 
       {/* 进度条 */}
