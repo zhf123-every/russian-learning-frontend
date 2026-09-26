@@ -195,7 +195,7 @@ export default function AnswerPanel({
               if (w.pos && posVisMap[w.pos] === false) return null;
               const customPosColor = posColorOf(uiCfg, w.pos);
               const color = customPosColor || w.posColor || getRoleColor(w.syntacticRole);
-              const effColor = posStyleOf(uiCfg) === 'text' ? '#9CA3AF' : color;
+              const effColor = color;
               const roleLabel = w.roleLabel || getRoleLabel(w.syntacticRole);
               // 显示带重音符的词形：优先 form（带重音），其次 stress_marked / lemma
               const displayWord = w.form || w.stress_marked || w.lemma || "";
@@ -226,7 +226,7 @@ export default function AnswerPanel({
                   <div style={styles.phonetic}>{displayWord}</div>
 
                   {/* 大字单词 */}
-                  <div className="word-card-bigword" style={{ ...styles.bigWord, color: effColor }}>
+                  <div className="word-card-bigword" style={{ ...styles.bigWord, color: "var(--qs-text, #1F2937)" }}>
                     {displayWord}
                   </div>
 
@@ -237,7 +237,7 @@ export default function AnswerPanel({
                   {uiCfg.showWordTrans !== false && chinese && <div style={styles.chinese}>{chinese}</div>}
 
                   {/* 语法标注（性数格） */}
-                  {grammarLabel && <div style={{ ...styles.pos, fontSize: "10px", color: "#9CA3AF", marginTop: "2px" }}>{grammarLabel}</div>}
+                  {grammarLabel && <div style={{ ...styles.pos, fontSize: "10px", color: "var(--qs-sub, #9CA3AF)", marginTop: "2px" }}>{grammarLabel}</div>}
 
                   {/* 词性 */}
                   {uiCfg.showPos !== false && posLabel && <div style={styles.pos}>{posLabel}</div>}
@@ -295,9 +295,9 @@ const styles = {
   card: {
     width: "100%",
     maxWidth: 960,
-    background: "var(--qs-surface2, #fff)",
-    borderRadius: 16,
-    padding: "48px 24px 32px",
+    background: "transparent",
+    borderRadius: 0,
+    padding: "40px 24px 32px",
     textAlign: "center",
     display: "flex",
     flexDirection: "column",
@@ -337,7 +337,7 @@ const styles = {
   },
   phonetic: {
     fontSize: 13,
-    color: "#9CA3AF",
+    color: "var(--qs-sub, #9CA3AF)",
     marginBottom: 4,
     marginTop: 4,
     fontFamily: '"PT Serif", Georgia, serif',
@@ -360,13 +360,13 @@ const styles = {
   },
   chinese: {
     fontSize: 14,
-    color: "#4B5563",
+    color: "var(--qs-text, #4B5563)",
     fontWeight: 500,
     marginBottom: 2,
   },
   pos: {
     fontSize: 12,
-    color: "#9CA3AF",
+    color: "var(--qs-sub, #9CA3AF)",
   },
   fallbackRow: {
     display: "flex",
@@ -391,7 +391,7 @@ const styles = {
   },
   copyIcon: {
     cursor: "pointer",
-    color: "#9CA3AF",
+    color: "var(--qs-sub, #9CA3AF)",
     display: "inline-flex",
     alignItems: "center",
     transition: "color 0.15s",

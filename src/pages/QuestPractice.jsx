@@ -1019,7 +1019,7 @@ export default function QuestPractice() {
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.russian}</span>
             </div>
           )}
-          <div style={styles.hintText}>{currentStatement?.chinese}</div>
+          <div style={styles.hintText}>{currentStatement?.chunkFullZh || currentStatement?.chinese}</div>
           {showAnswer && currentStatement?.stressMarked && (
             <div style={styles.answerReveal}>
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.stressMarked}</span>
@@ -1054,7 +1054,7 @@ export default function QuestPractice() {
             </span>
           )}
           {!isFixMode && !isFixInputMode && (
-            <span style={{ color: "#A1A1AA" }}>
+            <span style={{ color: "var(--qs-sub, #A1A1AA)" }}>
               Enter 提交 · Ctrl+' 发音 · Ctrl+; 看答案
             </span>
           )}
@@ -1243,14 +1243,14 @@ const styles = {
     fontSize: "2.5rem",
     fontWeight: 700,
     fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    color: "#18181B",
+    color: "var(--qs-text, #18181B)",
     lineHeight: 1.3,
   },
   grammarNote: {
     marginTop: 10,
     fontSize: 13,
-    color: "oklch(18% 0.0249 284.3)",
-    background: "oklch(95% 0.0081 61.42)",
+    color: "var(--qs-active, oklch(18% 0.0249 284.3))",
+    background: "var(--qs-surface2, oklch(95% 0.0081 61.42))",
     padding: "8px 14px",
     borderRadius: 8,
     display: "inline-block",
@@ -1258,7 +1258,7 @@ const styles = {
   answerReveal: {
     marginTop: 12,
     fontSize: 16,
-    color: "#059669",
+    color: "var(--qs-success, #059669)",
     fontWeight: 500,
   },
   answerTop: {

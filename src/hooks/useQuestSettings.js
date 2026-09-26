@@ -90,7 +90,7 @@ export const THEME_OF = (ui) => {
       active: '#7C3AED',
       vars: {
         '--qs-bg': '#0f172a', '--qs-surface': '#111827', '--qs-surface2': '#1f2937',
-        '--qs-text': '#f1f5f9', '--qs-sub': '#a8b2c1', '--qs-border': '#64748b', '--qs-active': '#7C3AED',
+        '--qs-text': '#f1f5f9', '--qs-sub': '#a8b2c1', '--qs-border': '#64748b', '--qs-active': '#7C3AED', '--qs-success': '#34D399',
       },
     }
   }
@@ -102,7 +102,7 @@ export const THEME_OF = (ui) => {
     bg, surface: bg, surface2, text: '#111827', sub: '#6b7280', border, active: '#7C3AED',
     vars: {
       '--qs-bg': bg, '--qs-surface': bg, '--qs-surface2': surface2,
-      '--qs-text': '#111827', '--qs-sub': '#6b7280', '--qs-border': border, '--qs-active': '#7C3AED',
+      '--qs-text': '#111827', '--qs-sub': '#6b7280', '--qs-border': border, '--qs-active': '#7C3AED', '--qs-success': '#059669',
     },
   }
 }
