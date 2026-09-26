@@ -5,7 +5,7 @@
 //   VITE_API_BASE = https://你的后端.onrender.com   （末尾不要带斜杠）
 // 开发环境不设置该变量，会自动回退到同域（本地 python server.py 的 :8000）。
 
-const API_BASE = (import.meta.env && import.meta.env.VITE_API_BASE) || ''
+const API_BASE = ((import.meta.env && import.meta.env.VITE_API_BASE) || '').trim().replace(/\/+$/, '')
 
 export { API_BASE }
 

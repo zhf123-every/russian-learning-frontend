@@ -3,7 +3,7 @@
 > vite
 
 
-  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1006[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1056[22m[2m[0m ms[22m
 
   [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
   [32m➜[39m  [1mNetwork[22m: [36mhttp://198.18.0.1:[1m5173[22m/[39m
@@ -11,4 +11,5 @@
   [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.8:[1m5173[22m/[39m
 [2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
 /*! 🌼 daisyUI 5.7.42 */
-[2m11:05:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/GameDetail.jsx, /src/styles/tailwind.css[22m
+[2m11:21:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/GameDetail.jsx, /src/styles/tailwind.css[22m
+[2m11:24:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/TutorChat.jsx, /src/styles/tailwind.css, /src/pages/RuQuest.jsx, /src/pages/QuestDictation.jsx, /src/pages/QuestPractice.jsx, /src/pages/GameDetail.jsx, /src/pages/GameStore.jsx, /src/pages/AdminLessons.jsx, /src/pages/VideoStudy.jsx, /src/pages/AdminDashboard.jsx, /src/pages/Dictionary.jsx, /src/pages/Study.jsx, /src/components/AITutor.jsx, /src/components/ContributeModal.jsx, /src/components/FullTextPanel.jsx, /src/components/DictationExam.jsx, /src/components/CourseContributeModal.jsx, /src/pages/SquarePage.jsx, /src/pages/Dashboard.jsx, /src/components/TranscribeModal.jsx, /src/pages/CourseDetail.jsx, /src/components/WordPop.jsx, /src/components/AddVocabModal.jsx, /src/components/AIQuiz.jsx[22m

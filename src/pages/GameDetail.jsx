@@ -59,32 +59,85 @@ export default function GameDetail() {
   const [pickedUnit, setPickedUnit] = useState(null)
   const [activeTab, setActiveTab] = useState('大纲') // 句乐部式 Tab：学习路线 / 大纲 / 评价
 
-  // ===== 评价逻辑（localStorage 持久化 rlearn_course_reviews） =====
-  const REVIEW_KEY = 'rlearn_course_reviews'
+  // ===== 评价逻辑（后端 B2 全网同步 + localStorage 缓存兜底） =====
+  const REVIEW_CACHE_KEY = 'rlearn_course_reviews_cache'
   const [reviews, setReviews] = useState([])
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewText, setReviewText] = useState('')
   const [reviewName, setReviewName] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  const loadReviews = () => {
-    const all = JSON.parse(localStorage.getItem(REVIEW_KEY) || '{}')
-    return all[game?.id] || []
+  const loadReviewsLocal = () => {
+    try {
+      const all = JSON.parse(localStorage.getItem(REVIEW_CACHE_KEY) || '{}')
+      return all[game?.id] || []
+    } catch { return [] }
   }
-  useEffect(() => { setReviews(loadReviews()) }, [game])
+  const saveReviewsLocal = (list) => {
+    try {
+      const all = JSON.parse(localStorage.getItem(REVIEW_CACHE_KEY) || '{}')
+      all[game.id] = list
+      localStorage.setItem(REVIEW_CACHE_KEY, JSON.stringify(all))
+    } catch { /* ignore */ }
+  }
+
+  // 初始化：本地缓存先显示（即时渲染），再拉云端刷新（全网同步）
+  useEffect(() => {
+    setReviews(loadReviewsLocal())
+    if (!game?.id) return
+    let alive = true
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 15000)
+    apiFetch(`/api/reviews/list?courseId=${encodeURIComponent(game.id)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive && d && d.ok && Array.isArray(d.reviews)) {
+          setReviews(d.reviews)
+          saveReviewsLocal(d.reviews)
+        }
+      })
+      .catch(() => { /* 后端不可达时保留本地缓存 */ })
+      .finally(() => clearTimeout(timer))
+    return () => { alive = false; clearTimeout(timer); ctrl.abort() }
+  }, [game])
 
   const submitReview = () => {
     if (!reviewText.trim()) { toast('请写下你的学习感受'); return }
-    const all = JSON.parse(localStorage.getItem(REVIEW_KEY) || '{}')
-    const list = all[game.id] || []
-    list.unshift({ id: 'r_' + Date.now(), name: reviewName.trim() || '我', rating: reviewRating, text: reviewText.trim(), time: Date.now() })
-    all[game.id] = list
-    localStorage.setItem(REVIEW_KEY, JSON.stringify(all))
-    setReviews(list)
-    setShowReviewModal(false)
-    setReviewText('')
-    setReviewName('')
-    toast('评价已发布')
+    if (submitting) return
+    setSubmitting(true)
+    apiFetch('/api/reviews/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        courseId: game.id,
+        name: reviewName.trim() || '我',
+        rating: reviewRating,
+        text: reviewText.trim(),
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && d.ok) {
+          setShowReviewModal(false)
+          setReviewText('')
+          setReviewName('')
+          toast('评价已发布')
+          // 提交成功后拉取最新云端列表
+          return apiFetch(`/api/reviews/list?courseId=${encodeURIComponent(game.id)}`)
+            .then((r2) => r2.json())
+            .then((d2) => {
+              if (d2 && d2.ok && Array.isArray(d2.reviews)) {
+                setReviews(d2.reviews)
+                saveReviewsLocal(d2.reviews)
+              }
+            })
+            .catch(() => { /* 列表刷新失败不影响已提交 */ })
+        }
+        throw new Error((d && d.error) || '提交失败')
+      })
+      .catch((e) => { toast('提交失败：' + ((e && e.message) || '请稍后重试')) })
+      .finally(() => setSubmitting(false))
   }
 
   const fmtTime = (t) => {
@@ -480,7 +533,7 @@ export default function GameDetail() {
             <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder="写下你的学习感受…" rows={4} className="w-full resize-none rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none transition focus:border-primary" />
             <div className="mt-5 flex gap-3">
               <button type="button" onClick={() => setShowReviewModal(false)} className="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50">取消</button>
-              <button type="button" onClick={submitReview} className="flex-1 rounded-full bg-primary py-2.5 text-sm font-bold text-white transition hover:brightness-110">提交评价</button>
+              <button type="button" onClick={submitReview} disabled={submitting} className="flex-1 rounded-full bg-primary py-2.5 text-sm font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60">{submitting ? '提交中…' : '提交评价'}</button>
             </div>
           </div>
         </div>
