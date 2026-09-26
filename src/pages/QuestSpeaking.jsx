@@ -17,6 +17,9 @@ import LearningContentModal from "../components/LearningContentModal";
 import SentenceTreeModal from "../components/SentenceTreeModal";
 import ReportErrorModal from "../components/ReportErrorModal";
 import { toast } from "../lib/toast";
+import { pipeline, env } from "@xenova/transformers";
+env.allowLocalModels = false;   // 强制从 HuggingFace CDN 加载模型（免费、多人可用）
+env.useBrowserCache = false;    // 走浏览器 HTTP 缓存（Cache API 在部分受限环境会异常）
 import { getPosColor, getPosLabel, buildGrammarLabel } from "../constants/posColors";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
 
@@ -175,6 +178,12 @@ export default function QuestSpeaking() {
   const [score, setScore] = useState({ total: 0, accuracy: 0, fluency: 0, completeness: 0 });
   const recRef = useRef(null);
   const recStartRef = useRef(0);
+  const asrRef = useRef(null);
+  let asrPromise = null;
+  const [modelStatus, setModelStatus] = useState("idle"); // idle/loading/ready/error
+  const [modelProgress, setModelProgress] = useState(0);
+  const [transcribing, setTranscribing] = useState(false);
+  const [modelError, setModelError] = useState("");
 
   const ttsRef = useRef(null);
   const seqPlayRef = useRef(null); // 阶段链播放器句柄
@@ -380,6 +389,69 @@ export default function QuestSpeaking() {
     }
   }, [loading, loadError, currentIdx, current, ready, runStageChain]);
 
+  // ---- 本地 Whisper 识别与四维评分（浏览器本地推理，免费多人可用） ----
+  function normTokens(text) {
+    return String(text || "").toLowerCase().replace(/[.,!?;:«»"'()\-—…\s]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  }
+  function editDist(a, b) {
+    const m = a.length, n = b.length;
+    const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    return dp[m][n];
+  }
+  function computeScores(whisperOut, targetRu, recDur) {
+    const hypTokens = normTokens(whisperOut && whisperOut.text);
+    const refTokens = normTokens(targetRu);
+    if (!refTokens.length || !hypTokens.length) return { total: 0, accuracy: 0, fluency: 0, completeness: 0 };
+    // 准确度：词级编辑距离相似度
+    const ed = editDist(hypTokens, refTokens);
+    const accuracy = Math.max(0, Math.round((1 - ed / Math.max(refTokens.length, hypTokens.length)) * 100));
+    // 完整度：标准词命中比例（容忍词形变化：4字母以上前缀匹配）
+    let hit = 0;
+    for (const rt of refTokens) {
+      const isHit = hypTokens.some(ht => ht === rt || (ht.length >= 4 && rt.length >= 4 && (ht.startsWith(rt.slice(0, 4)) || rt.startsWith(ht.slice(0, 4)))));
+      if (isHit) hit++;
+    }
+    const completeness = Math.round((hit / refTokens.length) * 100);
+    // 流利度：词时间戳（语速 + 停顿惩罚）
+    let fluency = 70;
+    try {
+      const words = (whisperOut && whisperOut.chunks || []).flatMap(c => (c.words || []).filter(w => w && typeof w.start === "number"));
+      if (words.length >= 2) {
+        const dur = Math.max(words[words.length - 1].end - words[0].start, 0.6);
+        const wps = words.length / dur;
+        const gaps = words.slice(1).filter((w, i) => (w.start - words[i].end) > 0.8).length;
+        fluency = Math.max(0, Math.min(100, Math.round(100 - Math.abs(wps - 2.2) * 12 - gaps * 10)));
+      } else if (recDur > 0) {
+        const wps = hypTokens.length / recDur;
+        fluency = Math.max(0, Math.min(100, Math.round(100 - Math.abs(wps - 2.0) * 20)));
+      }
+    } catch (e) { fluency = 70; }
+    const total = Math.round(accuracy * 0.4 + fluency * 0.3 + completeness * 0.3);
+    return { total, accuracy, fluency, completeness };
+  }
+  async function loadASR() {
+    if (asrRef.current) return asrRef.current;
+    if (asrPromise) return asrPromise;
+    setModelStatus("loading");
+    setModelProgress(0);
+    asrPromise = (async () => {
+      const pipe = await pipeline("automatic-speech-recognition", "Xenova/whisper-tiny", {
+        progress_callback: (pp) => {
+          if (pp && pp.status === "progress" && typeof pp.progress === "number") setModelProgress(Math.round(pp.progress));
+        },
+      });
+      asrRef.current = pipe;
+      setModelStatus("ready");
+      return pipe;
+    })().catch((e) => { asrPromise = null; setModelStatus("error"); setModelError((e && e.message) ? e.message : String(e)); throw e; });
+    return asrPromise;
+  }
+
   // ---- 麦克风录音与 AI 评分 ----
   async function startRec() {
     if (recState === "recording") return;
@@ -403,13 +475,24 @@ export default function QuestSpeaking() {
       const dur = (Date.now() - recStartRef.current) / 1000;
       recRef.current = null;
       if (dur >= 0.6 && chunks.length) {
-        // AI 四维评分（本地模拟；接入后端语音评测后替换）
-        const accuracy = Math.min(100, Math.round(60 + Math.min(dur, 15) * 2.2 + Math.random() * 20));
-        const fluency = Math.min(100, Math.round(58 + Math.min(dur, 15) * 1.8 + Math.random() * 20));
-        const completeness = Math.min(100, Math.round(64 + Math.min(dur, 15) * 1.6 + Math.random() * 18));
-        const total = Math.round(accuracy * 0.4 + fluency * 0.3 + completeness * 0.3);
-        setScore({ total, accuracy, fluency, completeness });
-        setRecState("scored");
+        const blob = new Blob(chunks, { type: mr.mimeType || "audio/webm" });
+        setTranscribing(true);
+        (async () => {
+          try {
+            const pipe = await loadASR();
+            const out = await pipe(blob, { language: "russian", task: "transcribe", return_timestamps: "word", chunk_length_s: 30 });
+            const sc = computeScores(out, current ? (current.russian || "") : "", dur);
+            setScore(sc);
+            setRecState("scored");
+          } catch (err) {
+            console.error("ASR error", err);
+            setScore({ total: 0, accuracy: 0, fluency: 0, completeness: 0 });
+            setRecState("idle");
+            toast("语音识别失败：" + (err && err.message ? err.message : String(err)));
+          } finally {
+            setTranscribing(false);
+          }
+        })();
       } else {
         setScore({ total: 0, accuracy: 0, fluency: 0, completeness: 0 });
         setRecState("idle");
@@ -419,6 +502,7 @@ export default function QuestSpeaking() {
   }
 
   const handleStart = () => {
+    loadASR().catch(() => {}); // 预热本地语音模型
     setReady(true);
     if (current) runStageChain(current.russian);
   };
@@ -778,7 +862,20 @@ export default function QuestSpeaking() {
 
               {/* 紫色麦克风：悬停显示"长按 Space"，按住呼吸动效 */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-                {(hoverMic || recState === "recording") && (
+                {modelStatus === "loading" && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(243,244,246,0.95)", padding: "8px 16px", borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.08)", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>正在加载语音模型 {modelProgress}%</span>
+                    <div style={{ width: 90, height: 6, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
+                      <div style={{ width: modelProgress + "%", height: "100%", background: "#7C3AED", borderRadius: 999, transition: "width .3s" }} />
+                    </div>
+                  </div>
+                )}
+                {modelStatus === "error" && (
+                  <div style={{ background: "#FEF2F2", padding: "8px 16px", borderRadius: 10, fontSize: 13, color: "#B91C1C", fontWeight: 600, whiteSpace: "nowrap" }}>
+                    语音模型加载失败：{modelError || "请检查网络后刷新重试"}
+                  </div>
+                )}
+                {(modelStatus === "ready" && (hoverMic || recState === "recording")) && (
                   <div style={{ background: "rgba(243,244,246,0.95)", padding: "8px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, color: "#111", boxShadow: "0 4px 14px rgba(0,0,0,0.08)", whiteSpace: "nowrap", transition: "opacity .15s" }}>
                     长按 Space
                   </div>
@@ -802,7 +899,7 @@ export default function QuestSpeaking() {
                   </svg>
                 </button>
                 <span style={{ fontSize: 14, color: "#6b7280", letterSpacing: 0.5 }}>
-                  {recState === "recording" ? "松开 发送" : recState === "scored" ? "按住 重新评测" : "按住 说话"}
+                  {transcribing ? "识别中…" : recState === "recording" ? "松开 发送" : recState === "scored" ? "按住 重新评测" : "按住 说话"}
                 </span>
               </div>
             </div>
