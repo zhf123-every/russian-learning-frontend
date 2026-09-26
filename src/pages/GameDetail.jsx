@@ -153,6 +153,15 @@ export default function GameDetail() {
   // 学习路线：抽首尾几个节点展示（完整路线见大纲）
   const routeNodes = units.length > 8 ? [units[0], units[1], units[2], null /* … */, units[units.length - 2], units[units.length - 1]] : units
 
+  // 蛇形路线图参数（对标句乐部：左右交替、纵向每节 116px）
+  const routeH = units.length ? 214 + (units.length - 1) * 116 + 64 + 24 : 300
+  const routePts = units.map((_, i) => ({ x: i % 2 === 0 ? 20 : 80, y: 246 + i * 116 }))
+  const routeFullPath = 'M ' + routePts.map((pt) => `${pt.x} ${pt.y}`).join(' L ')
+  const routeProgPts = routePts.slice(0, Math.min(doneCount + 1, routePts.length))
+  const routeProgressPath = routeProgPts.length > 1
+    ? 'M ' + routeProgPts.map((pt) => `${pt.x} ${pt.y}`).join(' L ')
+    : (routeProgPts.length === 1 ? `M ${routeProgPts[0].x} ${routeProgPts[0].y}` : '')
+
   return (
     <div className="db-page">
       <div className="db-container" style={{}}>
@@ -239,30 +248,61 @@ export default function GameDetail() {
 
         {activeTab === '学习路线' && (
         <>
-        {/* ===== 学习路线 ===== */}
-        <div className="card" style={{ padding: 20, borderRadius: 16, marginBottom: 20 }}>
+        {/* ===== 学习路线（句乐部式蛇形路线图） ===== */}
+        <div className="card" style={{ padding: '16px 12px 20px', borderRadius: 16, marginBottom: 20, overflow: 'hidden' }}>
+          <style>{`
+            @keyframes rl-breathe { 0%,100% { box-shadow: 0 0 0 0 rgba(109,40,217,0.35) } 50% { box-shadow: 0 0 0 14px rgba(109,40,217,0) } }
+          `}</style>
           <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>学习路线</div>
-          <div style={{ fontSize: 13.5, color: '#9ca3af', marginBottom: 16 }}>按顺序学习效果最佳，绿色=已完成，紫色=正在学</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 0, overflowX: 'auto', paddingBottom: 6 }}>
-            {routeNodes.map((u, i) => {
-              if (!u) return <div key={'e' + i} style={{ flex: '0 0 28px', textAlign: 'center', color: '#c0c4cc', fontWeight: 800 }}>…</div>
-              const st = STATUS_META[u.status] || STATUS_META['未开始']
-              const done = u.status === '已完成'
-              return (
-                <div key={u.id} style={{ display: 'flex', alignItems: 'center' }}>
-                  <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: '50%', margin: '0 auto',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800,
-                      background: done ? '#16a34a' : (u.status === '进行中' ? '#7c3aed' : '#e5e7eb'),
-                      color: done || u.status === '进行中' ? '#fff' : '#9ca3af',
-                    }}>{done ? '✓' : (i + 1)}</div>
-                    <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4, whiteSpace: 'nowrap' }}>{u.title}</div>
-                  </div>
-                  {i < routeNodes.length - 1 && <div style={{ flex: 1, minWidth: 18, height: 2, background: '#e5e7eb', margin: '0 4px' }} />}
+          <div style={{ fontSize: 13.5, color: '#9ca3af', marginBottom: 12 }}>按顺序学习效果最佳，绿色=已完成，紫色=当前，灰色=未解锁</div>
+          <div className="relative mx-auto w-full overflow-x-auto">
+            <div className="relative mx-auto w-full" style={{ minWidth: 360, height: routeH }}>
+              {/* SVG 之字形路径 */}
+              <svg className="pointer-events-none absolute inset-0" width="100%" height={routeH} viewBox={`0 0 100 ${routeH}`} preserveAspectRatio="none" fill="none">
+                {/* 灰线：完整路径 */}
+                <path d={routeFullPath} stroke="#d1d5db" strokeWidth="6" strokeLinecap="round" strokeDasharray="2 12" opacity="0.35" vectorEffect="non-scaling-stroke" />
+                {/* 紫线：已走过的进度 */}
+                <path d={routeProgressPath} stroke="#7c3aed" strokeWidth="6" strokeLinecap="round" opacity="0.9" vectorEffect="non-scaling-stroke" />
+              </svg>
+              {/* 起点徽章 */}
+              <div className="absolute inset-x-0" style={{ top: 0 }}>
+                <div className="absolute inset-x-0 flex items-center justify-center gap-3 px-8">
+                  <span className="h-px max-w-16 flex-1 bg-gradient-to-r from-transparent to-primary/30" />
+                  <span className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/[0.08] px-3.5 py-1 text-[14px] font-bold text-primary">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>
+                    起点
+                  </span>
+                  <span className="h-px max-w-16 flex-1 bg-gradient-to-l from-transparent to-primary/30" />
                 </div>
-              )
-            })}
+              </div>
+              {/* 蛇形节点 */}
+              {units.map((u, i) => {
+                const dm = DIFF_META[u.difficulty] || DIFF_META.easy
+                const done = u.status === '已完成'
+                const current = u.status === '进行中'
+                const nodeLeft = i % 2 === 0 ? '16%' : '76%'
+                const nodeTop = 214 + i * 116
+                return (
+                  <div key={u.id} className="absolute z-10" style={{ left: nodeLeft, top: nodeTop, transform: 'translateX(-50%)' }}>
+                    <div className="flex cursor-pointer flex-col items-center" onClick={() => setPickedUnit(u)}>
+                      <div
+                        className={`relative flex items-center justify-center rounded-full border-2 transition-colors ${done ? 'border-green-500 bg-green-500 text-white' : current ? 'border-primary bg-primary/10 text-primary' : 'border-gray-300 bg-gray-50 text-gray-400 hover:border-gray-400'}`}
+                        style={{ width: 64, height: 64, animation: current ? 'rl-breathe 2s ease-in-out infinite' : undefined }}
+                      >
+                        {done ? (
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                        ) : (
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 8 6 6" /><path d="m4 14 6-6 2-3" /><path d="M2 5h12" /><path d="M7 2h1" /><path d="m22 22-5-10-5 10" /><path d="M14 18h6" /></svg>
+                        )}
+                        {/* 当前节点呼吸光圈 */}
+                        {current && <span className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-primary/40" />}
+                      </div>
+                      <div className="mt-1.5 max-w-[110px] truncate text-[11px] font-medium text-gray-500">{dm.label}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
 
