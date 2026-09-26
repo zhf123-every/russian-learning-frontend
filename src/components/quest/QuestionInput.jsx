@@ -81,10 +81,10 @@ export default function QuestionInput({
           padding-bottom: 2px;
         }
 
-        /* 激活词：紫色文字 + 紫色下划线 + Bold */
+        /* 激活词：紫色文字 + 紫色下划线 + Bold（深夜模式自动用亮紫 var(--qs-active)） */
         .quest-word-active {
-          color: oklch(23.27% 0.0249 284.3);
-          border-bottom-color: oklch(23.27% 0.0249 284.3);
+          color: var(--qs-active, #5B21B6);
+          border-bottom-color: var(--qs-active, #5B21B6);
           font-weight: 700;
         }
 
@@ -128,7 +128,7 @@ export default function QuestionInput({
 
         /* 占位提示 */
         .quest-placeholder {
-          color: #9CA3AF;
+          color: var(--qs-sub, #9CA3AF);
           font-size: 18px;
           padding: 24px;
         }
