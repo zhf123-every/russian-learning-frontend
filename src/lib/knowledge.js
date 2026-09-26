@@ -12,12 +12,13 @@ const KNOWLEDGE_PROMPT = `你是一位资深的中国俄语教育专家。请对
 
 输出 JSON 结构（字段名必须完全一致）：
 {
-  "ru_def": "俄语释义：用简洁俄语解释这句话的含义（1-2句）",
+  "ru_def": "整句俄语释义：用简洁俄语解释这个完整句子的含义（1-2句）",
   "words": [
     {
       "word": "原形词或句中词形",
       "stress": "带重音符号的词形（重音元音后加\u0301，如 до́м；单音节词不加重音）",
       "chinese": "中文释义",
+      "ru_def": "这个词的俄语释义：用简单俄语解释这个单词的意思（1句，如 До́м — это здание для жилья.）",
       "pos": "词性（名词/动词/形容词/代词/副词/前置词/连词/数词/语气词/感叹词）",
       "basic": "基本含义（1句）",
       "context": "上下文含义（这个词在句中的作用，1句）",
@@ -51,7 +52,41 @@ const KNOWLEDGE_PROMPT = `你是一位资深的中国俄语教育专家。请对
   ]
 }`;
 
-const LS_PREFIX = 'rlearn_knowledge_v1_';
+const LS_PREFIX = 'rlearn_knowledge_v2_';
+
+// 修复字符串值内未转义的双引号（模型最常见错误：说"привет" 未转义）
+function repairJson(t) {
+  let out = '';
+  let inStr = false;
+  let i = 0;
+  while (i < t.length) {
+    const ch = t[i];
+    const nx = t[i + 1];
+    if (ch === '\\') { out += ch + (nx || ''); i += 2; continue; }
+    if (ch === '"') {
+      if (!inStr) {
+        out += ch;
+        inStr = true;
+      } else {
+        // 字符串内：判断是否闭合（下一个非空白是 : , } ] 或结束）
+        let j = i + 1;
+        while (j < t.length && (t[j] === ' ' || t[j] === '\t')) j++;
+        const nc = j >= t.length ? '' : t[j];
+        if (nc === ':' || nc === ',' || nc === '}' || nc === ']' || nc === '') {
+          out += ch;
+          inStr = false;
+        } else {
+          out += '\\"'; // 内部裸引号转义
+        }
+      }
+      i += 1;
+      continue;
+    }
+    out += ch;
+    i += 1;
+  }
+  return out;
+}
 
 // 从 AI 输出中容错提取 JSON
 function extractJson(text) {
@@ -68,7 +103,9 @@ function extractJson(text) {
   }
   const tries = [
     () => JSON.parse(t),
-    () => JSON.parse(t.replace(/,\s*([}\]])/g, '$1')), // 去尾逗号
+    () => JSON.parse(t.replace(/,\s*([}\]])/g, '$1')),                // 去尾逗号
+    () => JSON.parse(repairJson(t)),                                  // 修复未转义引号
+    () => JSON.parse(repairJson(t.replace(/,\s*([}\]])/g, '$1'))),    // 两者结合
   ];
   for (const fn of tries) {
     try { return fn(); } catch (e) { /* 下一级 */ }
@@ -87,6 +124,7 @@ function normalize(raw, ru) {
     word: def(w.word, ''),
     stress: def(w.stress, w.word || ''),
     chinese: def(w.chinese, ''),
+    ru_def: def(w.ru_def, ''),
     pos: def(w.pos, ''),
     basic: def(w.basic, ''),
     context: def(w.context, ''),
@@ -139,11 +177,11 @@ async function callAI(messages) {
   return j.content || '';
 }
 
-// 按句生成知识点（失败自动重试 1 次）
+// 按句生成知识点（失败自动重试 2 次）
 export async function generateKnowledge(ru) {
   let lastErr = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
     try {
       const content = await callAI([
         { role: 'system', content: KNOWLEDGE_PROMPT },
@@ -151,7 +189,7 @@ export async function generateKnowledge(ru) {
       ]);
       const raw = extractJson(content);
       if (raw) return normalize(raw, ru);
-      lastErr = new Error('AI 输出无法解析为 JSON：RAW:' + String(content || '').slice(0, 120));
+      lastErr = new Error('AI 输出无法解析为 JSON：RAW:' + String(content || '').slice(0, 400));
     } catch (e) {
       lastErr = e;
     }

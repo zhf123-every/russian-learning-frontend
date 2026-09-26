@@ -227,11 +227,21 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
                       </p>
                     </div>
 
-                    {/* 俄语释义 */}
+                    {/* 俄语释义（选中完整句→整句释义；选中单词块→该词的俄语释义） */}
                     <div className={card}>
                       <h4 className={h4}>俄语释义</h4>
                       <p className="text-sm text-gray-700 leading-relaxed">
-                        {loading ? 'AI 生成中…' : (k?.ru_def || '暂无')}
+                        {loading && !k ? (
+                          'AI 生成中…'
+                        ) : isFinal ? (
+                          (k?.ru_def || '暂无')
+                        ) : (() => {
+                          const defs = blockWords.map((bw) => {
+                            const hit = (k?.words || []).find((x) => (x.word || '').toLowerCase() === bw.toLowerCase())
+                            return hit && hit.ru_def ? hit.ru_def : ''
+                          }).filter(Boolean)
+                          return defs.length ? defs.join('；') : (k ? '暂无' : 'AI 生成中…')
+                        })()}
                       </p>
                     </div>
 
