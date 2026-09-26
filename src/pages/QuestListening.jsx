@@ -793,18 +793,26 @@ export default function QuestListening() {
                       <span style={{ whiteSpace: "pre-wrap", fontSize: 16, color: "#4B5563", fontWeight: 500 }}>{current.chinese}</span>
                     </div>
                   )}
-                  {/* 框外笔记按钮（卡片行下方，居中） */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 16, animation: "listen-fade .3s .06s ease both" }}>
+                  {/* 卡片区操作行：上一阶段 · 笔记 · 下一阶段 */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 16, animation: "listen-fade .3s .06s ease both" }}>
+                    <button onClick={goPrevSeq} aria-label="上一阶段" title="上一阶段" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, color: "#6b7280", background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)", borderRadius: 8, padding: "6px 12px", cursor: "pointer", transition: "background .15s" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.08)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}>
+                      <Icon name="caretLeft" size={14} />
+                      <span>上一阶段</span>
+                    </button>
                     <button onClick={() => setShowNote(true)} title="笔记" aria-label="笔记" style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: "rgba(0,0,0,0.05)", border: "none", cursor: "pointer", color: "#6b7280", transition: "background .15s" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.09)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}>
                       <Icon name="notebook" size={17} />
+                    </button>
+                    <button onClick={goNextSeq} aria-label="下一阶段" title="下一阶段" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, color: "#6b7280", background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)", borderRadius: 8, padding: "6px 12px", cursor: "pointer", transition: "background .15s" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.08)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}>
+                      <span>下一阶段</span>
+                      <Icon name="caretRight" size={14} />
                     </button>
                   </div>
                 </>
               )}
             </div>
 
-            {/* 上一题/下一题（绝对定位左右） */}
-            <div style={{ position: "absolute", left: 0, right: 0, top: "50%", transform: "translateY(-50%)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "space-between", pointerEvents: "none", padding: "0 8px" }}>
+            {/* 底部快捷键栏（始终横排显示）：上一题·暂停·生词·下一题 */}
+            <div style={{ pointerEvents: "none", zIndex: 20, display: "flex", flexWrap: "nowrap", alignItems: "center", justifyContent: "center", gap: "6px 8px", maxWidth: "calc(100% - 5rem)", position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", width: "100%" }}>
               <div style={{ pointerEvents: "auto" }}>
                 <TipBtn label="上一题" keys={["Shift", "←"]}>
                   <button onClick={goPrev} disabled={currentIdx === 0} aria-label="上一题" style={{ width: 32, height: 32, display: "grid", placeItems: "center", borderRadius: "50%", border: "none", background: "transparent", color: currentIdx === 0 ? "#d1d5db" : "#6b7280", cursor: currentIdx === 0 ? "not-allowed" : "pointer", transition: "background .2s, color .2s" }} onMouseEnter={(e) => { if (currentIdx > 0) { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; e.currentTarget.style.color = "#111"; } }} onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = currentIdx === 0 ? "#d1d5db" : "#6b7280"; }}>
@@ -812,6 +820,14 @@ export default function QuestListening() {
                   </button>
                 </TipBtn>
               </div>
+              <button onClick={togglePause} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
+                <kbd style={{ borderRadius: 6, background: "#f3f4f6", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "#111", border: "1px solid #d1d5db", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Space</kbd>
+                <span>暂停</span>
+              </button>
+              <button onClick={() => setShowAi(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
+                <kbd style={{ borderRadius: 6, background: "#f3f4f6", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "#111", border: "1px solid #d1d5db", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Ctrl N</kbd>
+                <span>生词</span>
+              </button>
               <div style={{ pointerEvents: "auto" }}>
                 <TipBtn label="下一题" keys={["Shift", "→"]}>
                   <button onClick={goNext} aria-label="下一题" style={{ width: 32, height: 32, display: "grid", placeItems: "center", borderRadius: "50%", border: "none", background: "transparent", color: "#6b7280", cursor: "pointer", transition: "background .2s, color .2s" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; e.currentTarget.style.color = "#111"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#6b7280"; }}>
@@ -819,32 +835,6 @@ export default function QuestListening() {
                   </button>
                 </TipBtn>
               </div>
-            </div>
-
-            {/* 底部快捷键栏（始终横排显示） */}
-            <div style={{ pointerEvents: "none", zIndex: 20, display: "flex", flexWrap: "nowrap", alignItems: "center", justifyContent: "center", gap: "4px 2px", maxWidth: "calc(100% - 5rem)", position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", width: "100%" }}>
-              <button onClick={goPrev} disabled={currentIdx === 0} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: currentIdx === 0 ? "#d1d5db" : "#374151", fontSize: 13, cursor: currentIdx === 0 ? "not-allowed" : "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
-                <Icon name="caretLeft" size={18} />
-                <span>上一题</span>
-              </button>
-              <button onClick={togglePause} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
-                <kbd style={{ borderRadius: 6, background: "#f3f4f6", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "#111", border: "1px solid #d1d5db", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Space</kbd>
-                <span>暂停</span>
-              </button>
-              <button onClick={() => setShowAi(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
-                <kbd style={{ borderRadius: 6, background: "#f3f4f6", padding: "4px 8px", fontSize: 12, fontWeight: 500, color: "#111", border: "1px solid #d1d5db" }}>Ctrl N</kbd>
-                <span>生词</span>
-              </button>
-              <button onClick={goPrevSeq} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
-                <span>← 上一阶段</span>
-              </button>
-              <button onClick={goNextSeq} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
-                <span>→ 下一阶段</span>
-              </button>
-              <button onClick={goNext} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
-                <span>下一题</span>
-                <Icon name="caretRight" size={18} />
-              </button>
             </div>
           </div>
         </div>
