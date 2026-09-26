@@ -22,6 +22,7 @@ import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
+import { addStudyTime } from "../lib/learningStats";
 import { expandUnitToChunkSteps, buildZhIndex } from "../lib/chunking";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -51,6 +52,13 @@ export default function QuestDictation() {
   const navigate = useNavigate();
   const { courseId } = useParams();
   const effectiveCourseId = courseId || DEFAULT_UNIT_ID;
+  const sessionStartRef = useRef(Date.now()); // 学习时长统计起点
+  // 学习时长归属课程：优先取 URL 上 ?courseId=（详情页跳转带入），否则用单元 ID
+  const studyCourseId = (() => { try { return new URLSearchParams(window.location.search).get('courseId') || effectiveCourseId } catch (e) { return effectiveCourseId } })()
+  // 离开学习页时累计本次学习时长（含完成）
+  useEffect(() => {
+    return () => { addStudyTime(studyCourseId, Date.now() - sessionStartRef.current) }
+  }, [studyCourseId])
 
   // ---- 课程数据 ----
   const [statements, setStatements] = useState([]);

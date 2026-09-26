@@ -10,6 +10,8 @@ import { API_BASE, apiFetch } from '../lib/api'
 import ModePickerModal, { COURSE_MODES } from '../components/ModePickerModal'
 import { getCourseById } from '../utils/courseService'
 import { getUnitDoneMap } from '../lib/lessonProgress'
+import { getCourseStats, fmtDuration, fmtLastAt } from '../lib/learningStats'
+import { isCoursePurchased } from '../lib/courseAccess'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { toast } from '../lib/toast'
 
@@ -67,6 +69,16 @@ export default function GameDetail() {
   const [reviewText, setReviewText] = useState('')
   const [reviewName, setReviewName] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [courseStats, setCourseStats] = useState({ totalMs: 0, lastAt: 0 })
+  const [purchased, setPurchased] = useState(false)
+
+  // 学习时长/最近学习 + 购买状态（进入页面时读取；学完返回会重新进入本页刷新）
+  useEffect(() => {
+    if (game?.id) {
+      setCourseStats(getCourseStats(game.id))
+      setPurchased(isCoursePurchased(game.id))
+    }
+  }, [game])
 
   const loadReviewsLocal = () => {
     try {
@@ -222,8 +234,8 @@ export default function GameDetail() {
     const isLocalCourse = !game.packId && Array.isArray(u.sentences) && u.sentences.length > 0
     if (isLocalCourse) {
       try { sessionStorage.setItem('rlearn_local_lesson_' + u.id, JSON.stringify(u)) } catch (e) { /* 忽略 */ }
-      if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}?src=local`)
-      else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}?src=local`)
+      if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}?src=local&courseId=${game.id}`)
+      else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}?src=local&courseId=${game.id}`)
       else toast('该模式暂仅支持内置课程包，投稿课程支持「中译俄 / 听写」两种模式')
       return
     }
@@ -233,8 +245,8 @@ export default function GameDetail() {
       return
     }
     const packQ = game.packId ? `?pack=${game.packId}` : ''
-    if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}${packQ}`)
-    else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}${packQ}`)
+    if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}${packQ}${packQ ? '&' : '?'}courseId=${game.id}`)
+    else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}${packQ}${packQ ? '&' : '?'}courseId=${game.id}`)
     else if (mode.key === 'speaking') navigate(`/quest/${game.packId || ''}?mode=speaking`)
     else if (mode.key === 'reading') navigate(`/quest/${game.packId || ''}?mode=reading`)
   }
@@ -288,10 +300,17 @@ export default function GameDetail() {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                   商城领取
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 dark:border-violet-800/30 dark:bg-violet-900/20 dark:text-violet-400">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.9 5.7L19.5 10l-5.6 1.3L12 17l-1.9-5.7L4.5 10l5.6-1.3z" /></svg>
-                  试学中 · 前 {Number(game.freeTrialCount) || 0} 课
-                </span>
+                {purchased ? (
+                  <span className="inline-flex items-center gap-1 rounded-lg border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-700 dark:border-green-800/30 dark:bg-green-900/20 dark:text-green-400">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                    会员已解锁全部课时
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 dark:border-violet-800/30 dark:bg-violet-900/20 dark:text-violet-400">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.9 5.7L19.5 10l-5.6 1.3L12 17l-1.9-5.7L4.5 10l5.6-1.3z" /></svg>
+                    试学中 · 前 {Number(game.freeTrialCount) || 0} 课
+                  </span>
+                )}
               </div>
               {/* 描述 */}
               <p className="mt-2 text-gray-500 dark:text-gray-400">{game.subtitle || game.desc || ''}</p>
@@ -309,11 +328,11 @@ export default function GameDetail() {
               <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
                 <div className="flex items-center gap-1">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                  <span>学习时长：0 分钟</span>
+                  <span>学习时长：{fmtDuration(courseStats.totalMs)}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-                  <span>最近学习：—</span>
+                  <span>最近学习：{fmtLastAt(courseStats.lastAt)}</span>
                 </div>
               </div>
             </div>

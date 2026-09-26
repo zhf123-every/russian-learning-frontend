@@ -19,6 +19,7 @@ import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
+import { addStudyTime } from "../lib/learningStats";
 import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
 import { expandSequencesWithChunks } from "../lib/chunking";
@@ -207,6 +208,13 @@ export default function QuestPractice() {
   const [unitMeta, setUnitMeta] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   // ---- 本地投稿课程模式（?src=local + sessionStorage 里的 lesson）----
+  const sessionStartRef = useRef(Date.now()); // 学习时长统计起点
+  // 学习时长归属课程：优先取 URL 上 ?courseId=（详情页跳转带入），否则用单元 ID
+  const studyCourseId = (() => { try { return new URLSearchParams(window.location.search).get('courseId') || effectiveCourseId } catch (e) { return effectiveCourseId } })()
+  // 离开学习页时累计本次学习时长（含完成）
+  useEffect(() => {
+    return () => { addStudyTime(studyCourseId, Date.now() - sessionStartRef.current) }
+  }, [studyCourseId])
   const [localLesson, setLocalLesson] = useState(null);
   const [isLocalMode, setIsLocalMode] = useState(false);
 
