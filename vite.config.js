@@ -11,6 +11,7 @@ export default defineConfig({
     strictPort: false,
     proxy: {
       '/api': 'https://russian-learning-jetq.onrender.com',
+      '/audio_cache': 'https://russian-learning-jetq.onrender.com',
     },
   },
   preview: {
@@ -18,6 +19,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': 'https://russian-learning-jetq.onrender.com',
+      '/audio_cache': 'https://russian-learning-jetq.onrender.com',
     },
   },
   test: {

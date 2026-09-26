@@ -1,162 +1,443 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { splitSentenceToChunks } from '../lib/chunking'
+import { getKnowledge, readKnowledgeCache } from '../lib/knowledge'
 import { annotateWords, ensureDictFull } from '../lib/wordAnnotate'
-import { ensureBkrs, bkrsLookup, bkrsResolve } from '../lib/bkrs'
+import { ensureBkrs, bkrsLookup } from '../lib/bkrs'
 
-// 学习内容弹窗（对标句乐部「查看课程学习内容 Ctrl+1」）
-// 左侧：本课句子列表；右侧：选中句的知识点解析 +「练习此句」
-// 词典：OpenRussian（dict-full）词形还原/重音/词性 + БКРС 大俄汉词典（25万词条）中文释义
-export default function LearningContentModal({ title, sentences, onClose, onPractice }) {
+// 学习内容弹窗 —— 对标句乐部「查看课程学习内容 Ctrl+1」
+// 左栏：chunking 渐进块列表（Это → дом → Это дом.）
+// 右栏：知识点解析（主句/中文翻译/俄语释义/单词短语注解/语法分析/文化与实用知识/功能和使用场景/相关例句）
+// 数据：AI 按完整句生成（缓存 localStorage），词典兜底（OpenRussian 词形 + БКРС 释义）
+
+// 音频播放（后端 /api/tts；相对路径音频：dev 走 vite 代理，生产拼线上后端）
+function playTTS(text) {
+  fetch('/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  })
+    .then((r) => r.json())
+    .then((d) => {
+      let u = d && d.audio_url;
+      if (!u) return;
+      if (!u.startsWith('http')) {
+        const host = window.location.hostname;
+        u = (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0')
+          ? u
+          : 'https://russian-learning-jetq.onrender.com' + u;
+      }
+      new Audio(u).play().catch(() => {})
+    })
+    .catch(() => {})
+}
+
+// 逐词注解兜底：AI 未返回 words 时用词典标注
+function fallbackRows(ru) {
+  const ann = annotateWords(ru || '')
+  return ann.map((a) => ({
+    word: a.lemma || a.form || a.word || '',
+    stress: a.form || a.lemma || '',
+    chinese: bkrsLookup(a.lemma) || bkrsLookup(a.form) || a.chinese || '',
+    pos: a.pos || '',
+    basic: '', context: '', synonyms: [], antonyms: [], phrases: [], example: '', memory: '',
+  }))
+}
+
+export default function LearningContentModal({ title, sentences, unitId = '', onClose, onPractice }) {
   const [activeIdx, setActiveIdx] = useState(0)
-  const [wordRows, setWordRows] = useState([])
+  const [k, setK] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [dictReady, setDictReady] = useState(false)
-  const list = (sentences && sentences.length) ? sentences : []
-  const s = list[activeIdx] || null
+  const loadingRef = useRef(null)
 
-  // 主句显示带重音形式（stressMarked 有则用，否则原句）
-  const mainRu = s?.stressMarked || s?.ru || ''
-
-  // 选中句变化 → 逐词标注 + БКРС 释义
-  useEffect(() => {
-    if (!s) {
-      setWordRows([])
-      return
-    }
-    let alive = true
-    setWordRows([])
-    setDictReady(false)
-
-    // 并行加载两大词典（OpenRussian 词形索引 + БКРС 中文释义），仅首次
-    Promise.all([ensureBkrs(), ensureDictFull()]).then(([b]) => {
-      if (alive) setDictReady(b)
-      // 词典就绪后重新标注（dict-full 的变格变位表已入索引，词性/重音更全）
-      if (!alive) return
-      const ann = annotateWords(s.ru || '')
-      const rows = ann.map((a) => ({
-        form: a.form || a.lemma || a.word || '',
-        lemma: a.lemma || '',
-        pos: a.pos || '',
-        grammar: a.grammarCase ? (a.grammarCase + (a.number ? ' ' + a.number : '')) : '',
-        chinese: bkrsLookup(a.lemma) || bkrsLookup(a.form) || a.chinese || '',
-      }))
-      setWordRows(rows)
-      // 本地未命中 → 后端 /api/dict 增强（Natasha 词形还原）
-      rows.forEach(async (r, i) => {
-        if (r.chinese || !r.lemma) return
-        const { remote } = await bkrsResolve(r.lemma)
-        if (alive && remote) {
-          setWordRows((prev) => {
-            const nx = prev.slice()
-            nx[i] = { ...nx[i], chinese: remote, remote: true }
-            return nx
-          })
-        }
+  // 左栏 chunking 渐进块（每句拆块，显示累积文本）
+  const chunkItems = useMemo(() => {
+    const items = []
+    ;(Array.isArray(sentences) ? sentences : []).forEach((s) => {
+      if (!s || !s.ru) return
+      const chunks = splitSentenceToChunks(s.ru)
+      let acc = ''
+      chunks.forEach((c, k) => {
+        acc = k === 0 ? c : acc + ' ' + c
+        items.push({ sentence: s, text: acc, chunkKey: k, isFinal: k === chunks.length - 1 })
       })
     })
-    return () => {
-      alive = false
-    }
-  }, [s])
+    return items
+  }, [sentences])
 
-  const label = { fontSize: 13, fontWeight: 700, color: '#3D332C', marginBottom: 6 }
-  const value = { fontSize: 14, color: '#666', lineHeight: 1.7 }
+  const item = chunkItems[activeIdx] || null
+  const s = item?.sentence || null
+  const isFinal = !!item?.isFinal
+  const blockWords = (item?.text || '').match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?/g) || []
+
+  // 词典预热（仅首次）
+  useEffect(() => {
+    Promise.all([ensureBkrs(), ensureDictFull()]).then(() => setDictReady(true))
+  }, [])
+
+  // 选中块变化 → 加载该句 AI 知识点
+  useEffect(() => {
+    if (!s) { setK(null); return }
+    const ru = s.ru
+    let alive = true
+    setLoading(true)
+    setError('')
+    if (loadingRef.current) clearTimeout(loadingRef.current)
+    // 先查缓存，未命中走 AI 生成
+    const cached = readKnowledgeCache(unitId)[ru]
+    if (cached && cached._ru) {
+      setK(cached)
+      setLoading(false)
+      return () => { alive = false }
+    }
+    getKnowledge(unitId, ru)
+      .then((kk) => { if (alive) { setK(kk); setLoading(false) } })
+      .catch((e) => { if (alive) { setError(String((e && e.message) || e)); setLoading(false) } })
+    return () => { alive = false }
+  }, [s && s.ru, unitId, activeIdx])
+
+  // 当前块内词的注解（AI words 过滤；无则词典兜底）
+  const kWords = useMemo(() => {
+    if (!k || !Array.isArray(k.words) || k.words.length === 0) return null
+    const filtered = k.words.filter((w) =>
+      blockWords.some((bw) => bw.toLowerCase() === (w.word || '').toLowerCase())
+    )
+    return filtered.length ? filtered : k.words
+  }, [k, item])
+
+  const displayWords = kWords || (dictReady ? fallbackRows(s?.ru || '') : null)
+
+  // 块中文（渐进块 = 块内词中文拼接；完整句 = 句翻译）
+  const blockZh = useMemo(() => {
+    if (!item) return ''
+    if (isFinal) return s?.zh || ''
+    if (displayWords) {
+      const zh = displayWords.map((w) => w.chinese || w.word).filter(Boolean).join(' ')
+      return zh
+    }
+    return ''
+  }, [item, isFinal, s, displayWords])
+
+  const retry = () => {
+    if (!s) return
+    setLoading(true)
+    setError('')
+    getKnowledge(unitId, s.ru)
+      .then((kk) => { setK(kk); setLoading(false) })
+      .catch((e) => { setError(String((e && e.message) || e)); setLoading(false) })
+  }
+
+  // 句子播放
+  const speakSentence = () => { if (item) playTTS(item.text) }
+  const speakWord = (w) => { if (w) playTTS(w.word) }
+
+  // 样式常量（俄语学习主题：紫色强调）
+  const card = 'rounded-xl border border-gray-200 bg-white p-4 space-y-3'
+  const h4 = 'text-xs font-semibold text-gray-400 uppercase tracking-wider'
+  const pill = (cls) => `rounded-full px-2 py-0.5 text-xs font-medium ${cls}`
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+      className="fixed inset-0 flex items-center justify-center bg-black/45"
+      style={{ zIndex: 110, padding: 24 }}
       onClick={onClose}
     >
       <div
-        style={{ position: 'relative', width: '100%', maxWidth: 920, maxHeight: '84vh', display: 'flex', background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.2)' }}
+        role="dialog"
+        data-state="open"
+        className="relative flex flex-col overflow-hidden rounded-[22px] bg-white text-sm shadow-2xl"
+        style={{ width: 'calc(100vw - 2rem)', maxWidth: 1024, height: '85vh', maxHeight: '90vh' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 左侧：句子列表 */}
-        <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid #EEE', overflowY: 'auto', padding: '18px 0 12px' }}>
-          <div style={{ padding: '0 20px 12px', fontSize: 18, fontWeight: 700 }}>{title || '学习内容'}</div>
-          {list.length === 0 ? (
-            <p style={{ padding: 20, color: '#999', textAlign: 'center', fontSize: 14 }}>暂无句子</p>
-          ) : list.map((x, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveIdx(i)}
-              style={{
-                display: 'block', width: '100%', textAlign: 'left', padding: '10px 20px', border: 'none',
-                borderLeft: i === activeIdx ? '3px solid #7C3AED' : '3px solid transparent',
-                background: i === activeIdx ? '#F3F0FF' : '#fff',
-                color: i === activeIdx ? '#6D28D9' : '#3D332C',
-                fontSize: 14, cursor: 'pointer'
-              }}
-            >
-              <span style={{ color: '#999', marginRight: 8, fontSize: 12 }}>{String(i + 1).padStart(2, '0')}</span>
-              {x.ru}
-            </button>
-          ))}
+        {/* 页眉 */}
+        <div className="flex flex-col gap-y-1 px-5 pt-4 pb-2 text-left shrink-0">
+          <h2 className="text-lg font-semibold tracking-tight text-gray-900">{title || '学习内容'}</h2>
+          <p className="text-xs text-gray-400">查看课程中每个句子的详细学习内容和知识点</p>
         </div>
 
-        {/* 右侧：知识点解析（对标句乐部） */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '22px 26px' }}>
-          {!s ? (
-            <p style={{ color: '#999', textAlign: 'center', padding: '60px 0' }}>选择左侧句子查看知识点解析</p>
-          ) : (
-            <>
-              {/* 顶部行：知识点解析 + 练习此句 */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#3D332C' }}>知识点解析</div>
+        {/* 主体：左右分栏 */}
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <div className="flex h-full min-h-0 divide-x divide-gray-100">
+            {/* 左栏：chunking 渐进块列表 */}
+            <div className="hidden md:block w-[320px] lg:w-[350px] shrink-0 overflow-y-auto p-3 space-y-1.5 bg-gray-50/60">
+              {chunkItems.length === 0 && (
+                <p className="p-4 text-center text-xs text-gray-400">暂无句子</p>
+              )}
+              {chunkItems.map((it, i) => (
                 <button
-                  onClick={() => onPractice && onPractice(s)}
-                  style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+                  key={i}
+                  onClick={() => setActiveIdx(i)}
+                  className={
+                    'group relative flex items-start gap-2.5 rounded-xl border p-2.5 text-left transition-all select-none cursor-pointer w-full ' +
+                    (i === activeIdx
+                      ? 'border-purple-400 bg-purple-50 text-purple-700 font-medium shadow-sm'
+                      : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/40 text-gray-800')
+                  }
                 >
-                  练习此句
+                  <span className="font-mono text-xs text-gray-400 pt-0.5 shrink-0">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="flex-1 min-w-0 text-xs sm:text-sm leading-relaxed line-clamp-2">{it.text}</span>
                 </button>
-              </div>
+              ))}
+            </div>
 
-              {/* 主句（俄语 + 重音） */}
-              <div style={{ marginTop: 14, fontSize: 24, fontWeight: 700, fontFamily: '"PT Serif",Georgia,serif', lineHeight: 1.4, color: '#18181B' }}>
-                {mainRu}
-              </div>
+            {/* 右栏：知识点解析 */}
+            <div className="flex-1 min-w-0 h-full overflow-y-auto bg-white">
+              <div className="h-full overflow-y-auto p-5 sm:p-6 space-y-5">
+                {!item ? (
+                  <p className="pt-16 text-center text-sm text-gray-400">选择左侧句子查看知识点解析</p>
+                ) : (
+                  <>
+                    {/* 顶部行：知识点解析 + 练习此句 */}
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <button className="flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 md:hidden" onClick={() => {}}>
+                          <span className="text-base">←</span>
+                        </button>
+                        <h3 className="text-sm font-semibold text-gray-900">知识点解析</h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => onPractice && onPractice(s)}
+                          className="inline-flex h-7 items-center rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 transition-colors hover:bg-purple-50 hover:text-purple-600 active:scale-95 cursor-pointer"
+                        >
+                          练习此句
+                        </button>
+                      </div>
+                    </div>
 
-              {/* 中文翻译 */}
-              <div style={{ marginTop: 18 }}>
-                <div style={label}>中文翻译</div>
-                <div style={value}>{s.zh || '—'}</div>
-              </div>
+                    {/* 主句卡片 */}
+                    <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-base font-medium text-gray-900 leading-relaxed font-serif">{item.text}</p>
+                        <button
+                          onClick={speakSentence}
+                          title="播放句子发音"
+                          className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-400 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                        >
+                          🔊
+                        </button>
+                      </div>
+                    </div>
 
-              {/* 单词短语注解（БКРС 大俄汉词典） */}
-              <div style={{ marginTop: 18 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#3D332C', marginBottom: 8 }}>
-                  单词短语注解
-                  {!dictReady && <span style={{ fontSize: 11, fontWeight: 400, color: '#BBB', marginLeft: 8 }}>词典加载中…</span>}
-                </div>
-                {wordRows.length === 0 && (
-                  <div style={{ fontSize: 12, color: '#BBB', lineHeight: 1.8 }}>正在查询词典…</div>
-                )}
-                {wordRows.map((w, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid #F5F5F5', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 16, fontWeight: 600, fontFamily: '"PT Serif",Georgia,serif', minWidth: 70, color: '#18181B' }}>{w.form}</span>
-                    {w.pos ? (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#7C3AED', background: '#F3F0FF', padding: '2px 8px', borderRadius: 999 }}>{w.pos}</span>
-                    ) : (
-                      <span style={{ fontSize: 11, color: '#BBB', padding: '2px 8px' }}>词性待标注</span>
+                    {/* 中文翻译 */}
+                    <div className={card}>
+                      <h4 className={h4}>中文翻译</h4>
+                      <p className="text-sm text-gray-800 leading-relaxed">
+                        {blockZh || (loading ? 'AI 生成中…' : s?.zh || '—')}
+                      </p>
+                    </div>
+
+                    {/* 俄语释义 */}
+                    <div className={card}>
+                      <h4 className={h4}>俄语释义</h4>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {loading ? 'AI 生成中…' : (k?.ru_def || '暂无')}
+                      </p>
+                    </div>
+
+                    {/* 单词短语注解 */}
+                    <div className={card}>
+                      <h4 className={h4}>单词短语注解</h4>
+                      {loading && !displayWords ? (
+                        <p className="text-xs text-gray-400">正在生成词条注解…</p>
+                      ) : (
+                        <div className="divide-y divide-gray-100">
+                          {(displayWords || []).map((w, wi) => (
+                            <div key={wi} className="py-3 first:pt-0 last:pb-0">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-gray-900">{w.stress || w.word}</span>
+                                  <button
+                                    onClick={() => speakWord(w)}
+                                    title="播放发音"
+                                    className="flex items-center justify-center rounded p-1 text-gray-400 transition-colors hover:text-purple-600"
+                                  >
+                                    🔊
+                                  </button>
+                                  <span className="text-sm text-gray-500">{w.chinese || ''}</span>
+                                </div>
+                                <span className="text-sm text-purple-600">{w.pos || '—'}</span>
+                              </div>
+                              {((w.basic && w.basic !== w.chinese) || w.context) && (
+                                <div className="mt-2 space-y-2">
+                                  {w.basic && <p className="text-sm text-gray-700"><span className="font-medium">基本含义：</span>{w.basic}</p>}
+                                  {w.context && <p className="text-sm text-gray-700"><span className="font-medium">上下文含义：</span>{w.context}</p>}
+                                </div>
+                              )}
+                              {(w.synonyms?.length > 0 || w.antonyms?.length > 0) && (
+                                <div className="mt-2 flex flex-wrap gap-4">
+                                  {w.synonyms?.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-gray-700">同义词：</span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {w.synonyms.map((x, xi) => (
+                                          <span key={xi} className={pill('bg-green-100 text-green-700')}>{x}</span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {w.antonyms?.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-gray-700">反义词：</span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {w.antonyms.map((x, xi) => (
+                                          <span key={xi} className={pill('bg-red-100 text-red-700')}>{x}</span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {w.phrases?.length > 0 && (
+                                <div className="mt-2">
+                                  <span className="text-sm font-medium text-gray-700">常用短语：</span>
+                                  <div className="mt-1 flex flex-wrap gap-2">
+                                    {w.phrases.map((x, xi) => (
+                                      <span key={xi} className={pill('bg-gray-100 text-gray-700')}>{x}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {(w.example || w.memory) && (
+                                <div className="mt-2 space-y-2">
+                                  {w.example && <p className="text-sm text-gray-700"><span className="font-medium">例句：</span>{w.example}</p>}
+                                  {w.memory && <p className="text-sm text-gray-700"><span className="font-medium">记忆技巧：</span>{w.memory}</p>}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 语法分析 */}
+                    <div className={card}>
+                      <h4 className={h4}>语法分析</h4>
+                      {loading && !k ? (
+                        <p className="text-xs text-gray-400">正在生成语法解析…</p>
+                      ) : k?.grammar ? (
+                        <div className="space-y-4">
+                          {(k.grammar.word_explains || []).length > 0 && (
+                            <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 space-y-3">
+                              {(k.grammar.word_explains || []).map((x, xi) => (
+                                <div key={xi} className={xi > 0 ? 'mt-3' : ''}>
+                                  <div className="mb-2">
+                                    <div className="rounded-lg bg-purple-50 p-3">
+                                      <span className="text-base font-medium text-purple-700">{x.word}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-start gap-2">
+                                    <span className="mt-0.5 flex-shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">翻译</span>
+                                    <div className="text-sm text-gray-700">{x.translation}</div>
+                                  </div>
+                                  <div className="mt-2 flex items-start gap-2">
+                                    <span className="mt-0.5 flex-shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">解释</span>
+                                    <div className="text-sm text-gray-800">{x.explanation}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="rounded-lg bg-gray-50/80 p-4">
+                            <div className="grid gap-5 md:grid-cols-2">
+                              {[
+                                ['句型', k.grammar.pattern],
+                                ['时态语气', k.grammar.tense],
+                                ['重点语法', k.grammar.key],
+                                ['常见错误', k.grammar.mistakes],
+                                ['词序', k.grammar.order],
+                                ['语法规则应用', k.grammar.rules],
+                              ].map(([lab, val]) => (
+                                <div key={lab}>
+                                  <h5 className="mb-2 text-sm font-medium text-gray-900">{lab}</h5>
+                                  <p className="text-sm whitespace-pre-line text-gray-700">{val || '—'}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400">{error ? '生成失败' : '暂无'}</p>
+                      )}
+                    </div>
+
+                    {/* 文化与实用知识 */}
+                    <div className={card}>
+                      <h4 className={h4}>文化与实用知识</h4>
+                      {loading && !k ? (
+                        <p className="text-xs text-gray-400">正在生成…</p>
+                      ) : k?.culture ? (
+                        <div className="space-y-3">
+                          {[
+                            ['文化元素', k.culture.elements],
+                            ['实际应用', k.culture.usage],
+                            ['背景信息', k.culture.background],
+                          ].map(([lab, val]) => (
+                            <div key={lab} className="rounded-lg bg-gray-50/80 p-4">
+                              <h5 className="mb-2 text-sm font-medium text-gray-900">{lab}</h5>
+                              <p className="text-sm whitespace-pre-line text-gray-700">{val || '—'}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400">{error ? '生成失败' : '暂无'}</p>
+                      )}
+                    </div>
+
+                    {/* 功能和使用场景 */}
+                    <div className={card}>
+                      <h4 className={h4}>功能和使用场景</h4>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {loading && !k ? '正在生成…' : (k?.function || '暂无')}
+                      </p>
+                    </div>
+
+                    {/* 相关例句 */}
+                    <div className={card}>
+                      <h4 className={h4}>相关例句</h4>
+                      {loading && !k ? (
+                        <p className="text-xs text-gray-400">正在生成…</p>
+                      ) : (k?.examples || []).length > 0 ? (
+                        <div className="space-y-3">
+                          {k.examples.map((e, ei) => (
+                            <div key={ei} className="rounded-xl border border-gray-200 bg-gray-50/60 p-3">
+                              <p className="font-medium text-gray-900">{e.ru}</p>
+                              <p className="mt-1 text-sm text-gray-500">{e.zh}</p>
+                              {e.note && <p className="mt-1 text-sm text-gray-700">{e.note}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400">{error ? '生成失败' : '暂无'}</p>
+                      )}
+                    </div>
+
+                    {/* 加载失败重试 */}
+                    {error && (
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-center">
+                        <p className="text-xs text-red-500">AI 生成失败：{error}</p>
+                        <button
+                          onClick={retry}
+                          className="mt-2 inline-flex h-7 items-center rounded-lg bg-purple-600 px-3 text-xs font-medium text-white hover:bg-purple-700 cursor-pointer"
+                        >
+                          重试生成
+                        </button>
+                      </div>
                     )}
-                    <span style={{ fontSize: 13, color: '#444' }}>
-                      {w.chinese || (dictReady ? 'БКРС未收录' : '查询中…')}
-                      {w.remote && <span style={{ fontSize: 10, color: '#999', marginLeft: 6 }}>在线</span>}
-                    </span>
-                  </div>
-                ))}
-                {wordRows.length > 0 && (
-                  <div style={{ marginTop: 10, fontSize: 11, color: '#BBB', lineHeight: 1.7 }}>
-                    词义来源：БКРС 大俄汉词典（25 万词条）· 词形/词性来自 OpenRussian 词典
-                  </div>
+                  </>
                 )}
               </div>
-            </>
-          )}
+            </div>
+          </div>
         </div>
 
+        {/* 关闭 */}
         <button
           onClick={onClose}
-          style={{ position: 'absolute', top: 14, right: 18, border: 'none', background: 'none', fontSize: 24, color: '#888', cursor: 'pointer', zIndex: 2 }}
           title="关闭"
+          className="absolute right-4 top-3 flex size-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          style={{ zIndex: 2 }}
         >
           ×
         </button>

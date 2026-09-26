@@ -918,6 +918,7 @@ export default function QuestPractice() {
         <LearningContentModal
           title={unitMeta?.title || "学习内容"}
           sentences={bookSentences}
+          unitId={effectiveCourseId || ''}
           onClose={() => setShowLearning(false)}
           onPractice={practiceSentence}
         />
