@@ -89,6 +89,12 @@ const PATHS = {
       <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
     </>
   ),
+  // 对勾
+  check: <polyline points="20 6 9 17 4 12" />,
+  // 左箭头
+  caretLeft: <polyline points="15 18 9 12 15 6" />,
+  // 右箭头
+  caretRight: <polyline points="9 18 15 12 9 6" />,
 };
 
 export default function Icon({ name, size = 22, color = 'currentColor', strokeWidth = 2, style }) {

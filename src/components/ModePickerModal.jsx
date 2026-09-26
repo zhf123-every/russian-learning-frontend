@@ -36,7 +36,7 @@ export const COURSE_MODES = [
     cta: '开始听写', ready: true,
   },
   {
-    key: 'listening', name: '听力模式', emoji: '👂', tag: '即将上线',
+    key: 'listening', name: '听力模式', emoji: '👂', tag: '初级',
     desc: '纯听训练：听俄语原声，听懂即过，不拼写。',
     heroTag: '专注听懂不拼写',
     rhythm: [
@@ -48,7 +48,7 @@ export const COURSE_MODES = [
       { icon: '🔁', title: '循环播放', sub: '没懂就重播' },
       { icon: '✅', title: '懂了就过', sub: '不拼写不卡壳' },
     ],
-    cta: '开始听力', ready: false,
+    cta: '开始听力', ready: true,
   },
   {
     key: 'speaking', name: '口语评测模式', emoji: '🗣️', tag: 'AI',

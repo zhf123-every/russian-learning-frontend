@@ -476,6 +476,8 @@ export default function QuestDictation() {
     const suffix = isLocal ? `?src=local&courseId=${effectiveCourseId}` : `?courseId=${effectiveCourseId}`;
     setShowModePicker(false);
     if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u}${suffix}`);
+    if (mode.key === 'listening') navigate(`/quest-listening/${u}${suffix}`);
+
     else if (mode.key === 'dictation') navigate(`/quest-dictation/${u}${suffix}`);
     else alert('该模式暂未开放，当前支持「中译俄 / 听写」两种模式');
   };

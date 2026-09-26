@@ -54,6 +54,7 @@ const COURSE_META = {
 const MODES = [
   { key: 'chinese_to_english', name: '中译俄模式', tag: '初级', rec: '新手推荐', desc: '看到中文提示，按句型家族的渐进步骤，逐词到整句用俄语表达。' },
   { key: 'dictation', name: '听写模式', tag: '初级', desc: '听俄语原声，把听到的句子逐词写下来。锻炼听力与拼写。' },
+  { key: 'listening', name: '听力模式', tag: '初级', desc: '纯听训练：盲听→慢听→答案，听俄语原声，听懂即过。' },
 ]
 const ACTIVE_MODE_KEYS = MODES.map(m => m.key).concat(['speaking','reading'])  // 口语/阅读代码已实现，从课程详情页 ?mode= 带入
 const DIFFS = ['自定义', '初级', '中级', '高级']
@@ -485,6 +486,7 @@ export default function RuQuest() {
     setShowModeModal(false)
     const packQ = pack ? '?pack=' + encodeURIComponent(pack.id) : ''
     if (mk === 'dictation') navigate('/quest-dictation/' + encodeURIComponent(u.id) + packQ)
+    if (mk === 'listening') navigate('/quest-listening/' + encodeURIComponent(u.id) + packQ)
     else navigate('/quest-practice/' + encodeURIComponent(u.id) + packQ)
   }
 
