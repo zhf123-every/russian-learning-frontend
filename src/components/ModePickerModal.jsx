@@ -130,31 +130,34 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ===== 左栏：模式列表 ===== */}
-        <div style={{ width: 288, flexShrink: 0, padding: '24px 16px 20px', borderRight: '1px solid #f0f0f4', overflowY: 'auto' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#18181b', padding: '0 12px' }}>选择练习模式</div>
-          <div style={{ fontSize: 12, color: '#9ca3af', margin: '4px 12px 16px' }}>Select Practice Mode</div>
+        {/* ===== 左栏：模式列表（对标句乐部：卡片式按钮，移动端横向滚动 / 桌面纵向） ===== */}
+        <div className="flex-1 overflow-x-auto md:overflow-y-auto custom-scrollbar flex md:flex-col p-3 space-x-2 md:space-x-0 md:space-y-1.5" style={{ borderRight: '1px solid #f0f0f4', background: '#fff' }}>
           {modes.map((m) => {
             const on = m.key === activeKey
             return (
-              <div
+              <button
                 key={m.key}
+                type="button"
                 onClick={() => handlePick(m)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', marginBottom: 6,
-                  borderRadius: 12, cursor: m.ready ? 'pointer' : 'not-allowed',
-                  background: on ? '#F5F3FF' : 'transparent',
-                  borderLeft: on ? '3px solid #8b5cf6' : '3px solid transparent',
-                  opacity: m.ready ? 1 : 0.45,
-                }}
+                className={`relative flex-shrink-0 md:flex-shrink w-64 md:w-full text-left p-2.5 rounded-xl border transition-all select-none group ${
+                  on
+                    ? 'bg-primary/10 border-primary text-foreground shadow-xs font-medium'
+                    : m.ready
+                      ? 'bg-transparent border-transparent hover:bg-muted/60 text-muted-foreground hover:text-foreground'
+                      : 'bg-transparent border-transparent text-muted-foreground opacity-50 cursor-not-allowed'
+                }`}
               >
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: on ? '#fff' : '#f4f4f8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{m.emoji}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#18181b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
-                  {!m.ready && <div style={{ fontSize: 11, color: '#b91c1c', fontWeight: 600 }}>即将上线</div>}
+                <div className="flex items-center gap-3 w-full">
+                  <div className={`relative size-11 rounded-lg overflow-hidden flex-shrink-0 bg-muted transition-all ${on ? 'opacity-100 scale-105' : 'opacity-70 group-hover:opacity-90'}`}>
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', fontSize: 24 }}>{m.emoji}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <h3 className="font-semibold text-xs sm:text-sm truncate transition-colors">{m.name}</h3>
+                    </div>
+                  </div>
                 </div>
-                {on && <span style={{ color: '#8b5cf6', fontSize: 16 }}>›</span>}
-              </div>
+              </button>
             )
           })}
         </div>
