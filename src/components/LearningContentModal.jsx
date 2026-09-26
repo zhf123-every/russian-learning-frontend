@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { splitSentenceToChunks } from '../lib/chunking'
 import { getKnowledge, readKnowledgeCache } from '../lib/knowledge'
-import { annotateWords, ensureDictFull } from '../lib/wordAnnotate'
-import { ensureBkrs, bkrsLookup } from '../lib/bkrs'
 
 // 学习内容弹窗 —— 对标句乐部「查看课程学习内容 Ctrl+1」
 // 左栏：chunking 渐进块列表（Это → дом → Это дом.）
 // 右栏：知识点解析（主句/中文翻译/俄语释义/单词短语注解/语法分析/文化与实用知识/功能和使用场景/相关例句）
-// 数据：AI 按完整句生成（缓存 localStorage），词典兜底（OpenRussian 词形 + БКРС 释义）
+// 数据：全部内容由 AI 按完整句生成（缓存 localStorage），不依赖词典兜底
 
 // 音频播放（后端 /api/tts；相对路径音频：dev 走 vite 代理，生产拼线上后端）
 function playTTS(text) {
@@ -31,25 +29,11 @@ function playTTS(text) {
     .catch(() => {})
 }
 
-// 逐词注解兜底：AI 未返回 words 时用词典标注
-function fallbackRows(ru) {
-  const ann = annotateWords(ru || '')
-  return ann.map((a) => ({
-    word: a.lemma || a.form || a.word || '',
-    stress: a.form || a.lemma || '',
-    chinese: bkrsLookup(a.lemma) || bkrsLookup(a.form) || a.chinese || '',
-    pos: a.pos || '',
-    basic: '', context: '', synonyms: [], antonyms: [], phrases: [], example: '', memory: '',
-  }))
-}
-
 export default function LearningContentModal({ title, sentences, unitId = '', onClose, onPractice }) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [k, setK] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [dictReady, setDictReady] = useState(false)
-  const loadingRef = useRef(null)
 
   // 左栏 chunking 渐进块（每句拆块，显示累积文本）
   const chunkItems = useMemo(() => {
@@ -71,10 +55,8 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
   const isFinal = !!item?.isFinal
   const blockWords = (item?.text || '').match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?/g) || []
 
-  // 词典预热（仅首次）
-  useEffect(() => {
-    Promise.all([ensureBkrs(), ensureDictFull()]).then(() => setDictReady(true))
-  }, [])
+  // 整课缓存（用于左栏块中文副标题）
+  const cacheMap = useMemo(() => readKnowledgeCache(unitId), [unitId, k])
 
   // 选中块变化 → 加载该句 AI 知识点
   useEffect(() => {
@@ -83,7 +65,6 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
     let alive = true
     setLoading(true)
     setError('')
-    if (loadingRef.current) clearTimeout(loadingRef.current)
     // 先查缓存，未命中走 AI 生成
     const cached = readKnowledgeCache(unitId)[ru]
     if (cached && cached._ru) {
@@ -97,7 +78,7 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
     return () => { alive = false }
   }, [s && s.ru, unitId, activeIdx])
 
-  // 当前块内词的注解（AI words 过滤；无则词典兜底）
+  // 当前块内词的注解（AI words 过滤块内词；未命中用整句 words）
   const kWords = useMemo(() => {
     if (!k || !Array.isArray(k.words) || k.words.length === 0) return null
     const filtered = k.words.filter((w) =>
@@ -106,7 +87,19 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
     return filtered.length ? filtered : k.words
   }, [k, item])
 
-  const displayWords = kWords || (dictReady ? fallbackRows(s?.ru || '') : null)
+  const displayWords = kWords
+
+  // 左栏块的 AI 中文副标题（块内词中文拼接；缓存有 AI 词条才显示）
+  const chunkSubZh = (it) => {
+    const cw = cacheMap[it.sentence.ru]
+    if (!cw || !Array.isArray(cw.words) || cw.words.length === 0) return ''
+    const ws = (it.text || '').match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?/g) || []
+    const zhs = ws.map((w) => {
+      const hit = cw.words.find((x) => (x.word || '').toLowerCase() === w.toLowerCase())
+      return hit ? hit.chinese : ''
+    }).filter(Boolean)
+    return zhs.join(' ')
+  }
 
   // 块中文（渐进块 = 块内词中文拼接；完整句 = 句翻译）
   const blockZh = useMemo(() => {
@@ -159,8 +152,8 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
         {/* 主体：左右分栏 */}
         <div className="min-h-0 flex-1 overflow-hidden">
           <div className="flex h-full min-h-0 divide-x divide-gray-100">
-            {/* 左栏：chunking 渐进块列表 */}
-            <div className="hidden md:block w-[320px] lg:w-[350px] shrink-0 overflow-y-auto p-3 space-y-1.5 bg-gray-50/60">
+            {/* 左栏：chunking 渐进块列表（始终显示，仅极窄手机隐藏） */}
+            <div className="block w-[300px] lg:w-[350px] shrink-0 overflow-y-auto p-3 space-y-1.5 bg-gray-50/60 max-[479px]:hidden">
               {chunkItems.length === 0 && (
                 <p className="p-4 text-center text-xs text-gray-400">暂无句子</p>
               )}
@@ -176,7 +169,13 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
                   }
                 >
                   <span className="font-mono text-xs text-gray-400 pt-0.5 shrink-0">{String(i + 1).padStart(2, '0')}</span>
-                  <span className="flex-1 min-w-0 text-xs sm:text-sm leading-relaxed line-clamp-2">{it.text}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-xs sm:text-sm leading-relaxed line-clamp-2">{it.text}</span>
+                    {(() => {
+                      const z = chunkSubZh(it)
+                      return z ? <span className="block truncate text-[11px] text-gray-400">{z}</span> : null
+                    })()}
+                  </span>
                 </button>
               ))}
             </div>
@@ -236,11 +235,13 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
                       </p>
                     </div>
 
-                    {/* 单词短语注解 */}
+                    {/* 单词短语注解（全 AI 生成） */}
                     <div className={card}>
                       <h4 className={h4}>单词短语注解</h4>
                       {loading && !displayWords ? (
-                        <p className="text-xs text-gray-400">正在生成词条注解…</p>
+                        <p className="text-xs text-gray-400">AI 正在生成词条注解…</p>
+                      ) : (displayWords || []).length === 0 ? (
+                        <p className="text-xs text-gray-400">{error ? '生成失败，请重试' : '暂无词条'}</p>
                       ) : (
                         <div className="divide-y divide-gray-100">
                           {(displayWords || []).map((w, wi) => (
