@@ -778,10 +778,6 @@ export default function QuestListening() {
                           {showZh && <div style={{ fontSize: 14, color: "#4B5563", fontWeight: 500 }}>{w.chinese || current.chinese}</div>}
                           {grammarLabel && <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>{grammarLabel}</div>}
                           {pl !== "其他" && <div style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 500, marginTop: 2 }}>{pl}</div>}
-                          {/* 卡片底部：笔记按钮（与顶栏笔记同款图标） */}
-                          <button onClick={() => setShowNote(true)} title="笔记" aria-label="笔记" style={{ marginTop: 8, width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer", color: "#6b7280" }}>
-                            <Icon name="notebook" size={16} />
-                          </button>
                         </div>
                       );
                     })}
@@ -791,15 +787,18 @@ export default function QuestListening() {
                       </button>
                     </TipBtn>
                   </div>
-                  {/* 整句中文 + 笔记（多词句子时） */}
+                  {/* 整句中文（多词句子时） */}
                   {annot.length > 1 && current.chinese && (
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 24, animation: "listen-fade .3s .06s ease both" }}>
                       <span style={{ whiteSpace: "pre-wrap", fontSize: 16, color: "#4B5563", fontWeight: 500 }}>{current.chinese}</span>
-                      <button onClick={() => setShowNote(true)} title="笔记" aria-label="笔记" style={{ width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer", color: "#6b7280" }}>
-                        <Icon name="notebook" size={15} />
-                      </button>
                     </div>
                   )}
+                  {/* 框外笔记按钮（卡片行下方，居中） */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 16, animation: "listen-fade .3s .06s ease both" }}>
+                    <button onClick={() => setShowNote(true)} title="笔记" aria-label="笔记" style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: "rgba(0,0,0,0.05)", border: "none", cursor: "pointer", color: "#6b7280", transition: "background .15s" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.09)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}>
+                      <Icon name="notebook" size={17} />
+                    </button>
+                  </div>
                 </>
               )}
             </div>
@@ -822,27 +821,27 @@ export default function QuestListening() {
               </div>
             </div>
 
-            {/* 底部快捷键栏 */}
-            <div style={{ pointerEvents: "none", zIndex: 20, display: "none", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: "8px 8px", maxWidth: "calc(100% - 5rem)", position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", width: "100%" }} className="min-[780px]:flex">
-              <button onClick={goPrev} disabled={currentIdx === 0} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: currentIdx === 0 ? "#d1d5db" : "#374151", fontSize: 14, cursor: currentIdx === 0 ? "not-allowed" : "pointer", padding: "8px 16px", pointerEvents: "auto" }}>
+            {/* 底部快捷键栏（始终横排显示） */}
+            <div style={{ pointerEvents: "none", zIndex: 20, display: "flex", flexWrap: "nowrap", alignItems: "center", justifyContent: "center", gap: "4px 2px", maxWidth: "calc(100% - 5rem)", position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", width: "100%" }}>
+              <button onClick={goPrev} disabled={currentIdx === 0} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: currentIdx === 0 ? "#d1d5db" : "#374151", fontSize: 13, cursor: currentIdx === 0 ? "not-allowed" : "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
                 <Icon name="caretLeft" size={18} />
                 <span>上一题</span>
               </button>
-              <button onClick={togglePause} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 14, cursor: "pointer", padding: "8px 16px", pointerEvents: "auto" }}>
-                <kbd style={{ borderRadius: 6, background: "#f3f4f6", padding: "4px 8px", fontSize: 12, fontWeight: 500, color: "#111", border: "1px solid #d1d5db", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Space</kbd>
+              <button onClick={togglePause} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
+                <kbd style={{ borderRadius: 6, background: "#f3f4f6", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "#111", border: "1px solid #d1d5db", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Space</kbd>
                 <span>暂停</span>
               </button>
-              <button onClick={() => setShowAi(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 14, cursor: "pointer", padding: "8px 16px", pointerEvents: "auto" }}>
+              <button onClick={() => setShowAi(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
                 <kbd style={{ borderRadius: 6, background: "#f3f4f6", padding: "4px 8px", fontSize: 12, fontWeight: 500, color: "#111", border: "1px solid #d1d5db" }}>Ctrl N</kbd>
                 <span>生词</span>
               </button>
-              <button onClick={goPrevSeq} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 14, cursor: "pointer", padding: "8px 16px", pointerEvents: "auto" }}>
+              <button onClick={goPrevSeq} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
                 <span>← 上一阶段</span>
               </button>
-              <button onClick={goNextSeq} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 14, cursor: "pointer", padding: "8px 16px", pointerEvents: "auto" }}>
+              <button onClick={goNextSeq} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
                 <span>→ 下一阶段</span>
               </button>
-              <button onClick={goNext} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 14, cursor: "pointer", padding: "8px 16px", pointerEvents: "auto" }}>
+              <button onClick={goNext} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
                 <span>下一题</span>
                 <Icon name="caretRight" size={18} />
               </button>
