@@ -110,6 +110,20 @@ export const VIDEO_MODES = [
   },
 ]
 
+// ============ 模式图标映射（对标句乐部：44px 圆角图片图标） ============
+const MODE_IMG = {
+  chinese_to_english: '/images/game-modes/chinese_to_russian.png',
+  dictation: '/images/game-modes/dictation.png',
+  listening: '/images/game-modes/listening.png',
+  speaking: '/images/game-modes/speaking.png',
+  reading: '/images/game-modes/reading.png',
+  // 视频类模式复用图标
+  listen_overall: '/images/game-modes/listening.png',
+  intensive: '/images/game-modes/dictation.png',
+  correct: '/images/game-modes/reading.png',
+  follow: '/images/game-modes/speaking.png',
+}
+
 // ============ 弹窗本体 ============
 export default function ModePickerModal({ title = '本课', modes = COURSE_MODES, onClose, onStart }) {
   const readyModes = modes.filter((m) => m.ready)
@@ -149,7 +163,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
               >
                 <div className="flex items-center gap-3 w-full">
                   <div className={`relative size-11 rounded-lg overflow-hidden flex-shrink-0 bg-muted transition-all ${on ? 'opacity-100 scale-105' : 'opacity-70 group-hover:opacity-90'}`}>
-                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', fontSize: 24 }}>{m.emoji}</span>
+                    <img src={MODE_IMG[m.key]} alt={m.name} className="size-full object-cover transition-all" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
