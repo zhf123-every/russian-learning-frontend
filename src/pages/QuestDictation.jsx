@@ -32,7 +32,8 @@ import { useGameStats } from "../hooks/useGameStats";
 import QuestionInput from "../components/quest/QuestionInput";
 import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
-import ModeTabs from "../components/quest/ModeTabs";
+import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
+import SettingsModal from "../components/SettingsModal";
 import ShortcutTips from "../components/quest/ShortcutTips";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
@@ -98,6 +99,9 @@ export default function QuestDictation() {
   const [showSummary, setShowSummary] = useState(false);
   const [showSubtitle, setShowSubtitle] = useState(false); // 模糊字幕
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showModePicker, setShowModePicker] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [needsInteraction, setNeedsInteraction] = useState(true); // 浏览器自动播放限制引导
 
   const currentStatement = statements[questionIndex];
@@ -430,6 +434,40 @@ export default function QuestDictation() {
     navigate(-1);
   };
 
+  // ---- 顶栏操作（对标句乐部）----
+  const handleResetProgress = () => {
+    if (!window.confirm("确定重置当前课程进度？")) return;
+    setShowSummary(false);
+    setQuestionIndex(0);
+    reset();
+    setCurrentErrors([]);
+    setElapsed(0);
+    resetStats();
+    setShowSubtitle(false);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const togglePause = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) { setIsPaused(false); return; }
+    if (window.speechSynthesis.paused) { window.speechSynthesis.resume(); setIsPaused(false); }
+    else { window.speechSynthesis.pause(); setIsPaused(true); }
+  };
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); }
+    else { document.documentElement.requestFullscreen().catch(() => {}); }
+  };
+
+  const handleModeStart = (mode) => {
+    const u = courseId || effectiveCourseId;
+    const isLocal = new URLSearchParams(window.location.search).get('src') === 'local';
+    const suffix = isLocal ? `?src=local&courseId=${effectiveCourseId}` : `?courseId=${effectiveCourseId}`;
+    setShowModePicker(false);
+    if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u}${suffix}`);
+    else if (mode.key === 'dictation') navigate(`/quest-dictation/${u}${suffix}`);
+    else alert('该模式暂未开放，当前支持「中译俄 / 听写」两种模式');
+  };
+
   // ---- 格式化时间 ----
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60);
@@ -547,32 +585,63 @@ export default function QuestDictation() {
         </div>
       )}
 
-      {/* 顶部工具栏 */}
+      {/* 顶部工具栏（对标句乐部：左退出+标题，右图标组） */}
       <div style={styles.toolbar}>
-        <button style={styles.iconBtn} onClick={() => navigate(-1)} title="返回">
-          ←
-        </button>
-        <ModeTabs currentMode="dictation" courseId={effectiveCourseId} />
-        <div style={styles.progress}>
-          第 {questionIndex + 1} / {statements.length} 题
-        </div>
-        {combo > 0 && (
-          <div
-            style={{
-              ...styles.comboBadge,
-              color: combo >= 20 ? "#E11D48" : combo >= 10 ? "#EA580C" : combo >= 5 ? "#F59E0B" : "oklch(23.27% 0.0249 284.3)",
-              animation: combo >= 5 ? "combo-pulse 0.6s ease infinite" : "none",
-            }}
-          >
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Combo</span>
-            <span style={{ fontSize: 20, fontWeight: 800, marginLeft: 4 }}>×{combo}</span>
+        <div style={styles.toolbarLeft}>
+          <button style={styles.iconBtn} onClick={() => navigate(-1)} title="退出游戏" aria-label="退出游戏">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M17 9L20 12L17 15" />
+              <path d="M5 5H19" />
+              <path d="M5 12H14" />
+              <path d="M5 19H19" />
+            </svg>
+          </button>
+          <div style={styles.progress}>
+            {localLesson?.title || "听写练习"}（{questionIndex + 1}/{statements.length}）
           </div>
-        )}
-        <div style={styles.timer}>{formatTime(elapsed)}</div>
-        <button style={styles.iconBtn} title="设置">
-          ⚙
-        </button>
+        </div>
+        <div style={styles.toolbarRight}>
+          <button style={styles.iconBtn} onClick={() => setShowSettings(true)} title="设置">⚙</button>
+          <button style={styles.iconBtn} onClick={() => setShowModePicker(true)} title="切换游戏模式">🎮</button>
+          <button style={styles.iconBtn} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? "▶" : "⏸"}</button>
+          <button style={styles.iconBtn} onClick={handleResetProgress} title="重置当前课程进度">↺</button>
+          <button style={styles.iconBtn} onClick={toggleFullscreen} title="全屏">⛶</button>
+        </div>
       </div>
+
+      {/* 状态行：进度 + Combo + 计时器 */}
+      <div style={styles.familyBar}>
+        <span style={styles.familyName}>{localLesson?.title || "听写练习"}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto" }}>
+          {combo > 0 && (
+            <div
+              style={{
+                ...styles.comboBadge,
+                color: combo >= 20 ? "#E11D48" : combo >= 10 ? "#EA580C" : combo >= 5 ? "#F59E0B" : "oklch(23.27% 0.0249 284.3)",
+                animation: combo >= 5 ? "combo-pulse 0.6s ease infinite" : "none",
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Combo</span>
+              <span style={{ fontSize: 20, fontWeight: 800, marginLeft: 4 }}>×{combo}</span>
+            </div>
+          )}
+          <span style={styles.familyStep}>
+            第 {questionIndex + 1}/{statements.length} 题 · {formatTime(elapsed)}
+          </span>
+        </div>
+      </div>
+
+      {/* 设置弹窗 */}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {/* 模式选择弹窗 */}
+      {showModePicker && (
+        <ModePickerModal
+          title={localLesson?.title || "选择练习模式"}
+          modes={COURSE_MODES}
+          onClose={() => setShowModePicker(false)}
+          onStart={handleModeStart}
+        />
+      )}
 
       {/* 进度条 */}
       <div style={styles.progressBarBg}>
@@ -748,6 +817,16 @@ const styles = {
     alignItems: "center",
     gap: 12,
   },
+  familyBar: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "6px 24px",
+    fontSize: 12,
+    background: "#FFFFFF",
+  },
+  familyName: { fontWeight: 600, color: "#6D5C4E" },
+  familyStep: { color: "#A99B8C", fontVariantNumeric: "tabular-nums" },
   iconBtn: {
     width: 36,
     height: 36,
@@ -786,7 +865,7 @@ const styles = {
     textAlign: "center",
   },
   progressBarBg: {
-    height: 3,
+    height: 2.5,
     background: "#E5E7EB",
   },
   progressBarFill: {

@@ -32,7 +32,8 @@ import QuestionInput from "../components/quest/QuestionInput";
 import { getPosColor } from "../constants/posColors";
 import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
-import ModeTabs from "../components/quest/ModeTabs";
+import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
+import SettingsModal from "../components/SettingsModal";
 import ShortcutTips from "../components/quest/ShortcutTips";
 import FeedbackPopup from "../components/quest/FeedbackPopup";
 ;
@@ -209,6 +210,9 @@ export default function QuestPractice() {
   const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
   const [unitMeta, setUnitMeta] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showModePicker, setShowModePicker] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   // ---- 本地投稿课程模式（?src=local + sessionStorage 里的 lesson）----
   const sessionStartRef = useRef(Date.now()); // 学习时长统计起点
   // 学习时长归属课程：优先取 URL 上 ?courseId=（详情页跳转带入），否则用单元 ID
@@ -676,6 +680,41 @@ export default function QuestPractice() {
     navigate(-1);
   };
 
+  // ---- 顶栏操作（对标句乐部）----
+  const handleResetProgress = () => {
+    if (!window.confirm("确定重置当前课程进度？")) return;
+    setShowSummary(false);
+    setCurrentSequenceIndex(0);
+    setCurrentUnitIndex(0);
+    reset();
+    setCurrentErrors([]);
+    setElapsed(0);
+    resetStats();
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const togglePause = () => {
+    const a = ttsAudioRef.current;
+    if (!a) { setIsPaused(false); return; }
+    if (a.paused) { a.play().catch(() => {}); setIsPaused(false); }
+    else { a.pause(); setIsPaused(true); }
+  };
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); }
+    else { document.documentElement.requestFullscreen().catch(() => {}); }
+  };
+
+  const handleModeStart = (mode) => {
+    const u = courseId || effectiveCourseId;
+    const isLocal = new URLSearchParams(window.location.search).get('src') === 'local';
+    const suffix = isLocal ? `?src=local&courseId=${effectiveCourseId}` : `?courseId=${effectiveCourseId}`;
+    setShowModePicker(false);
+    if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u}${suffix}`);
+    else if (mode.key === 'dictation') navigate(`/quest-dictation/${u}${suffix}`);
+    else alert('该模式暂未开放，当前支持「中译俄 / 听写」两种模式');
+  };
+
   // ==========================================================
   // 渲染
   // ==========================================================
@@ -750,33 +789,63 @@ export default function QuestPractice() {
         </div>
       )}
 
-      {/* 顶部工具栏 */}
+      {/* 顶部工具栏（对标句乐部：左退出+标题，右图标组） */}
       <div style={styles.toolbar}>
-        <button style={styles.iconBtn} onClick={() => navigate(-1)} title="返回">
-          ←
-        </button>
-        <ModeTabs currentMode="practice" courseId={effectiveCourseId} />
-        <div style={styles.progress}>
-          {unitMeta?.title || "练习"} ({currentSequenceIndex + 1}/{sequences.length})
-        </div>
-        {/* Combo 连击显示 */}
-        {combo > 0 && (
-          <div
-            style={{
-              ...styles.comboBadge,
-              color: combo >= 20 ? "#E11D48" : combo >= 10 ? "#EA580C" : combo >= 5 ? "#F59E0B" : "oklch(23.27% 0.0249 284.3)",
-              animation: combo >= 5 ? "combo-pulse 0.6s ease infinite" : "none",
-            }}
-          >
-            <span style={{ fontSize: 13, fontWeight: 50 }}>Combo</span>
-            <span style={{ fontSize: 20, fontWeight: 800, marginLeft: 4 }}>×{combo}</span>
+        <div style={styles.toolbarLeft}>
+          <button style={styles.iconBtn} onClick={() => navigate(-1)} title="退出游戏" aria-label="退出游戏">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M17 9L20 12L17 15" />
+              <path d="M5 5H19" />
+              <path d="M5 12H14" />
+              <path d="M5 19H19" />
+            </svg>
+          </button>
+          <div style={styles.progress}>
+            {unitMeta?.title || "练习"}（{currentSequenceIndex + 1}/{sequences.length}）
           </div>
-        )}
-        <div style={styles.timer}>{formatTime(elapsed)}</div>
-        <button style={styles.iconBtn} title="设置">
-          ⚙
-        </button>
+        </div>
+        <div style={styles.toolbarRight}>
+          <button style={styles.iconBtn} onClick={() => setShowSettings(true)} title="设置">⚙</button>
+          <button style={styles.iconBtn} onClick={() => setShowModePicker(true)} title="切换游戏模式">🎮</button>
+          <button style={styles.iconBtn} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? "▶" : "⏸"}</button>
+          <button style={styles.iconBtn} onClick={handleResetProgress} title="重置当前课程进度">↺</button>
+          <button style={styles.iconBtn} onClick={toggleFullscreen} title="全屏">⛶</button>
+        </div>
       </div>
+
+      {/* 状态行：家族进度 + Combo + 计时器 */}
+      <div style={styles.familyBar}>
+        <span style={styles.familyName}>{currentSequence?.familyName || ""}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto" }}>
+          {combo > 0 && (
+            <div
+              style={{
+                ...styles.comboBadge,
+                color: combo >= 20 ? "#E11D48" : combo >= 10 ? "#EA580C" : combo >= 5 ? "#F59E0B" : "oklch(23.27% 0.0249 284.3)",
+                animation: combo >= 5 ? "combo-pulse 0.6s ease infinite" : "none",
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 50 }}>Combo</span>
+              <span style={{ fontSize: 20, fontWeight: 800, marginLeft: 4 }}>×{combo}</span>
+            </div>
+          )}
+          <span style={styles.familyStep}>
+            步骤 {currentUnitIndex + 1}/{currentSequence?.units?.length || 0} · {formatTime(elapsed)}
+          </span>
+        </div>
+      </div>
+
+      {/* 设置弹窗 */}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {/* 模式选择弹窗 */}
+      {showModePicker && (
+        <ModePickerModal
+          title={unitMeta?.title || "选择练习模式"}
+          modes={COURSE_MODES}
+          onClose={() => setShowModePicker(false)}
+          onStart={handleModeStart}
+        />
+      )}
 
       {/* 全局进度条 */}
       <div style={styles.progressBarBg}>
@@ -788,13 +857,7 @@ export default function QuestPractice() {
         />
       </div>
 
-      {/* 家族内进度：家族名 + 步骤 x/y */}
-      <div style={styles.familyBar}>
-        <span style={styles.familyName}>{currentSequence?.familyName || ""}</span>
-        <span style={styles.familyStep}>
-          步骤 {currentUnitIndex + 1}/{currentSequence?.units?.length || 0}
-        </span>
-      </div>
+
 
       {/* 主内容区 */}
       <div style={styles.mainContent}>
@@ -991,7 +1054,7 @@ const styles = {
     marginRight: 4,
   },
   progressBarBg: {
-    height: 3,
+    height: 2.5,
     background: "#E5E7EB",
   },
   progressBarFill: {
