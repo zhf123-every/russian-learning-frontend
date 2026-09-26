@@ -41,7 +41,7 @@ import ReportErrorModal from "../components/ReportErrorModal";
 import ShortcutTips from "../components/quest/ShortcutTips";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
-import { useQuestSettings, BG_STYLE } from "../hooks/useQuestSettings";
+import { useQuestSettings, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 无 courseId 时的默认单元：privet_rossiya_a1 课程包第一单元（u1），后端已确证存在
@@ -617,6 +617,7 @@ export default function QuestDictation() {
     <div
       style={{
         ...styles.page,
+        ...THEME_OF(ui).vars,
         background: BG_STYLE(ui).background,
         animation: comboEffect === "shake" ? "quest-shake 0.4s ease-in-out" : "none",
         boxShadow: comboEffect?.startsWith("flash")
@@ -896,7 +897,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "12px 24px",
-    background: "#FFFFFF",
+    background: "var(--qs-surface)",
     borderBottom: "1px solid #E5E7EB",
   },
   toolbarLeft: {
@@ -915,7 +916,7 @@ const styles = {
     alignItems: "center",
     padding: "6px 24px",
     fontSize: 12,
-    background: "#FFFFFF",
+    background: "var(--qs-surface)",
   },
   familyName: { fontWeight: 600, color: "#6D5C4E" },
   familyStep: { color: "#A99B8C", fontVariantNumeric: "tabular-nums" },
@@ -925,7 +926,7 @@ const styles = {
     borderRadius: 8,
     border: "none",
     background: "transparent",
-    color: "#4B5563",
+    color: "var(--qs-text)",
     fontSize: 18,
     cursor: "pointer",
     display: "flex",
@@ -936,14 +937,14 @@ const styles = {
   progress: {
     fontSize: 15,
     fontWeight: 600,
-    color: "#374151",
+    color: "var(--qs-text)",
     whiteSpace: "nowrap",
   },
   comboBadge: {
     display: "flex",
     alignItems: "baseline",
     padding: "4px 12px",
-    background: "rgba(255,255,255,0.7)",
+    background: "var(--qs-surface2, rgba(255,255,255,0.7))",
     borderRadius: 20,
     border: "1px solid #E8E1D9",
     marginRight: 4,

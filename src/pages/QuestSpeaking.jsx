@@ -12,7 +12,7 @@ import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
 import SettingsModal, { loadHotkeys, keysOfEvent } from "../components/SettingsModal";
-import { useQuestSettings, BG_STYLE } from "../hooks/useQuestSettings";
+import { useQuestSettings, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings";
 import Icon from "../components/TopBarIcons";
 import LearningContentModal from "../components/LearningContentModal";
 import SentenceTreeModal from "../components/SentenceTreeModal";
@@ -813,11 +813,11 @@ export default function QuestSpeaking() {
         </div>
       )}
       <style>{`@keyframes speak-pulse { 0% { box-shadow: 0 0 0 0 rgba(124,58,237,0.45); } 70% { box-shadow: 0 0 0 28px rgba(124,58,237,0); } 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); } }`}</style>
-    <div style={{ position: "fixed", inset: 0, background: BG_STYLE(ui).background, display: "flex", flexDirection: "column", zIndex: 100 }}>
+    <div style={{ position: "fixed", inset: 0, ...THEME_OF(ui).vars, background: BG_STYLE(ui).background, display: "flex", flexDirection: "column", zIndex: 100 }}>
       {/* ===== 顶栏 h-16（对标句乐部） ===== */}
       <div style={{ position: "relative", display: "flex", height: 64, alignItems: "center", justifyContent: "space-between", padding: "0 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 24, maxWidth: "90%" }}>
-          <button onClick={() => navigate(-1)} title="退出游戏" aria-label="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "#111" }}>
+          <button onClick={() => navigate(-1)} title="退出游戏" aria-label="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "var(--qs-text)" }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M17 9L20 12L17 15" />
               <path d="M5 5H19" />
@@ -825,35 +825,35 @@ export default function QuestSpeaking() {
               <path d="M5 19H19" />
             </svg>
           </button>
-          <span style={{ fontSize: 18, color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 18, color: "var(--qs-text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {title}（{currentIdx + 1}/{total})
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "nowrap" }}>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowSettings(true)} title="设置"><Icon name="gear" /></button>
-          <button style={{ ...iconBtn, color: showAnswerMode ? "#7C3AED" : "#111" }} onClick={() => setShowAnswerMode(v => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}><Icon name="bookOpen" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowLearning(true)} title="查看课程学习内容（Ctrl+1）"><Icon name="notebook" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowTree(true)} title="句子树"><Icon name="tree" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowModePicker(true)} title="切换游戏模式"><Icon name="gamepad" /></button>
-          <button style={{ ...iconBtn, color: shuffled ? "#7C3AED" : "#111" }} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}><Icon name="shuffle" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? <Icon name="play" /> : <Icon name="pause" />}</button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={handleResetProgress} title="重置当前课程进度"><Icon name="rotateCcw" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowReport(true)} title="报告错误"><Icon name="alert" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={toggleFullscreen} title="全屏"><Icon name="maximize" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={() => setShowSettings(true)} title="设置"><Icon name="gear" /></button>
+          <button style={{ ...iconBtn, color: showAnswerMode ? "#7C3AED" : "var(--qs-text)" }} onClick={() => setShowAnswerMode(v => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}><Icon name="bookOpen" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={() => setShowLearning(true)} title="查看课程学习内容（Ctrl+1）"><Icon name="notebook" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={() => setShowTree(true)} title="句子树"><Icon name="tree" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={() => setShowModePicker(true)} title="切换游戏模式"><Icon name="gamepad" /></button>
+          <button style={{ ...iconBtn, color: shuffled ? "#7C3AED" : "var(--qs-text)" }} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}><Icon name="shuffle" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? <Icon name="play" /> : <Icon name="pause" />}</button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={handleResetProgress} title="重置当前课程进度"><Icon name="rotateCcw" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={() => setShowReport(true)} title="报告错误"><Icon name="alert" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={toggleFullscreen} title="全屏"><Icon name="maximize" /></button>
         </div>
       </div>
 
       {/* ===== 计时器行 ===== */}
       <div style={{ padding: "12px 24px 4px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <p style={{ width: "4.5rem", fontSize: 18, fontWeight: 500, fontVariantNumeric: "tabular-nums", color: "#6b7280" }}>{formatTime(elapsed)}</p>
+          <p style={{ width: "4.5rem", fontSize: 18, fontWeight: 500, fontVariantNumeric: "tabular-nums", color: "var(--qs-sub)" }}>{formatTime(elapsed)}</p>
 
         </div>
       </div>
 
       {/* ===== 游戏区 ===== */}
       <div style={{ flex: 1, padding: 6, display: "flex", minHeight: 0 }}>
-        <div className="game-layers" style={{ flex: 1, borderRadius: 16, background: "#fff", padding: "6px 24px", display: "flex", position: "relative" }}>
+        <div className="game-layers" style={{ flex: 1, borderRadius: 16, background: "var(--qs-surface)", padding: "6px 24px", display: "flex", position: "relative" }}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "16px 0", position: "relative" }}>
             {/* ===== 口语控制区（麦克风 + 评分卡片） ===== */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, width: "100%", padding: "16px 0 6px" }}>
@@ -887,7 +887,7 @@ export default function QuestSpeaking() {
               {/* 紫色麦克风：悬停显示"长按 Space"，按住呼吸动效 */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
                 {modelStatus === "loading" && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(243,244,246,0.95)", padding: "8px 16px", borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.08)", whiteSpace: "nowrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--qs-surface)", padding: "8px 16px", borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.08)", whiteSpace: "nowrap" }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>正在加载语音模型 {modelProgress}%</span>
                     <div style={{ width: 90, height: 6, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
                       <div style={{ width: modelProgress + "%", height: "100%", background: "#7C3AED", borderRadius: 999, transition: "width .3s" }} />
@@ -900,7 +900,7 @@ export default function QuestSpeaking() {
                   </div>
                 )}
                 {(modelStatus === "ready" && (hoverMic || recState === "recording")) && (
-                  <div style={{ background: "rgba(243,244,246,0.95)", padding: "8px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, color: "#111", boxShadow: "0 4px 14px rgba(0,0,0,0.08)", whiteSpace: "nowrap", transition: "opacity .15s" }}>
+                  <div style={{ background: "var(--qs-surface)", padding: "8px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, color: "#111", boxShadow: "0 4px 14px rgba(0,0,0,0.08)", whiteSpace: "nowrap", transition: "opacity .15s" }}>
                     长按 Space
                   </div>
                 )}

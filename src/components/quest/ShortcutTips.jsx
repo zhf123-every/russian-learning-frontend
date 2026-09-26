@@ -57,7 +57,7 @@ export default function ShortcutTips({
           justify-content: center;
           gap: 20px;
           padding: 14px 24px;
-          background: #FFFFFF;
+          background: var(--qs-surface, #FFFFFF);
           z-index: 50;
         }
         .ew-nav-arrow {
@@ -73,19 +73,19 @@ export default function ShortcutTips({
           flex-shrink: 0;
         }
         .ew-nav-arrow:hover {
-          color: #6B7280;
-          background: #F9FAFB;
+          color: var(--qs-sub, #6B7280);
+          background: var(--qs-surface2, #F9FAFB);
         }
         .ew-shortcut-item {
           display: inline-flex;
           align-items: center;
           gap: 6px;
           padding: 6px 12px;
-          border: 1px solid #E5E7EB;
+          border: 1px solid var(--qs-border, #E5E7EB);
           border-radius: 8px;
-          background: #fff;
+          background: var(--qs-surface2, #fff);
           font-size: 13px;
-          color: #6B7280;
+          color: var(--qs-sub, #6B7280);
           white-space: nowrap;
           cursor: pointer;
           transition: border-color 0.15s, color 0.15s;
@@ -106,12 +106,12 @@ export default function ShortcutTips({
         .ew-shortcut-item kbd {
           display: inline-block;
           padding: 1px 6px;
-          background: #F3F4F6;
-          border: 1px solid #E5E7EB;
+          background: var(--qs-surface2, #F3F4F6);
+          border: 1px solid var(--qs-border, #E5E7EB);
           border-radius: 4px;
           font-size: 11px;
           font-family: inherit;
-          color: #374151;
+          color: var(--qs-text, #374151);
           font-weight: 600;
         }
         @media (max-width: 768px) {

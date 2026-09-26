@@ -19,7 +19,7 @@ import ReportErrorModal from "../components/ReportErrorModal";
 import { toast } from "../lib/toast";
 import { getPosColor, getPosLabel, buildGrammarLabel } from "../constants/posColors";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
-import { useQuestSettings, BG_STYLE, loadUi, saveUi } from "../hooks/useQuestSettings";
+import { useQuestSettings, BG_STYLE, THEME_OF, loadUi, saveUi } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 const DEFAULT_UNIT_ID = "u1";
@@ -697,10 +697,10 @@ export default function QuestListening() {
   // ===== 准备界面（对标句乐部"准备好了吗？点我开始"） =====
   if (!ready) {
     return (
-      <div style={{ position: "fixed", inset: 0, background: BG_STYLE(ui).background, display: "flex", flexDirection: "column", zIndex: 100 }}>
-        <div style={{ position: "relative", display: "flex", height: 64, alignItems: "center", justifyContent: "space-between", padding: "0 24px", borderBottom: "1px solid #f0f0f4" }}>
+      <div style={{ position: "fixed", inset: 0, ...THEME_OF(ui).vars, background: BG_STYLE(ui).background, display: "flex", flexDirection: "column", zIndex: 100 }}>
+        <div style={{ position: "relative", display: "flex", height: 64, alignItems: "center", justifyContent: "space-between", padding: "0 24px", borderBottom: "1px solid var(--qs-border, #f0f0f4)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <button onClick={() => navigate(-1)} aria-label="退出游戏" title="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "#111" }}>
+            <button onClick={() => navigate(-1)} aria-label="退出游戏" title="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "var(--qs-text)" }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M17 9L20 12L17 15" />
                 <path d="M5 5H19" />
@@ -708,19 +708,19 @@ export default function QuestListening() {
                 <path d="M5 19H19" />
               </svg>
             </button>
-            <span style={{ fontSize: 18, color: "#111", fontWeight: 500 }}>{title}（{currentIdx + 1}/{total})</span>
+            <span style={{ fontSize: 18, color: "var(--qs-text)", fontWeight: 500 }}>{title}（{currentIdx + 1}/{total})</span>
           </div>
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28, background: "linear-gradient(135deg, rgba(139,92,246,0.05), rgba(59,130,246,0.05))" }}>
           <div style={{ textAlign: "center" }}>
-            <p style={{ fontSize: 28, fontWeight: 600, color: "#111", letterSpacing: 0.5 }}>准备好了吗？点我开始</p>
+            <p style={{ fontSize: 28, fontWeight: 600, color: "var(--qs-text)", letterSpacing: 0.5 }}>准备好了吗？点我开始</p>
             <p style={{ fontSize: 14, color: "#9ca3af", marginTop: 10 }}>盲听 → 慢听 → 答案，三段自动推进</p>
           </div>
           <button onClick={handleStart} style={{ padding: "14px 48px", borderRadius: 999, background: "#7C3AED", color: "#fff", fontSize: 16, fontWeight: 600, border: "none", cursor: "pointer", boxShadow: "0 10px 30px rgba(124,58,237,0.35)", transition: "transform .15s" }} onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.97)")} onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}>
             开始听力
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#6b7280", fontSize: 13 }}>
-            <kbd style={{ borderRadius: 8, background: "#f3f4f6", padding: "6px 12px", fontSize: 13, color: "#111", border: "1px solid #d1d5db", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.06)" }}>Space</kbd>
+            <kbd style={{ borderRadius: 8, background: "var(--qs-surface2)", padding: "6px 12px", fontSize: 13, color: "var(--qs-text)", border: "1px solid var(--qs-border)", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.06)" }}>Space</kbd>
             <span>或按空格键开始</span>
           </div>
         </div>
@@ -739,7 +739,7 @@ export default function QuestListening() {
           <style>{`@keyframes listenCoverSlide { 0% { margin-left: -45%; } 100% { margin-left: 100%; } }`}</style>
         </div>
       )}
-    <div style={{ position: "fixed", inset: 0, background: "#fff", display: "flex", flexDirection: "column", zIndex: 100 }}>
+    <div style={{ position: "fixed", inset: 0, ...THEME_OF(ui).vars, background: BG_STYLE(ui).background, display: "flex", flexDirection: "column", zIndex: 100 }}>
       {/* ===== 顶栏 h-16（对标句乐部） ===== */}
       <div style={{ position: "relative", display: "flex", height: 64, alignItems: "center", justifyContent: "space-between", padding: "0 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 24, maxWidth: "90%" }}>
@@ -751,30 +751,30 @@ export default function QuestListening() {
               <path d="M5 19H19" />
             </svg>
           </button>
-          <span style={{ fontSize: 18, color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 18, color: "var(--qs-text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {title}（{currentIdx + 1}/{total})
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "nowrap" }}>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowSettings(true)} title="设置"><Icon name="gear" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={() => setShowSettings(true)} title="设置"><Icon name="gear" /></button>
           <button style={{ ...iconBtn, color: showAnswerMode ? "#7C3AED" : "#111" }} onClick={() => setShowAnswerMode(v => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}><Icon name="bookOpen" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowLearning(true)} title="查看课程学习内容（Ctrl+1）"><Icon name="notebook" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowTree(true)} title="句子树"><Icon name="tree" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowModePicker(true)} title="切换游戏模式"><Icon name="gamepad" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={() => setShowLearning(true)} title="查看课程学习内容（Ctrl+1）"><Icon name="notebook" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={() => setShowTree(true)} title="句子树"><Icon name="tree" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={() => setShowModePicker(true)} title="切换游戏模式"><Icon name="gamepad" /></button>
           <button style={{ ...iconBtn, color: shuffled ? "#7C3AED" : "#111" }} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}><Icon name="shuffle" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? <Icon name="play" /> : <Icon name="pause" />}</button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={handleResetProgress} title="重置当前课程进度"><Icon name="rotateCcw" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowReport(true)} title="报告错误"><Icon name="alert" /></button>
-          <button style={{ ...iconBtn, color: "#111" }} onClick={toggleFullscreen} title="全屏"><Icon name="maximize" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? <Icon name="play" /> : <Icon name="pause" />}</button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={handleResetProgress} title="重置当前课程进度"><Icon name="rotateCcw" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={() => setShowReport(true)} title="报告错误"><Icon name="alert" /></button>
+          <button style={{ ...iconBtn, color: "var(--qs-text)" }} onClick={toggleFullscreen} title="全屏"><Icon name="maximize" /></button>
         </div>
       </div>
 
       {/* ===== 计时器行 ===== */}
       <div style={{ padding: "12px 24px 4px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <p style={{ width: "4.5rem", fontSize: 18, fontWeight: 500, fontVariantNumeric: "tabular-nums", color: "#6b7280" }}>{formatTime(elapsed)}</p>
+          <p style={{ width: "4.5rem", fontSize: 18, fontWeight: 500, fontVariantNumeric: "tabular-nums", color: "var(--qs-sub)" }}>{formatTime(elapsed)}</p>
           {phase !== 'answer' && (
-            <span style={{ fontSize: 12, color: "#9ca3af", background: "#f3f4f6", borderRadius: 999, padding: "2px 10px" }}>
+            <span style={{ fontSize: 12, color: "var(--qs-sub)", background: "var(--qs-surface2)", borderRadius: 999, padding: "2px 10px" }}>
               {phase === 'blind' ? '盲听阶段' : phase === 'slow' ? '慢听阶段' : ''}
             </span>
           )}
@@ -783,7 +783,7 @@ export default function QuestListening() {
 
       {/* ===== 游戏区 ===== */}
       <div style={{ flex: 1, padding: 6, display: "flex", minHeight: 0 }}>
-        <div className="game-layers" style={{ flex: 1, borderRadius: 16, background: "#fff", padding: "6px 24px", display: "flex", position: "relative" }}>
+        <div className="game-layers" style={{ flex: 1, borderRadius: 16, background: "var(--qs-surface)", padding: "6px 24px", display: "flex", position: "relative" }}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "16px 0", position: "relative" }}>
             {/* 倍速区（顶部居中） */}
             <div style={{ position: "absolute", left: "50%", top: 4, transform: "translateX(-50%)", zIndex: 50 }}>
@@ -852,7 +852,7 @@ export default function QuestListening() {
                       const showZh = annot.length <= 1 && (w.chinese || current.chinese);
                       const displayWord = w.form || w.lemma || "";
                       return (
-                        <div key={i} style={{ position: "relative", display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "20px 24px 14px", minWidth: 120, border: "1px solid " + color + "60", borderRadius: 12, background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+                        <div key={i} style={{ position: "relative", display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "20px 24px 14px", minWidth: 120, border: "1px solid " + color + "60", borderRadius: 12, background: "var(--qs-surface2)", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
                           {roleLabel && <span style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", padding: "2px 10px", borderRadius: 10, fontSize: 11, fontWeight: 700, color: "#fff", background: color, whiteSpace: "nowrap" }}>{roleLabel}</span>}
                           <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 4, marginTop: 4, minHeight: 18, fontFamily: '"PT Serif", Georgia, serif' }}>{displayWord}</div>
                           <div style={{ fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: "2.5rem", fontWeight: 700, color: "#1F2937", lineHeight: 1.2, marginBottom: 6 }}>{displayWord}</div>
@@ -889,17 +889,17 @@ export default function QuestListening() {
             <div style={{ pointerEvents: "none", zIndex: 20, display: "flex", flexWrap: "nowrap", alignItems: "center", justifyContent: "center", gap: "14px 20px", maxWidth: "calc(100% - 5rem)", position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", width: "100%" }}>
               <div style={{ pointerEvents: "auto", marginRight: 330 }}>
                 <TipBtn label="上一题" keys={["Shift", "←"]}>
-                  <button onClick={goPrev} disabled={currentIdx === 0} aria-label="上一题" style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: "50%", border: "none", background: "transparent", color: currentIdx === 0 ? "#d1d5db" : "#6b7280", cursor: currentIdx === 0 ? "not-allowed" : "pointer", transition: "background .2s, color .2s" }} onMouseEnter={(e) => { if (currentIdx > 0) { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; e.currentTarget.style.color = "#111"; } }} onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = currentIdx === 0 ? "#d1d5db" : "#6b7280"; }}>
+                  <button onClick={goPrev} disabled={currentIdx === 0} aria-label="上一题" style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: "50%", border: "none", background: "transparent", color: currentIdx === 0 ? "var(--qs-sub)" : "var(--qs-text)", cursor: currentIdx === 0 ? "not-allowed" : "pointer", transition: "background .2s, color .2s" }} onMouseEnter={(e) => { if (currentIdx > 0) { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; e.currentTarget.style.color = "var(--qs-text)"; } }} onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = currentIdx === 0 ? "var(--qs-sub)" : "var(--qs-text)"; }}>
                     <Icon name="caretLeft" size={18} />
                   </button>
                 </TipBtn>
               </div>
               <button onClick={togglePause} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
-                <kbd style={{ borderRadius: 6, background: "#f3f4f6", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "#111", border: "1px solid #d1d5db", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Space</kbd>
+                <kbd style={{ borderRadius: 6, background: "var(--qs-surface2)", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "var(--qs-text)", border: "1px solid var(--qs-border)", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Space</kbd>
                 <span>暂停</span>
               </button>
               <button onClick={() => setShowAi(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
-                <kbd style={{ borderRadius: 6, background: "#f3f4f6", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "#111", border: "1px solid #d1d5db", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Ctrl N</kbd>
+                <kbd style={{ borderRadius: 6, background: "var(--qs-surface2)", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "var(--qs-text)", border: "1px solid var(--qs-border)", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Ctrl N</kbd>
                 <span>生词</span>
               </button>
               <button onClick={goPrevSeq} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
@@ -910,7 +910,7 @@ export default function QuestListening() {
               </button>
               <div style={{ pointerEvents: "auto", marginLeft: 330 }}>
                 <TipBtn label="下一题" keys={["Shift", "→"]}>
-                  <button onClick={goNext} aria-label="下一题" style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: "50%", border: "none", background: "transparent", color: "#6b7280", cursor: "pointer", transition: "background .2s, color .2s" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; e.currentTarget.style.color = "#111"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#6b7280"; }}>
+                  <button onClick={goNext} aria-label="下一题" style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: "50%", border: "none", background: "transparent", color: "var(--qs-text)", cursor: "pointer", transition: "background .2s, color .2s" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; e.currentTarget.style.color = "var(--qs-text)"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--qs-text)"; }}>
                     <Icon name="caretRight" size={18} />
                   </button>
                 </TipBtn>

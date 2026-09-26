@@ -20,6 +20,7 @@
 
 import { useEffect, useCallback, useState, useRef } from "react";
 import { getPosLabel, buildGrammarLabel } from "../../constants/posColors";
+import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 内存缓存：text -> audio_url，避免重复请求
@@ -76,6 +77,7 @@ export default function AnswerPanel({
   onRetry,
   onNext,
   isLast = false,
+  ui = {},
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -124,9 +126,9 @@ export default function AnswerPanel({
     }
   }, []);
 
-  // 进入页面自动播放整句发音（Yandex 真人发音）
+  // 进入页面自动播放整句发音（受设置「答对后自动播放」answerSpeak 控制）
   useEffect(() => {
-    if (statement?.russian) {
+    if (statement?.russian && uiCfg.answerSpeak) {
       const timer = setTimeout(() => {
         speakRussian(statement.russian, statement.audio_url, statement.id, "statement");
       }, 400);
@@ -157,10 +159,11 @@ export default function AnswerPanel({
 
   if (!statement) return null;
 
+  const uiCfg = { ...UI_DEFAULT, ...(ui || {}) };
   const words = statement.words || [];
 
   return (
-    <div style={styles.wrapper}>
+    <div style={{ ...styles.wrapper, ...BG_STYLE(uiCfg) }}>
       <style>{`
         @keyframes answer-fadeIn {
           from { opacity: 0; transform: translateY(12px); }
@@ -187,7 +190,12 @@ export default function AnswerPanel({
           <div style={styles.cardsRow}>
             {words.map((w, i) => {
               // 颜色：优先数据给定的词性色（新 build-steps），否则按句法角色（旧数据/听写页）
-              const color = w.posColor || getRoleColor(w.syntacticRole);
+              // 设置面板「词性颜色」优先（学习面板 posColors），否则数据词性色，最后按句法角色兜底
+              const posVisMap = uiCfg.posVis || {};
+              if (w.pos && posVisMap[w.pos] === false) return null;
+              const customPosColor = posColorOf(uiCfg, w.pos);
+              const color = customPosColor || w.posColor || getRoleColor(w.syntacticRole);
+              const effColor = posStyleOf(uiCfg) === 'text' ? '#9CA3AF' : color;
               const roleLabel = w.roleLabel || getRoleLabel(w.syntacticRole);
               // 显示带重音符的词形：优先 form（带重音），其次 stress_marked / lemma
               const displayWord = w.form || w.stress_marked || w.lemma || "";
@@ -202,14 +210,14 @@ export default function AnswerPanel({
                   className="word-card"
                   style={{
                     ...styles.wordCard,
-                    borderColor: `${color}60`,
+                    borderColor: `${effColor}60`,
                   }}
                   onClick={() => speakRussian(displayWord, w.audio_url, w.id, "word")}
                   title="点击发音"
                 >
                   {/* 顶部：句法角色标签 */}
                   {roleLabel && (
-                    <span style={{ ...styles.roleTag, background: color }}>
+                    <span style={{ ...styles.roleTag, background: effColor }}>
                       {roleLabel}
                     </span>
                   )}
@@ -223,16 +231,16 @@ export default function AnswerPanel({
                   </div>
 
                   {/* 彩色下划线 */}
-                  <div style={{ ...styles.underline, background: color }} />
+                  <div style={{ ...styles.underline, background: effColor }} />
 
                   {/* 中文释义 */}
-                  {chinese && <div style={styles.chinese}>{chinese}</div>}
+                  {uiCfg.showWordTrans !== false && chinese && <div style={styles.chinese}>{chinese}</div>}
 
                   {/* 语法标注（性数格） */}
                   {grammarLabel && <div style={{ ...styles.pos, fontSize: "10px", color: "#9CA3AF", marginTop: "2px" }}>{grammarLabel}</div>}
 
                   {/* 词性 */}
-                  {posLabel && <div style={styles.pos}>{posLabel}</div>}
+                  {uiCfg.showPos !== false && posLabel && <div style={styles.pos}>{posLabel}</div>}
                 </div>
               );
             })}
@@ -280,14 +288,14 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     padding: "24px 24px 100px",
-    background: "#FFFFFF",
+    background: "var(--qs-surface, #FFFFFF)",
     backgroundImage: "none",
     minHeight: "calc(100vh - 80px)",
   },
   card: {
     width: "100%",
     maxWidth: 960,
-    background: "#fff",
+    background: "var(--qs-surface2, #fff)",
     borderRadius: 16,
     padding: "48px 24px 32px",
     textAlign: "center",
@@ -310,9 +318,9 @@ const styles = {
     alignItems: "center",
     padding: "20px 16px 14px",
     minWidth: 100,
-    border: "1px solid #E5E7EB",
+    border: "1px solid var(--qs-border, #E5E7EB)",
     borderRadius: 12,
-    background: "#fff",
+    background: "var(--qs-surface2, #fff)",
   },
   roleTag: {
     position: "absolute",
@@ -373,7 +381,7 @@ const styles = {
   },
   sentenceChinese: {
     fontSize: "1.75rem",
-    color: "#374151",
+    color: "var(--qs-text, #374151)",
     fontWeight: 600,
     marginBottom: 48,
     lineHeight: 1.4,

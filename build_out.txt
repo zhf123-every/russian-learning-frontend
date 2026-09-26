@@ -5,15 +5,17 @@
 [36mvite v5.4.21 [32mbuilding for production...[36m[39m
 transforming...
 /*! 🌼 daisyUI 5.7.42 */
-[32m✓[39m 154 modules transformed.
-rendering chunks...
-node.exe : [1m[33m[plugin:vite:reporter][39m[22m [33m[plugin vite:reporter] 
+[32m✓[39m 196 modules transformed.
+node.exe : node_modules/onnxruntime-web/dist/ort-web.min.js (6:62546): Use of eval in "node_modules/onnxruntime-web/dis
+t/ort-web.min.js" is strongly discouraged as it poses security risks and may cause issues with minification.
 所在位置 行:1 字符: 1
 + & "C:\Users\张宏飞\AppData\Local\Doubao\User Data\sandbox_runtime\bases\ ...
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: ([1m[33m[plugi...vite:reporter] :String) [], RemoteException
+    + CategoryInfo          : NotSpecified: (node_modules/on...h minification.:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
  
+rendering chunks...
+[1m[33m[plugin:vite:reporter][39m[22m [33m[plugin vite:reporter] 
 (!) C:/Users/张宏飞/Desktop/website_source/russian-learning-frontend-main/src/lib/persistence.js is dynamically imported b
 y C:/Users/张宏飞/Desktop/website_source/russian-learning-frontend-main/src/pages/VideoStudy.jsx but also statically impor
 ted by C:/Users/张宏飞/Desktop/website_source/russian-learning-frontend-main/src/lib/backup.js, C:/Users/张宏飞/Desktop/websi
@@ -41,14 +43,14 @@ te_source/russian-learning-frontend-main/src/pages/Dictionary.jsx, C:/Users/张�
 -frontend-main/src/pages/Study.jsx, dynamic import will not move module into another chunk.
 [39m
 computing gzip size...
-[2mdist/[22m[32mindex.html                 [39m[1m[2m  3.73 kB[22m[1m[22m[2m │ gzip:   1.84 kB[22m
-[2mdist/[22m[35massets/index-AuyFeKv7.css  [39m[1m[2m315.94 kB[22m[1m[22m[2m │ gzip:  49.89 kB[22m
-[2mdist/[22m[36massets/srt-Dbedg2cK.js     [39m[1m[2m  4.10 kB[22m[1m[22m[2m │ gzip:   1.96 kB[22m
-[2mdist/[22m[36massets/index-hJlDXMJN.js   [39m[1m[33m841.93 kB[39m[22m[2m │ gzip: 265.66 kB[22m
+[2mdist/[22m[32mindex.html                 [39m[1m[2m    3.73 kB[22m[1m[22m[2m │ gzip:   1.83 kB[22m
+[2mdist/[22m[35massets/index-Cpa4--dg.css  [39m[1m[2m  328.85 kB[22m[1m[22m[2m │ gzip:  51.62 kB[22m
+[2mdist/[22m[36massets/srt-C9Gw7-VY.js     [39m[1m[2m    4.10 kB[22m[1m[22m[2m │ gzip:   1.96 kB[22m
+[2mdist/[22m[36massets/index-Bk5BcUrS.js   [39m[1m[33m1,942.43 kB[39m[22m[2m │ gzip: 523.13 kB[22m
 [33m
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-m
 anualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
-[32m✓ built in 12.11s[39m
+[32m✓ built in 16.84s[39m

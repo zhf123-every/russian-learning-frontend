@@ -66,12 +66,12 @@ export default function QuestionInput({
         /* 单词槽：只有底部下划线，无背景无边框无圆角 */
         .quest-word {
           height: 4rem;
-          border-bottom: 2px solid #D1D5DB;
+          border-bottom: 2px solid var(--qs-border, #D1D5DB);
           font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
           font-size: 3em;
           line-height: 1;
           font-weight: 400;
-          color: rgba(32, 32, 32, 0.6);
+          color: var(--qs-sub, rgba(32, 32, 32, 0.6));
           min-width: 4ch;
           text-align: center;
           transition: color 0.15s ease, border-color 0.15s ease;
@@ -101,7 +101,7 @@ export default function QuestionInput({
           font-size: 3em;
           line-height: 1;
           font-weight: 400;
-          color: rgba(32, 32, 32, 0.6);
+          color: var(--qs-sub, rgba(32, 32, 32, 0.6));
           display: inline-flex;
           align-items: flex-end;
           justify-content: center;

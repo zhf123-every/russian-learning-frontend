@@ -69,17 +69,52 @@ export const saveSfx = (patch) => {
   return n
 }
 
-// 主容器背景（外观面板：背景色/背景图）
+// 全页主题（顶栏/内容区/底部/词卡统一同步背景 + 深夜模式）
+export const THEME_OF = (ui) => {
+  const themeMode = ui?.themeMode || 'auto'
+  const dark =
+    themeMode === 'dark' ||
+    (themeMode === 'auto' &&
+      typeof window !== 'undefined' &&
+      !!window.matchMedia?.('(prefers-color-scheme: dark)')?.matches)
+  const bgColor = ui?.bgColor || 'default'
+  if (dark) {
+    return {
+      dark: true,
+      bg: '#0f172a',
+      surface: '#111827',
+      surface2: '#1f2937',
+      text: '#f1f5f9',
+      sub: '#94a3b8',
+      border: '#334155',
+      vars: {
+        '--qs-bg': '#0f172a', '--qs-surface': '#111827', '--qs-surface2': '#1f2937',
+        '--qs-text': '#f1f5f9', '--qs-sub': '#94a3b8', '--qs-border': '#334155',
+      },
+    }
+  }
+  const bg = bgColor === 'warm' ? '#faf3e7' : bgColor === 'green' ? '#eaf4ea' : '#ffffff'
+  const surface2 = bgColor === 'warm' ? '#f3ecd9' : bgColor === 'green' ? '#dfeee2' : '#f9fafb'
+  const border = bgColor === 'warm' ? '#e7ddc8' : bgColor === 'green' ? '#cfe0d3' : '#e5e7eb'
+  return {
+    dark: false,
+    bg, surface: bg, surface2, text: '#111827', sub: '#6b7280', border,
+    vars: {
+      '--qs-bg': bg, '--qs-surface': bg, '--qs-surface2': surface2,
+      '--qs-text': '#111827', '--qs-sub': '#6b7280', '--qs-border': border,
+    },
+  }
+}
+
+// 主容器背景（外观面板：背景色/背景图 + 深夜模式）
 export const BG_STYLE = (ui) => {
   if (ui?.bgImage) {
     return {
       background: `url(${ui.bgImage}) center / cover no-repeat fixed`,
-      backgroundColor: '#fff',
+      backgroundColor: THEME_OF(ui).bg,
     }
   }
-  if (ui?.bgColor === 'warm') return { background: '#faf3e7' }
-  if (ui?.bgColor === 'green') return { background: '#eaf4ea' }
-  return { background: '#ffffff' }
+  return { background: THEME_OF(ui).bg }
 }
 
 // 词性下划线色（学习面板：posColors/posVis/posStyle）
