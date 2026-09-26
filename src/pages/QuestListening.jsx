@@ -744,66 +744,61 @@ export default function QuestListening() {
                 <div style={{ fontSize: 28, color: "#6b7280", fontWeight: 500, letterSpacing: 1 }}>请仔细聆听</div>
               ) : (
                 <>
-                  {/* 词卡：大字单词（词性着色）+ 🐢 */}
-                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", animation: "listen-fade .3s ease" }}>
-                      <div style={{ position: "relative", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "0 10px" }}>
+                  {/* 词卡：圆角卡片（句乐部样式：小字重音 → 大字词性色 → 中文 → 词性标签） */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", animation: "listen-fade .3s ease" }}>
+                    <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, minWidth: "min(560px, 92%)", padding: "36px 40px 26px", borderRadius: 24, border: "1px solid rgba(244,114,182,0.35)", background: "#fff", boxShadow: "0 2px 20px rgba(0,0,0,0.05)" }}>
+                      {/* 🐢 逐词播放（卡片内右上角） */}
+                      <button onClick={() => { playSingleSlow(); }} title="逐词播放" aria-label="逐词播放" style={{ position: "absolute", top: 12, right: 16, fontSize: 20, background: "none", border: "none", cursor: "pointer", color: "#6b7280", transition: "transform .15s" }} onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")} onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}>
+                        🐢
+                      </button>
+                      {/* 顶部小字：带重音词形 */}
+                      <div style={{ fontSize: 16, letterSpacing: 1.5, color: "#9ca3af", fontWeight: 400 }}>
+                        {annot.map(w => w.form || w.lemma).filter(Boolean).join(" ") || current.stressMarked || current.russian}
+                      </div>
+                      {/* 大字（词性着色） */}
+                      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "0 12px", lineHeight: 1.25 }}>
                         {annot.length > 1 ? (
                           annot.map((w, i) => (
-                            <span key={i} style={{ fontSize: 42, fontWeight: 500, color: w.posColor || "#111", cursor: "pointer", transition: "color .2s", lineHeight: 1.2 }} onMouseEnter={(e) => { if (!w.posColor) e.currentTarget.style.color = "#7C3AED"; }} onMouseLeave={(e) => { if (!w.posColor) e.currentTarget.style.color = "#111"; }}>
+                            <span key={i} style={{ fontSize: 44, fontWeight: 600, color: w.posColor || "#111", cursor: "pointer", transition: "color .2s" }} onMouseEnter={(e) => { if (!w.posColor) e.currentTarget.style.color = "#7C3AED"; }} onMouseLeave={(e) => { if (!w.posColor) e.currentTarget.style.color = "#111"; }}>
                               {w.form || w.lemma}
                             </span>
                           ))
                         ) : (
-                          <span style={{ fontSize: 42, fontWeight: 500, color: annot[0]?.posColor || "#111", cursor: "pointer", transition: "color .2s", lineHeight: 1.2 }} onMouseEnter={(e) => { if (!annot[0]?.posColor) e.currentTarget.style.color = "#7C3AED"; }} onMouseLeave={(e) => { if (!annot[0]?.posColor) e.currentTarget.style.color = "#111"; }}>
+                          <span style={{ fontSize: 44, fontWeight: 600, color: annot[0]?.posColor || "#111", cursor: "pointer", transition: "color .2s" }} onMouseEnter={(e) => { if (!annot[0]?.posColor) e.currentTarget.style.color = "#7C3AED"; }} onMouseLeave={(e) => { if (!annot[0]?.posColor) e.currentTarget.style.color = "#111"; }}>
                             {current.stressMarked || current.russian}
                           </span>
                         )}
                       </div>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <button onClick={() => { playSingleSlow(); }} title="逐词播放" aria-label="逐词播放" style={{ marginTop: 8, fontSize: 20, background: "none", border: "none", cursor: "pointer", color: "#6b7280", transition: "transform .15s" }} onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")} onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}>
-                        🐢
-                      </button>
+                      {/* 中文 + 笔记 */}
+                      {current.chinese && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 4 }}>
+                          <span style={{ whiteSpace: "pre-wrap", fontSize: 20, color: "#6b7280", fontWeight: 400 }}>{current.chinese}</span>
+                          <button onClick={() => setShowNote(true)} title="笔记" aria-label="笔记" style={{ width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 14 }}>
+                            ✎
+                          </button>
+                        </div>
+                      )}
+                      {/* 标签行：性数格（灰胶囊） + 词性（词性色胶囊）分开显示 */}
+                      {annot.some(w => w.grammarLabel || (w.pos && w.pos !== "default")) && (
+                        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 6 }}>
+                          {annot.map((w, i) => {
+                            const pl = getPosLabel(w.pos);
+                            const color = w.posColor || "#9ca3af";
+                            return (
+                              <span key={i} style={{ display: "flex", gap: 8 }}>
+                                {w.grammarLabel && (
+                                  <span style={{ fontSize: 12, fontWeight: 500, color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 999, padding: "3px 12px" }}>{w.grammarLabel}</span>
+                                )}
+                                {pl !== "其他" && (
+                                  <span style={{ fontSize: 12, fontWeight: 500, color, background: color + "14", border: "1px solid " + color + "3a", borderRadius: 999, padding: "3px 12px" }}>{pl}</span>
+                                )}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {/* 重音/读音行（带重音的逐词词形） */}
-                  {annot.length > 0 && (() => {
-                    const stressed = annot.map(w => w.form || w.lemma).filter(Boolean).join(" ");
-                    if (!stressed || stressed === (current.russian || "").trim()) return null;
-                    return (
-                      <div style={{ margin: "20px 0", fontSize: 18, letterSpacing: 1, color: "#6b7280", animation: "listen-fade .3s .08s ease both" }}>
-                        <span>{stressed}</span>
-                      </div>
-                    );
-                  })()}
-                  {/* 性数格 · 词性标注行（词性色） */}
-                  {annot.some(w => w.grammarLabel || (w.pos && w.pos !== "default")) && (
-                    <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "4px 10px", animation: "listen-fade .3s .1s ease both" }}>
-                      {annot.map((w, i) => {
-                        const pl = getPosLabel(w.pos);
-                        const show = w.grammarLabel || (pl !== "其他");
-                        if (!show) return null;
-                        const color = w.posColor || "#9ca3af";
-                        return (
-                          <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 500, color, background: color + "14", border: "1px solid " + color + "3a", borderRadius: 999, padding: "2px 10px" }}>
-                            <span>{(w.lemma || w.form || "").split(/[ .]/)[0]}</span>
-                            {w.grammarLabel && <span style={{ opacity: 0.85 }}>· {w.grammarLabel}</span>}
-                            {pl !== "其他" && <span style={{ opacity: 0.85 }}>· {pl}</span>}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {/* 中文 + 笔记 */}
-                  {current.chinese && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, animation: "listen-fade .3s .04s ease both" }}>
-                      <span style={{ whiteSpace: "pre-wrap", fontSize: 20, color: "#6b7280", fontWeight: 400 }}>{current.chinese}</span>
-                      <button onClick={() => setShowNote(true)} title="笔记" aria-label="笔记" style={{ width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 14 }}>
-                        ✎
-                      </button>
-                    </div>
-                  )}
                 </>
               )}
             </div>
