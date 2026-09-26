@@ -501,83 +501,6 @@ export default function GameStore() {
           </div>
         </div>
 
-        {/* ===== 通关视频 ===== */}
-        {mode !== 'guide' && (
-          <section className="mt-10">
-            <div className="flex items-center justify-end mb-4">
-              <div className="flex items-center gap-3">
-                {adminKey ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setShowContribute(true)}
-                      className="text-sm text-primary font-semibold flex items-center gap-1 cursor-pointer hover:underline"
-                    >
-                      ＋ 上传视频
-                    </button>
-                    <button
-                      type="button"
-                      onClick={doAdminLogout}
-                      className="text-sm text-gray-400 flex items-center gap-1 cursor-pointer hover:text-gray-600"
-                    >
-                      退出管理
-                    </button>
-                  </>
-                ) : isAdminMode ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowAdmin(true)}
-                    className="text-sm text-primary font-semibold flex items-center gap-1 cursor-pointer hover:underline"
-                  >
-                    🔑 管理登录
-                  </button>
-                ) : null}
-
-              </div>
-            </div>
-            {filteredVideos.length === 0 ? (
-              <div className="py-12 text-center text-gray-400 text-sm">该分类下暂无视频{query ? '，换个关键词试试' : ''}</div>
-            ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              {filteredVideos.map((v) => {
-                const uploaded = uploadedVideos.some(u => u.id === v.id)
-                const unlocked = uploaded || isCoursePurchased(v.id)
-                return (
-                  <div key={v.id} className="group" onClick={() => onVideoCardClick(v)} style={{ cursor: unlocked ? 'pointer' : 'default' }}>
-                    <div
-                      className={`aspect-video rounded-xl overflow-hidden mb-2 flex items-center justify-center group-hover:shadow-lg transition relative ${
-                        v.thumbnail && uploaded ? '' : `bg-gradient-to-br ${v.cover}`
-                      }`}
-                      style={v.thumbnail && uploaded ? { backgroundImage: `url(${v.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-                    >
-                      <span className="w-9 h-9 rounded-full bg-white/25 backdrop-blur flex items-center justify-center">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="6 4 20 12 6 20 6 4" /></svg>
-                      </span>
-                      <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{v.eps || '1 集'}</span>
-                      {uploaded && (
-                        <span className="absolute top-1.5 left-2 text-[10px] text-white bg-primary/80 rounded px-1.5 py-0.5">投稿</span>
-                      )}
-                    </div>
-                    <div className="text-sm font-semibold line-clamp-1">{v.title}</div>
-                    <div className="text-xs text-gray-400 mt-0.5 truncate">{v.author || '管理员'} · {v.total || 1} 课 · {fmtViews(v.views)} 人在学</div>
-                    {uploaded ? (
-                      <div className="mt-2.5 flex items-center">
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-success">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                          已上线 · 点卡片选模式
-                        </span>
-                      </div>
-                    ) : (
-                      <UnlockBar game={v} />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-            )}
-          </section>
-        )}
-
         {/* ===== 通关秘籍 ===== */}
         {mode !== 'video' && (
           <section className="mt-10">
@@ -654,7 +577,85 @@ export default function GameStore() {
             )}
           </section>
         )}
+{/* ===== 通关视频 ===== */}
+        {mode !== 'guide' && (
+          <section className="mt-10">
+            <div className="flex items-center justify-end mb-4">
+              <div className="flex items-center gap-3">
+                {adminKey ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowContribute(true)}
+                      className="text-sm text-primary font-semibold flex items-center gap-1 cursor-pointer hover:underline"
+                    >
+                      ＋ 上传视频
+                    </button>
+                    <button
+                      type="button"
+                      onClick={doAdminLogout}
+                      className="text-sm text-gray-400 flex items-center gap-1 cursor-pointer hover:text-gray-600"
+                    >
+                      退出管理
+                    </button>
+                  </>
+                ) : isAdminMode ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAdmin(true)}
+                    className="text-sm text-primary font-semibold flex items-center gap-1 cursor-pointer hover:underline"
+                  >
+                    🔑 管理登录
+                  </button>
+                ) : null}
+
+              </div>
+            </div>
+            {filteredVideos.length === 0 ? (
+              <div className="py-12 text-center text-gray-400 text-sm">该分类下暂无视频{query ? '，换个关键词试试' : ''}</div>
+            ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+              {filteredVideos.map((v) => {
+                const uploaded = uploadedVideos.some(u => u.id === v.id)
+                const unlocked = uploaded || isCoursePurchased(v.id)
+                return (
+                  <div key={v.id} className="group" onClick={() => onVideoCardClick(v)} style={{ cursor: unlocked ? 'pointer' : 'default' }}>
+                    <div
+                      className={`aspect-video rounded-xl overflow-hidden mb-2 flex items-center justify-center group-hover:shadow-lg transition relative ${
+                        v.thumbnail && uploaded ? '' : `bg-gradient-to-br ${v.cover}`
+                      }`}
+                      style={v.thumbnail && uploaded ? { backgroundImage: `url(${v.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                    >
+                      <span className="w-9 h-9 rounded-full bg-white/25 backdrop-blur flex items-center justify-center">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="6 4 20 12 6 20 6 4" /></svg>
+                      </span>
+                      <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{v.eps || '1 集'}</span>
+                      {uploaded && (
+                        <span className="absolute top-1.5 left-2 text-[10px] text-white bg-primary/80 rounded px-1.5 py-0.5">投稿</span>
+                      )}
+                    </div>
+                    <div className="text-sm font-semibold line-clamp-1">{v.title}</div>
+                    <div className="text-xs text-gray-400 mt-0.5 truncate">{v.author || '管理员'} · {v.total || 1} 课 · {fmtViews(v.views)} 人在学</div>
+                    {uploaded ? (
+                      <div className="mt-2.5 flex items-center">
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-success">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                          已上线 · 点卡片选模式
+                        </span>
+                      </div>
+                    ) : (
+                      <UnlockBar game={v} />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            )}
+          </section>
+        )}
         </>
+
+        
         )}
 
       </main>
