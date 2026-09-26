@@ -280,29 +280,43 @@ export default function GameDetail() {
           <div style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>加载大纲…</div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 14, marginBottom: 40 }}>
-            {units.map((u) => {
+            {units.map((u, i) => {
               const dm = DIFF_META[u.difficulty] || DIFF_META.easy
               const sm = STATUS_META[u.status] || STATUS_META['未开始']
+              const stats = Array.isArray(u.sentences) && u.sentences.length > 0
+                ? (Array.isArray(u.words) ? u.words.length : 0) + ' 词 · ' + u.sentences.length + ' 句'
+                : dm.label
+              const desc = u.subtitle || u.description || ''
               return (
-                <div key={u.id} className="card" onClick={() => setPickedUnit(u)}
-                  style={{ padding: 16, borderRadius: 14, cursor: 'pointer', transition: 'transform .15s, box-shadow .15s' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
+                <div
+                  key={u.id}
+                  onClick={() => setPickedUnit(u)}
+                  className="relative h-full cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white p-3 pr-8 transition-all hover:scale-[1.02] hover:bg-gray-100/80 hover:shadow-xl hover:shadow-purple-100/20 sm:p-5 sm:pr-10"
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 15, fontWeight: 800 }}>{u.title}</span>
-                    <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      {Array.isArray(u.sentences) && u.sentences.length > 0 && (
-                        <span style={{ fontSize: 11, color: '#7c3aed', background: '#EDE9FE', borderRadius: 999, padding: '2px 8px' }}>
-                          {(Array.isArray(u.words) ? u.words.length : 0) + ' 词 · ' + u.sentences.length + ' 句'}
-                        </span>
-                      )}
-                      <span style={{ fontSize: 11, color: dm.color, background: dm.bg, borderRadius: 6, padding: '2px 8px' }}>{dm.label}</span>
-                    </span>
+                  {/* 右上角序号 */}
+                  <div className="absolute right-2 top-2 z-0 sm:right-3 sm:top-3">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gray-100 font-mono text-xs text-gray-500 sm:h-8 sm:w-8 sm:text-sm">
+                      #{i + 1}
+                    </div>
                   </div>
-                  {(u.subtitle || u.description) && <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 6 }}>{u.subtitle || u.description}</div>}
-                  <div style={{ marginTop: 10 }}>
-                    <span style={{ fontSize: 11.5, color: sm.color, background: sm.bg, borderRadius: 6, padding: '2px 8px' }}>{sm.label}</span>
+                  {/* 标题 */}
+                  <h3 className="line-clamp-1 text-sm font-bold text-gray-900 sm:text-base" title={u.title}>{u.title}</h3>
+                  {/* 副标题 */}
+                  {desc && (
+                    <p className="mt-1 line-clamp-2 text-xs text-gray-500/90 sm:mt-2 sm:text-sm" title={desc}>
+                      {desc}
+                    </p>
+                  )}
+                  {/* 底部信息 */}
+                  <div className="mt-2 flex items-center gap-3 text-[10px] text-gray-500 sm:text-xs">
+                    <div className="flex items-center gap-1">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                      {stats}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                      <span style={{ color: sm.color, fontWeight: 600 }}>{sm.label}</span>
+                    </div>
                   </div>
                 </div>
               )
