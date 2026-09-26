@@ -19,6 +19,7 @@ import ReportErrorModal from "../components/ReportErrorModal";
 import { toast } from "../lib/toast";
 import { getPosColor, getPosLabel, buildGrammarLabel } from "../constants/posColors";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
+import { useQuestSettings, BG_STYLE, loadUi, saveUi } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 const DEFAULT_UNIT_ID = "u1";
@@ -157,6 +158,7 @@ export default function QuestListening() {
 
   // 顶栏弹窗
   const [showSettings, setShowSettings] = useState(false);
+  const { ui, settings, refreshSettings } = useQuestSettings();
   const [showModePicker, setShowModePicker] = useState(false);
   const [showLearning, setShowLearning] = useState(false);
   const [showTree, setShowTree] = useState(false);
@@ -166,9 +168,25 @@ export default function QuestListening() {
   const [showNote, setShowNote] = useState(false);
   const [coverText, setCoverText] = useState(null); // 进模式前遮罩
 
-  // 倍速设置
-  const [cfg, setCfg] = useState({ ...DEFAULT_CFG });
+  // 倍速设置（初始值来自设置弹窗「听力」面板：listenBlind/listenSlow/listenAns）
+  const [cfg, setCfg] = useState(() => {
+    const u = loadUi();
+    return {
+      blind: { on: u.listenBlind !== false, times: u.listenBlindTimes ?? 2, speed: u.listenBlindSpeed ?? 1, label: "盲听" },
+      slow:  { on: u.listenSlow !== false, times: u.listenSlowTimes ?? 2, speed: u.listenSlowSpeed ?? 0.7, label: "慢听" },
+      answer:{ on: u.listenAns !== false, times: u.listenAnsTimes ?? 1, speed: u.listenAnsSpeed ?? 1, label: "答案" },
+    };
+  });
   const [popover, setPopover] = useState(null); // 'blind'|'slow'|'answer'|null
+
+  // 阶段参数改动 → 实时写回 rlearn_quest_ui（听力面板持久化）
+  useEffect(() => {
+    saveUi({
+      listenBlind: cfg.blind.on, listenBlindTimes: cfg.blind.times, listenBlindSpeed: cfg.blind.speed,
+      listenSlow: cfg.slow.on, listenSlowTimes: cfg.slow.times, listenSlowSpeed: cfg.slow.speed,
+      listenAns: cfg.answer.on, listenAnsTimes: cfg.answer.times, listenAnsSpeed: cfg.answer.speed,
+    });
+  }, [cfg]);
 
   const ttsRef = useRef(null);
   const seqPlayRef = useRef(null); // 阶段链播放器句柄
@@ -417,6 +435,13 @@ export default function QuestListening() {
   }, [loading, currentIdx, phase, total, current, effectiveCourseId, elapsed]);
 
   // ---- 单阶段重播 / 慢速单播 ----
+  // ---- 进模式前预取当前题发音（播放时命中缓存 → 即时，无延迟） ----
+  useEffect(() => {
+    if (!loading && !loadError && current?.russian) {
+      ensureTtsUrl(current.russian).catch(() => {});
+    }
+  }, [loading, loadError, currentIdx, current, ensureTtsUrl]);
+
   const playStageOnly = useCallback(async (key) => {
     if (!current) return;
     const c = cfg[key];
@@ -672,7 +697,7 @@ export default function QuestListening() {
   // ===== 准备界面（对标句乐部"准备好了吗？点我开始"） =====
   if (!ready) {
     return (
-      <div style={{ position: "fixed", inset: 0, background: "#fff", display: "flex", flexDirection: "column", zIndex: 100 }}>
+      <div style={{ position: "fixed", inset: 0, background: BG_STYLE(ui).background, display: "flex", flexDirection: "column", zIndex: 100 }}>
         <div style={{ position: "relative", display: "flex", height: 64, alignItems: "center", justifyContent: "space-between", padding: "0 24px", borderBottom: "1px solid #f0f0f4" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
             <button onClick={() => navigate(-1)} aria-label="退出游戏" title="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "#111" }}>
@@ -901,7 +926,16 @@ export default function QuestListening() {
       </button>
 
       {/* ===== 弹窗 ===== */}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModal onClose={() => {
+        setShowSettings(false);
+        refreshSettings();
+        const u = loadUi();
+        setCfg({
+          blind: { on: u.listenBlind !== false, times: u.listenBlindTimes ?? 2, speed: u.listenBlindSpeed ?? 1, label: "盲听" },
+          slow:  { on: u.listenSlow !== false, times: u.listenSlowTimes ?? 2, speed: u.listenSlowSpeed ?? 0.7, label: "慢听" },
+          answer:{ on: u.listenAns !== false, times: u.listenAnsTimes ?? 1, speed: u.listenAnsSpeed ?? 1, label: "答案" },
+        });
+      }} />}
       {showModePicker && (
         <ModePickerModal
           title={title}

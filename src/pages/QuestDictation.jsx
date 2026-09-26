@@ -41,6 +41,7 @@ import ReportErrorModal from "../components/ReportErrorModal";
 import ShortcutTips from "../components/quest/ShortcutTips";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
+import { useQuestSettings, BG_STYLE } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 无 courseId 时的默认单元：privet_rossiya_a1 课程包第一单元（u1），后端已确证存在
@@ -104,6 +105,7 @@ export default function QuestDictation() {
   const [showSubtitle, setShowSubtitle] = useState(false); // 模糊字幕
   const [isPlaying, setIsPlaying] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const { ui, sfx, settings, refreshSettings } = useQuestSettings();
   const [showModePicker, setShowModePicker] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [showAnswerMode, setShowAnswerMode] = useState(false);
@@ -168,6 +170,7 @@ export default function QuestDictation() {
         if (ttsAudioRef.current) { ttsAudioRef.current.pause(); ttsAudioRef.current.onended = null; }
         const audio = new Audio(url);
         ttsAudioRef.current = audio;
+        audio.playbackRate = settings.rate || 1;
         audio.onplay = () => setIsPlaying(true);
         audio.onended = () => { setIsPlaying(false); ttsAudioRef.current = null; };
         audio.onerror = () => { setIsPlaying(false); ttsAudioRef.current = null; };
@@ -207,7 +210,7 @@ export default function QuestDictation() {
       // Chunking：每一步答对都显示答对面板（含中间步），用户点「下一题」进入下一步
       setShowAnswerPanel(true);
       recordCorrect();
-      playRightSound();
+      if (sfx.answerOn !== false) playRightSound();
       // 通关之路：六格天赋树（听写模式同样积累；仅语法课程的词句带 grammar_case 标注时起效）
       if (Array.isArray(currentStatement?.words)) {
         if (grammarOnRef.current) currentStatement.words.forEach((w) => { if (w && w.grammar_case) recordCase(w.grammar_case, true) })
@@ -216,7 +219,7 @@ export default function QuestDictation() {
     onWrong: (result) => {
       setCurrentErrors(result.errors || []);
       recordWrong();
-      playErrorSound();
+      if (sfx.answerOn !== false) playErrorSound();
       // 通关之路：六格天赋树（答错 → 该句各词格的答题数+1，不计正确）
       if (Array.isArray(currentStatement?.words)) {
         if (grammarOnRef.current) currentStatement.words.forEach((w) => { if (w && w.grammar_case) recordCase(w.grammar_case, false) })
@@ -239,7 +242,7 @@ export default function QuestDictation() {
         playAudio();
         return;
       }
-      if (checkPlayTypingSound(e)) {
+      if (checkPlayTypingSound(e) && sfx.keyOn !== false) {
         playTypingSound();
       }
       handleInputKeyDown(e);
@@ -403,6 +406,13 @@ export default function QuestDictation() {
     }, 200);
   }, [playAudio]);
 
+  // ---- 进模式前预取当前题发音（播放时命中缓存 → 即时，无延迟） ----
+  useEffect(() => {
+    if (!loading && !loadError && currentStatement?.russian) {
+      ensureTtsUrl(currentStatement.russian).catch(() => {});
+    }
+  }, [loading, loadError, questionIndex, currentStatement, ensureTtsUrl]);
+
   // ---- 自动聚焦输入框 ----
   useEffect(() => {
     if (!loading && !loadError && currentStatement && !showAnswerPanel && !showSummary) {
@@ -446,6 +456,20 @@ export default function QuestDictation() {
     setShowSubtitle(false);
     goToNext();
   };
+
+  // ---- 设置「答题正确后自动下一题」（autoNext） ----
+  useEffect(() => {
+    if (showAnswerPanel && ui.autoNext) {
+      const t = setTimeout(() => {
+        setShowAnswerPanel(false);
+        reset();
+        setCurrentErrors([]);
+        setShowSubtitle(false);
+        goToNext();
+      }, 800);
+      return () => clearTimeout(t);
+    }
+  }, [showAnswerPanel, ui.autoNext]);
 
   // ---- SummaryPanel 操作 ----
   const handleRetryFromSummary = () => {
@@ -584,6 +608,7 @@ export default function QuestDictation() {
         onRetry={handleRetry}
         onNext={handleNextFromAnswer}
         isLast={questionIndex === statements.length - 1}
+        ui={ui}
       />
     );
   }
@@ -592,6 +617,7 @@ export default function QuestDictation() {
     <div
       style={{
         ...styles.page,
+        background: BG_STYLE(ui).background,
         animation: comboEffect === "shake" ? "quest-shake 0.4s ease-in-out" : "none",
         boxShadow: comboEffect?.startsWith("flash")
           ? `inset 0 0 60px ${comboEffect === "flash20" ? "rgba(168,100,84,0.4)" : comboEffect === "flash10" ? "rgba(176,138,90,0.35)" : "rgba(212,168,83,0.3)"}`
@@ -694,7 +720,7 @@ export default function QuestDictation() {
       </div>
 
       {/* 设置弹窗 */}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModal onClose={() => { setShowSettings(false); refreshSettings(); }} />}
       {/* 模式选择弹窗 */}
       {showModePicker && (
         <ModePickerModal

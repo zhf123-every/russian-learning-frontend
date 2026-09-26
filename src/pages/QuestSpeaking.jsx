@@ -12,6 +12,7 @@ import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
 import SettingsModal, { loadHotkeys, keysOfEvent } from "../components/SettingsModal";
+import { useQuestSettings, BG_STYLE } from "../hooks/useQuestSettings";
 import Icon from "../components/TopBarIcons";
 import LearningContentModal from "../components/LearningContentModal";
 import SentenceTreeModal from "../components/SentenceTreeModal";
@@ -160,6 +161,7 @@ export default function QuestSpeaking() {
 
   // 顶栏弹窗
   const [showSettings, setShowSettings] = useState(false);
+  const { ui, settings, refreshSettings } = useQuestSettings();
   const [showModePicker, setShowModePicker] = useState(false);
   const [showLearning, setShowLearning] = useState(false);
   const [showTree, setShowTree] = useState(false);
@@ -398,13 +400,13 @@ export default function QuestSpeaking() {
 
   // ---- 进入新题自动播放（须已点击"准备好了吗"以放行自动播放） ----
   useEffect(() => {
-    if (!loading && !loadError && current && ready) {
+    if (!loading && !loadError && current && ready && ui.speakAutoPlay !== false) {
       stopAudio();
       setPhase('standby');
       const t = setTimeout(() => runStageChain(current.russian), 400);
       return () => { clearTimeout(t); stopAudio(); };
     }
-  }, [loading, loadError, currentIdx, current, ready, runStageChain]);
+  }, [loading, loadError, currentIdx, current, ready, runStageChain, ui.speakAutoPlay]);
 
   // ---- 本地 Whisper 识别与四维评分（浏览器本地推理，免费多人可用） ----
   function normTokens(text) {
@@ -457,7 +459,8 @@ export default function QuestSpeaking() {
     setModelStatus("loading");
     setModelProgress(0);
     asrPromise = (async () => {
-      const pipe = await pipeline("automatic-speech-recognition", "Xenova/whisper-tiny", {
+      const modelName = "Xenova/whisper-" + (settings.whisperModel || "tiny");
+      const pipe = await pipeline("automatic-speech-recognition", modelName, {
         progress_callback: (pp) => {
           if (pp && pp.status === "progress" && typeof pp.progress === "number") setModelProgress(Math.round(pp.progress));
         },
@@ -810,7 +813,7 @@ export default function QuestSpeaking() {
         </div>
       )}
       <style>{`@keyframes speak-pulse { 0% { box-shadow: 0 0 0 0 rgba(124,58,237,0.45); } 70% { box-shadow: 0 0 0 28px rgba(124,58,237,0); } 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); } }`}</style>
-    <div style={{ position: "fixed", inset: 0, background: "#fff", display: "flex", flexDirection: "column", zIndex: 100 }}>
+    <div style={{ position: "fixed", inset: 0, background: BG_STYLE(ui).background, display: "flex", flexDirection: "column", zIndex: 100 }}>
       {/* ===== 顶栏 h-16（对标句乐部） ===== */}
       <div style={{ position: "relative", display: "flex", height: 64, alignItems: "center", justifyContent: "space-between", padding: "0 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 24, maxWidth: "90%" }}>
@@ -931,10 +934,12 @@ export default function QuestSpeaking() {
                 <div style={{ fontSize: 28, color: "#6b7280", fontWeight: 500, letterSpacing: 1 }}>请仔细聆听</div>
               ) : (
                 <>
-                  {/* 口语评测：不展示词卡，只显示中文 */}
-                  {current.chinese && (
+                  {/* 口语评测：不展示词卡，按设置「口语模式」显示（zh=中文 / en=俄语 / blind=盲读不显示） */}
+                  {ui.speakMode !== 'blind' && (
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, animation: "listen-fade .3s ease" }}>
-                      <span style={{ whiteSpace: "pre-wrap", fontSize: 22, color: "#374151", fontWeight: 600, textAlign: "center", lineHeight: 1.6 }}>{current.chinese}</span>
+                      <span style={{ whiteSpace: "pre-wrap", fontSize: 22, color: "#374151", fontWeight: 600, textAlign: "center", lineHeight: 1.6 }}>
+                        {ui.speakMode === 'en' ? (current.russian || '') : (current.chinese || '')}
+                      </span>
                     </div>
                   )}
                   {/* 卡片区：框外笔记按钮（居中） */}
@@ -988,7 +993,7 @@ export default function QuestSpeaking() {
       </button>
 
       {/* ===== 弹窗 ===== */}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModal onClose={() => { setShowSettings(false); refreshSettings(); }} />}
       {showModePicker && (
         <ModePickerModal
           title={title}

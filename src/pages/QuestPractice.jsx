@@ -42,6 +42,7 @@ import ShortcutTips from "../components/quest/ShortcutTips";
 import FeedbackPopup from "../components/quest/FeedbackPopup";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
+import { useQuestSettings, BG_STYLE } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 无 courseId 时的默认单元：privet_rossiya_a1 课程包第一单元（u1），后端已确证存在
@@ -215,6 +216,7 @@ export default function QuestPractice() {
   const [unitMeta, setUnitMeta] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const { ui, sfx, settings, refreshSettings } = useQuestSettings();
   const [showModePicker, setShowModePicker] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [showAnswerMode, setShowAnswerMode] = useState(false);
@@ -391,7 +393,7 @@ export default function QuestPractice() {
       // Chunking：每一步答对都显示答对面板（含中间步），用户点「下一题」进入下一步
       setShowAnswerPanel(true);
       recordCorrect();
-      playRightSound();
+      if (sfx.answerOn !== false) playRightSound();
       ensureAnalysis(currentStatement);
       // 通关之路：六格天赋树（答对当前句，句中各词的格 → 正确+1）
       if (Array.isArray(currentStatement?.words)) {
@@ -401,7 +403,7 @@ export default function QuestPractice() {
     onWrong: (result) => {
       setCurrentErrors(result.errors || []);
       recordWrong();
-      playErrorSound();
+      if (sfx.answerOn !== false) playErrorSound();
       // 通关之路：六格天赋树（答错 → 该句各词格的答题数+1，不计正确）
       if (Array.isArray(currentStatement?.words)) {
         if (grammarOnRef.current) currentStatement.words.forEach((w) => { if (w && w.grammar_case) recordCase(w.grammar_case, false) })
@@ -411,7 +413,7 @@ export default function QuestPractice() {
 
   // 包装键盘事件：播放打字音
   const handleInputKeyDown = (e) => {
-    if (checkPlayTypingSound(e)) {
+    if (checkPlayTypingSound(e) && sfx.keyOn !== false) {
       playTypingSound();
     }
     _rawHandleInputKeyDown(e);
@@ -649,6 +651,7 @@ export default function QuestPractice() {
       const playOnce = (remaining) => {
         const audio = new Audio(url);
         ttsAudioRef.current = audio;
+        audio.playbackRate = settings.rate || 1;
         audio.play().catch((e) => console.warn("播放失败:", e));
         if (remaining > 1) {
           audio.onended = () => {
@@ -664,10 +667,10 @@ export default function QuestPractice() {
 
   // ---- 题目出现时自动播放两遍发音（即时，无延迟） ----
   useEffect(() => {
-    if (!loading && !loadError && currentStatement) {
-      playSentenceSound(2);
+    if (!loading && !loadError && currentStatement && ui.autoSpeak !== false) {
+      playSentenceSound(ui.speakTimes ?? 2);
     }
-  }, [loading, loadError, currentSequenceIndex, currentUnitIndex, currentStatement, playSentenceSound]);
+  }, [loading, loadError, currentSequenceIndex, currentUnitIndex, currentStatement, playSentenceSound, ui.autoSpeak, ui.speakTimes]);
 
   // ---- 格式化时间 ----
   const formatTime = (seconds) => {
@@ -678,10 +681,10 @@ export default function QuestPractice() {
 
   // ---- 答对后即时播放标准发音 ----
   useEffect(() => {
-    if (showAnswerPanel && currentStatement) {
+    if (showAnswerPanel && currentStatement && ui.answerSpeak) {
       playSentenceSound(1);
     }
-  }, [showAnswerPanel, currentStatement, playSentenceSound]);
+  }, [showAnswerPanel, currentStatement, playSentenceSound, ui.answerSpeak]);
 
   // ---- AnswerPanel 操作 ----
   const handleRetry = () => {
@@ -697,6 +700,19 @@ export default function QuestPractice() {
     setCurrentErrors([]);
     goToNext();
   };
+
+  // ---- 设置「答题正确后自动下一题」（autoNext） ----
+  useEffect(() => {
+    if (showAnswerPanel && ui.autoNext) {
+      const t = setTimeout(() => {
+        setShowAnswerPanel(false);
+        reset();
+        setCurrentErrors([]);
+        goToNext();
+      }, 800);
+      return () => clearTimeout(t);
+    }
+  }, [showAnswerPanel, ui.autoNext]);
 
   // ---- SummaryPanel 操作 ----
   const handleRetryFromSummary = () => {
@@ -846,12 +862,12 @@ export default function QuestPractice() {
         boxShadow: comboEffect?.startsWith("milestone") || comboEffect?.startsWith("levelup")
           ? `inset 0 0 80px ${combo >= 20 ? "rgba(245,158,11,0.4)" : combo >= 10 ? "rgba(99,102,241,0.35)" : "rgba(59,130,246,0.3)"}`
           : "none",
-        background: "#FFFFFF",
-        backgroundImage: combo >= 9
+        background: BG_STYLE(ui).background,
+        backgroundImage: ui.bgImage ? undefined : (combo >= 9
           ? `radial-gradient(ellipse at center, rgba(245,158,11,${0.05 + Math.min(combo, 30) * 0.005}) 0%, transparent 70%)`
           : combo >= 6
           ? `radial-gradient(ellipse at center, rgba(34,197,94,${0.03 + Math.min(combo, 15) * 0.004}) 0%, transparent 70%)`
-          : "none",
+          : "none"),
         transition: "box-shadow 0.3s ease, background 0.5s ease",
       }}
     >
@@ -928,7 +944,7 @@ export default function QuestPractice() {
       </div>
 
       {/* 设置弹窗 */}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModal onClose={() => { setShowSettings(false); refreshSettings(); }} />}
       {/* 模式选择弹窗 */}
       {showModePicker && (
         <ModePickerModal
@@ -991,6 +1007,7 @@ export default function QuestPractice() {
             onRetry={handleRetry}
             onNext={handleNextFromAnswer}
             isLast={isLastUnit}
+            ui={ui}
           />
         ) : (
         <>
