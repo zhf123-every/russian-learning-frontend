@@ -11,7 +11,7 @@ import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
-import SettingsModal from "../components/SettingsModal";
+import SettingsModal, { loadHotkeys, keysOfEvent } from "../components/SettingsModal";
 import Icon from "../components/TopBarIcons";
 import LearningContentModal from "../components/LearningContentModal";
 import SentenceTreeModal from "../components/SentenceTreeModal";
@@ -454,7 +454,7 @@ export default function QuestSpeaking() {
 
   // ---- 麦克风录音与 AI 评分 ----
   async function startRec() {
-    if (recState === "recording") return;
+    if (recState === "recording" || recRef.current) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
@@ -468,7 +468,7 @@ export default function QuestSpeaking() {
     }
   }
   function endRec() {
-    if (recState !== "recording" || !recRef.current) return;
+    if (!recRef.current) return;
     const { mr, stream, chunks } = recRef.current;
     mr.onstop = () => {
       stream.getTracks().forEach((t) => t.stop());
@@ -664,24 +664,66 @@ export default function QuestSpeaking() {
     return () => { alive = false; };
   }, [current]);
 
-  // ---- 键盘快捷键 ----
+  // ---- 生词本：Ctrl+N（设置弹窗可改键位） ----
+  const addVocab = () => {
+    if (!current) return;
+    try {
+      const KEY = 'rlearn_vocab';
+      const list = JSON.parse(localStorage.getItem(KEY) || '[]');
+      const ru = (current.russian || "").trim();
+      if (!ru) return;
+      if (!list.some(v => v.ru === ru)) {
+        list.unshift({ ru, zh: (current.chinese || "").trim(), at: Date.now() });
+        localStorage.setItem(KEY, JSON.stringify(list));
+        toast('已加入生词本');
+      } else {
+        toast('已在生词本中');
+      }
+    } catch (e) { /* 忽略 */ }
+  };
+
+  // ---- 键盘快捷键（底部栏键位一致；Space=按住说话；设置弹窗可改键位） ----
   useEffect(() => {
     const onKey = (e) => {
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-      if (e.key === ' ') {
-        e.preventDefault();
-        if (!ready) { setReady(true); if (current) runStageChain(current.russian); }
-        else togglePause();
+      if (document.querySelector('.qs-mask')) return;
+      const k = keysOfEvent(e);
+      if (!k) return;
+      // 底部栏固定键位：Shift← 上一题 / Shift→ 下一题 / ← 上一阶段 / → 下一阶段
+      if (k === 'shift+arrowleft') { e.preventDefault(); goPrev(); return; }
+      if (k === 'shift+arrowright') { e.preventDefault(); goNext(); return; }
+      if (k === 'arrowleft') { e.preventDefault(); goPrevSeq(); return; }
+      if (k === 'arrowright') { e.preventDefault(); goNextSeq(); return; }
+      const hk = loadHotkeys();
+      let act = null;
+      for (const id in hk) { if (hk[id] === k) { act = id; break; } }
+      if (!act) return;
+      e.preventDefault();
+      switch (act) {
+        case 'toggleSpeech': // Space：长按说话（keydown 开始录音，keyup 结束）
+          if (!ready) { setReady(true); if (current) runStageChain(current.russian); }
+          else if (!recRef.current) startRec();
+          break;
+        case 'pauseGame': togglePause(); break;
+        case 'addVocab': addVocab(); break;
+        case 'courseContent': setShowLearning(true); break;
+        case 'wordByWord': playSingleSlow(); break;
+        case 'playSound': if (current) runStageChain(current.russian); break;
+        case 'toggleAI': setShowAi(true); break;
+        case 'toggleSettings': setShowSettings(true); break;
+        case 'toggleNotes': setShowNote(true); break;
+        default: break;
       }
-      else if (e.key === 'ArrowLeft') goPrev();
-      else if (e.key === 'ArrowRight') goNext();
-      else if (e.key === ',' && e.ctrlKey && e.shiftKey) { e.preventDefault(); playSingleSlow(); }
-      else if (e.key === 'n' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setShowAi(true); }
-      else if (e.key === '1' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setShowLearning(true); }
+    };
+    const onKeyUp = (e) => {
+      const k = keysOfEvent(e);
+      if (k !== 'space') return;
+      if (recRef.current) { e.preventDefault(); endRec(); }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [togglePause, goPrev, goNext, ready, current, runStageChain]);
+    window.addEventListener('keyup', onKeyUp);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp); };
+  }, [togglePause, goPrev, goNext, goPrevSeq, goNextSeq, ready, current, runStageChain, playSingleSlow, startRec, endRec]);
 
   // ---- AI 助手 ----
   const [aiQ, setAiQ] = useState("");
@@ -964,7 +1006,7 @@ export default function QuestSpeaking() {
               </div>
               <button onClick={togglePause} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
                 <kbd style={{ borderRadius: 6, background: "#f3f4f6", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "#111", border: "1px solid #d1d5db", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Space</kbd>
-                <span>暂停</span>
+                <span>按住说话</span>
               </button>
               <button onClick={() => setShowAi(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
                 <kbd style={{ borderRadius: 6, background: "#f3f4f6", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "#111", border: "1px solid #d1d5db", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Ctrl N</kbd>

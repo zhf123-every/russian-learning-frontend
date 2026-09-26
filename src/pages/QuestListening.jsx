@@ -11,7 +11,7 @@ import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
-import SettingsModal from "../components/SettingsModal";
+import SettingsModal, { loadHotkeys, keysOfEvent } from "../components/SettingsModal";
 import Icon from "../components/TopBarIcons";
 import LearningContentModal from "../components/LearningContentModal";
 import SentenceTreeModal from "../components/SentenceTreeModal";
@@ -534,24 +534,61 @@ export default function QuestListening() {
     return () => { alive = false; };
   }, [current]);
 
-  // ---- 键盘快捷键 ----
+  // ---- 生词本：Ctrl+N（设置弹窗可改键位） ----
+  const addVocab = () => {
+    if (!current) return;
+    try {
+      const KEY = 'rlearn_vocab';
+      const list = JSON.parse(localStorage.getItem(KEY) || '[]');
+      const ru = (current.russian || "").trim();
+      if (!ru) return;
+      if (!list.some(v => v.ru === ru)) {
+        list.unshift({ ru, zh: (current.chinese || "").trim(), at: Date.now() });
+        localStorage.setItem(KEY, JSON.stringify(list));
+        toast('已加入生词本');
+      } else {
+        toast('已在生词本中');
+      }
+    } catch (e) { /* 忽略 */ }
+  };
+
+  // ---- 键盘快捷键（与底部栏键位一致；设置弹窗可改键位，即时生效） ----
   useEffect(() => {
     const onKey = (e) => {
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-      if (e.key === ' ') {
-        e.preventDefault();
-        if (!ready) { setReady(true); if (current) runStageChain(current.russian); }
-        else togglePause();
+      if (document.querySelector('.qs-mask')) return; // 设置弹窗打开时禁用
+      const k = keysOfEvent(e);
+      if (!k) return;
+      // 底部栏固定键位：Shift← 上一题 / Shift→ 下一题 / ← 上一阶段 / → 下一阶段
+      if (k === 'shift+arrowleft') { e.preventDefault(); goPrev(); return; }
+      if (k === 'shift+arrowright') { e.preventDefault(); goNext(); return; }
+      if (k === 'arrowleft') { e.preventDefault(); goPrevSeq(); return; }
+      if (k === 'arrowright') { e.preventDefault(); goNextSeq(); return; }
+      // 设置弹窗可改键位（rlearn_quest_hotkeys）
+      const hk = loadHotkeys();
+      let act = null;
+      for (const id in hk) { if (hk[id] === k) { act = id; break; } }
+      if (!act) return;
+      e.preventDefault();
+      switch (act) {
+        case 'toggleSpeech': // Space：开始 / 暂停
+          if (!ready) { setReady(true); if (current) runStageChain(current.russian); }
+          else togglePause();
+          break;
+        case 'pauseGame': togglePause(); break;
+        case 'addVocab': addVocab(); break;
+        case 'courseContent': setShowLearning(true); break;
+        case 'wordByWord': playSingleSlow(); break;
+        case 'playSound': if (current) runStageChain(current.russian); break;
+        case 'toggleAI': setShowAi(true); break;
+        case 'toggleSettings': setShowSettings(true); break;
+        case 'toggleNotes': setShowNote(true); break;
+        default: break;
       }
-      else if (e.key === 'ArrowLeft') goPrev();
-      else if (e.key === 'ArrowRight') goNext();
-      else if (e.key === ',' && e.ctrlKey && e.shiftKey) { e.preventDefault(); playSingleSlow(); }
-      else if (e.key === 'n' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setShowAi(true); }
-      else if (e.key === '1' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setShowLearning(true); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [togglePause, goPrev, goNext, ready, current, runStageChain]);
+  }, [togglePause, goPrev, goNext, goPrevSeq, goNextSeq, ready, current, runStageChain, playSingleSlow]);
 
   // ---- AI 助手 ----
   const [aiQ, setAiQ] = useState("");

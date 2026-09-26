@@ -603,18 +603,15 @@ export default function QuestPractice() {
     }
   }, [currentSequenceIndex, currentUnitIndex, sequences]);
 
-  // ---- 发音（Yandex 真人俄语发音）----
+  // ---- 发音（Yandex 真人俄语发音）：TTS 缓存 + 即时播放 ----
   const ttsAudioRef = useRef(null);
-  const playSentenceSound = useCallback(async (times = 1) => {
-    const stmt = currentStatement;
-    if (!stmt?.russian) return;
-    try {
-      if (ttsAudioRef.current) {
-        ttsAudioRef.current.pause();
-        ttsAudioRef.current.currentTime = 0;
-      }
-      let url = stmt.audio_url;
-      if (!url) {
+  const ttsUrlCacheRef = useRef({}); // id -> url，同一句只请求一次
+  const ensureTts = useCallback(async (stmt) => {
+    if (!stmt || !stmt.russian) return "";
+    if (ttsUrlCacheRef.current[stmt.id]) return ttsUrlCacheRef.current[stmt.id];
+    let url = stmt.audio_url;
+    if (!url) {
+      try {
         const res = await fetch(`${API_BASE}/api/tts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -624,32 +621,51 @@ export default function QuestPractice() {
         if (data.ok && data.audio_url) {
           url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
         }
-      } else if (!url.startsWith("http")) {
-        url = `${API_BASE}${url}`;
+      } catch (e) { console.warn("TTS 获取失败:", e); }
+    } else if (!url.startsWith("http")) {
+      url = `${API_BASE}${url}`;
+    }
+    if (url) ttsUrlCacheRef.current[stmt.id] = url;
+    return url;
+  }, []);
+
+  // 预取当前句音频（题目一出现即开始请求，答题时缓存已就绪 → 答对即时播放）
+  useEffect(() => {
+    if (!loading && !loadError && currentStatement) {
+      ensureTts(currentStatement);
+    }
+  }, [loading, loadError, currentStatement, ensureTts]);
+
+  const playSentenceSound = useCallback(async (times = 1) => {
+    const stmt = currentStatement;
+    if (!stmt?.russian) return;
+    try {
+      if (ttsAudioRef.current) {
+        ttsAudioRef.current.pause();
+        ttsAudioRef.current.currentTime = 0;
       }
-      if (url) {
-        const playOnce = (remaining) => {
-          const audio = new Audio(url);
-          ttsAudioRef.current = audio;
-          audio.play().catch((e) => console.warn("播放失败:", e));
-          if (remaining > 1) {
-            audio.onended = () => {
-              setTimeout(() => playOnce(remaining - 1), 600);
-            };
-          }
-        };
-        playOnce(times);
-      }
+      const url = await ensureTts(stmt);
+      if (!url) return;
+      const playOnce = (remaining) => {
+        const audio = new Audio(url);
+        ttsAudioRef.current = audio;
+        audio.play().catch((e) => console.warn("播放失败:", e));
+        if (remaining > 1) {
+          audio.onended = () => {
+            setTimeout(() => playOnce(remaining - 1), 600);
+          };
+        }
+      };
+      playOnce(times);
     } catch (e) {
       console.warn("发音失败:", e);
     }
-  }, [currentStatement]);
+  }, [currentStatement, ensureTts]);
 
-  // ---- 题目出现时自动播放两遍发音 ----
+  // ---- 题目出现时自动播放两遍发音（即时，无延迟） ----
   useEffect(() => {
     if (!loading && !loadError && currentStatement) {
-      const timer = setTimeout(() => playSentenceSound(2), 500);
-      return () => clearTimeout(timer);
+      playSentenceSound(2);
     }
   }, [loading, loadError, currentSequenceIndex, currentUnitIndex, currentStatement, playSentenceSound]);
 
@@ -659,6 +675,13 @@ export default function QuestPractice() {
     const s = seconds % 60;
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
+
+  // ---- 答对后即时播放标准发音 ----
+  useEffect(() => {
+    if (showAnswerPanel && currentStatement) {
+      playSentenceSound(1);
+    }
+  }, [showAnswerPanel, currentStatement, playSentenceSound]);
 
   // ---- AnswerPanel 操作 ----
   const handleRetry = () => {
