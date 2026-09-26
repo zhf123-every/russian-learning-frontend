@@ -16,6 +16,7 @@ import Icon from "../components/TopBarIcons";
 import LearningContentModal from "../components/LearningContentModal";
 import SentenceTreeModal from "../components/SentenceTreeModal";
 import ReportErrorModal from "../components/ReportErrorModal";
+import { toast } from "../lib/toast";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 const DEFAULT_UNIT_ID = "u1";
@@ -145,6 +146,7 @@ export default function QuestListening() {
   const [showReport, setShowReport] = useState(false);
   const [showAnswerMode, setShowAnswerMode] = useState(false);
   const [showAi, setShowAi] = useState(false);
+  const [showNote, setShowNote] = useState(false);
 
   // 倍速设置
   const [cfg, setCfg] = useState({ ...DEFAULT_CFG });
@@ -479,6 +481,16 @@ export default function QuestListening() {
     else navigate(`/quest-practice/${u}${suffix}`);
   };
 
+  // ---- 点击弹窗外部关闭倍速设置 ----
+  useEffect(() => {
+    if (!popover) return;
+    const onDoc = (e) => {
+      if (e.target && e.target.closest && !e.target.closest('[data-speed-pop]')) setPopover(null);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [popover]);
+
   // ---- 键盘快捷键 ----
   useEffect(() => {
     const onKey = (e) => {
@@ -501,6 +513,29 @@ export default function QuestListening() {
   const [aiQ, setAiQ] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiAns, setAiAns] = useState("");
+  const [noteText, setNoteText] = useState("");
+  const saveNote = () => {
+    if (!current) return;
+    try {
+      const KEY = 'rlearn_quest_notes';
+      const list = JSON.parse(localStorage.getItem(KEY) || '[]');
+      list.unshift({
+        id: 'qn' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+        unitId: effectiveCourseId,
+        courseId: courseId || effectiveCourseId,
+        mode: 'listening',
+        ru: (current.russian || "").trim(),
+        zh: (current.chinese || "").trim(),
+        note: noteText.trim(),
+        createdAt: Date.now(),
+      });
+      localStorage.setItem(KEY, JSON.stringify(list));
+    } catch (e) { /* 忽略 */ }
+    toast('已记录通关笔记');
+    setNoteText("");
+    setShowNote(false);
+  };
+
   const askAi = async (q) => {
     const text = q || aiQ;
     if (!text.trim() || aiBusy) return;
@@ -629,16 +664,16 @@ export default function QuestListening() {
                 {['blind', 'slow', 'answer'].map((key, ki) => (
                   <div key={key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     {ki > 0 && <div style={{ width: 12, height: 1, background: "rgba(0,0,0,0.15)" }} />}
-                    <div style={{ display: "flex", alignItems: "stretch", borderRadius: 999, border: "1px solid #e5e7eb", background: "rgba(243,244,246,0.6)", color: "#6b7280", overflow: "hidden" }}>
+                    <div style={{ display: "flex", alignItems: "stretch", borderRadius: 999, border: "1px solid", borderColor: phase === key ? "#7C3AED" : "#e5e7eb", background: phase === key ? "rgba(124,58,237,0.1)" : "rgba(243,244,246,0.6)", color: phase === key ? "#111" : "#6b7280", overflow: "hidden", transition: "background .2s,border-color .2s" }} data-speed-pop>
                       <button onClick={() => { stopAudio(); playStageOnly(key); }} title={`${cfg[key].label}（${cfg[key].times}次 × ${cfg[key].speed}x）`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px 6px 12px", border: "none", background: "transparent", cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
-                        <Icon name="check" size={13} color={cfg[key].on ? "#7C3AED" : "#d1d5db"} />
-                        <span style={{ fontSize: 12, fontWeight: 500, color: cfg[key].on ? "#374151" : "#9ca3af" }}>{cfg[key].label}</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={cfg[key].on ? "#7C3AED" : "#d1d5db"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: phase === key ? "#111" : (cfg[key].on ? "#374151" : "#9ca3af") }}>{cfg[key].label}</span>
                         <span style={{ fontSize: 10, fontVariantNumeric: "tabular-nums", opacity: 0.75, color: "inherit" }}>
                           <span style={{ display: "inline-block", width: "1.35em", textAlign: "right" }}>×{cfg[key].times}</span>
                           <span style={{ display: "inline-block", width: "2.35em", textAlign: "right" }}>{cfg[key].speed}x</span>
                         </span>
                       </button>
-                      <button onClick={() => setPopover(popover === key ? null : key)} aria-label={`${cfg[key].label}设置`} style={{ display: "flex", alignItems: "center", borderLeft: "1px solid rgba(0,0,0,0.08)", padding: "0 8px", borderTop: "none", borderBottom: "none", borderRight: "none", background: "transparent", cursor: "pointer", color: "#6b7280" }}>
+                      <button onClick={() => setPopover(popover === key ? null : key)} aria-label={`${cfg[key].label}设置`} data-speed-pop style={{ display: "flex", alignItems: "center", borderLeft: "1px solid rgba(0,0,0,0.08)", padding: "0 8px", borderTop: "none", borderBottom: "none", borderRight: "none", background: "transparent", cursor: "pointer", color: "#6b7280" }}>
                         <Icon name="gear" size={13} />
                       </button>
                     </div>
@@ -646,7 +681,7 @@ export default function QuestListening() {
                 ))}
                 {/* 倍速设置弹窗 */}
                 {popover && (
-                  <div style={{ position: "absolute", top: 44, left: "50%", transform: "translateX(-50%)", zIndex: 999, width: 224, borderRadius: 12, border: "1px solid #e5e7eb", background: "#fff", boxShadow: "0 12px 40px rgba(0,0,0,0.15)", padding: 12 }}>
+                  <div data-speed-pop style={{ position: "absolute", top: 44, left: "50%", transform: "translateX(-50%)", zIndex: 999, width: 224, borderRadius: 12, border: "1px solid #e5e7eb", background: "#fff", boxShadow: "0 12px 40px rgba(0,0,0,0.15)", padding: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(0,0,0,0.06)", paddingBottom: 10 }}>
                       <span style={{ fontSize: 12, fontWeight: 500, color: "#111" }}>{cfg[popover].label}</span>
                       <button role="switch" aria-checked={cfg[popover].on} onClick={() => setCfg({ ...cfg, [popover]: { ...cfg[popover], on: !cfg[popover].on } })} style={{ width: 36, height: 20, borderRadius: 999, border: "none", cursor: "pointer", background: cfg[popover].on ? "#7C3AED" : "#e5e7eb", position: "relative", transition: "background .2s" }}>
@@ -655,19 +690,17 @@ export default function QuestListening() {
                     </div>
                     <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                        <span style={{ fontSize: 12, color: "#6b7280" }}>次数</span>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <button key={n} onClick={() => setCfg({ ...cfg, [popover]: { ...cfg[popover], times: n } })} style={{ width: 26, height: 26, borderRadius: 8, border: "1px solid " + (cfg[popover].times === n ? "#7C3AED" : "#e5e7eb"), background: cfg[popover].times === n ? "rgba(124,58,237,0.1)" : "#fff", color: cfg[popover].times === n ? "#7C3AED" : "#6b7280", fontSize: 12, cursor: "pointer" }}>{n}</button>
-                          ))}
+                        <span style={{ fontSize: 12, color: "#6b7280", width: 34 }}>次数</span>
+                        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
+                          <input type="range" min="1" max="5" step="1" value={cfg[popover].times} onChange={(e) => setCfg({ ...cfg, [popover]: { ...cfg[popover], times: Number(e.target.value) } })} style={{ flex: 1, accentColor: "#7C3AED", cursor: "pointer" }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "#7C3AED", width: 18, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{cfg[popover].times}</span>
                         </div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                        <span style={{ fontSize: 12, color: "#6b7280" }}>速度</span>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          {[0.5, 0.7, 1, 1.25, 1.5, 2].map((sp) => (
-                            <button key={sp} onClick={() => setCfg({ ...cfg, [popover]: { ...cfg[popover], speed: sp } })} style={{ width: 38, height: 26, borderRadius: 8, border: "1px solid " + (cfg[popover].speed === sp ? "#7C3AED" : "#e5e7eb"), background: cfg[popover].speed === sp ? "rgba(124,58,237,0.1)" : "#fff", color: cfg[popover].speed === sp ? "#7C3AED" : "#6b7280", fontSize: 11, cursor: "pointer" }}>{sp}x</button>
-                          ))}
+                        <span style={{ fontSize: 12, color: "#6b7280", width: 34 }}>速度</span>
+                        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
+                          <input type="range" min="0.5" max="2" step="0.1" value={cfg[popover].speed} onChange={(e) => setCfg({ ...cfg, [popover]: { ...cfg[popover], speed: Number(e.target.value) } })} style={{ flex: 1, accentColor: "#7C3AED", cursor: "pointer" }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "#7C3AED", width: 40, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{cfg[popover].speed}x</span>
                         </div>
                       </div>
                     </div>
@@ -707,7 +740,7 @@ export default function QuestListening() {
                   {current.chinese && (
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, animation: "listen-fade .3s .04s ease both" }}>
                       <span style={{ whiteSpace: "pre-wrap", fontSize: 20, color: "#6b7280", fontWeight: 400 }}>{current.chinese}</span>
-                      <button onClick={() => setShowAi(true)} title="笔记" aria-label="笔记" style={{ width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 14 }}>
+                      <button onClick={() => setShowNote(true)} title="笔记" aria-label="笔记" style={{ width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 14 }}>
                         ✎
                       </button>
                     </div>
@@ -788,6 +821,32 @@ export default function QuestListening() {
           context={`${title} 听力题`}
           onClose={() => setShowReport(false)}
         />
+      )}
+
+      {/* 单词笔记弹窗 */}
+      {showNote && current && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setShowNote(false)}>
+          <div style={{ width: "min(420px, 94vw)", background: "#fff", borderRadius: 16, boxShadow: "0 24px 80px rgba(0,0,0,0.3)", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #f0f0f4" }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111" }}>通关笔记</h3>
+              <button onClick={() => setShowNote(false)} style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: "#f3f4f6", color: "#555", cursor: "pointer", fontSize: 13 }}>✕</button>
+            </div>
+            <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 24, fontWeight: 600, color: "#7C3AED" }}>{current.russian}</span>
+                {current.stressMarked && current.stressMarked !== (current.russian || "").trim() && (
+                  <span style={{ fontSize: 14, color: "#9ca3af" }}>{current.stressMarked}</span>
+                )}
+              </div>
+              <div style={{ fontSize: 15, color: "#374151" }}>{current.chinese}</div>
+              <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="记录你的通关笔记（本句的要点、易错点、记忆技巧…）" style={{ width: "100%", minHeight: 90, borderRadius: 10, border: "1px solid #e5e7eb", padding: "10px 12px", fontSize: 14, outline: "none", resize: "vertical", fontFamily: "inherit" }} />
+            </div>
+            <div style={{ padding: "14px 20px", borderTop: "1px solid #f0f0f4", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button onClick={() => setShowNote(false)} style={{ borderRadius: 10, border: "1px solid #e5e7eb", background: "#fff", color: "#374151", padding: "9px 18px", fontSize: 14, cursor: "pointer" }}>取消</button>
+              <button onClick={saveNote} style={{ borderRadius: 10, border: "none", background: "#7C3AED", color: "#fff", padding: "9px 18px", fontSize: 14, cursor: "pointer", fontWeight: 500 }}>记录笔记</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* AI 学习助手弹窗 */}
