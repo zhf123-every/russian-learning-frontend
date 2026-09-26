@@ -23,6 +23,7 @@ import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
 import { addStudyTime } from "../lib/learningStats";
+import { getCourseById } from "../utils/courseService";
 import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { expandUnitToChunkSteps, buildZhIndex } from "../lib/chunking";
 import { useQuestionInput } from "../hooks/useQuestionInput";
@@ -65,7 +66,18 @@ export default function QuestDictation() {
     }
   }, [studyCourseId])
 
-  // ---- 课程数据 ----
+  // ---- 通关之路：显式语法课程门控（仅 isGrammar=true 的课程积累六格天赋树）----
+  const grammarOnRef = useRef(false)
+  useEffect(() => {
+    let alive = true
+    getCourseById(studyCourseId).then((info) => {
+      if (!alive) return
+      const g = !!(info && info.isGrammar)
+      grammarOnRef.current = g
+    }).catch(() => { grammarOnRef.current = false })
+    return () => { alive = false }
+  }, [studyCourseId])
+
   const [statements, setStatements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -164,7 +176,7 @@ export default function QuestDictation() {
       playRightSound();
       // 通关之路：六格天赋树（听写模式同样积累；仅语法课程的词句带 grammar_case 标注时起效）
       if (Array.isArray(currentStatement?.words)) {
-        currentStatement.words.forEach((w) => { if (w && w.grammar_case) recordCase(w.grammar_case, true) })
+        if (grammarOnRef.current) currentStatement.words.forEach((w) => { if (w && w.grammar_case) recordCase(w.grammar_case, true) })
       }
     },
     onWrong: (result) => {
@@ -173,7 +185,7 @@ export default function QuestDictation() {
       playErrorSound();
       // 通关之路：六格天赋树（答错 → 该句各词格的答题数+1，不计正确）
       if (Array.isArray(currentStatement?.words)) {
-        currentStatement.words.forEach((w) => { if (w && w.grammar_case) recordCase(w.grammar_case, false) })
+        if (grammarOnRef.current) currentStatement.words.forEach((w) => { if (w && w.grammar_case) recordCase(w.grammar_case, false) })
       }
     },
   });

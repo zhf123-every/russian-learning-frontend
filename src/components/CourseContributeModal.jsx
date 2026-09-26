@@ -50,6 +50,7 @@ export default function CourseContributeModal({ onClose }) {
     lessons: [],
     grade: '',     // AI 自动打标：年级（投稿时 AI 生成，可改）
     textbook: '',  // AI 自动打标：教材版本（投稿时 AI 生成，可改）
+    isGrammar: false, // 显式标记：语法课程 → 答题积累「变格天赋树」六格数据
   })
   const [submitting, setSubmitting] = useState(false)
   const adminKey = useAdminStore(s => s.adminKey)
@@ -349,6 +350,7 @@ export default function CourseContributeModal({ onClose }) {
         stage: form.stage,
         grade: form.grade || '',   // AI 自动打标：年级（游戏商城筛选/展示用）
         textbook: form.textbook || '', // AI 自动打标：教材版本
+        isGrammar: !!form.isGrammar,    // 语法课程标记（通关之路天赋树数据源，学习页门控）
         title,
         desc: (form.subcat && form.subcat !== '全部' ? form.subcat + ' · ' : '') + form.cat + ' · ' + form.level + ' · 共 ' + lessons.length + ' 关',
         cover: 'bg-gradient-to-br from-violet-100 to-purple-300', ink: 'text-purple-900',
@@ -524,6 +526,19 @@ export default function CourseContributeModal({ onClose }) {
               {TAG_TEXTBOOKS.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
+        </div>
+
+        <div className="field">
+          <label>课程类型</label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: '#333', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={!!form.isGrammar}
+              onChange={e => setField('isGrammar', e.target.checked)}
+            />
+            <b>语法课程</b>
+            <span className="hint" style={{ margin: 0 }}>勾选后，学习该课程的答题数据会点亮「通关之路 · 变格天赋树」（六格掌握度）；非语法课程不记六格</span>
+          </label>
         </div>
 
         <div className="field">
