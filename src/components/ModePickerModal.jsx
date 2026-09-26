@@ -144,8 +144,13 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ===== 左栏：模式列表（对标句乐部：卡片式按钮，移动端横向滚动 / 桌面纵向） ===== */}
-        <div className="flex-1 overflow-x-auto md:overflow-y-auto custom-scrollbar flex md:flex-col p-3 space-x-2 md:space-x-0 md:space-y-1.5" style={{ borderRight: '1px solid #f0f0f4', background: '#fff' }}>
+        {/* ===== 左栏：页眉 + 模式列表（对标句乐部：页眉标题 + 卡片式按钮竖列） ===== */}
+        <div className="flex flex-col overflow-y-auto custom-scrollbar" style={{ borderRight: '1px solid #f0f0f4', background: '#fff' }}>
+          <div className="p-5 pb-3">
+            <h2 className="text-lg font-bold text-foreground tracking-tight">选择练习模式</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Select Practice Mode</p>
+          </div>
+          <div className="px-3 pb-3 space-y-1.5">
           {modes.map((m) => {
             const on = m.key === activeKey
             return (
@@ -153,7 +158,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
                 key={m.key}
                 type="button"
                 onClick={() => handlePick(m)}
-                className={`relative flex-shrink-0 md:flex-shrink w-64 md:w-full text-left p-2.5 rounded-xl border transition-all select-none group ${
+                className={`relative w-full text-left p-2.5 rounded-xl border transition-all select-none group ${
                   on
                     ? 'bg-primary/10 border-primary text-foreground shadow-xs font-medium'
                     : m.ready
@@ -174,6 +179,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
               </button>
             )
           })}
+          </div>
         </div>
 
         {/* ===== 右栏：详情 ===== */}
