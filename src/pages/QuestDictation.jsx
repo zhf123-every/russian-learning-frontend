@@ -23,6 +23,7 @@ import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
 import { addStudyTime } from "../lib/learningStats";
+import { recordPeak, addDailyExp } from "../lib/questStats";
 import { expandUnitToChunkSteps, buildZhIndex } from "../lib/chunking";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -55,10 +56,19 @@ export default function QuestDictation() {
   const sessionStartRef = useRef(Date.now()); // 学习时长统计起点
   // 学习时长归属课程：优先取 URL 上 ?courseId=（详情页跳转带入），否则用单元 ID
   const studyCourseId = (() => { try { return new URLSearchParams(window.location.search).get('courseId') || effectiveCourseId } catch (e) { return effectiveCourseId } })()
-  // 离开学习页时累计本次学习时长（含完成）
+  // 离开学习页时累计本次学习时长（含完成）+ 每日 EXP（听写模式）
   useEffect(() => {
-    return () => { addStudyTime(studyCourseId, Date.now() - sessionStartRef.current) }
+    return () => {
+      const mins = Math.max(1, Math.round((Date.now() - sessionStartRef.current) / 60000))
+      addStudyTime(studyCourseId, Date.now() - sessionStartRef.current)
+      addDailyExp(mins, '听写')
+    }
   }, [studyCourseId])
+
+  // ---- 巅峰连斩 ----
+  useEffect(() => {
+    if (maxCombo > 0) recordPeak({ maxCombo })
+  }, [maxCombo])
 
   // ---- 课程数据 ----
   const [statements, setStatements] = useState([]);
@@ -355,6 +365,10 @@ export default function QuestDictation() {
     } else {
       // 全部完成 —— 记录课时完成（详情页进度打通）
       markUnitDone(courseId);
+      // 通关之路：单局最高输出（每题 +10 EXP）+ 单局最高命中率
+      const totalQ = statements.length || 1
+      const acc = totalQ > 0 ? Math.round((correctCount / totalQ) * 100) : 0
+      recordPeak({ score: correctCount * 10, accuracy: acc })
       setShowSummary(true);
     }
   }, [questionIndex, statements.length]);

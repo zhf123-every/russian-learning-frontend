@@ -20,6 +20,7 @@ import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
 import { addStudyTime } from "../lib/learningStats";
+import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
 import { expandSequencesWithChunks } from "../lib/chunking";
@@ -213,7 +214,11 @@ export default function QuestPractice() {
   const studyCourseId = (() => { try { return new URLSearchParams(window.location.search).get('courseId') || effectiveCourseId } catch (e) { return effectiveCourseId } })()
   // 离开学习页时累计本次学习时长（含完成）
   useEffect(() => {
-    return () => { addStudyTime(studyCourseId, Date.now() - sessionStartRef.current) }
+    return () => {
+      const mins = Math.max(1, Math.round((Date.now() - sessionStartRef.current) / 60000)) // 不足 1 分钟按 1 分钟计（EXP 世界观：1 分钟 = 1 EXP）
+      addStudyTime(studyCourseId, Date.now() - sessionStartRef.current)
+      addDailyExp(mins, '中译俄')
+    }
   }, [studyCourseId])
   const [localLesson, setLocalLesson] = useState(null);
   const [isLocalMode, setIsLocalMode] = useState(false);
@@ -358,11 +363,19 @@ export default function QuestPractice() {
       recordCorrect();
       playRightSound();
       ensureAnalysis(currentStatement);
+      // 通关之路：六格天赋树（答对当前句，句中各词的格 → 正确+1）
+      if (Array.isArray(currentStatement?.words)) {
+        currentStatement.words.forEach((w) => { if (w && w.grammar_case) recordCase(w.grammar_case, true) })
+      }
     },
     onWrong: (result) => {
       setCurrentErrors(result.errors || []);
       recordWrong();
       playErrorSound();
+      // 通关之路：六格天赋树（答错 → 该句各词格的答题数+1，不计正确）
+      if (Array.isArray(currentStatement?.words)) {
+        currentStatement.words.forEach((w) => { if (w && w.grammar_case) recordCase(w.grammar_case, false) })
+      }
     },
   });
 
@@ -373,6 +386,11 @@ export default function QuestPractice() {
     }
     _rawHandleInputKeyDown(e);
   };
+
+  // ---- 巅峰连斩：本局最高连击写入通关之路 ----
+  useEffect(() => {
+    if (maxCombo > 0) recordPeak({ maxCombo })
+  }, [maxCombo])
 
   // ---- 监听连击变化，自动显示反馈弹窗 ----
   useEffect(() => {
@@ -547,6 +565,10 @@ export default function QuestPractice() {
     } else {
       // 全部完成，显示结算页 —— 记录课时完成（详情页进度打通）
       markUnitDone(effectiveCourseId);
+      // 通关之路：单局最高输出（每题 +10 EXP）+ 单局最高命中率
+      const totalQ = sequences.reduce((a, seq) => a + ((seq.units && seq.units.length) || 1), 0)
+      const acc = totalQ > 0 ? Math.round((correctCount / totalQ) * 100) : 0
+      recordPeak({ score: correctCount * 10, accuracy: acc })
       setShowSummary(true);
     }
   }, [currentSequenceIndex, currentUnitIndex, sequences]);
