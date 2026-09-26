@@ -320,6 +320,29 @@ export default function QuestSpeaking() {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
+  // ---- TTS 发音源（与中译俄一致：voice=alena / type=statement；优先数据自带音频；同句缓存） ----
+  const ttsUrlCacheRef = useRef({});
+  const ensureTtsUrl = useCallback(async (text) => {
+    if (!text) return "";
+    if (ttsUrlCacheRef.current[text]) return ttsUrlCacheRef.current[text];
+    let url = (current && current.audio_url) || "";
+    if (!url) {
+      try {
+        const res = await fetch(`${API_BASE}/api/tts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, voice: "alena", id: effectiveCourseId, type: "statement" }),
+        });
+        const data = await res.json();
+        if (data.ok && data.audio_url) url = data.audio_url;
+      } catch (e) { /* 忽略 */ }
+    }
+    if (!url) return "";
+    if (!url.startsWith("http")) url = `${API_BASE}${url}`;
+    ttsUrlCacheRef.current[text] = url;
+    return url;
+  }, [current, effectiveCourseId]);
+
   // ---- TTS 播放 ----
   const stopAudio = useCallback(() => {
     chainRef.current += 1; // 使所有旧阶段链失效
@@ -357,13 +380,7 @@ export default function QuestSpeaking() {
     setPhase(stages[0].key);
     let url = null;
     try {
-      const res = await fetch(`${API_BASE}/api/tts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: "alena", id: effectiveCourseId, type: "listening" }),
-      });
-      const data = await res.json();
-      if (data.ok && data.audio_url) url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
+      url = await ensureTtsUrl(text);
     } catch (e) { /* 无音频也继续 */ }
     if (chainRef.current !== myChain) return; // 已被更新题取代
     if (!url) { setPhase('answer'); return; }
@@ -377,7 +394,7 @@ export default function QuestSpeaking() {
       playTimes(url, st.cfg.speed, st.cfg.times, () => { si += 1; run(); });
     };
     run();
-  }, [cfg, playTimes, stopAudio, effectiveCourseId]);
+  }, [cfg, playTimes, stopAudio, effectiveCourseId, ensureTtsUrl]);
 
   // ---- 进入新题自动播放（须已点击"准备好了吗"以放行自动播放） ----
   useEffect(() => {
@@ -527,40 +544,26 @@ export default function QuestSpeaking() {
     const c = cfg[key];
     stopAudio();
     try {
-      const res = await fetch(`${API_BASE}/api/tts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: current.russian, voice: "alena", id: effectiveCourseId, type: "listening" }),
-      });
-      const data = await res.json();
-      let url = data.ok && data.audio_url ? data.audio_url : null;
+      const url = await ensureTtsUrl(current.russian);
       if (!url) return;
-      if (!url.startsWith("http")) url = `${API_BASE}${url}`;
       seqPlayRef.current = 'running';
       setPhase(key);
       playTimes(url, c.speed, Math.max(c.times, 1), () => { setPhase('answer'); seqPlayRef.current = null; });
     } catch (e) { /* 忽略 */ }
-  }, [current, cfg, playTimes, stopAudio, effectiveCourseId]);
+  }, [current, cfg, playTimes, stopAudio, effectiveCourseId, ensureTtsUrl]);
 
   const playSingleSlow = useCallback(() => {
     if (!current) return;
     stopAudio();
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/tts`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: current.russian, voice: "alena", id: effectiveCourseId, type: "listening" }),
-        });
-        const data = await res.json();
-        let url = data.ok && data.audio_url ? data.audio_url : null;
+        const url = await ensureTtsUrl(current.russian);
         if (!url) return;
-        if (!url.startsWith("http")) url = `${API_BASE}${url}`;
         seqPlayRef.current = 'running';
         playTimes(url, 0.6, 1, () => { seqPlayRef.current = null; });
       } catch (e) { /* 忽略 */ }
     })();
-  }, [current, playTimes, stopAudio, effectiveCourseId]);
+  }, [current, playTimes, stopAudio, effectiveCourseId, ensureTtsUrl]);
 
   // ---- 导航 ----
   const goPrev = () => { if (currentIdx > 0) { stopAudio(); setCurrentIdx(currentIdx - 1); setElapsed(0); } };
