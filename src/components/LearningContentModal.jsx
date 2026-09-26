@@ -1,30 +1,64 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { annotateWords, ensureDictFull } from '../lib/wordAnnotate'
+import { ensureBkrs, bkrsLookup, bkrsResolve } from '../lib/bkrs'
 
 // 学习内容弹窗（对标句乐部「查看课程学习内容 Ctrl+1」）
-// 左侧：本课句子列表；右侧：选中句的知识点解析（中文翻译/俄语释义/单词短语注解）+「练习此句」
+// 左侧：本课句子列表；右侧：选中句的知识点解析 +「练习此句」
+// 词典：OpenRussian（dict-full）词形还原/重音/词性 + БКРС 大俄汉词典（25万词条）中文释义
 export default function LearningContentModal({ title, sentences, onClose, onPractice }) {
   const [activeIdx, setActiveIdx] = useState(0)
+  const [wordRows, setWordRows] = useState([])
+  const [dictReady, setDictReady] = useState(false)
   const list = (sentences && sentences.length) ? sentences : []
   const s = list[activeIdx] || null
 
   // 主句显示带重音形式（stressMarked 有则用，否则原句）
   const mainRu = s?.stressMarked || s?.ru || ''
-  // 逐词注解：优先用 words（重音形式+词性），退化为按空格分词
-  const wordRows = (() => {
-    if (!s) return []
-    if (Array.isArray(s.words) && s.words.length) {
-      return s.words.filter((w) => w && w.form).map((w) => ({
-        form: w.form,
-        pos: w.pos || '',
-        grammar: w.grammarLabel || '',
-      }))
+
+  // 选中句变化 → 逐词标注 + БКРС 释义
+  useEffect(() => {
+    if (!s) {
+      setWordRows([])
+      return
     }
-    return String(s.ru || '').split(/\s+/).filter(Boolean).map((w) => ({ form: w, pos: '', grammar: '' }))
-  })()
+    let alive = true
+    setWordRows([])
+    setDictReady(false)
+
+    // 并行加载两大词典（OpenRussian 词形索引 + БКРС 中文释义），仅首次
+    Promise.all([ensureBkrs(), ensureDictFull()]).then(([b]) => {
+      if (alive) setDictReady(b)
+      // 词典就绪后重新标注（dict-full 的变格变位表已入索引，词性/重音更全）
+      if (!alive) return
+      const ann = annotateWords(s.ru || '')
+      const rows = ann.map((a) => ({
+        form: a.form || a.lemma || a.word || '',
+        lemma: a.lemma || '',
+        pos: a.pos || '',
+        grammar: a.grammarCase ? (a.grammarCase + (a.number ? ' ' + a.number : '')) : '',
+        chinese: bkrsLookup(a.lemma) || bkrsLookup(a.form) || a.chinese || '',
+      }))
+      setWordRows(rows)
+      // 本地未命中 → 后端 /api/dict 增强（Natasha 词形还原）
+      rows.forEach(async (r, i) => {
+        if (r.chinese || !r.lemma) return
+        const { remote } = await bkrsResolve(r.lemma)
+        if (alive && remote) {
+          setWordRows((prev) => {
+            const nx = prev.slice()
+            nx[i] = { ...nx[i], chinese: remote, remote: true }
+            return nx
+          })
+        }
+      })
+    })
+    return () => {
+      alive = false
+    }
+  }, [s])
 
   const label = { fontSize: 13, fontWeight: 700, color: '#3D332C', marginBottom: 6 }
   const value = { fontSize: 14, color: '#666', lineHeight: 1.7 }
-  const placeholder = { fontSize: 12, color: '#BBB', lineHeight: 1.7 }
 
   return (
     <div
@@ -86,19 +120,15 @@ export default function LearningContentModal({ title, sentences, onClose, onPrac
                 <div style={value}>{s.zh || '—'}</div>
               </div>
 
-              {/* 俄语释义（对标句乐部「英文释义」） */}
-              <div style={{ marginTop: 14 }}>
-                <div style={label}>俄语释义</div>
-                {s.translation ? (
-                  <div style={value}>{s.translation}</div>
-                ) : (
-                  <div style={placeholder}>暂无释义数据（接入词典后可展示）</div>
-                )}
-              </div>
-
-              {/* 单词短语注解 */}
+              {/* 单词短语注解（БКРС 大俄汉词典） */}
               <div style={{ marginTop: 18 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#3D332C', marginBottom: 8 }}>单词短语注解</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#3D332C', marginBottom: 8 }}>
+                  单词短语注解
+                  {!dictReady && <span style={{ fontSize: 11, fontWeight: 400, color: '#BBB', marginLeft: 8 }}>词典加载中…</span>}
+                </div>
+                {wordRows.length === 0 && (
+                  <div style={{ fontSize: 12, color: '#BBB', lineHeight: 1.8 }}>正在查询词典…</div>
+                )}
                 {wordRows.map((w, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid #F5F5F5', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 16, fontWeight: 600, fontFamily: '"PT Serif",Georgia,serif', minWidth: 70, color: '#18181B' }}>{w.form}</span>
@@ -107,19 +137,17 @@ export default function LearningContentModal({ title, sentences, onClose, onPrac
                     ) : (
                       <span style={{ fontSize: 11, color: '#BBB', padding: '2px 8px' }}>词性待标注</span>
                     )}
-                    {w.grammar ? (
-                      <span style={{ fontSize: 11, color: '#888' }}>{w.grammar}</span>
-                    ) : null}
+                    <span style={{ fontSize: 13, color: '#444' }}>
+                      {w.chinese || (dictReady ? 'БКРС未收录' : '查询中…')}
+                      {w.remote && <span style={{ fontSize: 10, color: '#999', marginLeft: 6 }}>在线</span>}
+                    </span>
                   </div>
                 ))}
-
-                <div style={{ marginTop: 12, fontSize: 12, color: '#BBB', lineHeight: 1.9 }}>
-                  <div><span style={{ color: '#888' }}>基本含义：</span>暂无数据（接入词典后可展示）</div>
-                  <div><span style={{ color: '#888' }}>上下文含义：</span>暂无数据（接入词典后可展示）</div>
-                  <div><span style={{ color: '#888' }}>同义词：</span>暂无数据</div>
-                  <div><span style={{ color: '#888' }}>反义词：</span>暂无数据</div>
-                  <div><span style={{ color: '#888' }}>常用短语：</span>暂无数据</div>
-                </div>
+                {wordRows.length > 0 && (
+                  <div style={{ marginTop: 10, fontSize: 11, color: '#BBB', lineHeight: 1.7 }}>
+                    词义来源：БКРС 大俄汉词典（25 万词条）· 词形/词性来自 OpenRussian 词典
+                  </div>
+                )}
               </div>
             </>
           )}
