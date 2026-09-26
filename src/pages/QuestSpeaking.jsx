@@ -153,7 +153,7 @@ export default function QuestSpeaking() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [phase, setPhase] = useState("standby"); // standby/blind/slow/answer
-  const [ready, setReady] = useState(false);      // 准备界面（对标句乐部"准备好了吗"）
+  const [ready, setReady] = useState(true);       // 进页面即就绪（对标句乐部：黑屏加载后直接答题）
   const [shuffled, setShuffled] = useState(false);
   const [order, setOrder] = useState([]); // 乱序后的原始索引
   const [isPaused, setIsPaused] = useState(false);
@@ -518,15 +518,12 @@ export default function QuestSpeaking() {
     mr.stop();
   }
 
-  const handleStart = async () => {
+  // ---- 进页面即加载语音评测服务 + 预取首题发音（对标句乐部：黑屏加载→就绪即答题） ----
+  useEffect(() => {
     loadASR().catch(() => {});
-    setReady(true);
-    if (!current) return;
-    try {
-      await ensureTtsUrl(current.russian);
-    } catch (e) { /* 忽略 */ }
-    if (current) runStageChain(current.russian);
-  };
+    if (current) ensureTtsUrl(current.russian).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---- 学习时长上报 ----
   useEffect(() => {
@@ -801,43 +798,9 @@ export default function QuestSpeaking() {
   const title = unitMeta?.title || (currentSequence?.familyName) || "听力练习";
   const showCard = phase !== 'blind' || showAnswerMode;
 
-  // ===== 准备界面（对标句乐部"准备好了吗？点我开始"） =====
-  if (!ready) {
-    return (
-      <div style={{ position: "fixed", inset: 0, background: "#fff", display: "flex", flexDirection: "column", zIndex: 100 }}>
-        <div style={{ position: "relative", display: "flex", height: 64, alignItems: "center", justifyContent: "space-between", padding: "0 24px", borderBottom: "1px solid #f0f0f4" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <button onClick={() => navigate(-1)} aria-label="退出游戏" title="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "#111" }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M17 9L20 12L17 15" />
-                <path d="M5 5H19" />
-                <path d="M5 12H14" />
-                <path d="M5 19H19" />
-              </svg>
-            </button>
-            <span style={{ fontSize: 18, color: "#111", fontWeight: 500 }}>{title}（{currentIdx + 1}/{total})</span>
-          </div>
-        </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28, background: "linear-gradient(135deg, rgba(139,92,246,0.05), rgba(59,130,246,0.05))" }}>
-          <div style={{ textAlign: "center" }}>
-            <p style={{ fontSize: 28, fontWeight: 600, color: "#111", letterSpacing: 0.5 }}>准备好了吗？点我开始</p>
-            <p style={{ fontSize: 14, color: "#9ca3af", marginTop: 10 }}>长按麦克风朗读，松开后 AI 四维评分</p>
-          </div>
-          <button onClick={handleStart} style={{ padding: "14px 48px", borderRadius: 999, background: "#7C3AED", color: "#fff", fontSize: 16, fontWeight: 600, border: "none", cursor: "pointer", boxShadow: "0 10px 30px rgba(124,58,237,0.35)", transition: "transform .15s" }} onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.97)")} onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}>
-            开始口语评测
-          </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#6b7280", fontSize: 13 }}>
-            <kbd style={{ borderRadius: 8, background: "#f3f4f6", padding: "6px 12px", fontSize: 13, color: "#111", border: "1px solid #d1d5db", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.06)" }}>Space</kbd>
-            <span>或按空格键开始</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
-      {ready && modelStatus === "loading" && (
+      {modelStatus === "loading" && (
         <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "linear-gradient(160deg, #0b0b12 0%, #17102b 55%, #2a1a4d 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
           <div style={{ fontSize: 17, color: "#fff", letterSpacing: 0.5 }}>正在连接语音评测服务，请稍候</div>
           <div style={{ width: 240, height: 5, borderRadius: 999, background: "rgba(255,255,255,0.14)", overflow: "hidden" }}>
