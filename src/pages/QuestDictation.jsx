@@ -34,6 +34,9 @@ import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
 import SettingsModal from "../components/SettingsModal";
+import LearningContentModal from "../components/LearningContentModal";
+import SentenceTreeModal from "../components/SentenceTreeModal";
+import ReportErrorModal from "../components/ReportErrorModal";
 import ShortcutTips from "../components/quest/ShortcutTips";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
@@ -103,6 +106,9 @@ export default function QuestDictation() {
   const [showModePicker, setShowModePicker] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [showBook, setShowBook] = useState(false);
+  const [showLearning, setShowLearning] = useState(false);
+  const [showTree, setShowTree] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [shuffled, setShuffled] = useState(false);
   const originalSeqRef = useRef(null);
   const [hint, setHint] = useState(null);
@@ -486,14 +492,16 @@ export default function QuestDictation() {
     hintTimerRef.current = setTimeout(() => setHint(null), 1800);
   };
 
-  const goNotes = () => { navigate('/save/notes'); };
+  const openLearning = () => setShowLearning(true);
+  const openTree = () => setShowTree(true);
+  const openReport = () => setShowReport(true);
 
-  const goOutline = () => {
-    let cid = null;
-    try { cid = new URLSearchParams(window.location.search).get('courseId') } catch (e) { cid = null }
-    const target = cid || effectiveCourseId;
-    if (String(target).startsWith('course_')) navigate('/game/' + target);
-    else showHint('当前课程暂无大纲页');
+  const practiceSentence = (s) => {
+    const ru = s?.ru || '';
+    if (!ru) return;
+    const idx = statements.findIndex((x) => x?.russian === ru);
+    if (idx >= 0) { setQuestionIndex(idx); setShowLearning(false); showHint('已定位到该句'); }
+    else showHint('未找到该句所在位置');
   };
 
   const toggleShuffle = () => {
@@ -511,18 +519,6 @@ export default function QuestDictation() {
     resetIndexNow();
   };
 
-  const toggleMarkUnknown = () => {
-    const cur = currentStatement?.russian || '';
-    if (!cur) { showHint('当前没有可标记的句子'); return; }
-    try {
-      const key = 'rlearn_unknown_sentences';
-      const list = JSON.parse(localStorage.getItem(key) || '[]');
-      const exists = list.includes(cur);
-      const next = exists ? list.filter((x) => x !== cur) : [...list, cur];
-      localStorage.setItem(key, JSON.stringify(next));
-      showHint(exists ? '已取消陌生标记' : '已标记为陌生句（' + next.length + '）');
-    } catch (e) { showHint('标记失败'); }
-  };
 
   // ---- 格式化时间 ----
   const formatTime = (seconds) => {
@@ -659,13 +655,13 @@ export default function QuestDictation() {
         <div style={styles.toolbarRight}>
           <button style={styles.iconBtn} onClick={() => setShowSettings(true)} title="设置">⚙</button>
           <button style={styles.iconBtn} onClick={() => setShowBook(true)} title="教材">📖</button>
-          <button style={styles.iconBtn} onClick={goNotes} title="笔记">📓</button>
-          <button style={styles.iconBtn} onClick={goOutline} title="大纲">🗂</button>
+          <button style={styles.iconBtn} onClick={openLearning} title="学习内容">📋</button>
+          <button style={styles.iconBtn} onClick={openTree} title="句子树">🔗</button>
           <button style={styles.iconBtn} onClick={() => setShowModePicker(true)} title="切换游戏模式">🎮</button>
           <button style={styles.iconBtn} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}>{shuffled ? "🔀✓" : "🔀"}</button>
           <button style={styles.iconBtn} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? "▶" : "⏸"}</button>
           <button style={styles.iconBtn} onClick={handleResetProgress} title="重置当前课程进度">↺</button>
-          <button style={styles.iconBtn} onClick={toggleMarkUnknown} title="标记陌生句">⚠</button>
+          <button style={styles.iconBtn} onClick={openReport} title="报告错误">❗</button>
           <button style={styles.iconBtn} onClick={toggleFullscreen} title="全屏">⛶</button>
         </div>
       </div>
@@ -722,6 +718,24 @@ export default function QuestDictation() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* 学习内容弹窗 */}
+      {showLearning && (
+        <LearningContentModal
+          title={localLesson?.title || "学习内容"}
+          sentences={bookSentences}
+          onClose={() => setShowLearning(false)}
+          onPractice={practiceSentence}
+        />
+      )}
+      {/* 句子树弹窗 */}
+      {showTree && (
+        <SentenceTreeModal sentence={currentStatement?.russian || ""} onClose={() => setShowTree(false)} />
+      )}
+      {/* 报告错误弹窗 */}
+      {showReport && (
+        <ReportErrorModal sentence={currentStatement?.russian || ""} onClose={() => setShowReport(false)} />
       )}
 
       {/* 轻提示 */}
