@@ -160,23 +160,31 @@ export const VIDEO_MODES = [
   },
 ]
 
-// ============ 模式图标映射（对标句乐部：44px 圆角图片图标） ============
+// ============ 模式图标映射（对标句乐部：44px 圆角图片图标；WebP 缩略图秒开） ============
 const MODE_IMG = {
-  chinese_to_english: '/images/game-modes/chinese_to_russian.png',
-  dictation: '/images/game-modes/dictation.png',
-  listening: '/images/game-modes/listening.png',
-  speaking: '/images/game-modes/speaking.png',
-  reading: '/images/game-modes/reading.png',
+  chinese_to_english: '/images/game-modes/chinese_to_russian_sm.webp',
+  dictation: '/images/game-modes/dictation_sm.webp',
+  listening: '/images/game-modes/listening_sm.webp',
+  speaking: '/images/game-modes/speaking_sm.webp',
+  reading: '/images/game-modes/reading_sm.webp',
   // 视频类模式复用图标
-  listen_overall: '/images/game-modes/listening.png',
-  intensive: '/images/game-modes/dictation.png',
-  correct: '/images/game-modes/reading.png',
-  follow: '/images/game-modes/speaking.png',
+  listen_overall: '/images/game-modes/listening_sm.webp',
+  intensive: '/images/game-modes/dictation_sm.webp',
+  correct: '/images/game-modes/reading_sm.webp',
+  follow: '/images/game-modes/speaking_sm.webp',
+}
+// 弹窗挂载时预加载所有模式图与 hero 图（保证随时打开随时有）
+const MODE_PRELOAD = Object.values(MODE_IMG).concat(['/images/game-modes/hero.webp'])
+function preloadModeImgs() {
+  try {
+    MODE_PRELOAD.forEach((u) => { const im = new Image(); im.src = u })
+  } catch (e) { /* 忽略 */ }
 }
 
 // ============ 弹窗本体 ============
 export default function ModePickerModal({ title = '本课', modes = COURSE_MODES, onClose, onStart }) {
   const readyModes = modes.filter((m) => m.ready)
+  preloadModeImgs() // 挂载即预加载插图
   const [activeKey, setActiveKey] = useState(readyModes[0]?.key || modes[0].key)
   const active = modes.find((m) => m.key === activeKey) || modes[0]
   const handlePick = (m) => { if (m.ready) setActiveKey(m.key) }
@@ -237,7 +245,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
           {/* hero 横幅：模式图背景 + 渐变遮罩 + 标题/标签 */}
           <div className="relative h-44 md:h-48 w-full flex-shrink-0 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent z-10 pointer-events-none"></div>
-            <img src="/images/game-modes/hero.png" alt={active.name} className="size-full object-cover opacity-65 pointer-events-none" style={{ objectPosition: '50% 42%' }} />
+            <img src="/images/game-modes/hero.webp" alt={active.name} className="size-full object-cover opacity-65 pointer-events-none" style={{ objectPosition: '50% 42%' }} />
             <div className="absolute bottom-3 left-6 md:left-8 z-20 flex items-center gap-2.5 flex-wrap pr-12">
               <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">{active.name}</h1>
               {active.heroTag && (
