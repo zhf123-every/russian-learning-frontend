@@ -216,7 +216,7 @@ export default function QuestPractice() {
   const [showSettings, setShowSettings] = useState(false);
   const [showModePicker, setShowModePicker] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [showBook, setShowBook] = useState(false);
+  const [showAnswerMode, setShowAnswerMode] = useState(false);
   const [showLearning, setShowLearning] = useState(false);
   const [showTree, setShowTree] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -867,7 +867,7 @@ export default function QuestPractice() {
         </div>
         <div style={styles.toolbarRight}>
           <button style={styles.iconBtn} onClick={() => setShowSettings(true)} title="设置">⚙</button>
-          <button style={styles.iconBtn} onClick={() => setShowBook(true)} title="教材">📖</button>
+          <button style={{ ...styles.iconBtn, color: showAnswerMode ? "#7C3AED" : undefined }} onClick={() => setShowAnswerMode((v) => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}>{showAnswerMode ? "📖✓" : "📖"}</button>
           <button style={styles.iconBtn} onClick={openLearning} title="学习内容">📋</button>
           <button style={styles.iconBtn} onClick={openTree} title="句子树">🔗</button>
           <button style={styles.iconBtn} onClick={() => setShowModePicker(true)} title="切换游戏模式">🎮</button>
@@ -913,44 +913,6 @@ export default function QuestPractice() {
         />
       )}
 
-      {/* 教材阅读浮层 */}
-      {showBook && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setShowBook(false)}>
-          <div style={{ width: '100%', maxWidth: 720, maxHeight: '80vh', overflowY: 'auto', background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 12px 40px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>📖 {localLesson?.title || '教材'}</h3>
-              <button style={{ border: 0, background: 'none', fontSize: 24, cursor: 'pointer', color: '#888' }} onClick={() => setShowBook(false)} title="关闭">×</button>
-            </div>
-            {bookSentences.length === 0 ? (
-              <p style={{ color: '#999', textAlign: 'center', padding: '30px 0' }}>本课暂无教材文本</p>
-            ) : bookSentences.map((x, i) => (
-              <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid #F0F0F0' }}>
-                <div style={{ fontSize: 17, fontWeight: 600, fontFamily: '"PT Serif",Georgia,serif', lineHeight: 1.5 }}>{x.ru}</div>
-                <div style={{ fontSize: 14, color: '#666', marginTop: 2 }}>{x.zh}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 学习内容弹窗 */}
-      {showLearning && (
-        <LearningContentModal
-          title={unitMeta?.title || "学习内容"}
-          sentences={bookSentences}
-          onClose={() => setShowLearning(false)}
-          onPractice={practiceSentence}
-        />
-      )}
-      {/* 句子树弹窗 */}
-      {showTree && (
-        <SentenceTreeModal sentence={currentStatement?.russian || ""} onClose={() => setShowTree(false)} />
-      )}
-      {/* 报告错误弹窗 */}
-      {showReport && (
-        <ReportErrorModal sentence={currentStatement?.russian || ""} onClose={() => setShowReport(false)} />
-      )}
-
       {/* 轻提示 */}
       {hint && (
         <div style={{ position: 'fixed', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 200, background: '#333', color: '#fff', padding: '8px 18px', borderRadius: 999, fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', whiteSpace: 'nowrap' }}>{hint.text}</div>
@@ -983,6 +945,11 @@ export default function QuestPractice() {
         <>
         {/* 中文释义 */}
         <div style={styles.hintCard}>
+          {showAnswerMode && currentStatement?.russian && (
+            <div style={styles.answerTop}>
+              答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.russian}</span>
+            </div>
+          )}
           <div style={styles.hintText}>{currentStatement?.chinese}</div>
           {showAnswer && currentStatement?.stressMarked && (
             <div style={styles.answerReveal}>
@@ -1224,6 +1191,14 @@ const styles = {
     fontSize: 16,
     color: "#059669",
     fontWeight: 500,
+  },
+  answerTop: {
+    marginBottom: 10,
+    fontSize: 20,
+    fontWeight: 700,
+    color: "#7C3AED",
+    fontFamily: '"PT Serif", Georgia, serif',
+    lineHeight: 1.4,
   },
   inputCard: {
     width: "100%",
