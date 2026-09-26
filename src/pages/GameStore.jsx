@@ -501,8 +501,10 @@ export default function GameStore() {
           </div>
         </div>
 
-        {/* ===== 通关秘籍 ===== */}
-        {mode !== 'video' && (
+                {/* ===== 内容区（课程与视频统一展示，不再分「通关课程/通关视频」两个区域） ===== */}
+        {(() => {
+          const items = mode === 'guide' ? filteredGuides : mode === 'video' ? filteredVideos : [...filteredGuides, ...filteredVideos]
+          return (
           <section className="mt-10">
             <div className="flex items-center justify-end mb-4">
               <div className="flex items-center gap-3">
@@ -515,75 +517,6 @@ export default function GameStore() {
                     >
                       ＋ 投稿课程
                     </button>
-                    <button
-                      type="button"
-                      onClick={doAdminLogout}
-                      className="text-sm text-gray-400 flex items-center gap-1 cursor-pointer hover:text-gray-600"
-                    >
-                      退出管理
-                    </button>
-                  </>
-                ) : isAdminMode ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowAdmin(true)}
-                    className="text-sm text-primary font-semibold flex items-center gap-1 cursor-pointer hover:underline"
-                  >
-                    🔑 管理登录
-                  </button>
-                ) : null}
-
-              </div>
-            </div>
-            {filteredGuides.length === 0 ? (
-              <div className="py-12 text-center text-gray-400 text-sm">该分类下暂无课程{query ? '，换个关键词试试' : ''}</div>
-            ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              {filteredGuides.map((g) => {
-                const uploaded = uploadedCourses.some(u => u.id === g.id) || cloudCourses.some(c => c.id === g.id)
-                const unlocked = uploaded || g.kind === 'course' || isCoursePurchased(g.id)
-                return (
-                  <div key={g.id} className="group" onClick={() => onCoverCardClick(g)} style={{ cursor: unlocked ? 'pointer' : 'default' }}>
-                    <div
-                      className={`aspect-video rounded-xl overflow-hidden mb-2 flex items-center justify-center group-hover:shadow-lg transition relative ${
-                        g.thumbnail ? '' : `bg-gradient-to-br ${g.cover}`
-                      }`}
-                      style={g.thumbnail ? { backgroundImage: `url(${g.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-                    >
-                      {!g.thumbnail && (
-                        <span className={`font-extrabold text-base ${g.ink} ${g.title.startsWith('字母') ? 'tracking-widest' : ''}`}>{g.word}</span>
-                      )}
-                      <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{g.eps || '1 关'}</span>
-                      {uploaded && (
-                        <span className="absolute top-1.5 left-2 text-[10px] text-white bg-primary/80 rounded px-1.5 py-0.5">投稿</span>
-                      )}
-                    </div>
-                    <div className="text-sm font-semibold line-clamp-1">{g.title}</div>
-                    <div className="text-xs text-gray-400 mt-0.5 truncate">{g.author || '管理员'} · {g.total || 1} 课 · {fmtViews(g.views)} 人在学</div>
-                    {uploaded ? (
-                      <div className="mt-2.5 flex items-center">
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-success">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                          已上线 · 点击开始
-                        </span>
-                      </div>
-                    ) : (
-                      <UnlockBar game={g} />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-            )}
-          </section>
-        )}
-{/* ===== 通关视频 ===== */}
-        {mode !== 'guide' && (
-          <section className="mt-10">
-            <div className="flex items-center justify-end mb-4">
-              <div className="flex items-center gap-3">
-                {adminKey ? (
-                  <>
                     <button
                       type="button"
                       onClick={() => setShowContribute(true)}
@@ -608,43 +541,52 @@ export default function GameStore() {
                     🔑 管理登录
                   </button>
                 ) : null}
-
               </div>
             </div>
-            {filteredVideos.length === 0 ? (
-              <div className="py-12 text-center text-gray-400 text-sm">该分类下暂无视频{query ? '，换个关键词试试' : ''}</div>
+            {items.length === 0 ? (
+              <div className="py-12 text-center text-gray-400 text-sm">该分类下暂无内容{query ? '，换个关键词试试' : ''}</div>
             ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              {filteredVideos.map((v) => {
-                const uploaded = uploadedVideos.some(u => u.id === v.id)
-                const unlocked = uploaded || isCoursePurchased(v.id)
+              {items.map((it) => {
+                const isVideo = it.kind === 'video'
+                const uploaded = isVideo
+                  ? uploadedVideos.some(u => u.id === it.id)
+                  : uploadedCourses.some(u => u.id === it.id) || cloudCourses.some(c => c.id === it.id)
+                const unlocked = uploaded || (!isVideo && it.kind === 'course') || isCoursePurchased(it.id)
+                const showThumb = isVideo ? !!(it.thumbnail && uploaded) : !!it.thumbnail
                 return (
-                  <div key={v.id} className="group" onClick={() => onVideoCardClick(v)} style={{ cursor: unlocked ? 'pointer' : 'default' }}>
+                  <div key={it.id} className="group" onClick={() => (isVideo ? onVideoCardClick(it) : onCoverCardClick(it))} style={{ cursor: unlocked ? 'pointer' : 'default' }}>
                     <div
                       className={`aspect-video rounded-xl overflow-hidden mb-2 flex items-center justify-center group-hover:shadow-lg transition relative ${
-                        v.thumbnail && uploaded ? '' : `bg-gradient-to-br ${v.cover}`
+                        showThumb ? '' : `bg-gradient-to-br ${it.cover}`
                       }`}
-                      style={v.thumbnail && uploaded ? { backgroundImage: `url(${v.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                      style={showThumb ? { backgroundImage: `url(${it.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
                     >
-                      <span className="w-9 h-9 rounded-full bg-white/25 backdrop-blur flex items-center justify-center">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="6 4 20 12 6 20 6 4" /></svg>
-                      </span>
-                      <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{v.eps || '1 集'}</span>
+                      {isVideo ? (
+                        <span className="w-9 h-9 rounded-full bg-white/25 backdrop-blur flex items-center justify-center">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="6 4 20 12 6 20 6 4" /></svg>
+                        </span>
+                      ) : (
+                        !showThumb && (
+                          <span className={`font-extrabold text-base ${it.ink} ${it.title.startsWith('字母') ? 'tracking-widest' : ''}`}>{it.word}</span>
+                        )
+                      )}
+                      <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{it.eps || (isVideo ? '1 集' : '1 关')}</span>
                       {uploaded && (
                         <span className="absolute top-1.5 left-2 text-[10px] text-white bg-primary/80 rounded px-1.5 py-0.5">投稿</span>
                       )}
                     </div>
-                    <div className="text-sm font-semibold line-clamp-1">{v.title}</div>
-                    <div className="text-xs text-gray-400 mt-0.5 truncate">{v.author || '管理员'} · {v.total || 1} 课 · {fmtViews(v.views)} 人在学</div>
+                    <div className="text-sm font-semibold line-clamp-1">{it.title}</div>
+                    <div className="text-xs text-gray-400 mt-0.5 truncate">{it.author || '管理员'} · {it.total || 1} 课 · {fmtViews(it.views)} 人在学</div>
                     {uploaded ? (
                       <div className="mt-2.5 flex items-center">
                         <span className="inline-flex items-center gap-1 text-xs font-semibold text-success">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                          已上线 · 点卡片选模式
+                          已上线 · 点击开始
                         </span>
                       </div>
                     ) : (
-                      <UnlockBar game={v} />
+                      <UnlockBar game={it} />
                     )}
                   </div>
                 )
@@ -652,8 +594,9 @@ export default function GameStore() {
             </div>
             )}
           </section>
-        )}
-        </>
+          )
+        })()}
+</>
 
         
         )}
