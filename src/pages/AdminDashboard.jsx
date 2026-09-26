@@ -37,6 +37,7 @@ const emptyForm = () => ({
   lessons: 12,
   students: 0,
   tags: [],
+  isGrammar: false, // 语法课程标记（学习该课答题点亮「变格天赋树」六格数据）
   coverUrl: '',
   coverName: '',
   materials: [], // { name, type, url }
@@ -123,6 +124,7 @@ export default function AdminDashboard() {
       tags: form.tags,
       cover: form.coverUrl || 'https://picsum.photos/seed/course_' + now + '/400/280',
       materials: form.materials,
+      isGrammar: !!form.isGrammar,
       units: [], // 第二步「课程序」填充
       status,
       updatedAt: now,
@@ -190,6 +192,7 @@ export default function AdminDashboard() {
       coverUrl: c.cover || '',
       coverName: '',
       materials: c.materials || [],
+      isGrammar: !!c.isGrammar,
     })
     setEditingId(c.id)
     setView('list')
@@ -750,6 +753,15 @@ export default function AdminDashboard() {
                 <select className="select select-bordered" value={form.textbook} onChange={e => setField('textbook', e.target.value)}>
                   {TEXTBOOKS.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
+              </div>
+
+              <div className="form-control sm:col-span-2">
+                <label className="label"><span className="label-text">课程类型</span></label>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                  <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" checked={!!form.isGrammar} onChange={e => setField('isGrammar', e.target.checked)} />
+                  <span className="text-sm font-medium">语法课程</span>
+                  <span className="text-xs text-gray-400">勾选后，学习该课程的答题数据会点亮「通关之路 · 变格天赋树」（六格掌握度）；非语法课程不记六格</span>
+                </label>
               </div>
 
               <div className="form-control">
