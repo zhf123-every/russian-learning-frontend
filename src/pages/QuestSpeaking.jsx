@@ -863,7 +863,7 @@ export default function QuestSpeaking() {
             {title}（{currentIdx + 1}/{total})
           </span>
         </div>
-        <div style={{ display: "none", alignItems: "center", gap: 16, flexWrap: "nowrap" }} className="md:flex">
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "nowrap" }}>
           <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowSettings(true)} title="设置"><Icon name="gear" /></button>
           <button style={{ ...iconBtn, color: showAnswerMode ? "#7C3AED" : "#111" }} onClick={() => setShowAnswerMode(v => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}><Icon name="bookOpen" /></button>
           <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowLearning(true)} title="查看课程学习内容（Ctrl+1）"><Icon name="notebook" /></button>
@@ -968,37 +968,10 @@ export default function QuestSpeaking() {
                 <div style={{ fontSize: 28, color: "#6b7280", fontWeight: 500, letterSpacing: 1 }}>请仔细聆听</div>
               ) : (
                 <>
-                  {/* 词卡行：每词一张 word-card（中译俄格式：重音符→大字→词性色下划线→中文→性数格→词性） */}
-                  <div style={{ position: "relative", display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "flex-start", gap: 16, animation: "listen-fade .3s ease" }}>
-                    {(annot.length ? annot : [{ form: current.stressMarked || current.russian, lemma: current.russian, pos: "", posColor: "", grammarLabel: "", roleLabel: "", chinese: current.chinese }]).map((w, i) => {
-                      const color = w.posColor || "#9CA3AF";
-                      const roleLabel = w.roleLabel || "";
-                      const grammarLabel = w.grammarLabel || "";
-                      const pl = getPosLabel(w.pos);
-                      const showZh = annot.length <= 1 && (w.chinese || current.chinese);
-                      const displayWord = w.form || w.lemma || "";
-                      return (
-                        <div key={i} style={{ position: "relative", display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "20px 24px 14px", minWidth: 120, border: "1px solid " + color + "60", borderRadius: 12, background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-                          {roleLabel && <span style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", padding: "2px 10px", borderRadius: 10, fontSize: 11, fontWeight: 700, color: "#fff", background: color, whiteSpace: "nowrap" }}>{roleLabel}</span>}
-                          <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 4, marginTop: 4, minHeight: 18, fontFamily: '"PT Serif", Georgia, serif' }}>{displayWord}</div>
-                          <div style={{ fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: "2.5rem", fontWeight: 700, color: "#1F2937", lineHeight: 1.2, marginBottom: 6 }}>{displayWord}</div>
-                          <div style={{ width: "100%", height: 4, borderRadius: 2, marginBottom: 8, minWidth: 50, background: color }} />
-                          {showZh && <div style={{ fontSize: 14, color: "#4B5563", fontWeight: 500 }}>{w.chinese || current.chinese}</div>}
-                          {grammarLabel && <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>{grammarLabel}</div>}
-                          {pl !== "其他" && <div style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 500, marginTop: 2 }}>{pl}</div>}
-                        </div>
-                      );
-                    })}
-                    <TipBtn label="逐词播放" keys={["Ctrl", "Shift", ","]} style={{ position: "absolute", top: -18, right: 4 }}>
-                      <button onClick={() => { playSingleSlow(); }} aria-label="逐词播放" style={{ fontSize: 20, background: "none", border: "none", cursor: "pointer", color: "#6b7280", transition: "transform .15s" }} onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")} onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}>
-                        🐢
-                      </button>
-                    </TipBtn>
-                  </div>
-                  {/* 整句中文（多词句子时） */}
-                  {annot.length > 1 && current.chinese && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 24, animation: "listen-fade .3s .06s ease both" }}>
-                      <span style={{ whiteSpace: "pre-wrap", fontSize: 16, color: "#4B5563", fontWeight: 500 }}>{current.chinese}</span>
+                  {/* 口语评测：不展示词卡，只显示中文 */}
+                  {current.chinese && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, animation: "listen-fade .3s ease" }}>
+                      <span style={{ whiteSpace: "pre-wrap", fontSize: 22, color: "#374151", fontWeight: 600, textAlign: "center", lineHeight: 1.6 }}>{current.chinese}</span>
                     </div>
                   )}
                   {/* 卡片区：框外笔记按钮（居中） */}

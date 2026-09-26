@@ -138,25 +138,43 @@ export default function QuestDictation() {
     if (maxCombo > 0) recordPeak({ maxCombo })
   }, [maxCombo])
 
-  // ---- 俄语发音（Web Speech API）----
+  // ---- 俄语发音（与中译俄一致：/api/tts voice=alena/type=statement，同句缓存）----
+  const ttsAudioRef = useRef(null);
+  const ttsUrlCacheRef = useRef({});
+  const ensureTtsUrl = useCallback(async (text) => {
+    if (!text) return "";
+    if (ttsUrlCacheRef.current[text]) return ttsUrlCacheRef.current[text];
+    let url = "";
+    try {
+      const res = await fetch(`${API_BASE}/api/tts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice: "alena", id: effectiveCourseId, type: "statement" }),
+      });
+      const data = await res.json();
+      if (data.ok && data.audio_url) url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
+    } catch (e) { console.warn("TTS 获取失败:", e); }
+    if (url) ttsUrlCacheRef.current[text] = url;
+    return url;
+  }, [effectiveCourseId]);
+
   const playAudio = useCallback((text) => {
     const textToPlay = text || currentStatement?.russian;
-    if (!textToPlay || typeof window === "undefined" || !window.speechSynthesis) return;
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(textToPlay);
-      utterance.lang = "ru-RU";
-      utterance.rate = 0.85;
-      utterance.pitch = 1;
-      utterance.onstart = () => setIsPlaying(true);
-      utterance.onend = () => setIsPlaying(false);
-      utterance.onerror = () => setIsPlaying(false);
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      console.warn("发音失败:", e);
-      setIsPlaying(false);
-    }
-  }, [currentStatement?.russian]);
+    if (!textToPlay) return;
+    (async () => {
+      try {
+        const url = await ensureTtsUrl(textToPlay);
+        if (!url) return;
+        if (ttsAudioRef.current) { ttsAudioRef.current.pause(); ttsAudioRef.current.onended = null; }
+        const audio = new Audio(url);
+        ttsAudioRef.current = audio;
+        audio.onplay = () => setIsPlaying(true);
+        audio.onended = () => { setIsPlaying(false); ttsAudioRef.current = null; };
+        audio.onerror = () => { setIsPlaying(false); ttsAudioRef.current = null; };
+        audio.play().catch((e) => { console.warn("播放失败:", e); setIsPlaying(false); });
+      } catch (e) { setIsPlaying(false); }
+    })();
+  }, [currentStatement?.russian, ensureTtsUrl]);
 
   // ---- 全局快捷键 ----
   const { isComposingRef } = useKeyboardShortcuts({
@@ -460,9 +478,10 @@ export default function QuestDictation() {
   };
 
   const togglePause = () => {
-    if (typeof window === "undefined" || !window.speechSynthesis) { setIsPaused(false); return; }
-    if (window.speechSynthesis.paused) { window.speechSynthesis.resume(); setIsPaused(false); }
-    else { window.speechSynthesis.pause(); setIsPaused(true); }
+    const a = ttsAudioRef.current;
+    if (!a) { setIsPaused(false); return; }
+    if (a.paused) { a.play().catch(() => {}); setIsPaused(false); }
+    else { a.pause(); setIsPaused(true); }
   };
 
   const toggleFullscreen = () => {
@@ -624,23 +643,6 @@ export default function QuestDictation() {
         </div>
       )}
 
-      {/* 本地投稿课程：本课单词热身区（先学单词，再逐句听写渐进） */}
-      {isLocalMode && !loading && !loadError && Array.isArray(localLesson?.words) && localLesson.words.length > 0 && (
-        <div style={{ margin: '14px 18px 0', padding: '14px 16px', borderRadius: 14, background: '#F5F3FF', border: '1px solid #EDE9FE' }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: '#5b21b6', marginBottom: 10 }}>
-            📖 本课单词（{localLesson.words.length} 个）— 先记词，再逐句听写
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {localLesson.words.map((w, i) => (
-              <span key={i} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, background: '#fff', border: '1px solid #E9D5FF', borderRadius: 999, padding: '4px 12px', fontSize: 13 }}>
-                <span style={{ fontWeight: 700, color: '#3b0764', fontFamily: '"PT Serif",Georgia,serif' }}>{w.ru}</span>
-                {w.zh && <span style={{ color: '#6d28d9', fontSize: 12 }}>{w.zh}</span>}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* 顶部工具栏（对标句乐部：左退出+标题，右图标组） */}
       <div style={styles.toolbar}>
         <div style={styles.toolbarLeft}>
@@ -747,61 +749,26 @@ export default function QuestDictation() {
       {/* 主内容区 */}
       <div style={styles.mainContent}>
 
-        {/* 播放按钮（替代中文释义） */}
-        <div style={styles.playSection}>
-          <button
-            style={{
-              ...styles.playButton,
-              animation: isPlaying ? "play-pulse 1.2s ease infinite" : "none",
-              background: isPlaying
-                ? "linear-gradient(135deg, oklch(18% 0.0249 284.3), oklch(15% 0.0249 284.3))"
-                : "linear-gradient(135deg, oklch(23.27% 0.0249 284.3), oklch(18% 0.0249 284.3))",
-            }}
-            onClick={() => playAudio()}
-            title="播放发音（空格键重播）"
-          >
-            {isPlaying ? (
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2">
-                <rect x="6" y="4" width="4" height="16" rx="1" />
-                <rect x="14" y="4" width="4" height="16" rx="1" />
-              </svg>
-            ) : (
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="6 3 20 12 6 21 6 3" />
-              </svg>
-            )}
-          </button>
-          <div style={styles.playHint}>
-            {isPlaying ? "正在播放..." : "点击播放 · 输入为空时按空格键重播"}
+        {/* 字幕 / 看答案模式（保留 Ctrl+; 与 📖 功能，无播放按钮） */}
+        {showAnswerMode && currentStatement?.russian && (
+          <div style={styles.subtitleBlur}>
+            <span style={{ fontSize: 11, color: "#7C3AED", marginBottom: 4, display: "block", fontWeight: 600 }}>
+              看答案模式 · 当前句完整答案
+            </span>
+            <span style={styles.subtitleText}>{currentStatement?.russian}</span>
           </div>
+        )}
+        {!showAnswerMode && showSubtitle && (
+          <div style={styles.subtitleBlur}>
+            <span style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 4, display: "block" }}>
+              字幕（模糊预览，答完后可看清）
+            </span>
+            <span style={styles.subtitleText}>{currentStatement?.russian}</span>
+          </div>
+        )}
 
-          {/* 看答案模式（📖 开关）：完整答案 */}
-          {showAnswerMode && currentStatement?.russian && (
-            <div style={styles.subtitleBlur}>
-              <span style={{ fontSize: 11, color: "#7C3AED", marginBottom: 4, display: "block", fontWeight: 600 }}>
-                看答案模式 · 当前句完整答案
-              </span>
-              <span style={styles.subtitleText}>{currentStatement?.russian}</span>
-            </div>
-          )}
-          {/* 模糊字幕（Ctrl+; 切换） */}
-          {!showAnswerMode && showSubtitle && (
-            <div style={styles.subtitleBlur}>
-              <span style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 4, display: "block" }}>
-                字幕（模糊预览，答完后可看清）
-              </span>
-              <span style={styles.subtitleText}>{currentStatement?.russian}</span>
-            </div>
-          )}
-          {!showAnswerMode && !showSubtitle && (
-            <div style={{ fontSize: 12, color: "#A1A1AA", marginTop: 8 }}>
-              按 Ctrl+; 查看模糊字幕
-            </div>
-          )}
-        </div>
-
-        {/* 输入组件 */}
-        <div style={styles.inputCard}>
+        {/* 输入区：纯下划线（无卡片框） */}
+        <div style={{ width: "100%" }}>
           <QuestionInput
             userInputWords={userInputWords}
             mode={mode}
@@ -1034,10 +1001,6 @@ const styles = {
   },
   inputCard: {
     width: "100%",
-    background: "#fff",
-    borderRadius: 16,
-    boxShadow: "0 4px 16px rgba(26,26,30,0.10)",
-    minHeight: 140,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",

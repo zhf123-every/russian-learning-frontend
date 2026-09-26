@@ -730,7 +730,7 @@ export default function QuestListening() {
             {title}（{currentIdx + 1}/{total})
           </span>
         </div>
-        <div style={{ display: "none", alignItems: "center", gap: 16, flexWrap: "nowrap" }} className="md:flex">
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "nowrap" }}>
           <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowSettings(true)} title="设置"><Icon name="gear" /></button>
           <button style={{ ...iconBtn, color: showAnswerMode ? "#7C3AED" : "#111" }} onClick={() => setShowAnswerMode(v => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}><Icon name="bookOpen" /></button>
           <button style={{ ...iconBtn, color: "#111" }} onClick={() => setShowLearning(true)} title="查看课程学习内容（Ctrl+1）"><Icon name="notebook" /></button>
