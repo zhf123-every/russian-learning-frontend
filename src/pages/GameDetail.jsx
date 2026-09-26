@@ -57,6 +57,7 @@ export default function GameDetail() {
   const [loading, setLoading] = useState(true)
   const [isDemo, setIsDemo] = useState(false)
   const [pickedUnit, setPickedUnit] = useState(null)
+  const [activeTab, setActiveTab] = useState('大纲') // 句乐部式 Tab：学习路线 / 大纲 / 评价
   const { setHeaderLeft } = usePageHeader() // 页眉左侧插槽（替换收起按钮）
 
   useEffect(() => {
@@ -221,6 +222,23 @@ export default function GameDetail() {
           </div>
         </div>
 
+        {/* ===== Tab 导航（对标句乐部） ===== */}
+        <div className="mb-6 flex gap-8 border-b border-gray-100">
+          {['学习路线', '大纲', '评价'].map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setActiveTab(t)}
+              className={`relative cursor-pointer py-4 text-[15px] font-bold transition-colors ${activeTab === t ? 'text-gray-900' : 'text-gray-400 hover:text-gray-700'}`}
+            >
+              {t}
+              {activeTab === t && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === '学习路线' && (
+        <>
         {/* ===== 学习路线 ===== */}
         <div className="card" style={{ padding: 20, borderRadius: 16, marginBottom: 20 }}>
           <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>学习路线</div>
@@ -248,6 +266,11 @@ export default function GameDetail() {
           </div>
         </div>
 
+        </>
+        )}
+
+        {activeTab === '大纲' && (
+        <>
         {/* ===== 大纲 ===== */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ fontSize: 18, fontWeight: 800 }}>课程大纲</div>
@@ -284,6 +307,17 @@ export default function GameDetail() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        </>
+        )}
+
+        {activeTab === '评价' && (
+          <div className="card" style={{ padding: 48, borderRadius: 16, textAlign: 'center', color: '#9ca3af', marginBottom: 40 }}>
+            <div style={{ fontSize: 34 }}>💬</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#6b7280', marginTop: 10 }}>暂无评价</div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>学习课程后可以来评价</div>
           </div>
         )}
       </div>
