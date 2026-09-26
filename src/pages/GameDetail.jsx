@@ -279,7 +279,7 @@ export default function GameDetail() {
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>加载大纲…</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 14, marginBottom: 40 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 20, marginBottom: 40 }}>
             {units.map((u, i) => {
               const dm = DIFF_META[u.difficulty] || DIFF_META.easy
               const sm = STATUS_META[u.status] || STATUS_META['未开始']
