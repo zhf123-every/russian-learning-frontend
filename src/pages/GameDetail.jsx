@@ -58,6 +58,42 @@ export default function GameDetail() {
   const [isDemo, setIsDemo] = useState(false)
   const [pickedUnit, setPickedUnit] = useState(null)
   const [activeTab, setActiveTab] = useState('大纲') // 句乐部式 Tab：学习路线 / 大纲 / 评价
+
+  // ===== 评价逻辑（localStorage 持久化 rlearn_course_reviews） =====
+  const REVIEW_KEY = 'rlearn_course_reviews'
+  const [reviews, setReviews] = useState([])
+  const [showReviewModal, setShowReviewModal] = useState(false)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewText, setReviewText] = useState('')
+  const [reviewName, setReviewName] = useState('')
+
+  const loadReviews = () => {
+    const all = JSON.parse(localStorage.getItem(REVIEW_KEY) || '{}')
+    return all[game?.id] || []
+  }
+  useEffect(() => { setReviews(loadReviews()) }, [game])
+
+  const submitReview = () => {
+    if (!reviewText.trim()) { toast('请写下你的学习感受'); return }
+    const all = JSON.parse(localStorage.getItem(REVIEW_KEY) || '{}')
+    const list = all[game.id] || []
+    list.unshift({ id: 'r_' + Date.now(), name: reviewName.trim() || '我', rating: reviewRating, text: reviewText.trim(), time: Date.now() })
+    all[game.id] = list
+    localStorage.setItem(REVIEW_KEY, JSON.stringify(all))
+    setReviews(list)
+    setShowReviewModal(false)
+    setReviewText('')
+    setReviewName('')
+    toast('评价已发布')
+  }
+
+  const fmtTime = (t) => {
+    const d = new Date(t), diff = Date.now() - t
+    if (diff < 3600e3) return '刚刚'
+    if (diff < 86400e3) return Math.floor(diff / 3600e3) + ' 小时前'
+    if (diff < 7 * 86400e3) return Math.floor(diff / 86400e3) + ' 天前'
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
   const { setHeaderLeft } = usePageHeader() // 页眉左侧插槽（替换收起按钮）
 
   useEffect(() => {
@@ -368,10 +404,54 @@ export default function GameDetail() {
         )}
 
         {activeTab === '评价' && (
-          <div className="card" style={{ padding: 48, borderRadius: 16, textAlign: 'center', color: '#9ca3af', marginBottom: 40 }}>
-            <div style={{ fontSize: 34 }}>💬</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: '#6b7280', marginTop: 10 }}>暂无评价</div>
-            <div style={{ fontSize: 13, marginTop: 4 }}>学习课程后可以来评价</div>
+          <div className="card" style={{ padding: 20, borderRadius: 16, marginBottom: 40 }}>
+            {/* 头部：评分汇总 + 写评价 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {reviews.length > 0 ? (
+                  <>
+                    <span style={{ fontSize: 34, fontWeight: 800, color: '#111827' }}>{(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)}</span>
+                    <div>
+                      <div style={{ fontSize: 15, color: '#f59e0b', letterSpacing: 2 }}>
+                        {'★'.repeat(Math.round(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length))}{'☆'.repeat(5 - Math.round(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length))}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{reviews.length} 条评价</div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#374151' }}>课程评价</div>
+                )}
+              </div>
+              <button type="button" onClick={() => setShowReviewModal(true)} className="rounded-full bg-primary px-4 py-2 text-sm font-bold text-white transition hover:brightness-110">
+                ✏️ 写评价
+              </button>
+            </div>
+
+            {reviews.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#9ca3af', padding: '26px 0 10px' }}>
+                <div style={{ fontSize: 34 }}>💬</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#6b7280', marginTop: 10 }}>暂无评价</div>
+                <div style={{ fontSize: 13, marginTop: 4 }}>学习课程后可以来评价</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {reviews.map((r) => (
+                  <div key={r.id} style={{ display: 'flex', gap: 12, padding: '14px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#f3e8ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0 }}>
+                      {String(r.name).charAt(0)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{r.name}</span>
+                        <span style={{ fontSize: 12, color: '#f59e0b', letterSpacing: 1 }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                      </div>
+                      <div style={{ fontSize: 13.5, color: '#374151', marginTop: 6, lineHeight: 1.6 }}>{r.text}</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>{fmtTime(r.time)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -384,6 +464,26 @@ export default function GameDetail() {
           onClose={() => setPickedUnit(null)}
           onStart={handleStart}
         />
+      )}
+
+      {/* ===== 写评价弹窗 ===== */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowReviewModal(false)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-extrabold text-gray-900">评价课程</h3>
+            <div style={{ display: 'flex', gap: 6, margin: '14px 0 10px' }}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} type="button" onClick={() => setReviewRating(n)} style={{ fontSize: 28, color: n <= reviewRating ? '#f59e0b' : '#d1d5db', border: 0, background: 'none', cursor: 'pointer', lineHeight: 1 }}>★</button>
+              ))}
+            </div>
+            <input value={reviewName} onChange={(e) => setReviewName(e.target.value)} placeholder="昵称（默认：我）" className="mb-3 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none transition focus:border-primary" />
+            <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder="写下你的学习感受…" rows={4} className="w-full resize-none rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none transition focus:border-primary" />
+            <div className="mt-5 flex gap-3">
+              <button type="button" onClick={() => setShowReviewModal(false)} className="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50">取消</button>
+              <button type="button" onClick={submitReview} className="flex-1 rounded-full bg-primary py-2.5 text-sm font-bold text-white transition hover:brightness-110">提交评价</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
