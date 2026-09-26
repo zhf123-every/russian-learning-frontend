@@ -34,6 +34,7 @@ import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
 import SettingsModal from "../components/SettingsModal";
+import Icon from "../components/TopBarIcons";
 import LearningContentModal from "../components/LearningContentModal";
 import SentenceTreeModal from "../components/SentenceTreeModal";
 import ReportErrorModal from "../components/ReportErrorModal";
@@ -653,16 +654,16 @@ export default function QuestDictation() {
           </div>
         </div>
         <div style={styles.toolbarRight}>
-          <button style={styles.iconBtn} onClick={() => setShowSettings(true)} title="设置">⚙</button>
-          <button style={{ ...styles.iconBtn, color: showAnswerMode ? "#7C3AED" : undefined }} onClick={() => setShowAnswerMode((v) => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}>{showAnswerMode ? "📖✓" : "📖"}</button>
-          <button style={styles.iconBtn} onClick={openLearning} title="查看课程学习内容（Ctrl+1）">📋</button>
-          <button style={styles.iconBtn} onClick={openTree} title="句子树">🔗</button>
-          <button style={styles.iconBtn} onClick={() => setShowModePicker(true)} title="切换游戏模式">🎮</button>
-          <button style={styles.iconBtn} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}>{shuffled ? "🔀✓" : "🔀"}</button>
-          <button style={styles.iconBtn} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? "▶" : "⏸"}</button>
-          <button style={styles.iconBtn} onClick={handleResetProgress} title="重置当前课程进度">↺</button>
-          <button style={styles.iconBtn} onClick={openReport} title="报告错误">❗</button>
-          <button style={styles.iconBtn} onClick={toggleFullscreen} title="全屏">⛶</button>
+          <button style={styles.iconBtn} onClick={() => setShowSettings(true)} title="设置"><Icon name="gear" /></button>
+          <button style={{ ...styles.iconBtn, color: showAnswerMode ? "#7C3AED" : undefined }} onClick={() => setShowAnswerMode((v) => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}><Icon name="bookOpen" color={showAnswerMode ? "#7C3AED" : undefined} /></button>
+          <button style={styles.iconBtn} onClick={openLearning} title="查看课程学习内容（Ctrl+1）"><Icon name="notebook" /></button>
+          <button style={styles.iconBtn} onClick={openTree} title="句子树"><Icon name="tree" /></button>
+          <button style={styles.iconBtn} onClick={() => setShowModePicker(true)} title="切换游戏模式"><Icon name="gamepad" /></button>
+          <button style={styles.iconBtn} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}><Icon name="shuffle" color={shuffled ? "#7C3AED" : undefined} /></button>
+          <button style={styles.iconBtn} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? <Icon name="play" /> : <Icon name="pause" />}</button>
+          <button style={styles.iconBtn} onClick={handleResetProgress} title="重置当前课程进度"><Icon name="rotateCcw" /></button>
+          <button style={styles.iconBtn} onClick={openReport} title="报告错误"><Icon name="alert" /></button>
+          <button style={styles.iconBtn} onClick={toggleFullscreen} title="全屏"><Icon name="maximize" /></button>
         </div>
       </div>
 
