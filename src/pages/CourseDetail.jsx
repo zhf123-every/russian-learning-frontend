@@ -67,8 +67,8 @@ export default function CourseDetail() {
   const pad = (n) => String(n + 1).padStart(2, '0')
   // 人数格式化（万单位）
   const fmtViews = (n) => { const v = Number(n) || 0; return v >= 10000 ? (v / 10000).toFixed(1) + '万' : String(v) }
-  // 点击「可试学」课时 → 先进入沉浸式预加载页，加载完成后自动跳游戏详情页（/game/:id）
-  const goGameDetail = (lesson) => navigate(`/preload/${course.id}/${lesson?.lessonId || 'trial'}`)
+  // 点击「可试学」课时 → 跳到游戏详情页（/game/:id，学习路线+大纲）
+  const goGameDetail = () => navigate(`/game/${course.id}`)
 
   // 开通会员（模拟购买解锁）：写入购买记录 → 全课时解锁
   const handleOpenVip = () => {
@@ -153,7 +153,7 @@ export default function CourseDetail() {
               <button type="button" onClick={() => setShowVipModal(true)} className="detail-btn-ghost rounded-full border border-gray-300 px-5 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
                 开通会员
               </button>
-              <button type="button" onClick={() => navigate(`/preload/${course.id}/trial`)} className="detail-btn-primary inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:brightness-110">
+              <button type="button" onClick={() => navigate(`/game/${course.id}`)} className="detail-btn-primary inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:brightness-110">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4" /></svg>
                 试学前 {freeTrialCount} 课
               </button>
@@ -190,7 +190,7 @@ export default function CourseDetail() {
           {visible.map((l, i) => {
             const isOpen = Boolean(l.isFree) || vipUnlocked
             return (
-              <li key={l.lessonId || i} onClick={isOpen ? () => goGameDetail(l) : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${isOpen ? 'cursor-pointer bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-gray-50'}`}>
+              <li key={l.lessonId || i} onClick={isOpen ? goGameDetail : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${isOpen ? 'cursor-pointer bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-gray-50'}`}>
                 <span className={`w-8 shrink-0 text-sm font-bold ${isOpen ? 'text-amber-600' : 'text-gray-300'}`}>{pad(i)}</span>
                 <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isOpen ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400'}`}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M16 13H8" /><path d="M16 17H8" /></svg>

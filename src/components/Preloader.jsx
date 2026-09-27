@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 // 轮播提示文案（每 2 秒轮换）
 const TIPS = [
@@ -11,13 +11,22 @@ const TIPS = [
 // 波形分段刻度数
 const BARS = 48;
 
+// 练习模式 → 答题页路由前缀
+const MODE_TO_PATH = {
+  chinese_to_english: "quest-practice",
+  dictation: "quest-dictation",
+  listening: "quest-listening",
+  speaking: "quest-speaking",
+};
+
 /**
- * 沉浸式预加载页：大纲页点击「可试学」课时后先进入本页，
- * 模拟加载（进度 0→100%）完成后自动跳转到游戏详情页。
- * 路由：/preload/:courseId/:lessonId
+ * 沉浸式预加载页：在游戏详情页选择练习模式后先进入本页，
+ * 模拟加载（进度 0→100%）完成后自动跳转到对应答题页。
+ * 路由：/preload/:mode/:unitId?courseId=xxx&src=local(可选)&pack=xxx(可选)
  */
 export default function Preloader() {
-  const { courseId, lessonId } = useParams();
+  const { mode, unitId } = useParams();
+  const [search] = useSearchParams();
   const navigate = useNavigate();
   const [progress, setProgress] = useState(0);
   const [tipIdx, setTipIdx] = useState(0);
@@ -36,15 +45,17 @@ export default function Preloader() {
     return () => clearInterval(tv);
   }, []);
 
-  // 进度满 100% 后等待 500ms 自动跳转游戏详情页
+  // 进度满 100% 后等待 500ms 自动跳转对应答题页（原 query 原样透传）
   useEffect(() => {
     if (progress >= 100) {
       const t = setTimeout(() => {
-        navigate(`/game/${courseId}${lessonId ? `?lessonId=${lessonId}` : ""}`);
+        const target = MODE_TO_PATH[mode] || "quest-practice";
+        const qs = search.toString();
+        navigate(`/${target}/${unitId}${qs ? `?${qs}` : ""}`);
       }, 500);
       return () => clearTimeout(t);
     }
-  }, [progress, courseId, lessonId, navigate]);
+  }, [progress, mode, unitId, search, navigate]);
 
   const lit = Math.round((progress / 100) * BARS);
 

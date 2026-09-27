@@ -234,10 +234,12 @@ export default function GameDetail() {
     const isLocalCourse = !game.packId && Array.isArray(u.sentences) && u.sentences.length > 0
     if (isLocalCourse) {
       try { sessionStorage.setItem('rlearn_local_lesson_' + u.id, JSON.stringify(u)) } catch (e) { /* 忽略 */ }
-      if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}?src=local&courseId=${game.id}`)
-      else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}?src=local&courseId=${game.id}`)
-      else if (mode.key === 'speaking') navigate(`/quest-speaking/${u.id}?src=local&courseId=${game.id}`)
-      else toast('该模式暂仅支持内置课程包，投稿课程支持「中译俄 / 听写」两种模式')
+      if (mode.key === 'chinese_to_english' || mode.key === 'dictation' || mode.key === 'listening' || mode.key === 'speaking') {
+        // 先进入沉浸式预加载页，加载完成后自动跳对应答题页
+        navigate(`/preload/${mode.key}/${u.id}?courseId=${game.id}&src=local`)
+      } else {
+        toast('该模式暂仅支持内置课程包，投稿课程支持「中译俄 / 听写 / 听力 / 口语」模式')
+      }
       return
     }
     // 后台课程课时但没有挂内容 → 提示，不进学习页（避免跳到不存在的后端单元）
@@ -245,11 +247,9 @@ export default function GameDetail() {
       toast('该课时还没有内容：请先在后台上传生词表并生成渐进例句')
       return
     }
-    const packQ = game.packId ? `?pack=${game.packId}` : ''
-    if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u.id}${packQ}${packQ ? '&' : '?'}courseId=${game.id}`)
-    else if (mode.key === 'dictation') navigate(`/quest-dictation/${u.id}${packQ}${packQ ? '&' : '?'}courseId=${game.id}`)
-    else if (mode.key === 'speaking') navigate(`/quest-speaking/${u.id}${packQ}${packQ ? '&' : '?'}courseId=${game.id}`)
-    else if (mode.key === 'reading') navigate(`/quest/${game.packId || ''}?mode=reading`)
+    if (mode.key === 'reading') { navigate(`/quest/${game.packId || ''}?mode=reading`); return }
+    const packQ = game.packId ? `pack=${game.packId}&` : ''
+    navigate(`/preload/${mode.key}/${u.id}?${packQ}courseId=${game.id}`)
   }
 
   // 学习路线：抽首尾几个节点展示（完整路线见大纲）

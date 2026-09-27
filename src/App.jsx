@@ -66,7 +66,7 @@ export default function App() {
         <Route path="/admin/lessons/:id" element={<AdminLessons />} />
         <Route path="/my-games" element={<MyGames />} />
         <Route path="/game/:id" element={<GameDetail />} />
-        <Route path="/preload/:courseId/:lessonId" element={<Preloader />} />
+        <Route path="/preload/:mode/:unitId" element={<Preloader />} />
         <Route path="/course/:id" element={<CourseDetail />} />
         <Route path="/journey" element={<Journey />} />
         <Route path="/square" element={<SquarePage />} />
