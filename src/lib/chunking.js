@@ -99,7 +99,8 @@ export function buildZhIndex(wordList) {
 }
 
 // ---- 词典词形还原索引（懒构建一次）：RU_DICT/RU_DICT_FULL 直接形 + 变格/变位表词形 → 中文 ----
-// 注意：词典 script（RU_DICT_FULL）是异步加载的，若构建时为空则**不缓存**，下次调用重新构建
+// 注意：词典 script（RU_DICT_FULL）是异步加载的，若构建时为空则**不缓存**，下次调用重新构建；
+//      词典词形带重音标记（краси'вая），索引键统一去重音
 let _dictZhIdx = null;
 function dictZhIndex() {
   if (_dictZhIdx) return _dictZhIdx;
@@ -108,19 +109,20 @@ function dictZhIndex() {
     const w = typeof window !== "undefined" ? window : {};
     const basic = w.RU_DICT || {};
     const full = w.RU_DICT_FULL || {};
-    for (const k in basic) { const e = basic[k]; if (e && e.z) idx[String(k).toLowerCase()] = e.z; }
+    const norm = (s) => String(s || "").toLowerCase().replace(/['’`]/g, "").replace(/[«"'(]+|[»"').,;:!?…]+$/g, "").trim();
+    for (const k in basic) { const e = basic[k]; if (e && e.z) { const kk = norm(k); if (kk && !idx[kk]) idx[kk] = e.z; } }
     for (const k in full) {
       const e = full[k]; if (!e) continue;
       const z = e.z || e.e; if (!z) continue;
-      const kk = String(k).toLowerCase();
-      if (!idx[kk]) idx[kk] = z;
+      const kk = norm(k);
+      if (kk && !idx[kk]) idx[kk] = z;
       const f = e.f; if (!f) continue;
       const lists = [f.m, f.f, f.n, f.pl];
       if (f.v) lists.push(f.v);
       for (const L of lists) {
         if (!Array.isArray(L)) continue;
         for (const x of L) {
-          const fw = String(x || "").toLowerCase().replace(/[«"'(]+|[»"').,;:!?…]+$/g, "").trim();
+          const fw = norm(x);
           if (fw && !idx[fw]) idx[fw] = z;
         }
       }
