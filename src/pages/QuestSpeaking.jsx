@@ -671,11 +671,11 @@ export default function QuestSpeaking() {
     const u = courseId || effectiveCourseId;
     const isLocal = new URLSearchParams(window.location.search).get('src') === 'local';
     const suffix = isLocal ? '?src=local' : '';
-    if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u}${suffix}`);
-    else if (mode.key === 'dictation') navigate(`/quest-dictation/${u}${suffix}`);
-    else if (mode.key === 'listening') { setShowModePicker(false); }
-    else if (mode.key === 'speaking') { setShowModePicker(false); }
-    else navigate(`/quest-practice/${u}${suffix}`);
+    if (mode.key === 'speaking') { setShowModePicker(false); return; }
+    setShowModePicker(false);
+    const mk = (mode.key === 'chinese_to_english' || mode.key === 'dictation' || mode.key === 'listening') ? mode.key : 'chinese_to_english';
+    // 切换模式 → 先进入沉浸式预加载页（真实资源预载），完成后自动跳对应答题页
+    navigate(`/preload/${mk}/${u}${suffix}`);
   };
 
   // ---- 点击弹窗外部关闭倍速设置 ----

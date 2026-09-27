@@ -830,11 +830,12 @@ export default function QuestPractice() {
     const isLocal = new URLSearchParams(window.location.search).get('src') === 'local';
     const suffix = isLocal ? `?src=local&courseId=${effectiveCourseId}` : `?courseId=${effectiveCourseId}`;
     setShowModePicker(false);
-    if (mode.key === 'chinese_to_english') navigate(`/quest-practice/${u}${suffix}`);
-    else if (mode.key === 'speaking') navigate(`/quest-speaking/${u}${suffix}`);
-    else if (mode.key === 'listening') navigate(`/quest-listening/${u}${suffix}`);
-    else if (mode.key === 'dictation') navigate(`/quest-dictation/${u}${suffix}`);
-    else alert('该模式暂未开放，当前支持「中译俄 / 听写」两种模式');
+    if (mode.key === 'chinese_to_english' || mode.key === 'speaking' || mode.key === 'listening' || mode.key === 'dictation') {
+      // 切换模式 → 先进入沉浸式预加载页（真实资源预载），完成后自动跳对应答题页
+      navigate(`/preload/${mode.key}/${u}${suffix}`);
+    } else {
+      alert('该模式暂未开放，当前支持「中译俄 / 听写 / 听力 / 口语」模式');
+    }
   };
 
   // ---- 顶栏补全适配（乱序/教材数据）----
