@@ -41,6 +41,7 @@ import ReportErrorModal from "../components/ReportErrorModal";
 import ShortcutTips from "../components/quest/ShortcutTips";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
+import { preloadTtsAll } from "../lib/ttsPreload";
 import { useQuestSettings, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -86,6 +87,7 @@ export default function QuestDictation() {
 
   const [statements, setStatements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [ttsProgress, setTtsProgress] = useState(null); // { done, total } 进页前发音预载进度
   const [loadError, setLoadError] = useState(null);
   // 本地投稿课程（?src=local）：lesson.sentences 逐句听写
   const [localLesson, setLocalLesson] = useState(null);
@@ -182,6 +184,15 @@ export default function QuestDictation() {
     ttsAudioCacheRef.current[text] = entry;
     return entry;
   }, [ensureTtsUrl]);
+
+  // 进答题页之前全量预载本单元所有句子发音（并发 4，进度显示；失败不阻塞）
+  const preloadUnit = useCallback(async (stmts) => {
+    setTtsProgress({ done: 0, total: 0 });
+    await preloadTtsAll(stmts, async (it) => {
+      const e = ensureTtsAudio(it?.russian);
+      if (e) await e.promise;
+    }, { concurrency: 4, onProgress: (done, total) => setTtsProgress({ done, total }) });
+  }, [ensureTtsAudio]);
 
   const playAudio = useCallback((text) => {
     const textToPlay = text || currentStatement?.russian;
@@ -324,9 +335,10 @@ export default function QuestDictation() {
             if (!cancelled) {
               setLocalLesson(stored);
               setIsLocalMode(true);
-              setStatements(expandStatements(items, stored.words));
+              const stmts = expandStatements(items, stored.words);
+              setStatements(stmts);
+              preloadUnit(stmts).finally(() => { if (!cancelled) setLoading(false); });
             }
-            if (!cancelled) setLoading(false);
             return;
           }
           if (!cancelled) setIsLocalMode(false);
@@ -353,9 +365,10 @@ export default function QuestDictation() {
                     setLocalLesson(u)
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
-                    setStatements(expandStatements(items, u.words))
+                    const stmts = expandStatements(items, u.words)
+                    setStatements(stmts)
+                    preloadUnit(stmts).finally(() => { if (!cancelled) setLoading(false); })
                   }
-                  if (!cancelled) setLoading(false)
                   return
                 }
               }
@@ -383,9 +396,12 @@ export default function QuestDictation() {
             }
             if (items.length === 0) {
               setLoadError("该单元没有可听写的句子");
+              if (!cancelled) setLoading(false);
             } else {
               const cloudWords = items.flatMap((it) => (it.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" })));
-              setStatements(expandStatements(items, cloudWords));
+              const stmts = expandStatements(items, cloudWords);
+              setStatements(stmts);
+              preloadUnit(stmts).finally(() => { if (!cancelled) setLoading(false); });
             }
           } else {
             setLoadError("课程数据格式异常");
@@ -397,8 +413,6 @@ export default function QuestDictation() {
           if (!courseId) { navigate('/quest-store', { replace: true }); return; }
           setLoadError(`无法连接后端: ${e.message}`);
         }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     }
     loadCourse();
@@ -611,7 +625,7 @@ export default function QuestDictation() {
   if (loading) {
     return (
       <div style={styles.page}>
-        <div style={styles.loading}>加载课程中...</div>
+        <div style={styles.loading}>加载课程中...{ttsProgress && ttsProgress.total > 0 ? ' 发音 ' + ttsProgress.done + '/' + ttsProgress.total : ""}</div>
       </div>
     );
   }

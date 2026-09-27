@@ -10,6 +10,7 @@ import { markUnitDone } from "../lib/lessonProgress";
 import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
+import { preloadTtsAll } from "../lib/ttsPreload";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
 import SettingsModal, { loadHotkeys, keysOfEvent } from "../components/SettingsModal";
 import Icon from "../components/TopBarIcons";
@@ -142,6 +143,7 @@ export default function QuestListening() {
   const effectiveCourseId = courseId || DEFAULT_UNIT_ID;
 
   const [loading, setLoading] = useState(true);
+  const [ttsProgress, setTtsProgress] = useState(null); // { done, total } 进页前发音预载进度
   const [loadError, setLoadError] = useState(null);
   const [sequences, setSequences] = useState([]);
   const [unitMeta, setUnitMeta] = useState(null);
@@ -239,9 +241,10 @@ export default function QuestListening() {
               setLocalLesson(stored);
               setIsLocalMode(true);
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
-              setSequences(expandSequencesWithChunks(adapted, stored?.words));
+              const seqs = expandSequencesWithChunks(adapted, stored?.words);
+              setSequences(seqs);
+              preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); });
             }
-            if (!cancelled) setLoading(false);
             return;
           }
           if (!cancelled) setIsLocalMode(false);
@@ -262,9 +265,10 @@ export default function QuestListening() {
                     setLocalLesson(u);
                     setIsLocalMode(true);
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" });
-                    setSequences(expandSequencesWithChunks(adapted, u?.words));
+                    const seqs = expandSequencesWithChunks(adapted, u?.words);
+                    setSequences(seqs);
+                    preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); });
                   }
-                  if (!cancelled) setLoading(false);
                   return;
                 }
               }
@@ -277,20 +281,24 @@ export default function QuestListening() {
         const data = await fetchJsonRetry(`${API_BASE}/api/units/${effectiveCourseId}/build-steps`);
         const adapted = adaptBuildSteps(data);
         if (!cancelled) {
-          if (adapted.length === 0) setLoadError("该单元没有可学习的步骤");
+          if (adapted.length === 0) {
+            setLoadError("该单元没有可学习的步骤");
+            if (!cancelled) setLoading(false);
+          }
           else {
             setUnitMeta(data.unit || null);
             const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-            setSequences(expandSequencesWithChunks(adapted, cloudWords));
+            const seqs = expandSequencesWithChunks(adapted, cloudWords);
+            setSequences(seqs);
+            preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); });
           }
         }
       } catch (e) {
         if (!cancelled) {
           if (!courseId) { navigate('/quest-store', { replace: true }); return; }
           setLoadError(`无法连接后端: ${e.message}`);
+          setLoading(false);
         }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     }
     loadUnit();
@@ -346,6 +354,36 @@ export default function QuestListening() {
     if (!url.startsWith("http")) url = `${API_BASE}${url}`;
     ttsUrlCacheRef.current[text] = url;
     return url;
+  const ensureTtsAudio = useCallback((text) => {
+    if (!text) return null;
+    if (ttsAudioCacheRef.current[text]) return ttsAudioCacheRef.current[text];
+    const entry = { audio: null, promise: null };
+    entry.promise = (async () => {
+      try {
+        const url = await ensureTtsUrl(text);
+        if (!url) return;
+        const a = new Audio(url);
+        a.preload = "auto";
+        await new Promise((res) => {
+          a.addEventListener("canplay", res, { once: true });
+          a.addEventListener("error", res, { once: true });
+        });
+        entry.audio = a;
+      } catch (e) { /* 预载失败不阻塞 */ }
+    })();
+    ttsAudioCacheRef.current[text] = entry;
+    return entry;
+  }, [ensureTtsUrl]);
+
+  // 进答题页之前全量预载本单元所有句子发音（并发 4，进度显示；失败不阻塞）
+  const preloadUnit = useCallback(async (seqs) => {
+    setTtsProgress({ done: 0, total: 0 });
+    await preloadTtsAll(seqs, async (sq) => {
+      const e = ensureTtsAudio(sq?.russian);
+      if (e) await e.promise;
+    }, { concurrency: 4, onProgress: (done, total) => setTtsProgress({ done, total }) });
+  }, [ensureTtsAudio]);
+
   }, [current, effectiveCourseId]);
 
   // ---- TTS 播放 ----
@@ -441,24 +479,9 @@ export default function QuestListening() {
   // ---- 进模式前预取当前题发音（播放时命中缓存 → 即时，无延迟） ----
   useEffect(() => {
     if (!loading && !loadError && current?.russian) {
-      ensureTtsUrl(current.russian).then((url) => {
-        if (!url) return;
-        const t = current.russian;
-        if (ttsAudioCacheRef.current[t]) return;
-        const entry = { audio: null, promise: null };
-        entry.promise = (async () => {
-          const a = new Audio(url);
-          a.preload = "auto";
-          await new Promise((res) => {
-            a.addEventListener("canplay", res, { once: true });
-            a.addEventListener("error", res, { once: true });
-          });
-          entry.audio = a;
-        })();
-        ttsAudioCacheRef.current[t] = entry;
-      }).catch(() => {});
+      ensureTtsAudio(current.russian);
     }
-  }, [loading, loadError, currentIdx, current, ensureTtsUrl]);
+  }, [loading, loadError, currentIdx, current, ensureTtsAudio]);
 
   const playStageOnly = useCallback(async (key) => {
     if (!current) return;
@@ -697,7 +720,7 @@ export default function QuestListening() {
 
   // ---- 渲染 ----
   if (loading) {
-    return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontSize: 16, color: "#888" }}>加载中…</div>;
+    return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontSize: 16, color: "#888" }}>加载中…{ttsProgress && ttsProgress.total > 0 ? ' 发音 ' + ttsProgress.done + '/' + ttsProgress.total : ""}</div>;
   }
   if (loadError) {
     return <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", gap: 12 }}>

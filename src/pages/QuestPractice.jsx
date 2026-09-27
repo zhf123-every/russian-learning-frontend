@@ -42,6 +42,7 @@ import ShortcutTips from "../components/quest/ShortcutTips";
 import FeedbackPopup from "../components/quest/FeedbackPopup";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
+import { preloadTtsAll } from "../lib/ttsPreload";
 import { useQuestSettings, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -210,6 +211,7 @@ export default function QuestPractice() {
   // ---- 课程数据（按 sequence 分组）----
   const [sequences, setSequences] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [ttsProgress, setTtsProgress] = useState(null); // { done, total } 进页前发音预载进度
   const [loadError, setLoadError] = useState(null);
   const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
   const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
@@ -487,11 +489,12 @@ export default function QuestPractice() {
               setLocalLesson(stored);
               setIsLocalMode(true);
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
-              setSequences(expandSequencesWithChunks(adapted, stored?.words));
+              const seqs = expandSequencesWithChunks(adapted, stored?.words);
+              setSequences(seqs);
               setCurrentSequenceIndex(0);
               setCurrentUnitIndex(0);
+              preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); });
             }
-            if (!cancelled) setLoading(false);
             return;
           }
           // 本地标记但无数据 → 清标记走 API 兜底
@@ -514,11 +517,12 @@ export default function QuestPractice() {
                     setLocalLesson(u)
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
-                    setSequences(expandSequencesWithChunks(adapted, u?.words))
+                    const seqs = expandSequencesWithChunks(adapted, u?.words)
+                    setSequences(seqs)
                     setCurrentSequenceIndex(0)
                     setCurrentUnitIndex(0)
+                    preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); })
                   }
-                  if (!cancelled) setLoading(false)
                   return
                 }
               }
@@ -535,13 +539,16 @@ export default function QuestPractice() {
         if (!cancelled) {
           if (adapted.length === 0) {
             setLoadError("该单元没有可学习的步骤");
+            if (!cancelled) setLoading(false);
           } else {
             setUnitMeta(data.unit || null);
             // 云端词表：从各句 words 提取 {ru, zh}，供 chunking 块中文翻译（缺词不再兜底俄语）
             const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-            setSequences(expandSequencesWithChunks(adapted, cloudWords));
+            const seqs = expandSequencesWithChunks(adapted, cloudWords);
+            setSequences(seqs);
             setCurrentSequenceIndex(0);
             setCurrentUnitIndex(0);
+            preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); });
           }
         }
       } catch (e) {
@@ -549,9 +556,8 @@ export default function QuestPractice() {
           // 默认兜底单元也加载失败 → 去课程列表选课，不留在 404 页
           if (!courseId) { navigate('/quest-store', { replace: true }); return; }
           setLoadError(`无法连接后端: ${e.message}`);
+          setLoading(false);
         }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     }
     loadUnit();
@@ -656,6 +662,15 @@ export default function QuestPractice() {
     ttsAudioCacheRef.current[cid] = entry;
     return entry;
   }, [ensureTts]);
+
+  // 进答题页之前全量预载本单元所有句子发音（并发 4，进度显示；失败不阻塞）
+  const preloadUnit = useCallback(async (seqs) => {
+    setTtsProgress({ done: 0, total: 0 });
+    await preloadTtsAll(seqs, async (sq) => {
+      const e = ensureTtsAudio(sq);
+      if (e) await e.promise;
+    }, { concurrency: 4, onProgress: (done, total) => setTtsProgress({ done, total }) });
+  }, [ensureTtsAudio]);
 
   // 预取当前句音频（题目一出现即请求 URL + 预载内容，答题时缓存已就绪 → 即时播放）
   useEffect(() => {
@@ -862,8 +877,8 @@ export default function QuestPractice() {
       <div style={styles.page}>
         <div style={{ ...styles.loading, flexDirection: "column", gap: 16 }}>
           <style>{"@keyframes qp-spin{to{transform:rotate(360deg)}}"}</style>
-          <div style={{ width: 38, height: 38, borderRadius: "50%", border: "3px solid oklch(95% 0.0081 61.42)", borderTopColor: "oklch(23.27% 0.0249 284.3)", animation: "qp-spin .8s linear infinite" }} />
-          <span>正在加载课程…</span>
+<div style={{ width: 38, height: 38, borderRadius: "50%", border: "3px solid oklch(95% 0.0081 61.42)", borderTopColor: "oklch(23.27% 0.0249 284.3)", animation: "qp-spin .8s linear infinite" }} />
+          <span>正在加载课程…{ttsProgress && ttsProgress.total > 0 ? ' 发音 ' + ttsProgress.done + '/' + ttsProgress.total : ""}</span>
         </div>
       </div>
     );
