@@ -382,7 +382,7 @@ export default function QuestSpeaking() {
     await preloadTtsAll(seqs, async (sq) => {
       const e = ensureTtsAudio(sq?.russian);
       if (e) await e.promise;
-    }, { concurrency: 4, onProgress: (done, total) => setTtsProgress({ done, total }) });
+    }, { concurrency: 8, limit: 24, timeout: 12000, onProgress: (done, total) => setTtsProgress({ done, total }) });
   }, [ensureTtsAudio]);
 
   // ---- TTS 播放 ----

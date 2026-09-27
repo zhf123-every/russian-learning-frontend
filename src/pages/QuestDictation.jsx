@@ -191,7 +191,7 @@ export default function QuestDictation() {
     await preloadTtsAll(stmts, async (it) => {
       const e = ensureTtsAudio(it?.russian);
       if (e) await e.promise;
-    }, { concurrency: 4, onProgress: (done, total) => setTtsProgress({ done, total }) });
+    }, { concurrency: 8, limit: 24, timeout: 12000, onProgress: (done, total) => setTtsProgress({ done, total }) });
   }, [ensureTtsAudio]);
 
   const playAudio = useCallback((text) => {

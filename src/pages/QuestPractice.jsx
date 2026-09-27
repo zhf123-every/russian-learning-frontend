@@ -669,7 +669,7 @@ export default function QuestPractice() {
     await preloadTtsAll(seqs, async (sq) => {
       const e = ensureTtsAudio(sq);
       if (e) await e.promise;
-    }, { concurrency: 4, onProgress: (done, total) => setTtsProgress({ done, total }) });
+    }, { concurrency: 8, limit: 24, timeout: 12000, onProgress: (done, total) => setTtsProgress({ done, total }) });
   }, [ensureTtsAudio]);
 
   // 预取当前句音频（题目一出现即请求 URL + 预载内容，答题时缓存已就绪 → 即时播放）

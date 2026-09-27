@@ -2,13 +2,15 @@
 // 用途：数据就绪后、进入答题界面之前，把本单元所有句子的发音内容预载完成，
 // 保证进入答题页后任何发音（自动播放/答对/点击）都即时，无延迟不播放。
 // 单句超时保护：某句 TTS/音频源不可用时跳过该句，不让预载整体卡死。
-export async function preloadTtsAll(items, ensureFn, { concurrency = 4, onProgress, timeout = 12000 } = {}) {
+// limit：只预载前 N 个唯一句子（进页前预载第一课时量级即可，其余答题时按需预载）
+export async function preloadTtsAll(items, ensureFn, { concurrency = 4, onProgress, timeout = 12000, limit = 0 } = {}) {
   const seen = new Set();
   const list = [];
   for (const it of items) {
     const text = it?.russian || it?.ru || "";
     if (!text || seen.has(text)) continue;
     seen.add(text);
+    if (limit > 0 && list.length >= limit) break;
     list.push(it);
   }
   const total = list.length;
