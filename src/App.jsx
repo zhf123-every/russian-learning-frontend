@@ -20,6 +20,7 @@ import CourseStore from './pages/CourseStore'
 import GameStore from './pages/GameStore'
 import MyGames from './pages/MyGames'
 import GameDetail from './pages/GameDetail'
+import Preloader from './components/Preloader'
 import CourseDetail from './pages/CourseDetail'
 import QuestDictation from './pages/QuestDictation'
 import QuestListening from './pages/QuestListening'
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="/admin/lessons/:id" element={<AdminLessons />} />
         <Route path="/my-games" element={<MyGames />} />
         <Route path="/game/:id" element={<GameDetail />} />
+        <Route path="/preload/:courseId/:lessonId" element={<Preloader />} />
         <Route path="/course/:id" element={<CourseDetail />} />
         <Route path="/journey" element={<Journey />} />
         <Route path="/square" element={<SquarePage />} />
