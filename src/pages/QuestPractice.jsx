@@ -775,11 +775,11 @@ export default function QuestPractice() {
       let audio = null;
       // 百分百同步：已预载内容就绪的 Audio 直接秒播；未就绪（预载在途/首次）不等缓冲，
       // 用缓存 URL 立即 new Audio 流式播放，浏览器边下边播，杜绝等待延迟
-      const entry = ensureTtsAudio(speakStmt);
+      const entry = ensureTtsAudio(stmt);
       if (entry && entry.audio) {
         audio = entry.audio;
       } else {
-        const url = await ensureTts(speakStmt);
+        const url = await ensureTts(stmt);
         if (playTokenRef.current !== myToken) return;
         if (!url) return;
         audio = new Audio(url);
