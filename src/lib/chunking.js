@@ -62,8 +62,8 @@ export function splitSentenceToChunks(ru) {
   while (i < toks.length) {
     const t = toks[i];
     if (PUNCT.has(t)) {
-      if (t === "," || t === "—" || t === "–") { i += 1; continue; } // 逗号/破折号：块边界，不单独成块
-      if (chunks.length) chunks[chunks.length - 1] += t;             // 句末标点附着前块
+      // 逗号/破折号：仍是块边界（其后另起新块），但附着前块保留标点 → 中文翻译带逗号/句号
+      if (chunks.length) chunks[chunks.length - 1] += t;             // 所有标点附着前块（句号/逗号/破折号…）
       i += 1;
       continue;
     }
@@ -175,9 +175,11 @@ function zhPhrase(words, zhIdx, dictIdx) {
 }
 
 function chunkZhOf(chunk, zhIdx) {
+  const m = String(chunk).trim().match(/[.,!?;:…—–]+$/); // 块尾标点（逗号/句号等）保留到中文
+  const punct = m ? m[0] : "";
   const words = String(chunk).toLowerCase().match(/[а-яё]+(?:-[а-яё]+)?/g) || [];
   const dictIdx = dictZhIndex();
-  return zhPhrase(words, zhIdx, dictIdx);
+  return zhPhrase(words, zhIdx, dictIdx) + punct;
 }
 
 // 渲染期兜底翻译：切块时大词典尚未加载的残留俄语（красивая 等），答题渲染时词典已就绪 → 逐词还原为中文
@@ -186,8 +188,10 @@ export function translateZhFallback(text) {
   if (!/[а-яё]/i.test(t)) return t;
   const d = dictZhIndex(); // 词典未就绪时返回空且不缓存，下次渲染再试
   if (!Object.keys(d).length) return t;
+  const m = t.match(/[.,!?;:…—–]+$/); // 尾部标点保留
+  const punct = m ? m[0] : "";
   const words = t.toLowerCase().match(/[а-яё]+(?:-[а-яё]+)?/g) || [];
-  return zhPhrase(words, {}, d);
+  return zhPhrase(words, {}, d) + punct;
 }
 
 /**

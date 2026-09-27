@@ -18,7 +18,7 @@
  * 发音：Yandex SpeechKit 真人俄语发音（后端 TTS），优先 audio_url 缓存
  */
 
-import { useEffect, useCallback, useState, useRef, useMemo } from "react";
+import { useEffect, useCallback, useState, useRef, useMemo, Fragment } from "react";
 import { getPosLabel, getPosColor, buildGrammarLabel } from "../../constants/posColors";
 import { annotateWords } from "../../lib/wordAnnotate";
 import { inferRoles } from "../../lib/roleRules";
@@ -202,6 +202,19 @@ export default function AnswerPanel({
     });
   }, [statement?.words, statement?.russian]);
 
+  // 原句标点对齐：第 i 个词后是否跟标点（逗号/句号/感叹号…），词卡之间原样显示
+  const punctMap = useMemo(() => {
+    const map = {};
+    const toks = String(statement?.russian || "").match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?|[.,!?;:…—–]/g) || [];
+    let wi = 0;
+    toks.forEach((t) => {
+      if (/[.,!?;:…—–]/.test(t)) {
+        if (wi > 0) map[wi - 1] = (map[wi - 1] || "") + t;
+      } else { wi++; }
+    });
+    return map;
+  }, [statement?.russian]);
+
   if (!statement) return null;
 
   const uiCfg = { ...UI_DEFAULT, ...(ui || {}) };
@@ -290,7 +303,12 @@ export default function AnswerPanel({
                   {uiCfg.showPos !== false && posLabel && <div style={{ ...styles.pos, color: effColor }}>{posLabel}</div>}
                 </div>
               );
-            })}
+            }).map((card, i) => (
+              <Fragment key={i}>
+                {card}
+                {punctMap[i] && <span style={styles.stmtPunct}>{punctMap[i]}</span>}
+              </Fragment>
+            ))}
           </div>
         ) : (
           <div style={styles.fallbackRow}>
@@ -399,6 +417,14 @@ const styles = {
     color: "#1F2937",
     lineHeight: 1.2,
     marginBottom: 6,
+  },
+  stmtPunct: {
+    fontSize: "2rem",
+    fontWeight: 700,
+    color: "var(--qs-text, #1F2937)",
+    marginTop: 34,
+    alignSelf: "flex-start",
+    lineHeight: 1.2,
   },
   underline: {
     width: "100%",
