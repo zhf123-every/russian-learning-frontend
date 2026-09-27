@@ -589,6 +589,7 @@ export default function QuestPractice() {
 
   // ---- 跳转下一题（双层索引：先unit后sequence）----
   const goToNext = useCallback(() => {
+    stopPlayback(); // 切题立即打断发音，避免答对发音带入下一题
     const seq = sequences[currentSequenceIndex];
     const unitsLen = seq?.units?.length || 1;
     if (currentUnitIndex < unitsLen - 1) {
@@ -615,6 +616,7 @@ export default function QuestPractice() {
 
   // ---- 发音（Yandex 真人俄语发音）：TTS 缓存 + 即时播放 ----
   const ttsAudioRef = useRef(null);
+  const playTokenRef = useRef(0); // 播放令牌：新播放/切题递增，作废所有在途播放
   const ttsUrlCacheRef = useRef({}); // id -> url，同一句只请求一次
   const ensureTts = useCallback(async (stmt) => {
     if (!stmt || !stmt.russian) return "";
@@ -682,31 +684,34 @@ export default function QuestPractice() {
   const playSentenceSound = useCallback(async (times = 1) => {
     const stmt = currentStatement;
     if (!stmt?.russian) return;
+    const myToken = ++playTokenRef.current; // 新播放立即作废旧播放（在途/排队均失效）
     try {
       let audio = null;
       const entry = ensureTtsAudio(stmt);
       if (entry) {
         await entry.promise; // 等预载完成（已缓存立即返回）
+        if (playTokenRef.current !== myToken) return; // 已被新播放/切题作废，丢弃
         audio = entry.audio;
       }
       if (!audio) {
         const url = await ensureTts(stmt);
+        if (playTokenRef.current !== myToken) return;
         if (!url) return;
         audio = new Audio(url);
       }
-      if (ttsAudioRef.current) {
-        ttsAudioRef.current.pause();
-        ttsAudioRef.current.currentTime = 0;
-      }
       const playOnce = (remaining) => {
+        if (playTokenRef.current !== myToken) return; // 被作废则不再播放
         audio.pause();
         audio.currentTime = 0;
         audio.playbackRate = settings.rate || 1;
         ttsAudioRef.current = audio;
+        audio.onended = null;
         audio.play().catch((e) => console.warn("播放失败:", e));
         if (remaining > 1) {
           audio.onended = () => {
-            setTimeout(() => playOnce(remaining - 1), 600);
+            setTimeout(() => {
+              if (playTokenRef.current === myToken) playOnce(remaining - 1);
+            }, 600);
           };
         }
       };
@@ -715,6 +720,17 @@ export default function QuestPractice() {
       console.warn("发音失败:", e);
     }
   }, [currentStatement, ensureTts, ensureTtsAudio, settings.rate]);
+
+  // 立即停止当前发音并作废在途播放（切题/重试/暂停时调用，保证不再继续播）
+  const stopPlayback = useCallback(() => {
+    playTokenRef.current += 1;
+    const a = ttsAudioRef.current;
+    if (a) {
+      a.onended = null;
+      a.pause();
+      a.currentTime = 0;
+    }
+  }, []);
 
   // ---- 题目出现时自动播放两遍发音（即时，无延迟） ----
   useEffect(() => {
@@ -739,6 +755,7 @@ export default function QuestPractice() {
 
   // ---- AnswerPanel 操作 ----
   const handleRetry = () => {
+    stopPlayback();
     setShowAnswerPanel(false);
     reset();
     setCurrentErrors([]);
@@ -746,6 +763,7 @@ export default function QuestPractice() {
   };
 
   const handleNextFromAnswer = () => {
+    stopPlayback();
     setShowAnswerPanel(false);
     reset();
     setCurrentErrors([]);
