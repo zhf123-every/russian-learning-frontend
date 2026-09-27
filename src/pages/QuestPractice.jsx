@@ -611,12 +611,14 @@ export default function QuestPractice() {
   }, [loading, loadError, sequences.length, ensureAnalysis]);
 
   // ---- 数据就绪后后台全量预载发音（并发 10，不阻塞进页；Preloader 覆盖首屏 20 句之外也秒播） ----
+  // preloadUnit 定义在后（724 行），依赖数组渲染期求值会 TDZ → 用 ref 间接引用
+  const preloadUnitRef = useRef(null);
   const preloadStartedRef = useRef(false);
   useEffect(() => {
     if (loading || loadError || !sequences.length || preloadStartedRef.current) return;
     preloadStartedRef.current = true;
-    preloadUnit(sequences);
-  }, [loading, loadError, sequences.length, preloadUnit]);
+    preloadUnitRef.current(sequences);
+  }, [loading, loadError, sequences.length, preloadUnitRef]);
 
   // ---- 自动聚焦输入框 ----
   useEffect(() => {
@@ -747,6 +749,7 @@ export default function QuestPractice() {
       if (e) await e.promise;
     }, { concurrency: 10, limit: 100, timeout: 8000, onProgress: (done, total) => setTtsProgress({ done, total }) });
   }, [ensureTtsAudio]);
+  preloadUnitRef.current = preloadUnit;
 
   // 预取当前句音频（题目一出现即请求 URL + 预载内容，答题时缓存已就绪 → 即时播放）
   useEffect(() => {
