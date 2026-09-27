@@ -49,6 +49,12 @@ const FIXED_PHRASES = new Set([
 
 const PUNCT = new Set([".", ",", "!", "?", ";", ":", "…", "—", "–"]);
 
+// 指示代词：与后随名词/表语合块（「Это Анна」= 这是安娜，主系表一体，避免拆成「这是」「安娜」）
+const DEMONSTRATIVES = new Set([
+  "это", "этот", "эта", "эти", "тот", "та", "те",
+  "такой", "такая", "такое", "такие",
+]);
+
 // 拆词：西里尔词（含连字符复合词）与标点分开
 function splitTokens(ru) {
   return String(ru || "").trim().match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?|[.,!?;:…—–]/g) || [];
@@ -70,6 +76,12 @@ export function splitSentenceToChunks(ru) {
     const next = toks[i + 1];
     if (next && !PUNCT.has(next)) {
       if (FIXED_PHRASES.has(t + " " + next)) {                       // 固定短语合并
+        chunks.push(t + " " + next);
+        i += 2;
+        continue;
+      }
+      // 指示代词 + 后随词合块：「Это Анна」（这是安娜）主系表一块，避免「这是」「安娜」两碎块
+      if (DEMONSTRATIVES.has(String(t).toLowerCase())) {
         chunks.push(t + " " + next);
         i += 2;
         continue;
@@ -171,7 +183,8 @@ function zhPhrase(words, zhIdx, dictIdx) {
       parts.push(zh || w); // 最终兜底：显示俄语原词
     }
   }
-  return parts.join(" ");
+  // 中文词之间不留空格（这是 安娜 → 这是安娜）；俄语兜底原词仍保留空格（это анна）
+  return parts.join(" ").replace(/([\u4e00-\u9fff，。！？；：、“”…—])\s+(?=[\u4e00-\u9fff，。！？；：、“”…—])/g, "$1");
 }
 
 function chunkZhOf(chunk, zhIdx) {
