@@ -391,6 +391,7 @@ export default function QuestDictation() {
                   russian: st.target_sentence || "",
                   chinese: st.chinese || "",
                   words: Array.isArray(st.words) ? st.words : [],
+                  audio_url: st.audio_url || "", // 保留句音频（与中译俄一致），预载走现成音频，避免全量 TTS 卡加载
                 });
               }
             }
