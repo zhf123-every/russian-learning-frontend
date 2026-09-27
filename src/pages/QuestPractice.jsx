@@ -24,6 +24,7 @@ import { getCourseById } from "../utils/courseService";
 import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
+import { inferRoles } from "../lib/roleRules";
 import { expandSequencesWithChunks, translateZhFallback } from "../lib/chunking";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { useQuestionInput } from "../hooks/useQuestionInput";
@@ -311,26 +312,17 @@ export default function QuestPractice() {
   const ensureAnalysis = useCallback(async (stmt) => {
     if (!stmt || stmt.spellWord || !stmt.russian) return;
     const key = String(stmt.russian).trim();
-    // 词典标注（本地，立即生效）：总是执行，补重音词形 form / 词性 pos / 性数格，即使已有词性标注也只补不覆盖
-    // 1) 词典标注（本地，立即生效；首次先加载全词典）
+    // 纯本地确定性标注：词典（重音/词性/性数格）+ 形态规则引擎（句子成分），即时完成，不依赖 AI
     await ensureDictFull();
     const dictWords = annotateWords(stmt.russian);
     if (dictWords.length) {
-      patchWords(key, (oldWs) => dictWords.map((w, i) => {
+      const roleWords = inferRoles(stmt.russian, dictWords);
+      patchWords(key, (oldWs) => roleWords.map((w, i) => {
         const oldW = oldWs[i] || {};
-        return { ...oldW, ...w, order: i, roleLabel: oldW.roleLabel || "" };
+        return { ...oldW, ...w, order: i, roleLabel: w.roleLabel || oldW.roleLabel || "" };
       }));
     }
-    // 2) AI 补充（成分 roleLabel / 中译 / 语法解析），失败不影响词典标注
-    if (analysisCache[key]) { applyAI(key, analysisCache[key]); return; }
-    try {
-      const res = await analyzeSentence(stmt.russian);
-      if (res) {
-        setAnalysisCache(c => ({ ...c, [key]: res }));
-        applyAI(key, res);
-      }
-    } catch (e) { /* 精析失败不影响答题 */ }
-  }, [analysisCache, patchWords]);
+  }, [patchWords]);
 
   const applyAI = useCallback((key, res) => {
     patchWords(key, (oldWs) => {

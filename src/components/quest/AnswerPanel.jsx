@@ -56,6 +56,11 @@ const ROLE_LABELS_MAP = {
   direct_object: "宾语",
   indirect_object: "宾语",
   prepositional_object: "宾语",
+  preposition: "前置词",
+  conjunction: "连接词",
+  particle: "语气词",
+  interjection: "感叹词",
+  numeral: "数词",
 };
 
 function getRoleColor(role) {
@@ -215,7 +220,8 @@ export default function AnswerPanel({
               const underlineColor = customPosColor || w.posColor || getPosColor(w.pos) || "";
               const roleColor = getRoleColor(w.syntacticRole);
               const effColor = underlineColor || roleColor || "#9CA3AF"; // 下划线主色
-              const borderColor = roleColor || effColor;                // 边框/标签主色（角色色）
+              // 边框/标签：有真实角色色用角色色；虚词/无角色（映射缺失=灰）回退词性色，杜绝灰边框
+              const borderColor = (w.syntacticRole && w.syntacticRole !== "default" && ROLE_COLORS[w.syntacticRole]) ? roleColor : effColor;
               const roleLabel = w.roleLabel || getRoleLabel(w.syntacticRole);
               // 显示带重音符的词形：优先 form（带重音），其次 stress_marked / lemma；撇号重音转为组合重音 ´
               const toStress = (s) => String(s || "").replace(/'/g, "\u0301");
