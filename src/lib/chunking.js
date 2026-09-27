@@ -98,18 +98,62 @@ export function buildZhIndex(wordList) {
   return idx;
 }
 
-// 块 → 中文：逐词查索引；未命中做前缀匹配（词长≥3 才前缀匹配，短词精确）；仍无则用俄语原词顶替
+// ---- 词典词形还原索引（懒构建一次）：RU_DICT/RU_DICT_FULL 直接形 + 变格/变位表词形 → 中文 ----
+// 注意：词典 script（RU_DICT_FULL）是异步加载的，若构建时为空则**不缓存**，下次调用重新构建
+let _dictZhIdx = null;
+function dictZhIndex() {
+  if (_dictZhIdx) return _dictZhIdx;
+  const idx = {};
+  try {
+    const w = typeof window !== "undefined" ? window : {};
+    const basic = w.RU_DICT || {};
+    const full = w.RU_DICT_FULL || {};
+    for (const k in basic) { const e = basic[k]; if (e && e.z) idx[String(k).toLowerCase()] = e.z; }
+    for (const k in full) {
+      const e = full[k]; if (!e) continue;
+      const z = e.z || e.e; if (!z) continue;
+      const kk = String(k).toLowerCase();
+      if (!idx[kk]) idx[kk] = z;
+      const f = e.f; if (!f) continue;
+      const lists = [f.m, f.f, f.n, f.pl];
+      if (f.v) lists.push(f.v);
+      for (const L of lists) {
+        if (!Array.isArray(L)) continue;
+        for (const x of L) {
+          const fw = String(x || "").toLowerCase().replace(/[«"'(]+|[»"').,;:!?…]+$/g, "").trim();
+          if (fw && !idx[fw]) idx[fw] = z;
+        }
+      }
+    }
+  } catch (e) { /* 词典缺失不阻塞 */ }
+  if (Object.keys(idx).length) _dictZhIdx = idx; // 词典已就绪才缓存
+  return idx;
+}
+
+// 块 → 中文：逐词查索引 → 前缀匹配（词长≥3）→ 词典词形还原（красивая→漂亮的）→ 最终兜底俄语原词
 function chunkZhOf(chunk, zhIdx) {
   const words = String(chunk).toLowerCase().match(/[а-яё]+(?:-[а-яё]+)?/g) || [];
+  const dictIdx = dictZhIndex();
   const parts = words.map((w) => {
     if (zhIdx[w]) return zhIdx[w];
     if (w.length >= 3) {
       const hit = Object.keys(zhIdx).find((k) => k.length >= 3 && (k.startsWith(w) || w.startsWith(k)));
       if (hit) return zhIdx[hit];
     }
-    return w; // 兜底：显示俄语原词
+    const d = dictIdx[w];
+    if (d) return d;
+    return w; // 最终兜底：显示俄语原词
   });
   return parts.join(" ");
+}
+
+// 渲染期兜底翻译：切块时大词典尚未加载的残留俄语（красивая 等），答题渲染时词典已就绪 → 逐词还原为中文
+export function translateZhFallback(text) {
+  const t = String(text || "").trim();
+  if (!/[а-яё]/i.test(t)) return t;
+  const d = dictZhIndex(); // 词典未就绪时返回空且不缓存，下次渲染再试
+  if (!Object.keys(d).length) return t;
+  return t.split(/\s+/).map((w) => d[w.toLowerCase()] || w).join(" ");
 }
 
 /**

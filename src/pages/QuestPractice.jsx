@@ -24,7 +24,7 @@ import { getCourseById } from "../utils/courseService";
 import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
-import { expandSequencesWithChunks } from "../lib/chunking";
+import { expandSequencesWithChunks, translateZhFallback } from "../lib/chunking";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -622,6 +622,7 @@ export default function QuestPractice() {
     stopPlayback(); // 切题立即打断发音，避免答对发音带入下一题
     const seq = sequences[currentSequenceIndex];
     const unitsLen = seq?.units?.length || 1;
+    let ni = currentSequenceIndex, nu = currentUnitIndex + 1;
     if (currentUnitIndex < unitsLen - 1) {
       // 同 sequence 内下一个 unit
       setCurrentUnitIndex((i) => i + 1);
@@ -629,6 +630,7 @@ export default function QuestPractice() {
       setShowAnswer(false);
     } else if (currentSequenceIndex < sequences.length - 1) {
       // 进入下一个 sequence 的 unit 1
+      ni = currentSequenceIndex + 1; nu = 0;
       setCurrentSequenceIndex((i) => i + 1);
       setCurrentUnitIndex(0);
       setCurrentErrors([]);
@@ -641,8 +643,19 @@ export default function QuestPractice() {
       const acc = totalQ > 0 ? Math.round((correctCount / totalQ) * 100) : 0
       recordPeak({ score: correctCount * 10, accuracy: acc })
       setShowSummary(true);
+      return;
     }
-  }, [currentSequenceIndex, currentUnitIndex, sequences]);
+    // 后台滚动预载：从下一题起预载后续 12 句音频（并发 6、去重、不阻塞），答快时发音不延迟
+    setTimeout(() => {
+      const s = sequences[ni];
+      if (!s) return;
+      const rest = (s.units || []).slice(nu);
+      preloadTtsAll(rest, (it) => {
+        const e = ensureTtsAudio(it);
+        return e ? e.promise : Promise.resolve();
+      }, { concurrency: 6, limit: 12 });
+    }, 0);
+  }, [currentSequenceIndex, currentUnitIndex, sequences, ensureTtsAudio, correctCount, effectiveCourseId]);
 
   // ---- 发音（Yandex 真人俄语发音）：TTS 缓存 + 即时播放 ----
   const ttsAudioRef = useRef(null);
@@ -1125,7 +1138,7 @@ export default function QuestPractice() {
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.russian}</span>
             </div>
           )}
-          <div style={styles.hintText}>{currentStatement?.chinese}</div>
+          <div style={styles.hintText}>{translateZhFallback(currentStatement?.chinese)}</div>
           {showAnswer && currentStatement?.stressMarked && (
             <div style={styles.answerReveal}>
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.stressMarked}</span>
