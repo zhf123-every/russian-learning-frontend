@@ -126,15 +126,13 @@ export default function AnswerPanel({
     }
   }, []);
 
-  // 进入页面自动播放整句发音（受设置「答对后自动播放」answerSpeak 控制）
+  // 组件卸载时立即停止本组件的发音（切题/重试后不再继续播）
   useEffect(() => {
-    if (statement?.russian && uiCfg.answerSpeak) {
-      const timer = setTimeout(() => {
-        speakRussian(statement.russian, statement.audio_url, statement.id, "statement");
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, [statement?.russian, statement?.audio_url, statement?.id, speakRussian]);
+    return () => {
+      audioRef.current?.pause();
+      audioRef.current = null;
+    };
+  }, []);
 
   // 空格 / Enter 快捷键 → 下一题
   useEffect(() => {
