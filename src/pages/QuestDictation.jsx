@@ -214,17 +214,19 @@ export default function QuestDictation() {
     const n = times ?? (ui.speakTimes ?? 2); // 进题自动播放次数（与播放设置关联）
     (async () => {
       let url = "";
+      let readyEl = null; // 已内容就绪的预载 Audio → 直接播（零延迟，跳过重新加载）
       try {
         const entry = ensureTtsAudio(textToPlay);
         if (entry) {
           await entry.promise;
-          if (entry.audio && entry.audio.src) url = entry.audio.src;
+          if (entry.audio && entry.audio.src) { url = entry.audio.src; readyEl = entry.audio; }
         }
         if (!url) url = await ensureTtsUrl(textToPlay);
       } catch (e) { /* ignore */ }
-      if (!url) return;
-      // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play（切题立即打断，绝不重叠）
+      if (!url && !readyEl) return;
+      // 全局唯一音频控制器：暂停旧 → 复位 → 播放（预载就绪直接播；未就绪走 globalAudio）
       playGlobalAudio(url, {
+        el: readyEl,
         times: n,
         rate: settings.rate || 1,
         gap: (ui.speakGap ?? 1) * 1000,

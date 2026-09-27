@@ -439,11 +439,12 @@ export default function QuestListening() {
     ttsRef.current = null;
   }, []);
 
-  const playTimes = useCallback((url, speed, times, onDone) => {
+  const playTimes = useCallback((url, speed, times, onDone, readyEl) => {
     if (seqPlayRef.current !== 'running') return;
-    // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play；
+    // 全局唯一音频控制器：暂停旧 → 复位 → 播放（预载就绪直接播；未就绪走 globalAudio）
     // times 次数由控制器内部循环（切题/stopAudio 立即作废），播完 onFinished 推进阶段链
     playGlobalAudio(url, {
+      el: readyEl,
       times,
       rate: speed,
       gap: 500,
@@ -463,8 +464,14 @@ export default function QuestListening() {
     // 取音频期间先进入首个阶段（盲听=只听不看"请仔细聆听"）
     setPhase(stages[0].key);
     let url = null;
+    let readyEl = null; // 已内容就绪的预载 Audio → 直接播（零延迟）
     try {
-      url = await ensureTtsUrl(text);
+      const entry = ensureTtsAudio(text);
+      if (entry) {
+        await entry.promise;
+        if (entry.audio && entry.audio.src) { url = entry.audio.src; readyEl = entry.audio; }
+      }
+      if (!url) url = await ensureTtsUrl(text);
     } catch (e) { /* 无音频也继续 */ }
     if (chainRef.current !== myChain) return; // 已被更新题取代
     if (!url) { setPhase('answer'); return; }
@@ -475,7 +482,7 @@ export default function QuestListening() {
       if (si >= stages.length) { setPhase('answer'); seqPlayRef.current = null; return; }
       const st = stages[si];
       setPhase(st.key);
-      playTimes(url, st.cfg.speed, st.cfg.times, () => { si += 1; run(); });
+      playTimes(url, st.cfg.speed, st.cfg.times, () => { si += 1; run(); }, readyEl);
     };
     run();
   }, [cfg, playTimes, stopAudio, effectiveCourseId, ensureTtsUrl]);

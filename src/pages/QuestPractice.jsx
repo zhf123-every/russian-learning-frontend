@@ -782,15 +782,17 @@ export default function QuestPractice() {
     const myCallId = ++callIdRef.current;
     (async () => {
       let url = "";
+      let readyEl = null; // 已内容就绪的预载 Audio → 直接播（零延迟，跳过重新加载）
       try {
         const entry = ensureTtsAudioRef.current(stmt);
-        if (entry && entry.audio && entry.audio.src) url = entry.audio.src;
+        if (entry && entry.audio && entry.audio.src) { url = entry.audio.src; readyEl = entry.audio; }
         if (!url) url = await ensureTts(stmt);
       } catch (e) { /* ignore */ }
       if (callIdRef.current !== myCallId) return;   // 已被更新播放/切题取代 → 不播（防旧覆盖新）
       if (currentStmtRef.current !== stmt) return;  // 当前题已变 → 放弃
-      if (!url) return;
+      if (!url && !readyEl) return;
       playGlobalAudio(url, {
+        el: readyEl, // 已预载就绪 → 直接播；未就绪 → globalAudio 流式播
         times,
         rate: settings.rate || 1,
         gap: (ui.speakGap ?? 1) * 1000,
