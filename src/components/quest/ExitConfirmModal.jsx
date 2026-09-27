@@ -4,22 +4,77 @@
  * - 返回首页：回到主页（学习主页与打卡中心）
  * - 返回课程列表：回到"我的游戏"中的游戏详情页（/game/:courseId）
  * - 继续学习：关闭弹窗留在当前答题页
- * 深色卡片 + 紫色主按钮，遮罩点击/ESC 不关闭（防止误触退出），仅按钮可关。
+ * 弹窗颜色跟随全局深夜/白天模式（GlobalTheme 在 <html> 上写 data-theme），
+ * 遮罩点击/ESC 不关闭（防止误触退出），仅按钮可关。
  */
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function ExitConfirmModal({ open, onClose, courseId }) {
   const navigate = useNavigate();
+  const [isDark, setIsDark] = useState(
+    () => typeof document !== "undefined" && document.documentElement.dataset.theme === "dark"
+  );
+
+  // 跟随全局主题切换（data-theme 变化 / 设置弹窗保存广播）
+  useEffect(() => {
+    const upd = () => setIsDark(document.documentElement.dataset.theme === "dark");
+    upd();
+    const mo = new MutationObserver(upd);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    window.addEventListener("quest-ui-changed", upd);
+    window.addEventListener("storage", upd);
+    return () => {
+      mo.disconnect();
+      window.removeEventListener("quest-ui-changed", upd);
+      window.removeEventListener("storage", upd);
+    };
+  }, []);
+
   if (!open) return null;
 
   const goHome = () => navigate("/");
   const goCourseList = () => navigate(`/game/${courseId || ""}`);
 
+  const C = isDark
+    ? {
+        overlayBg: "rgba(0,0,0,0.6)",
+        cardBg: "#17171B",
+        cardBorder: "rgba(255,255,255,0.08)",
+        cardShadow: "0 24px 80px rgba(0,0,0,0.55)",
+        title: "#FFFFFF",
+        sub: "#A1A1AA",
+        optBg: "rgba(255,255,255,0.055)",
+        optBorder: "rgba(255,255,255,0.07)",
+        optBgHover: "rgba(124,58,237,0.14)",
+        optBorderHover: "rgba(124,58,237,0.45)",
+        optTitle: "#FFFFFF",
+        optDesc: "#8E8E96",
+        iconBg: "rgba(124,58,237,0.16)",
+        iconColor: "#A78BFA",
+      }
+    : {
+        overlayBg: "rgba(15,15,20,0.45)",
+        cardBg: "#FFFFFF",
+        cardBorder: "rgba(0,0,0,0.08)",
+        cardShadow: "0 24px 70px rgba(24,24,27,0.22)",
+        title: "#111827",
+        sub: "#6B7280",
+        optBg: "rgba(0,0,0,0.045)",
+        optBorder: "rgba(0,0,0,0.07)",
+        optBgHover: "rgba(124,58,237,0.10)",
+        optBorderHover: "rgba(124,58,237,0.45)",
+        optTitle: "#111827",
+        optDesc: "#6B7280",
+        iconBg: "rgba(124,58,237,0.10)",
+        iconColor: "#7C3AED",
+      };
+
   const overlay = {
     position: "fixed",
     inset: 0,
     zIndex: 200,
-    background: "rgba(0,0,0,0.6)",
+    background: C.overlayBg,
     backdropFilter: "blur(6px)",
     display: "flex",
     alignItems: "center",
@@ -29,50 +84,40 @@ export default function ExitConfirmModal({ open, onClose, courseId }) {
   };
   const card = {
     width: "min(420px, calc(100vw - 40px))",
-    background: "#17171B",
-    border: "1px solid rgba(255,255,255,0.08)",
+    background: C.cardBg,
+    border: `1px solid ${C.cardBorder}`,
     borderRadius: 20,
     padding: "28px 24px 20px",
-    boxShadow: "0 24px 80px rgba(0,0,0,0.55)",
-    color: "#fff",
+    boxShadow: C.cardShadow,
+    color: C.title,
   };
   const title = { fontSize: 22, fontWeight: 800, textAlign: "center", letterSpacing: 0.3 };
-  const sub = {
-    fontSize: 13,
-    color: "#A1A1AA",
-    textAlign: "center",
-    marginTop: 8,
-    letterSpacing: 0.2,
-  };
+  const sub = { fontSize: 13, color: C.sub, textAlign: "center", marginTop: 8, letterSpacing: 0.2 };
   const optBase = {
     width: "100%",
     display: "flex",
     alignItems: "center",
     gap: 12,
     textAlign: "left",
-    background: "rgba(255,255,255,0.055)",
-    border: "1px solid rgba(255,255,255,0.07)",
+    background: C.optBg,
+    border: `1px solid ${C.optBorder}`,
     borderRadius: 14,
     padding: "13px 16px",
     cursor: "pointer",
     transition: "background .18s ease, transform .12s ease",
   };
-  const optHover = {
-    background: "rgba(124,58,237,0.14)",
-    borderColor: "rgba(124,58,237,0.45)",
-  };
-  const optTitle = { fontSize: 15, fontWeight: 700, color: "#fff" };
-  const optDesc = { fontSize: 12, color: "#8E8E96", marginTop: 2, letterSpacing: 0.2 };
+  const optTitle = { fontSize: 15, fontWeight: 700, color: C.optTitle };
+  const optDesc = { fontSize: 12, color: C.optDesc, marginTop: 2, letterSpacing: 0.2 };
   const iconWrap = {
     width: 38,
     height: 38,
     borderRadius: 11,
-    background: "rgba(124,58,237,0.16)",
+    background: C.iconBg,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    color: "#A78BFA",
+    color: C.iconColor,
   };
   const primary = {
     width: "100%",
@@ -99,8 +144,8 @@ export default function ExitConfirmModal({ open, onClose, courseId }) {
           <button
             type="button"
             style={optBase}
-            onMouseEnter={(e) => { e.currentTarget.style.background = optHover.background; e.currentTarget.style.borderColor = optHover.borderColor; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.055)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = C.optBgHover; e.currentTarget.style.borderColor = C.optBorderHover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = C.optBg; e.currentTarget.style.borderColor = C.optBorder; }}
             onClick={goHome}
           >
             <span style={iconWrap}>
@@ -117,8 +162,8 @@ export default function ExitConfirmModal({ open, onClose, courseId }) {
           <button
             type="button"
             style={optBase}
-            onMouseEnter={(e) => { e.currentTarget.style.background = optHover.background; e.currentTarget.style.borderColor = optHover.borderColor; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.055)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = C.optBgHover; e.currentTarget.style.borderColor = C.optBorderHover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = C.optBg; e.currentTarget.style.borderColor = C.optBorder; }}
             onClick={goCourseList}
           >
             <span style={iconWrap}>
