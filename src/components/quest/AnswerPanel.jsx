@@ -344,7 +344,7 @@ const styles = {
     minHeight: 18,
   },
   bigWord: {
-    fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontFamily: '"PT Serif", "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     fontSize: "2.5rem",
     fontWeight: 700,
     color: "#1F2937",

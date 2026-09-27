@@ -617,6 +617,8 @@ export default function QuestPractice() {
   }, [loading, loadError, sequences.length]);
 
   // ---- 跳转下一题（双层索引：先unit后sequence）----
+  // ensureTtsAudio 定义在后（691 行），goToNext 依赖数组渲染期求值会 TDZ → 用 ref 间接引用
+  const ensureTtsAudioRef = useRef(null);
   const goToNext = useCallback(() => {
     stopPlayback(); // 切题立即打断发音，避免答对发音带入下一题
     const seq = sequences[currentSequenceIndex];
@@ -650,11 +652,11 @@ export default function QuestPractice() {
       if (!s) return;
       const rest = (s.units || []).slice(nu);
       preloadTtsAll(rest, (it) => {
-        const e = ensureTtsAudio(it);
+        const e = ensureTtsAudioRef.current(it);
         return e ? e.promise : Promise.resolve();
       }, { concurrency: 6, limit: 12 });
     }, 0);
-  }, [currentSequenceIndex, currentUnitIndex, sequences, ensureTtsAudio, correctCount, effectiveCourseId]);
+  }, [currentSequenceIndex, currentUnitIndex, sequences, ensureTtsAudioRef, correctCount, effectiveCourseId]);
 
   // ---- 发音（Yandex 真人俄语发音）：TTS 缓存 + 即时播放 ----
   const ttsAudioRef = useRef(null);
@@ -716,6 +718,7 @@ export default function QuestPractice() {
     ttsAudioCacheRef.current[cid] = entry;
     return entry;
   }, [ensureTts]);
+  ensureTtsAudioRef.current = ensureTtsAudio;
 
   // 进答题页之前全量预载本单元所有句子发音（并发 4，进度显示；失败不阻塞）
   const preloadUnit = useCallback(async (seqs) => {
@@ -739,13 +742,12 @@ export default function QuestPractice() {
     const myToken = ++playTokenRef.current; // 新播放立即作废旧播放（在途/排队均失效）
     try {
       let audio = null;
+      // 百分百同步：已预载内容就绪的 Audio 直接秒播；未就绪（预载在途/首次）不等缓冲，
+      // 用缓存 URL 立即 new Audio 流式播放，浏览器边下边播，杜绝等待延迟
       const entry = ensureTtsAudio(stmt);
-      if (entry) {
-        await entry.promise; // 等预载完成（已缓存立即返回）
-        if (playTokenRef.current !== myToken) return; // 已被新播放/切题作废，丢弃
+      if (entry && entry.audio) {
         audio = entry.audio;
-      }
-      if (!audio) {
+      } else {
         const url = await ensureTts(stmt);
         if (playTokenRef.current !== myToken) return;
         if (!url) return;
