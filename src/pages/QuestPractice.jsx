@@ -351,7 +351,7 @@ export default function QuestPractice() {
 
   // ---- 全局快捷键 ----
   const { isComposingRef } = useKeyboardShortcuts({
-    onSound: () => playSentenceSound(),
+    onSound: () => playSentenceSound(), // 题目显示什么发音读什么（当前 step 的 russian）
     onShowAnswer: () => {
       setShowAnswer((v) => !v);
       markHintUsed?.();
@@ -741,46 +741,35 @@ export default function QuestPractice() {
   }, [ensureTts]);
   ensureTtsAudioRef.current = ensureTtsAudio;
 
-  // 进答题页之前全量预载本单元所有句子整句发音（切块后每块都播整句；并发 10，进度显示；失败不阻塞）
+  // 进答题页之前全量预载本单元所有 step 的 russian（单打块 + 累积整句），题目显示什么就预载什么（并发 10，失败不阻塞）
   const preloadUnit = useCallback(async (seqs) => {
-    const fullList = [];
+    const items = [];
     const seen = new Set();
     (seqs || []).forEach((seq) => {
       (seq.units || []).forEach((u) => {
         if (!u?.russian) return;
-        const text = u.fullRussian || u.russian;
-        if (seen.has(text)) return;
-        seen.add(text);
-        fullList.push({ ...u, id: `${u.chunkOf || u.id}#full`, russian: text, chunkKey: `${u.chunkOf || u.id}#full` });
+        if (!seen.has(u.russian)) { seen.add(u.russian); items.push(u); }
       });
     });
-    setTtsProgress({ done: 0, total: fullList.length });
-    await preloadTtsAll(fullList, async (sq) => {
+    setTtsProgress({ done: 0, total: items.length });
+    await preloadTtsAll(items, async (sq) => {
       const e = ensureTtsAudio(sq);
       if (e) await e.promise;
     }, { concurrency: 10, limit: 100, timeout: 8000, onProgress: (done, total) => setTtsProgress({ done, total }) });
   }, [ensureTtsAudio]);
   preloadUnitRef.current = preloadUnit;
 
-  // 预取当前句音频（整句：切块时也提前缓冲整句发音，答题时缓存已就绪 → 即时播放）
+  // 预取当前句音频：题目显示什么就预载什么（当前 step 的 russian），缓存就绪 → 即时播放
   useEffect(() => {
     if (!loading && !loadError && currentStatement) {
-      const fullText = currentStatement.fullRussian || currentStatement.russian;
-      const speakStmt = fullText === currentStatement.russian
-        ? currentStatement
-        : { ...currentStatement, id: `${currentStatement.chunkOf || currentStatement.id}#full`, russian: fullText };
-      ensureTtsAudio(speakStmt);
+      ensureTtsAudio(currentStatement);
     }
   }, [loading, loadError, currentStatement, ensureTtsAudio]);
 
   const playSentenceSound = useCallback(async (times = 1) => {
     const stmt = currentStatement;
     if (!stmt?.russian) return;
-    // 切块时播整句（fullRussian）：用户期望听到完整句子而非当前块
-    const fullText = stmt.fullRussian || stmt.russian;
-    const speakStmt = fullText === stmt.russian
-      ? stmt
-      : { ...stmt, id: `${stmt.chunkOf || stmt.id}#full`, russian: fullText, chunkKey: `${stmt.chunkOf || stmt.id}#full` };
+    // 发音跟随题目显示：读 currentStatement.russian（单打=当前块，累积=已答+当前块整句）
     const myToken = ++playTokenRef.current; // 新播放立即作废旧播放（在途/排队均失效）
     try {
       let audio = null;
@@ -858,7 +847,7 @@ export default function QuestPractice() {
   // ---- 答对后即时播放标准发音 ----
   useEffect(() => {
     if (showAnswerPanel && currentStatement && ui.answerSpeak) {
-      playSentenceSound(1);
+      playSentenceSound(1); // 答对面板显示当前 step → 读当前 step（题目显示什么读什么）
       // 答对瞬间预载接下来 2 句发音 → 用户点「下一题」时秒播（连续答题不延迟）
       const seq = sequences[currentSequenceIndex];
       const units = (seq && seq.units) || [];
