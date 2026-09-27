@@ -636,7 +636,6 @@ export default function QuestPractice() {
     if (!loading && !loadError && sequences.length) {
       // 立即预热全词典 + 构建词形索引（25MB 静态资源，浏览器缓存；答对时重音/性数格即时可标注）
       ensureDictFull().then(() => warmUpIndex());
-      return () => clearTimeout(t);
     }
   }, [loading, loadError, sequences.length]);
 
