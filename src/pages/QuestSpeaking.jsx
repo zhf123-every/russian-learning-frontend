@@ -19,6 +19,7 @@ import Icon from "../components/TopBarIcons";
 import LearningContentModal from "../components/LearningContentModal";
 import SentenceTreeModal from "../components/SentenceTreeModal";
 import ReportErrorModal from "../components/ReportErrorModal";
+import ExitConfirmModal from "../components/quest/ExitConfirmModal";
 import { toast } from "../lib/toast";
 import { pipeline, env } from "@xenova/transformers";
 env.allowLocalModels = false;   // 强制从 HuggingFace CDN 加载模型（免费、多人可用）
@@ -145,6 +146,7 @@ export default function QuestSpeaking() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const effectiveCourseId = courseId || DEFAULT_UNIT_ID;
+  const studyCourseId = (() => { try { return new URLSearchParams(window.location.search).get('courseId') || effectiveCourseId } catch (e) { return effectiveCourseId } })()
 
   const [loading, setLoading] = useState(true);
   const [ttsProgress, setTtsProgress] = useState(null); // { done, total } 进页前发音预载进度
@@ -164,6 +166,7 @@ export default function QuestSpeaking() {
 
   // 顶栏弹窗
   const [showSettings, setShowSettings] = useState(false);
+  const [showExit, setShowExit] = useState(false);
   const { ui, settings, refreshSettings } = useQuestSettings();
   const [showModePicker, setShowModePicker] = useState(false);
   const [showLearning, setShowLearning] = useState(false);
@@ -900,7 +903,7 @@ export default function QuestSpeaking() {
       {/* ===== 顶栏 h-16（对标句乐部） ===== */}
       <div style={{ position: "relative", display: "flex", height: 64, alignItems: "center", justifyContent: "space-between", padding: "0 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 24, maxWidth: "90%" }}>
-          <button onClick={() => navigate(-1)} title="退出游戏" aria-label="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "var(--qs-text)" }}>
+          <button onClick={() => setShowExit(true)} title="退出游戏" aria-label="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "var(--qs-text)" }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M17 9L20 12L17 15" />
               <path d="M5 5H19" />
@@ -1169,6 +1172,13 @@ export default function QuestSpeaking() {
           </div>
         </div>
       )}
+
+      {/* 退出游戏确认弹窗（对标句乐部） */}
+      <ExitConfirmModal
+        open={showExit}
+        onClose={() => setShowExit(false)}
+        courseId={studyCourseId}
+      />
 
       <style>{`
         @keyframes listen-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }

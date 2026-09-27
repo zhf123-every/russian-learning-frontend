@@ -20,6 +20,7 @@ import Icon from "../components/TopBarIcons";
 import LearningContentModal from "../components/LearningContentModal";
 import SentenceTreeModal from "../components/SentenceTreeModal";
 import ReportErrorModal from "../components/ReportErrorModal";
+import ExitConfirmModal from "../components/quest/ExitConfirmModal";
 import { toast } from "../lib/toast";
 import { getPosColor, getPosLabel, buildGrammarLabel } from "../constants/posColors";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
@@ -144,6 +145,7 @@ export default function QuestListening() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const effectiveCourseId = courseId || DEFAULT_UNIT_ID;
+  const studyCourseId = (() => { try { return new URLSearchParams(window.location.search).get('courseId') || effectiveCourseId } catch (e) { return effectiveCourseId } })()
 
   const [loading, setLoading] = useState(true);
   const [ttsProgress, setTtsProgress] = useState(null); // { done, total } 进页前发音预载进度
@@ -163,6 +165,7 @@ export default function QuestListening() {
 
   // 顶栏弹窗
   const [showSettings, setShowSettings] = useState(false);
+  const [showExit, setShowExit] = useState(false);
   const { ui, settings, refreshSettings } = useQuestSettings();
   const [showModePicker, setShowModePicker] = useState(false);
   const [showLearning, setShowLearning] = useState(false);
@@ -794,7 +797,7 @@ export default function QuestListening() {
       <div style={{ position: "fixed", inset: 0, ...THEME_OF(ui).vars, background: BG_STYLE(ui).background, display: "flex", flexDirection: "column", zIndex: 100 }}>
         <div style={{ position: "relative", display: "flex", height: 64, alignItems: "center", justifyContent: "space-between", padding: "0 24px", borderBottom: "1px solid var(--qs-border, #f0f0f4)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <button onClick={() => navigate(-1)} aria-label="退出游戏" title="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "var(--qs-text)" }}>
+            <button onClick={() => setShowExit(true)} aria-label="退出游戏" title="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "var(--qs-text)" }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M17 9L20 12L17 15" />
                 <path d="M5 5H19" />
@@ -837,7 +840,7 @@ export default function QuestListening() {
       {/* ===== 顶栏 h-16（对标句乐部） ===== */}
       <div style={{ position: "relative", display: "flex", height: 64, alignItems: "center", justifyContent: "space-between", padding: "0 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 24, maxWidth: "90%" }}>
-          <button onClick={() => navigate(-1)} title="退出游戏" aria-label="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "#111" }}>
+          <button onClick={() => setShowExit(true)} title="退出游戏" aria-label="退出游戏" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", color: "#111" }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M17 9L20 12L17 15" />
               <path d="M5 5H19" />
@@ -1122,6 +1125,13 @@ export default function QuestListening() {
           </div>
         </div>
       )}
+
+      {/* 退出游戏确认弹窗（对标句乐部） */}
+      <ExitConfirmModal
+        open={showExit}
+        onClose={() => setShowExit(false)}
+        courseId={studyCourseId}
+      />
 
       <style>{`
         @keyframes listen-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }

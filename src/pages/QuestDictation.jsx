@@ -39,6 +39,7 @@ import LearningContentModal from "../components/LearningContentModal";
 import SentenceTreeModal from "../components/SentenceTreeModal";
 import ReportErrorModal from "../components/ReportErrorModal";
 import ShortcutTips from "../components/quest/ShortcutTips";
+import ExitConfirmModal from "../components/quest/ExitConfirmModal";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 import { preloadTtsAll } from "../lib/ttsPreload";
@@ -110,6 +111,7 @@ export default function QuestDictation() {
   const [showSubtitle, setShowSubtitle] = useState(false); // 模糊字幕
   const [isPlaying, setIsPlaying] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showExit, setShowExit] = useState(false);
   const { ui, sfx, settings, refreshSettings } = useQuestSettings();
   const [showModePicker, setShowModePicker] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -794,7 +796,7 @@ export default function QuestDictation() {
       {/* 顶部工具栏（对标句乐部：左退出+标题，右图标组） */}
       <div style={styles.toolbar}>
         <div style={styles.toolbarLeft}>
-          <button style={styles.iconBtn} onClick={() => navigate(-1)} title="退出游戏" aria-label="退出游戏">
+          <button style={styles.iconBtn} onClick={() => setShowExit(true)} title="退出游戏" aria-label="退出游戏">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M17 9L20 12L17 15" />
               <path d="M5 5H19" />
@@ -982,6 +984,13 @@ export default function QuestDictation() {
         onRetry={handleRetryFromSummary}
         onGoCourseList={handleGoCourseList}
         hasNextCourse={false}
+      />
+
+      {/* 退出游戏确认弹窗（对标句乐部） */}
+      <ExitConfirmModal
+        open={showExit}
+        onClose={() => setShowExit(false)}
+        courseId={studyCourseId}
       />
     </div>
   );
