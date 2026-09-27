@@ -38,12 +38,12 @@ export function inferRoles(sentence, dictWords) {
     if (isVerb(w)) { w.syntacticRole = "predicate"; w.roleLabel = "谓语"; }
   });
 
-  // 2) 主语：主格名词/代词/数词（不在介词后），取第一个
+  // 2) 主语：主格名词/代词/数词（不在介词后），取第一个；无格标注的句首名词/代词（如 это）也判主语
   let subjectIdx = -1;
   for (let i = 0; i < n; i++) {
     const w = words[i];
     if (w.syntacticRole) continue;
-    if (isNounish(w) && w.grammarCase === "nom" && !isPrepAfter(i)) {
+    if (isNounish(w) && !isPrepAfter(i) && (w.grammarCase === "nom" || !w.grammarCase)) {
       w.syntacticRole = "subject"; w.roleLabel = "主语";
       subjectIdx = i;
       break;

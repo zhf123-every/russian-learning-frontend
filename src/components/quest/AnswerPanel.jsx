@@ -21,6 +21,7 @@
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import { getPosLabel, getPosColor, buildGrammarLabel } from "../../constants/posColors";
 import { annotateWords } from "../../lib/wordAnnotate";
+import { inferRoles } from "../../lib/roleRules";
 import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -161,9 +162,28 @@ export default function AnswerPanel({
     });
   }, [statement?.chinese]);
 
-  // 本地词典即时补丁：缺重音词形/词性/性数格的词，词典已预热 → 答对瞬间补全（无闪烁无延迟）
+  // 本地即时标注：词典（重音/词性/性数格）+ 形态规则引擎（句子成分）整句同步推断
+  // 覆盖课程数据里残留的无效标签（default 等），答对瞬间成分/重音即完整，无闪烁无延迟
   const words = useMemo(() => {
     const raw = statement?.words || [];
+    const needRules = raw.some((w) => !w.roleLabel || w.roleLabel === "default" || !w.syntacticRole || w.syntacticRole === "default");
+    if (needRules && statement?.russian) {
+      const dictWords = annotateWords(statement.russian);
+      if (dictWords.length) {
+        const roleWords = inferRoles(statement.russian, dictWords);
+        return raw.map((w, i) => {
+          const rw = roleWords[i] || {};
+          // 词典未命中词再逐词兜底
+          const single = !rw.pos ? (annotateWords(w.lemma || w.word || w.ru || w.text || "")[0] || {}) : {};
+          return {
+            ...w, ...rw, ...single,
+            order: i,
+            roleLabel: rw.roleLabel || "",
+            syntacticRole: rw.syntacticRole || "default",
+          };
+        });
+      }
+    }
     return raw.map((w) => {
       if (w.form && w.pos) return w; // 已有完整标注直接复用
       const single = annotateWords(w.lemma || w.word || w.ru || w.text || "")[0] || {};
@@ -180,7 +200,7 @@ export default function AnswerPanel({
         chinese: w.chinese || single.chinese || "",
       };
     });
-  }, [statement?.words]);
+  }, [statement?.words, statement?.russian]);
 
   if (!statement) return null;
 
@@ -242,8 +262,8 @@ export default function AnswerPanel({
                   onClick={() => speakRussian(displayWord, w.audio_url, w.id, "word")}
                   title="点击发音"
                 >
-                  {/* 顶部：句法角色标签（角色色） */}
-                  {roleLabel && (
+                  {/* 顶部：句法角色标签（角色色）；default/空等无效标签不显示 */}
+                  {roleLabel && roleLabel !== "default" && (
                     <span style={{ ...styles.roleTag, background: borderColor }}>
                       {roleLabel}
                     </span>
