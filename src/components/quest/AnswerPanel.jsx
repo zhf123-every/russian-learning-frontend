@@ -365,6 +365,8 @@ const styles = {
     alignItems: "center",
     padding: "20px 16px 14px",
     minWidth: 100,
+    minHeight: 190, // 统一卡片高度：有无角色标签/词性/性数格的词卡等高
+    justifyContent: "flex-start",
     border: "1px solid var(--qs-border, #E5E7EB)",
     borderRadius: 12,
     background: "var(--qs-surface2, #fff)",

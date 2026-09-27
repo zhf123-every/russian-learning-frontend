@@ -810,6 +810,17 @@ export default function QuestPractice() {
     ttsAudioRef.current = null;
   }, []);
 
+  // ---- 统一切题打断：任何导致 currentStatement 变化的路径（按钮/引擎快捷键/autoNext）
+  // 在自动播放前先停旧题残留发音，杜绝答对/上一题声音带入新题连读 ----
+  const lastStmtKeyRef = useRef(null);
+  useEffect(() => {
+    const key = currentStatement ? String(currentStatement.russian || "").trim() : "";
+    if (lastStmtKeyRef.current && lastStmtKeyRef.current !== key) {
+      stopPlayback();
+    }
+    lastStmtKeyRef.current = key;
+  }, [currentStatement, stopPlayback]);
+
   // ---- 题目出现时自动播放两遍发音（即时，无延迟） ----
   useEffect(() => {
     if (!loading && !loadError && currentStatement && ui.autoSpeak !== false) {

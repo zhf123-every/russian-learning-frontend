@@ -128,7 +128,10 @@ function dictZhIndex() {
       }
     }
   } catch (e) { /* 词典缺失不阻塞 */ }
-  if (Object.keys(idx).length) _dictZhIdx = idx; // 词典已就绪才缓存
+  // 仅当全词典已就绪才缓存：简版先就绪时若缓存，dict-full 之后加载将永不重建，
+  // 导致只在全词典收录的词（如 красивая）永远查不到中文、答题提示残留俄语
+  const hasFull = typeof full === "object" && Object.keys(full).length > 0;
+  if (hasFull && Object.keys(idx).length) _dictZhIdx = idx;
   return idx;
 }
 
