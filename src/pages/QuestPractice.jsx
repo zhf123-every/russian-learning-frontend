@@ -310,9 +310,8 @@ export default function QuestPractice() {
 
   const ensureAnalysis = useCallback(async (stmt) => {
     if (!stmt || stmt.spellWord || !stmt.russian) return;
-    // 已有标注（词性非空）就跳过
-    if (Array.isArray(stmt.words) && stmt.words.some(w => w.pos || w.grammarLabel)) return;
     const key = String(stmt.russian).trim();
+    // 词典标注（本地，立即生效）：总是执行，补重音词形 form / 词性 pos / 性数格，即使已有词性标注也只补不覆盖
     // 1) 词典标注（本地，立即生效；首次先加载全词典）
     await ensureDictFull();
     const dictWords = annotateWords(stmt.russian);

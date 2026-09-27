@@ -81,15 +81,15 @@ export const THEME_OF = (ui) => {
   if (dark) {
     return {
       dark: true,
-      bg: '#0f172a',
-      surface: '#111827',
-      surface2: '#1f2937',
+      bg: '#000000',
+      surface: '#000000',
+      surface2: '#171717',
       text: '#f1f5f9',
       sub: '#a8b2c1',
       border: '#64748b',
       active: '#7C3AED',
       vars: {
-        '--qs-bg': '#0f172a', '--qs-surface': '#111827', '--qs-surface2': '#1f2937',
+        '--qs-bg': '#000000', '--qs-surface': '#000000', '--qs-surface2': '#171717',
         '--qs-text': '#f1f5f9', '--qs-sub': '#a8b2c1', '--qs-border': '#64748b', '--qs-active': '#7C3AED', '--qs-success': '#34D399',
       },
     }

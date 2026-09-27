@@ -19,18 +19,18 @@
  */
 
 import { useEffect, useCallback, useState, useRef } from "react";
-import { getPosLabel, buildGrammarLabel } from "../../constants/posColors";
+import { getPosLabel, getPosColor, buildGrammarLabel } from "../../constants/posColors";
 import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 内存缓存：text -> audio_url，避免重复请求
 const ttsCache = new Map();
 
-// 句法角色 → 颜色映射
+// 句法角色 → 颜色映射（对齐句乐部实测：边框/标签用角色色，主语橙/谓语红/宾语蓝）
 const ROLE_COLORS = {
-  subject: "#EF4444",
-  predicate: "#22C55E",
-  object: "#3B82F6",
+  subject: "#B45309",
+  predicate: "#BE123C",
+  object: "#2563EB",
   adverbial: "#F59E0B",
   attribute: "#A855F7",
   predicative: "#14B8A6",
@@ -187,16 +187,18 @@ export default function AnswerPanel({
         {words.length > 0 ? (
           <div style={styles.cardsRow}>
             {words.map((w, i) => {
-              // 颜色：优先数据给定的词性色（新 build-steps），否则按句法角色（旧数据/听写页）
-              // 设置面板「词性颜色」优先（学习面板 posColors），否则数据词性色，最后按句法角色兜底
+              // 颜色：下划线用词性色（设置面板 posColors → 数据词性色 → 词性映射），边框/标签用句法角色色（对齐句乐部两套颜色）
               const posVisMap = uiCfg.posVis || {};
               if (w.pos && posVisMap[w.pos] === false) return null;
               const customPosColor = posColorOf(uiCfg, w.pos);
-              const color = customPosColor || w.posColor || getRoleColor(w.syntacticRole);
-              const effColor = color;
+              const underlineColor = customPosColor || w.posColor || getPosColor(w.pos) || "";
+              const roleColor = getRoleColor(w.syntacticRole);
+              const effColor = underlineColor || roleColor || "#9CA3AF"; // 下划线主色
+              const borderColor = roleColor || effColor;                // 边框/标签主色（角色色）
               const roleLabel = w.roleLabel || getRoleLabel(w.syntacticRole);
-              // 显示带重音符的词形：优先 form（带重音），其次 stress_marked / lemma
-              const displayWord = w.form || w.stress_marked || w.lemma || "";
+              // 显示带重音符的词形：优先 form（带重音），其次 stress_marked / lemma；撇号重音转为组合重音 ´
+              const toStress = (s) => String(s || "").replace(/'/g, "\u0301");
+              const displayWord = toStress(w.form || w.stress_marked || w.lemma || "");
               const posLabel = getPosLabel(w.pos);
               // 语法标注：优先数据预组装的中文（新 build-steps），否则按英文枚举构建（旧数据）
               const grammarLabel = w.grammarLabel || buildGrammarLabel(w);
@@ -208,14 +210,14 @@ export default function AnswerPanel({
                   className="word-card"
                   style={{
                     ...styles.wordCard,
-                    borderColor: `${effColor}60`,
+                    borderColor: `${borderColor}60`,
                   }}
                   onClick={() => speakRussian(displayWord, w.audio_url, w.id, "word")}
                   title="点击发音"
                 >
-                  {/* 顶部：句法角色标签 */}
+                  {/* 顶部：句法角色标签（角色色） */}
                   {roleLabel && (
-                    <span style={{ ...styles.roleTag, background: effColor }}>
+                    <span style={{ ...styles.roleTag, background: borderColor }}>
                       {roleLabel}
                     </span>
                   )}
@@ -228,7 +230,7 @@ export default function AnswerPanel({
                     {displayWord}
                   </div>
 
-                  {/* 彩色下划线 */}
+                  {/* 彩色下划线（词性色，与边框/标签的角色色分离） */}
                   <div style={{ ...styles.underline, background: effColor }} />
 
                   {/* 中文释义 */}
@@ -237,8 +239,8 @@ export default function AnswerPanel({
                   {/* 语法标注（性数格） */}
                   {grammarLabel && <div style={{ ...styles.pos, fontSize: "10px", color: "var(--qs-sub, #9CA3AF)", marginTop: "2px" }}>{grammarLabel}</div>}
 
-                  {/* 词性 */}
-                  {uiCfg.showPos !== false && posLabel && <div style={styles.pos}>{posLabel}</div>}
+                  {/* 词性（词性色，深夜模式同样生效） */}
+                  {uiCfg.showPos !== false && posLabel && <div style={{ ...styles.pos, color: effColor }}>{posLabel}</div>}
                 </div>
               );
             })}
