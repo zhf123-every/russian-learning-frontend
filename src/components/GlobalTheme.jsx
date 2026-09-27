@@ -14,8 +14,48 @@
 import { useEffect, useState } from "react";
 import { loadUi, THEME_OF } from "../hooks/useQuestSettings";
 
+/**
+ * 全站深色降级覆盖：非答题页（主页/商城/我的游戏/详情页等）大量使用
+ * bg-white / text-gray-* / border-gray-* 等浅色工具类，深夜模式下用
+ * !important 统一切换，保证"深夜模式作用到网站全局"。
+ * 只覆盖常用工具类，答题页（走 --qs-* 变量）与特殊设计不受影响。
+ */
+const DARK_OVERRIDES = `
+html[data-theme="dark"] body { background: #000; }
+html[data-theme="dark"] .bg-white { background-color: #121214 !important; }
+html[data-theme="dark"] .bg-gray-50, html[data-theme="dark"] .bg-gray-100 { background-color: #161618 !important; }
+html[data-theme="dark"] .bg-gray-200 { background-color: #1d1d20 !important; }
+html[data-theme="dark"] .bg-gray-100\/80 { background-color: #161618 !important; }
+html[data-theme="dark"] .bg-muted, html[data-theme="dark"] .bg-muted\/60 { background-color: #17171a !important; }
+html[data-theme="dark"] .bg-card { background-color: #141416 !important; }
+html[data-theme="dark"] .bg-background { background-color: #000 !important; }
+html[data-theme="dark"] .text-gray-950, html[data-theme="dark"] .text-gray-900 { color: #f3f4f6 !important; }
+html[data-theme="dark"] .text-gray-800, html[data-theme="dark"] .text-gray-700 { color: #e5e7eb !important; }
+html[data-theme="dark"] .text-gray-600, html[data-theme="dark"] .text-gray-500 { color: #a1a1aa !important; }
+html[data-theme="dark"] .text-gray-400 { color: #71717a !important; }
+html[data-theme="dark"] .text-foreground { color: #f1f5f9 !important; }
+html[data-theme="dark"] .text-muted-foreground { color: #a8b2c1 !important; }
+html[data-theme="dark"] .border-gray-300, html[data-theme="dark"] .border-gray-200, html[data-theme="dark"] .border-gray-100 { border-color: #2a2a2e !important; }
+html[data-theme="dark"] .border-border { border-color: #27272a !important; }
+html[data-theme="dark"] .hover\\:bg-gray-100:hover, html[data-theme="dark"] .hover\\:bg-gray-100\\/80:hover { background-color: #1d1d20 !important; }
+html[data-theme="dark"] .hover\\:bg-gray-50:hover { background-color: #1a1a1d !important; }
+html[data-theme="dark"] .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.55) !important; }
+html[data-theme="dark"] .shadow-card, html[data-theme="dark"] .shadow-pop { box-shadow: 0 4px 14px rgba(0,0,0,0.45) !important; }
+html[data-theme="dark"] .shadow-sm { box-shadow: 0 1px 2px rgba(0,0,0,0.4) !important; }
+`;
+
 export default function GlobalTheme() {
   const [ui, setUi] = useState(() => loadUi());
+
+  // 注入全站深色覆盖样式（仅挂载一次）
+  useEffect(() => {
+    const id = "global-theme-dark-overrides";
+    if (document.getElementById(id)) return;
+    const st = document.createElement("style");
+    st.id = id;
+    st.textContent = DARK_OVERRIDES;
+    document.head.appendChild(st);
+  }, []);
 
   // 跨标签页/设置弹窗保存后即时刷新
   useEffect(() => {
