@@ -133,11 +133,15 @@ export function useQuestSettings() {
   const [sfx, setSfx] = useState(() => loadSfx())
   const settings = useSettingsStore((s) => s.settings)
 
-  // 跨标签页/其他页保存 rlearn_quest_ui 后即时刷新
+  // 跨标签页/其他页保存 rlearn_quest_ui 后即时刷新（含同页设置弹窗保存的广播事件）
   useEffect(() => {
     const h = () => { setUi(loadUi()); setSfx(loadSfx()) }
     window.addEventListener('storage', h)
-    return () => window.removeEventListener('storage', h)
+    window.addEventListener('quest-ui-changed', h)
+    return () => {
+      window.removeEventListener('storage', h)
+      window.removeEventListener('quest-ui-changed', h)
+    }
   }, [])
 
   const refreshSettings = useCallback(() => { setUi(loadUi()); setSfx(loadSfx()) }, [])

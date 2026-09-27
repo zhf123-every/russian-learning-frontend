@@ -383,7 +383,7 @@ export default function QuestListening() {
     await preloadTtsAll(seqs, async (sq) => {
       const e = ensureTtsAudio(sq?.russian);
       if (e) await e.promise;
-    }, { concurrency: 8, limit: 24, timeout: 12000, onProgress: (done, total) => setTtsProgress({ done, total }) });
+    }, { concurrency: 10, limit: 100, timeout: 8000, onProgress: (done, total) => setTtsProgress({ done, total }) });
   }, [ensureTtsAudio]);
 
   // ---- TTS 播放 ----
@@ -733,7 +733,7 @@ export default function QuestListening() {
   }
 
   const title = unitMeta?.title || (currentSequence?.familyName) || "听力练习";
-  const showCard = phase !== 'blind' || showAnswerMode;
+  const showCard = phase === 'answer' || showAnswerMode; // 慢听阶段不显示答案，仅答案阶段显示
 
   // ===== 准备界面（对标句乐部"准备好了吗？点我开始"） =====
   if (!ready) {

@@ -144,6 +144,7 @@ export default function QuestDictation() {
 
   // ---- 俄语发音（与中译俄一致：/api/tts voice=alena/type=statement，同句缓存）----
   const ttsAudioRef = useRef(null);
+  const playTokenRef = useRef(0); // 播放令牌：新播放/切题递增，作废所有在途播放
   const ttsUrlCacheRef = useRef({});
   const ensureTtsUrl = useCallback(async (text) => {
     if (!text) return "";
@@ -191,35 +192,57 @@ export default function QuestDictation() {
     await preloadTtsAll(stmts, async (it) => {
       const e = ensureTtsAudio(it?.russian);
       if (e) await e.promise;
-    }, { concurrency: 8, limit: 24, timeout: 12000, onProgress: (done, total) => setTtsProgress({ done, total }) });
+    }, { concurrency: 10, limit: 100, timeout: 8000, onProgress: (done, total) => setTtsProgress({ done, total }) });
   }, [ensureTtsAudio]);
 
-  const playAudio = useCallback((text) => {
+  const playAudio = useCallback((text, times) => {
     const textToPlay = text || currentStatement?.russian;
     if (!textToPlay) return;
+    const n = times ?? (ui.speakTimes ?? 2); // 进题自动播放次数（与播放设置关联）
+    const myToken = ++playTokenRef.current; // 新播放立即作废旧播放（在途/排队均失效）
     (async () => {
       try {
         let audio = null;
         const entry = ensureTtsAudio(textToPlay);
         if (entry) {
           await entry.promise;
+          if (playTokenRef.current !== myToken) return;
           audio = entry.audio;
         }
         if (!audio) {
           const url = await ensureTtsUrl(textToPlay);
+          if (playTokenRef.current !== myToken) return;
           if (!url) return;
           audio = new Audio(url);
         }
-        if (ttsAudioRef.current) { ttsAudioRef.current.pause(); ttsAudioRef.current.onended = null; }
-        ttsAudioRef.current = audio;
-        audio.playbackRate = settings.rate || 1;
-        audio.onplay = () => setIsPlaying(true);
-        audio.onended = () => { setIsPlaying(false); ttsAudioRef.current = null; };
-        audio.onerror = () => { setIsPlaying(false); ttsAudioRef.current = null; };
-        audio.play().catch((e) => { console.warn("播放失败:", e); setIsPlaying(false); });
+        const playOnce = (remaining) => {
+          if (playTokenRef.current !== myToken) return;
+          audio.pause();
+          audio.currentTime = 0;
+          audio.playbackRate = settings.rate || 1;
+          ttsAudioRef.current = audio;
+          audio.onplay = () => setIsPlaying(true);
+          audio.onerror = () => { setIsPlaying(false); ttsAudioRef.current = null; };
+          audio.play().catch((e) => { console.warn("播放失败:", e); setIsPlaying(false); });
+          audio.onended = () => {
+            if (remaining <= 1) { setIsPlaying(false); ttsAudioRef.current = null; return; }
+            setTimeout(() => {
+              if (playTokenRef.current === myToken) playOnce(remaining - 1);
+            }, (ui.speakGap ?? 1) * 1000);
+          };
+        };
+        playOnce(n);
       } catch (e) { setIsPlaying(false); }
     })();
-  }, [currentStatement?.russian, ensureTtsUrl, ensureTtsAudio]);
+  }, [currentStatement?.russian, ensureTtsUrl, ensureTtsAudio, ui.speakTimes, ui.speakGap, settings.rate]);
+
+  // 立即停止当前发音并作废在途播放（切题/重试/暂停时调用）
+  const stopPlayback = useCallback(() => {
+    playTokenRef.current += 1;
+    const a = ttsAudioRef.current;
+    if (a) { a.onended = null; a.pause(); a.currentTime = 0; }
+    setIsPlaying(false);
+  }, []);
 
   // ---- 全局快捷键 ----
   const { isComposingRef } = useKeyboardShortcuts({
@@ -252,6 +275,8 @@ export default function QuestDictation() {
       // Chunking：每一步答对都显示答对面板（含中间步），用户点「下一题」进入下一步
       setShowAnswerPanel(true);
       recordCorrect();
+      // 答对后播放一遍标准发音（与播放设置「答对自动播放」关联）
+      if (ui.answerSpeak !== false) playAudio(null, 1);
       if (sfx.answerOn !== false) playRightSound();
       // 通关之路：六格天赋树（听写模式同样积累；仅语法课程的词句带 grammar_case 标注时起效）
       if (Array.isArray(currentStatement?.words)) {
@@ -469,6 +494,7 @@ export default function QuestDictation() {
 
   // ---- 跳转下一题 ----
   const goToNext = useCallback(() => {
+    stopPlayback(); // 切题立即打断发音
     if (questionIndex < statements.length - 1) {
       setQuestionIndex((i) => i + 1);
       setCurrentErrors([]);
@@ -513,7 +539,7 @@ export default function QuestDictation() {
         setCurrentErrors([]);
         setShowSubtitle(false);
         goToNext();
-      }, 800);
+      }, 3000);
       return () => clearTimeout(t);
     }
   }, [showAnswerPanel, ui.autoNext]);

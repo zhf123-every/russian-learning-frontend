@@ -188,7 +188,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
   const set = (k, v) => setS(prev => ({ ...prev, [k]: v }))
   const applyKeys = (id, k) => { const n = { ...hk, [id]: k }; setHk(n); saveHotkeys(n); setRecId(null); toast('快捷键已更新并保存') }
   const patchSfx = (p) => { const n = saveSfx(p); setSfx(n) }
-  const patchUi = (p) => { const n = saveUi(p); setUi(n) }
+  const patchUi = (p) => { const n = saveUi(p); setUi(n); try { window.dispatchEvent(new Event('quest-ui-changed')) } catch (e) {} }
 
   // 录制监听：捕获任意按键，Esc 取消，检测冲突
   useEffect(() => {
@@ -557,6 +557,22 @@ export default function SettingsModal({ onClose, defaultTab }) {
                     <div className="qs-item-right">
                       <QSlider min={0} max={3} step={0.5} value={ui.speakGap ?? 1} display={(ui.speakGap ?? 1) + 's'} onChange={v => patchUi({ speakGap: v })} />
                     </div>
+                  </div>
+
+                  <div className="qs-item">
+                    <div className="qs-item-left">
+                      <div className="qs-item-label">自动播放</div>
+                      <div className="qs-item-desc">进入题目时自动播放发音</div>
+                    </div>
+                    <div className="qs-item-right"><Toggle on={ui.autoSpeak !== false} onChange={v => patchUi({ autoSpeak: v })} /></div>
+                  </div>
+
+                  <div className="qs-item">
+                    <div className="qs-item-left">
+                      <div className="qs-item-label">答对自动播放</div>
+                      <div className="qs-item-desc">答对后播放一遍标准发音</div>
+                    </div>
+                    <div className="qs-item-right"><Toggle on={ui.answerSpeak !== false} onChange={v => patchUi({ answerSpeak: v })} /></div>
                   </div>
                 </div>
               ) : tab === '听力' ? (

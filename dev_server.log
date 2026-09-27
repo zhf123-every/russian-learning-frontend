@@ -1,0 +1,53 @@
+
+> russian-learning-react@0.1.0 dev
+> vite
+
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1351[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://198.18.0.1:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://100.66.17.107:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.8:[1m5173[22m/[39m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+/*! 🌼 daisyUI 5.7.42 */
+[2m13:28:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestDictation.jsx, /src/pages/QuestPractice.jsx, /src/pages/QuestListening.jsx, /src/pages/QuestSpeaking.jsx[22m
+[2m13:28:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestDictation.jsx, /src/pages/QuestPractice.jsx, /src/pages/QuestListening.jsx, /src/pages/QuestSpeaking.jsx[22m
+[2m13:29:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestDictation.jsx, /src/styles/tailwind.css[22m
+[2m13:30:12[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m13:30:21[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m13:30:29[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m13:30:37[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m13:34:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestDictation.jsx, /src/pages/QuestPractice.jsx, /src/pages/QuestListening.jsx, /src/pages/QuestSpeaking.jsx[22m
+[2m13:35:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m13:35:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestDictation.jsx, /src/styles/tailwind.css[22m
+[2m13:35:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestListening.jsx, /src/styles/tailwind.css[22m
+[2m13:35:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestSpeaking.jsx, /src/styles/tailwind.css[22m
+[2m13:35:13[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m13:35:16[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m13:35:24[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m13:35:31[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m14:52:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m14:52:47[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m14:52:59[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m14:53:03[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m14:53:13[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m14:53:23[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m14:56:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\quest\AnswerPanel.jsx, /src/styles/tailwind.css[22m
+[2m14:57:23[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m14:57:26[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m14:57:35[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m14:57:43[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m15:17:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\SettingsModal.jsx, /src/styles/tailwind.css[22m
+[2m15:18:05[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestDictation.jsx, /src/pages/QuestPractice.jsx, /src/pages/QuestListening.jsx, /src/pages/QuestSpeaking.jsx, /@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\quest\AnswerPanel.jsx[22m
+[2m15:18:43[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestDictation.jsx, /src/styles/tailwind.css[22m
+[2m15:19:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestDictation.jsx, /src/styles/tailwind.css[22m
+[2m15:19:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestDictation.jsx, /src/styles/tailwind.css[22m
+[2m15:19:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestDictation.jsx, /src/styles/tailwind.css[22m
+[2m15:20:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestListening.jsx, /src/styles/tailwind.css[22m
+[2m15:20:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m15:20:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestDictation.jsx, /src/styles/tailwind.css[22m
+[2m15:20:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestListening.jsx, /src/styles/tailwind.css[22m
+[2m15:20:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestSpeaking.jsx, /src/styles/tailwind.css[22m
+[2m15:21:20[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
+[2m15:21:24[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mbuild_out.txt[22m
