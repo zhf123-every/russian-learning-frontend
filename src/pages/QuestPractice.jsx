@@ -601,6 +601,31 @@ export default function QuestPractice() {
     return () => clearInterval(timerRef.current);
   }, [loading, loadError]);
 
+  // ---- 数据就绪后后台预分析：逐句词典+AI 标注（并发 4），答对时重音/词性/成分已就绪 ----
+  const preAnalysisStartedRef = useRef(false);
+  useEffect(() => {
+    if (loading || loadError || !sequences.length || preAnalysisStartedRef.current) return;
+    preAnalysisStartedRef.current = true;
+    const all = sequences.flatMap((sq) => (sq.units || [])).filter((u) => u && u.russian);
+    let i = 0;
+    const worker = async () => {
+      while (i < all.length) {
+        const idx = i++;
+        const u = all[idx];
+        try { await ensureAnalysis(u); } catch (e) { /* 单句失败不影响答题 */ }
+      }
+    };
+    Array.from({ length: 4 }).forEach(() => worker());
+  }, [loading, loadError, sequences.length, ensureAnalysis]);
+
+  // ---- 数据就绪后后台全量预载发音（并发 10，不阻塞进页；Preloader 覆盖首屏 20 句之外也秒播） ----
+  const preloadStartedRef = useRef(false);
+  useEffect(() => {
+    if (loading || loadError || !sequences.length || preloadStartedRef.current) return;
+    preloadStartedRef.current = true;
+    preloadUnit(sequences);
+  }, [loading, loadError, sequences.length, preloadUnit]);
+
   // ---- 自动聚焦输入框 ----
   useEffect(() => {
     if (!loading && !loadError && currentStatement) {
@@ -611,7 +636,8 @@ export default function QuestPractice() {
   // ---- 预加载全词典 + 构建词形索引（后台预热，答对时标注即时生效）----
   useEffect(() => {
     if (!loading && !loadError && sequences.length) {
-      const t = setTimeout(async () => { await ensureDictFull(); warmUpIndex(); }, 600);
+      // 立即预热全词典 + 构建词形索引（25MB 静态资源，浏览器缓存；答对时重音/性数格即时可标注）
+      ensureDictFull().then(() => warmUpIndex());
       return () => clearTimeout(t);
     }
   }, [loading, loadError, sequences.length]);
@@ -660,6 +686,7 @@ export default function QuestPractice() {
 
   // ---- 发音（Yandex 真人俄语发音）：TTS 缓存 + 即时播放 ----
   const ttsAudioRef = useRef(null);
+  const ttsAudioPoolRef = useRef(new Set()); // 所有播放中的 Audio 实例，打断时全部暂停（防旧实例漏停）
   const playTokenRef = useRef(0); // 播放令牌：新播放/切题递增，作废所有在途播放
   const ttsUrlCacheRef = useRef({}); // id -> url，同一句只请求一次
   const ensureTts = useCallback(async (stmt) => {
@@ -759,15 +786,16 @@ export default function QuestPractice() {
         audio.currentTime = 0;
         audio.playbackRate = settings.rate || 1;
         ttsAudioRef.current = audio;
-        audio.onended = null;
-        audio.play().catch((e) => console.warn("播放失败:", e));
-        if (remaining > 1) {
-          audio.onended = () => {
+        ttsAudioPoolRef.current.add(audio);
+        audio.onended = () => {
+          ttsAudioPoolRef.current.delete(audio);
+          if (remaining > 1) {
             setTimeout(() => {
               if (playTokenRef.current === myToken) playOnce(remaining - 1);
             }, 600);
-          };
-        }
+          }
+        };
+        audio.play().catch((e) => console.warn("播放失败:", e));
       };
       playOnce(times);
     } catch (e) {
@@ -778,12 +806,13 @@ export default function QuestPractice() {
   // 立即停止当前发音并作废在途播放（切题/重试/暂停时调用，保证不再继续播）
   const stopPlayback = useCallback(() => {
     playTokenRef.current += 1;
-    const a = ttsAudioRef.current;
-    if (a) {
+    ttsAudioPoolRef.current.forEach((a) => {
       a.onended = null;
       a.pause();
       a.currentTime = 0;
-    }
+    });
+    ttsAudioPoolRef.current.clear();
+    ttsAudioRef.current = null;
   }, []);
 
   // ---- 题目出现时自动播放两遍发音（即时，无延迟） ----
@@ -804,8 +833,21 @@ export default function QuestPractice() {
   useEffect(() => {
     if (showAnswerPanel && currentStatement && ui.answerSpeak) {
       playSentenceSound(1);
+      // 答对瞬间预载接下来 2 句发音 → 用户点「下一题」时秒播（连续答题不延迟）
+      const seq = sequences[currentSequenceIndex];
+      const units = (seq && seq.units) || [];
+      const nu = currentUnitIndex + 1;
+      const nextUnits = nu < units.length
+        ? units.slice(nu, nu + 2)
+        : (currentSequenceIndex + 1 < sequences.length ? ((sequences[currentSequenceIndex + 1].units || []).slice(0, 2)) : []);
+      if (nextUnits.length) {
+        preloadTtsAll(nextUnits, (it) => {
+          const e = ensureTtsAudio(it);
+          return e ? e.promise : Promise.resolve();
+        }, { concurrency: 2, limit: 2 });
+      }
     }
-  }, [showAnswerPanel, currentStatement, playSentenceSound, ui.answerSpeak]);
+  }, [showAnswerPanel, currentStatement, playSentenceSound, ui.answerSpeak, currentSequenceIndex, currentUnitIndex, sequences, ensureTtsAudio]);
 
   // ---- AnswerPanel 操作 ----
   const handleRetry = () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { cacheLesson, cacheTtsUrl, cacheTtsAudio } from "../utils/ttsPreloadShared";
+import { ensureDictFull, warmUpIndex } from "../lib/wordAnnotate";
 
 // 后端基址（与各答题页一致：dev 走本地 8000，生产走 VITE_API_BASE）
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -116,6 +117,8 @@ export default function Preloader() {
         }
         // 写入共享缓存（答题页 loadUnit 命中后无遮罩直接进）
         cacheLesson(unitId, backendData || lesson || { sentences: sentences.map((ru) => ({ ru })) });
+        // 并行预热 25MB 全词典 + 词形索引（答对词卡重音/性数格即时标注，不阻塞主流程）
+        ensureDictFull().then(() => warmUpIndex());
         if (cancelled) return;
 
         // 2) 资源总数：数据 1 + 封面 1 + 首屏音频 N

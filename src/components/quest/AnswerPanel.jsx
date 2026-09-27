@@ -18,8 +18,9 @@
  * 发音：Yandex SpeechKit 真人俄语发音（后端 TTS），优先 audio_url 缓存
  */
 
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import { getPosLabel, getPosColor, buildGrammarLabel } from "../../constants/posColors";
+import { annotateWords } from "../../lib/wordAnnotate";
 import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -155,10 +156,30 @@ export default function AnswerPanel({
     });
   }, [statement?.chinese]);
 
+  // 本地词典即时补丁：缺重音词形/词性/性数格的词，词典已预热 → 答对瞬间补全（无闪烁无延迟）
+  const words = useMemo(() => {
+    const raw = statement?.words || [];
+    return raw.map((w) => {
+      if (w.form && w.pos) return w; // 已有完整标注直接复用
+      const single = annotateWords(w.lemma || w.word || w.ru || w.text || "")[0] || {};
+      if (!single.form && !single.pos) return w;
+      return {
+        ...w,
+        form: w.form || single.form,
+        lemma: w.lemma || single.lemma || "",
+        pos: w.pos || single.pos || "",
+        posColor: w.posColor || single.posColor || "",
+        gender: w.gender || single.gender || "",
+        grammarCase: w.grammarCase || single.grammarCase || "",
+        number: w.number || single.number || "",
+        chinese: w.chinese || single.chinese || "",
+      };
+    });
+  }, [statement?.words]);
+
   if (!statement) return null;
 
   const uiCfg = { ...UI_DEFAULT, ...(ui || {}) };
-  const words = statement.words || [];
 
   return (
     <div style={{ ...styles.wrapper, ...BG_STYLE(uiCfg) }}>
