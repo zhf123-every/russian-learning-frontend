@@ -135,21 +135,49 @@ function dictZhIndex() {
   return idx;
 }
 
-// 块 → 中文：逐词查索引 → 前缀匹配（词长≥3）→ 词典词形还原（красивая→漂亮的）→ 最终兜底俄语原词
+// 俄语前置词 → 中文（…=后接名词）：на столе → 在桌子上、в доме → 在房子里
+const PREP_ZH = {
+  на: "在…上", в: "在…里", во: "在…里", у: "在…旁", к: "向…", с: "和…一起", со: "和…一起",
+  о: "关于…", об: "关于…", по: "沿着…", за: "在…后面", до: "到…为止", из: "从…里",
+  от: "从…", для: "为了…", без: "没有…", через: "穿过…", под: "在…下面", над: "在…上方",
+  между: "在…之间", перед: "在…前面", после: "在…之后", около: "在…附近", возле: "在…旁边",
+  про: "关于…", при: "在…情况下",
+};
+
+// 逐词翻译：zhIdx（课程词表）→ 前缀匹配 → 词典词形还原（красивая→漂亮的）→ 最终兜底俄语原词
+function wordZhOf(w, zhIdx, dictIdx) {
+  if (zhIdx[w]) return zhIdx[w];
+  if (w.length >= 3) {
+    const hit = Object.keys(zhIdx).find((k) => k.length >= 3 && (k.startsWith(w) || w.startsWith(k)));
+    if (hit) return zhIdx[hit];
+  }
+  if (dictIdx[w]) return dictIdx[w];
+  return null;
+}
+
+// 块 → 中文：逐词翻译；前置词+后名词做中文语序重排（на столе → 在桌子上，而非“在…上 桌子”）
+function zhPhrase(words, zhIdx, dictIdx) {
+  const parts = [];
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    const next = words[i + 1];
+    const prep = PREP_ZH[w];
+    if (prep && next) {
+      const nzh = wordZhOf(next, zhIdx, dictIdx);
+      parts.push(nzh ? prep.replace("…", nzh) : w + " " + next);
+      i++;
+    } else {
+      const zh = wordZhOf(w, zhIdx, dictIdx);
+      parts.push(zh || w); // 最终兜底：显示俄语原词
+    }
+  }
+  return parts.join(" ");
+}
+
 function chunkZhOf(chunk, zhIdx) {
   const words = String(chunk).toLowerCase().match(/[а-яё]+(?:-[а-яё]+)?/g) || [];
   const dictIdx = dictZhIndex();
-  const parts = words.map((w) => {
-    if (zhIdx[w]) return zhIdx[w];
-    if (w.length >= 3) {
-      const hit = Object.keys(zhIdx).find((k) => k.length >= 3 && (k.startsWith(w) || w.startsWith(k)));
-      if (hit) return zhIdx[hit];
-    }
-    const d = dictIdx[w];
-    if (d) return d;
-    return w; // 最终兜底：显示俄语原词
-  });
-  return parts.join(" ");
+  return zhPhrase(words, zhIdx, dictIdx);
 }
 
 // 渲染期兜底翻译：切块时大词典尚未加载的残留俄语（красивая 等），答题渲染时词典已就绪 → 逐词还原为中文
@@ -158,7 +186,8 @@ export function translateZhFallback(text) {
   if (!/[а-яё]/i.test(t)) return t;
   const d = dictZhIndex(); // 词典未就绪时返回空且不缓存，下次渲染再试
   if (!Object.keys(d).length) return t;
-  return t.split(/\s+/).map((w) => d[w.toLowerCase()] || w).join(" ");
+  const words = t.toLowerCase().match(/[а-яё]+(?:-[а-яё]+)?/g) || [];
+  return zhPhrase(words, {}, d);
 }
 
 /**
