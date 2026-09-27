@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { cacheLesson, cacheTtsUrl, cacheTtsAudio } from "../utils/ttsPreloadShared";
 import { ensureDictFull, warmUpIndex } from "../lib/wordAnnotate";
@@ -179,17 +179,36 @@ export default function Preloader() {
   // 真实进度
   const progress = total ? Math.min(100, Math.floor((loaded / total) * 100)) : 0;
 
-  // 100% 后 500ms 自动跳转对应答题页（原 query 原样透传）
+  // query 字符串稳定化（URLSearchParams 每次 render 都是新实例，直接用会导致跳转 effect 反复重置）
+  const qsKey = useMemo(() => search.toString(), [search]);
+
+  // 100% 后 500ms 自动跳转对应答题页（原 query 原样透传；navigate 失效时 1.2s 硬跳兜底）
   useEffect(() => {
-    if (progress >= 100 && !error) {
+    if (progress >= 100 && !error && total > 0) {
+      const target = MODE_TO_PATH[mode] || "quest-practice";
+      const to = `/${target}/${unitId}${qsKey ? `?${qsKey}` : ""}`;
+      console.log("[Preloader] 预载完成，跳转:", to);
       const t = setTimeout(() => {
-        const target = MODE_TO_PATH[mode] || "quest-practice";
-        const qs = search.toString();
-        navigate(`/${target}/${unitId}${qs ? `?${qs}` : ""}`);
+        try {
+          navigate(to);
+        } catch (e) {
+          console.warn("[Preloader] navigate 失败，硬跳兜底:", e);
+          window.location.assign(to);
+          return;
+        }
+        // 兜底：若 navigate 未生效（被浏览器拦截/路由异常），1.2s 后强制硬跳
+        const fallback = setTimeout(() => {
+          if (window.location.pathname !== `/${target}/${unitId}`) {
+            console.warn("[Preloader] navigate 未生效，硬跳兜底");
+            window.location.assign(to);
+          }
+        }, 1200);
+        return () => clearTimeout(fallback);
       }, 500);
       return () => clearTimeout(t);
     }
-  }, [progress, error, mode, unitId, search, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress, error, mode, unitId, qsKey, navigate, total]);
 
   const lit = Math.round((progress / 100) * BARS);
 
