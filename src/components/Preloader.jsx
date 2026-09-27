@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { cacheLesson, cacheTtsUrl } from "../utils/ttsPreloadShared";
+import { cacheLesson, cacheTtsUrl, cacheTtsAudio } from "../utils/ttsPreloadShared";
 
 // 后端基址（与各答题页一致：dev 走本地 8000，生产走 VITE_API_BASE）
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -47,8 +47,8 @@ async function fetchTtsUrl(text) {
   }
 }
 
-/** 预热音频内容（触发浏览器 HTTP 缓存，答题页 new Audio(url) 秒播）；6s 超时强制返回 */
-function warmAudio(url) {
+/** 预热音频内容并存入共享缓存（答题页 ensureTtsAudio 直接复用已 canplay 的 Audio → 秒播）；6s 超时强制返回 */
+function warmAudio(text, url) {
   return new Promise((resolve) => {
     const audio = new Audio();
     audio.preload = "auto";
@@ -58,13 +58,13 @@ function warmAudio(url) {
       settled = true;
       clearTimeout(timer);
       audio.oncanplay = null;
+      audio.onloadeddata = null;
       audio.onerror = null;
-      audio.src = "";
       resolve();
     };
     const timer = setTimeout(finish, 6000);
-    audio.oncanplay = finish;
-    audio.onloadeddata = finish;
+    audio.oncanplay = () => { cacheTtsAudio(text, audio); finish(); };
+    audio.onloadeddata = () => { cacheTtsAudio(text, audio); finish(); };
     audio.onerror = finish;
     audio.src = url;
     audio.load();
@@ -144,7 +144,7 @@ export default function Preloader() {
               const url = await fetchTtsUrl(text);
               if (url) {
                 cacheTtsUrl(text, url); // 答题页 ensureTts 命中即免再请求
-                await warmAudio(url);   // 预热 HTTP 缓存，答题页秒播
+                await warmAudio(text, url);   // 预载并存入共享缓存，答题页秒播
               } else {
                 console.warn("[Preloader] TTS 无返回:", text.slice(0, 24));
               }
