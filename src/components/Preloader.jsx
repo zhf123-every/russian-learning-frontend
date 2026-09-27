@@ -1,23 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { cacheLesson, cacheTtsUrl } from "../utils/ttsPreloadShared";
 
 // 后端基址（与各答题页一致：dev 走本地 8000，生产走 VITE_API_BASE）
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
-// 轮播提示文案（每 2 秒轮换）
+// 预载首屏句子数（并发 TTS 生成，保证进入答题页后前 N 句发音秒播）
+const PRELOAD_SENTENCE_COUNT = 20;
+const TTS_CONCURRENCY = 6;
+const TTS_TIMEOUT = 8000;
+
+// 轮播提示文案
 const TIPS = [
   "想自动播放下一句？点击 ⚙️ 设置 → 听力 → 开启自动下一句",
   "正在加载音频…",
   "正在准备学习内容…",
 ];
 
-// 波形分段刻度数
 const BARS = 48;
 
-// 单个资源加载超时（毫秒）：网络慢时强制推进，避免卡在 0%
-const ASSET_TIMEOUT = 5000;
-
-// 练习模式 → 答题页路由前缀
 const MODE_TO_PATH = {
   chinese_to_english: "quest-practice",
   dictation: "quest-dictation",
@@ -25,86 +26,54 @@ const MODE_TO_PATH = {
   speaking: "quest-speaking",
 };
 
-/**
- * 构建真实结构的待加载资源列表（基于目标课程与课时）
- * - data-current：当前课时文本/大纲 JSON（真实后端 build-steps；本地投稿课程从 sessionStorage 直接就绪）
- * - cover：课程封面图（本地静态资源）
- * - audio-current / audio-next：当前课时 + 下一课时音频（TTS 缓存 URL 结构，404/超时走容错）
- * - data-lesson：课时大纲 JSON（本地静态，非核心）
- */
-function buildAssets(mode, unitId, courseId) {
-  const assets = [];
-
-  // 1. 核心数据：当前课时文本/大纲（后台课程 → 真实接口；本地课程 → sessionStorage 已就绪）
-  let localLesson = null;
-  try { localLesson = sessionStorage.getItem("rlearn_local_lesson_" + unitId); } catch (e) { /* 忽略 */ }
-  if (localLesson) {
-    assets.push({ id: "data-current", type: "local", ready: true, critical: true, label: "课时数据（本地）" });
-  } else {
-    assets.push({
-      id: "data-current",
-      type: "data",
-      url: `${API_BASE}/api/units/${courseId || unitId}/build-steps`,
-      critical: true,
-      label: "课时大纲 JSON",
+/** POST /api/tts 取真实音频 URL（带超时，失败返回空串） */
+async function fetchTtsUrl(text) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TTS_TIMEOUT);
+  try {
+    const res = await fetch(`${API_BASE}/api/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, voice: "alena", id: "preload", type: "statement" }),
+      signal: ctrl.signal,
     });
+    const data = await res.json();
+    if (!data.ok || !data.audio_url) return "";
+    return data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
+  } catch (e) {
+    return "";
+  } finally {
+    clearTimeout(timer);
   }
-
-  // 2. 课程封面图（本地静态，几乎必然成功）
-  const modeImg = { chinese_to_english: "chinese_to_russian", dictation: "dictation", listening: "listening", speaking: "talking" }[mode] || "chinese_to_russian";
-  assets.push({ id: "cover", type: "image", url: `/images/game-modes/${modeImg}.webp`, critical: false, label: "课程封面图" });
-
-  // 3. 当前课时音频（TTS 缓存 URL 结构；不存在则 404 → 容错推进）
-  assets.push({ id: "audio-current", type: "audio", url: `${API_BASE}/audio_cache/${unitId}.mp3`, critical: false, label: "课时音频" });
-
-  // 4. 下一课时音频（提前缓冲，提前一个课时）
-  assets.push({ id: "audio-next", type: "audio", url: `${API_BASE}/audio_cache/${unitId}_next.mp3`, critical: false, label: "下一课时音频" });
-
-  // 5. 课时大纲 JSON（本地静态，非核心）
-  assets.push({ id: "data-lesson", type: "data", url: `/data/lessons/${unitId}.json`, critical: false, label: "课时大纲 JSON" });
-
-  return assets;
 }
 
-/** 加载单个资源：图片 onload / 音频 oncanplaythrough / 数据 fetch，统一 5s 超时 */
-function loadAsset(asset) {
-  if (asset.ready) return Promise.resolve();
-  if (asset.type === "image") {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const timer = setTimeout(() => { img.src = ""; reject(new Error("timeout:" + asset.id)); }, ASSET_TIMEOUT);
-      img.onload = () => { clearTimeout(timer); resolve(); };
-      img.onerror = () => { clearTimeout(timer); img.src = ""; reject(new Error("img-error:" + asset.id)); };
-      img.src = asset.url;
-    });
-  }
-  if (asset.type === "audio") {
-    return new Promise((resolve, reject) => {
-      const a = new Audio();
-      const done = () => { clearTimeout(timer); cleanup(); resolve(); };
-      const fail = (msg) => { clearTimeout(timer); cleanup(); reject(new Error(msg)); };
-      const cleanup = () => { a.oncanplaythrough = null; a.onerror = null; a.onloadeddata = null; a.src = ""; };
-      const timer = setTimeout(() => fail("timeout:" + asset.id), ASSET_TIMEOUT);
-      a.oncanplaythrough = done;
-      a.onloadeddata = done; // 部分浏览器只触发 loadeddata，同样视为已可播放
-      a.onerror = () => fail("audio-error:" + asset.id);
-      a.preload = "auto";
-      a.src = asset.url;
-      a.load();
-    });
-  }
-  // data
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("timeout:" + asset.id)), ASSET_TIMEOUT);
-    fetch(asset.url)
-      .then((r) => { if (!r.ok) throw new Error("http:" + r.status + ":" + asset.id); clearTimeout(timer); resolve(); })
-      .catch((e) => { clearTimeout(timer); reject(e); });
+/** 预热音频内容（触发浏览器 HTTP 缓存，答题页 new Audio(url) 秒播）；6s 超时强制返回 */
+function warmAudio(url) {
+  return new Promise((resolve) => {
+    const audio = new Audio();
+    audio.preload = "auto";
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      audio.oncanplay = null;
+      audio.onerror = null;
+      audio.src = "";
+      resolve();
+    };
+    const timer = setTimeout(finish, 6000);
+    audio.oncanplay = finish;
+    audio.onloadeddata = finish;
+    audio.onerror = finish;
+    audio.src = url;
+    audio.load();
   });
 }
 
 /**
- * 沉浸式预加载页：游戏详情页选择练习模式后进入，真实预载课程资源
- * （课时数据/封面/音频/大纲），按文件数计算真实进度，完成后自动跳答题页。
+ * 沉浸式预加载页：真实预载当前课时的课程数据（本地/后端）+ 首屏句子 TTS 音频，
+ * 按真实完成项数计算进度，写入 window.__rlearnPreload 共享缓存后自动跳答题页。
  * 路由：/preload/:mode/:unitId?courseId=xxx&src=local(可选)&pack=xxx(可选)
  */
 export default function Preloader() {
@@ -113,13 +82,11 @@ export default function Preloader() {
   const courseId = search.get("courseId") || "";
   const navigate = useNavigate();
   const [loaded, setLoaded] = useState(0);
+  const [total, setTotal] = useState(0);
   const [tipIdx, setTipIdx] = useState(0);
   const [error, setError] = useState("");
 
-  const assets = useMemo(() => buildAssets(mode, unitId, courseId), [mode, unitId, courseId]);
-  const total = assets.length;
-
-  // 并行加载全部资源（互不依赖），每次完成/容错成功 → loaded++
+  // 真实预载主流程
   useEffect(() => {
     let cancelled = false;
     let doneCount = 0;
@@ -128,22 +95,77 @@ export default function Preloader() {
       doneCount += 1;
       setLoaded(doneCount);
     };
-    assets.forEach((asset) => {
-      loadAsset(asset)
-        .then(() => { if (!cancelled) inc(); })
-        .catch((err) => {
-          if (cancelled) return;
-          if (asset.critical) {
-            // 核心数据加载失败：进度停住并提示
-            setError("加载失败，请刷新重试");
-            return;
+
+    (async () => {
+      try {
+        // 1) 课时数据：本地投稿课程从 sessionStorage 直接就绪；后台课程 fetch build-steps
+        let lesson = null;
+        let sentences = [];
+        let backendData = null;
+        try {
+          lesson = JSON.parse(sessionStorage.getItem("rlearn_local_lesson_" + unitId) || "null");
+        } catch (e) { lesson = null; }
+        if (lesson && Array.isArray(lesson.sentences) && lesson.sentences.length) {
+          sentences = lesson.sentences.filter((x) => x && x.ru).map((x) => x.ru);
+        } else {
+          const res = await fetch(`${API_BASE}/api/units/${courseId || unitId}/build-steps`);
+          if (!res.ok) throw new Error("核心数据加载失败");
+          backendData = await res.json();
+          const fams = Array.isArray(backendData?.families) ? backendData.families : [];
+          sentences = fams.flatMap((f) => (f.steps || []).map((s) => s.target_sentence).filter(Boolean));
+        }
+        // 写入共享缓存（答题页 loadUnit 命中后无遮罩直接进）
+        cacheLesson(unitId, backendData || lesson || { sentences: sentences.map((ru) => ({ ru })) });
+        if (cancelled) return;
+
+        // 2) 资源总数：数据 1 + 封面 1 + 首屏音频 N
+        const audioTexts = sentences.slice(0, PRELOAD_SENTENCE_COUNT);
+        const totalAssets = 2 + audioTexts.length;
+        setTotal(totalAssets);
+
+
+        // 3) 封面图（本地静态，成败都推进）
+        const modeImg = { chinese_to_english: "chinese_to_russian", dictation: "dictation", listening: "listening", speaking: "talking" }[mode] || "chinese_to_russian";
+        const img = new Image();
+        img.onload = () => inc();
+        img.onerror = () => inc();
+        img.src = `/images/game-modes/${modeImg}.webp`;
+
+        // 4) 数据就绪
+        inc();
+
+        // 5) 首屏句子音频并发预载（每句成功/失败都推进，进度真实）
+        let i = 0;
+        const workers = Array.from({ length: TTS_CONCURRENCY }, async () => {
+          while (i < audioTexts.length) {
+            const idx = i++;
+            const text = audioTexts[idx];
+            try {
+              const url = await fetchTtsUrl(text);
+              if (url) {
+                cacheTtsUrl(text, url); // 答题页 ensureTts 命中即免再请求
+                await warmAudio(url);   // 预热 HTTP 缓存，答题页秒播
+              } else {
+                console.warn("[Preloader] TTS 无返回:", text.slice(0, 24));
+              }
+            } catch (e) {
+              console.warn("[Preloader] TTS 失败:", text.slice(0, 24), String(e && e.message || e));
+            }
+            if (cancelled) return;
+            inc();
           }
-          console.warn("[Preloader] 资源加载失败（跳过继续）:", asset.id, asset.url || "", String(err && err.message || err));
-          inc(); // 非核心失败也推进，保证进度能走完
         });
-    });
+        await Promise.all(workers);
+      } catch (e) {
+        if (!cancelled) {
+          console.error("[Preloader] 核心预载失败:", e);
+          setError("加载失败，请刷新重试");
+        }
+      }
+    })();
+
     return () => { cancelled = true; };
-  }, [assets]);
+  }, [mode, unitId, courseId]);
 
   // 提示文案轮播
   useEffect(() => {
@@ -151,10 +173,10 @@ export default function Preloader() {
     return () => clearInterval(tv);
   }, []);
 
-  // 真实进度：按已加载文件数计算
+  // 真实进度
   const progress = total ? Math.min(100, Math.floor((loaded / total) * 100)) : 0;
 
-  // 进度满 100% 后等待 500ms 自动跳转对应答题页（原 query 原样透传）
+  // 100% 后 500ms 自动跳转对应答题页（原 query 原样透传）
   useEffect(() => {
     if (progress >= 100 && !error) {
       const t = setTimeout(() => {
@@ -168,7 +190,6 @@ export default function Preloader() {
 
   const lit = Math.round((progress / 100) * BARS);
 
-  // 核心数据失败：停住并提示重试
   if (error) {
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "#09090B", color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, userSelect: "none", fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -204,7 +225,7 @@ export default function Preloader() {
           <span style={{ fontSize: 18, fontWeight: 800, color: "#A78BFA", fontVariantNumeric: "tabular-nums" }}>{progress}%</span>
         </div>
 
-        {/* 分段刻度波形进度条（宽度/背景均带过渡，真实进度不跳变） */}
+        {/* 分段刻度波形进度条 */}
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 14, height: 34 }}>
           {Array.from({ length: BARS }).map((_, i) => {
             const wave = 10 + Math.sin((i / BARS) * Math.PI * 2) * 8 + ((i % 5) * 2) % 6;
@@ -217,9 +238,7 @@ export default function Preloader() {
 
         {/* 加载明细（真实进度依据） */}
         <div style={{ marginTop: 10, fontSize: 12, color: "#52525B", display: "flex", gap: 12 }}>
-          <span>已加载 {loaded}/{total}</span>
-          <span style={{ color: "#3F3F46" }}>·</span>
-          <span>超时 {ASSET_TIMEOUT / 1000}s 自动跳过</span>
+          <span>课程数据 + 封面 + 首屏音频 {total ? `${loaded}/${total}` : ""}</span>
         </div>
       </div>
 

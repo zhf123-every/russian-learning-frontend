@@ -42,6 +42,7 @@ import ShortcutTips from "../components/quest/ShortcutTips";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 import { preloadTtsAll } from "../lib/ttsPreload";
+import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { useQuestSettings, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -149,6 +150,9 @@ export default function QuestDictation() {
   const ensureTtsUrl = useCallback(async (text) => {
     if (!text) return "";
     if (ttsUrlCacheRef.current[text]) return ttsUrlCacheRef.current[text];
+    // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
+    const preUrl = getCachedTtsUrl(text);
+    if (preUrl) { ttsUrlCacheRef.current[text] = preUrl; return preUrl; }
     let url = "";
     try {
       const res = await fetch(`${API_BASE}/api/tts`, {
@@ -168,6 +172,13 @@ export default function QuestDictation() {
   const ensureTtsAudio = useCallback((text) => {
     if (!text) return null;
     if (ttsAudioCacheRef.current[text]) return ttsAudioCacheRef.current[text];
+    // 预加载页已预载内容就绪的 Audio → 直接复用（秒播）
+    const preAudio = getCachedTtsAudio(text);
+    if (preAudio) {
+      const entry = { audio: preAudio, promise: Promise.resolve() };
+      ttsAudioCacheRef.current[text] = entry;
+      return entry;
+    }
     const entry = { audio: null, promise: null };
     entry.promise = (async () => {
       try {
@@ -339,6 +350,52 @@ export default function QuestDictation() {
     async function loadCourse() {
       setLoading(true);
       setLoadError(null);
+      // 预加载页已预载课时数据 → 无遮罩直接消费
+      try {
+        const pre = getCachedLesson(effectiveCourseId);
+        if (pre) {
+          if (Array.isArray(pre.sentences) && pre.sentences.length) {
+            const items = pre.sentences.filter(x => x && x.ru).map((st, i) => ({
+              id: `local_${i + 1}`,
+              russian: st.ru || "",
+              chinese: st.zh || "",
+              words: [],
+            }));
+            if (!cancelled) {
+              setLocalLesson(pre); setIsLocalMode(true);
+              const stmts = expandStatements(items, pre.words);
+              setStatements(stmts);
+              setLoading(false);
+            }
+            return;
+          }
+          if (pre.families) {
+            const items = [];
+            for (const fam of pre.families || []) {
+              for (const st of fam.steps || []) {
+                items.push({
+                  id: st.step_order != null ? `${fam.family_name}-${st.step_order}` : `s${items.length}`,
+                  russian: st.target_sentence || "",
+                  chinese: st.chinese || "",
+                  words: Array.isArray(st.words) ? st.words : [],
+                  audio_url: st.audio_url || "",
+                });
+              }
+            }
+            if (!cancelled) {
+              if (items.length === 0) { setLoadError("该单元没有可听写的句子"); setLoading(false); }
+              else {
+                const cloudWords = items.flatMap((it) => (it.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" })));
+                const stmts = expandStatements(items, cloudWords);
+                setStatements(stmts);
+                setLoading(false);
+              }
+            }
+            return;
+          }
+        }
+      } catch (e) { /* 缓存不可用 → 走原逻辑 */ }
+
       // 本地投稿课程：直接消费课时数据（单词 + 渐进例句）逐句听写，不依赖后端
       // 数据源：① sessionStorage（投稿链路写入）→ ② 本地课程库（后台课时，持久化兜底）
       try {
@@ -362,7 +419,7 @@ export default function QuestDictation() {
               setIsLocalMode(true);
               const stmts = expandStatements(items, stored.words);
               setStatements(stmts);
-              preloadUnit(stmts).finally(() => { if (!cancelled) setLoading(false); });
+              if (!cancelled) setLoading(false);
             }
             return;
           }
@@ -392,7 +449,7 @@ export default function QuestDictation() {
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
                     const stmts = expandStatements(items, u.words)
                     setStatements(stmts)
-                    preloadUnit(stmts).finally(() => { if (!cancelled) setLoading(false); })
+                    if (!cancelled) setLoading(false);
                   }
                   return
                 }
@@ -427,7 +484,7 @@ export default function QuestDictation() {
               const cloudWords = items.flatMap((it) => (it.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" })));
               const stmts = expandStatements(items, cloudWords);
               setStatements(stmts);
-              preloadUnit(stmts).finally(() => { if (!cancelled) setLoading(false); });
+              if (!cancelled) setLoading(false);
             }
           } else {
             setLoadError("课程数据格式异常");

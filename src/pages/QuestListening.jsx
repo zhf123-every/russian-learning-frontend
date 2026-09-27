@@ -10,6 +10,7 @@ import { markUnitDone } from "../lib/lessonProgress";
 import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
+import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { preloadTtsAll } from "../lib/ttsPreload";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
 import SettingsModal, { loadHotkeys, keysOfEvent } from "../components/SettingsModal";
@@ -228,6 +229,35 @@ export default function QuestListening() {
     async function loadUnit() {
       setLoading(true);
       setLoadError(null);
+      // 预加载页已预载课时数据（后端 build-steps 原始数据 或 本地 lesson）→ 无遮罩直接消费
+      try {
+        const pre = getCachedLesson(effectiveCourseId);
+        if (pre) {
+          if (pre.families) {
+            const adapted = adaptBuildSteps(pre);
+            if (!cancelled) {
+              setUnitMeta(pre.unit || null);
+              const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
+              const seqs = expandSequencesWithChunks(adapted, cloudWords);
+              setSequences(seqs);
+              setLoading(false);
+            }
+            return;
+          }
+          if (Array.isArray(pre.sentences) && pre.sentences.length) {
+            const adapted = adaptLocalLesson(pre);
+            if (!cancelled) {
+              setLocalLesson(pre); setIsLocalMode(true);
+              setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
+              const seqs = expandSequencesWithChunks(adapted, pre?.words);
+              setSequences(seqs);
+              setLoading(false);
+            }
+            return;
+          }
+        }
+      } catch (e) { /* 缓存不可用 → 走原逻辑 */ }
+
       try {
         const isLocal = new URLSearchParams(window.location.search).get("src") === "local";
         const isBackendUnit = String(effectiveCourseId).startsWith("unit_");
@@ -243,7 +273,7 @@ export default function QuestListening() {
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
               const seqs = expandSequencesWithChunks(adapted, stored?.words);
               setSequences(seqs);
-              preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); });
+              if (!cancelled) setLoading(false);
             }
             return;
           }
@@ -267,7 +297,7 @@ export default function QuestListening() {
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" });
                     const seqs = expandSequencesWithChunks(adapted, u?.words);
                     setSequences(seqs);
-                    preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); });
+                    if (!cancelled) setLoading(false);
                   }
                   return;
                 }
@@ -290,7 +320,7 @@ export default function QuestListening() {
             const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
             const seqs = expandSequencesWithChunks(adapted, cloudWords);
             setSequences(seqs);
-            preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); });
+            if (!cancelled) setLoading(false);
           }
         }
       } catch (e) {
@@ -338,6 +368,9 @@ export default function QuestListening() {
   const ensureTtsUrl = useCallback(async (text) => {
     if (!text) return "";
     if (ttsUrlCacheRef.current[text]) return ttsUrlCacheRef.current[text];
+    // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
+    const preUrl = getCachedTtsUrl(text);
+    if (preUrl) { ttsUrlCacheRef.current[text] = preUrl; return preUrl; }
     let url = (current && current.audio_url) || "";
     if (!url) {
       try {
@@ -359,6 +392,13 @@ export default function QuestListening() {
   const ensureTtsAudio = useCallback((text) => {
     if (!text) return null;
     if (ttsAudioCacheRef.current[text]) return ttsAudioCacheRef.current[text];
+    // 预加载页已预载内容就绪的 Audio → 直接复用（秒播）
+    const preAudio = getCachedTtsAudio(text);
+    if (preAudio) {
+      const entry = { audio: preAudio, promise: Promise.resolve() };
+      ttsAudioCacheRef.current[text] = entry;
+      return entry;
+    }
     const entry = { audio: null, promise: null };
     entry.promise = (async () => {
       try {

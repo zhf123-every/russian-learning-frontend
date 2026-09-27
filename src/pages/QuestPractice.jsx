@@ -25,6 +25,7 @@ import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
 import { expandSequencesWithChunks } from "../lib/chunking";
+import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -472,6 +473,35 @@ export default function QuestPractice() {
     async function loadUnit() {
       setLoading(true);
       setLoadError(null);
+      // 预加载页已预载课时数据（后端 build-steps 原始数据 或 本地 lesson）→ 无遮罩直接消费
+      try {
+        const pre = getCachedLesson(effectiveCourseId);
+        if (pre) {
+          if (pre.families) {
+            const adapted = adaptBuildSteps(pre);
+            if (!cancelled) {
+              setUnitMeta(pre.unit || null);
+              const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
+              const seqs = expandSequencesWithChunks(adapted, cloudWords);
+              setSequences(seqs); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
+              setLoading(false);
+            }
+            return;
+          }
+          if (Array.isArray(pre.sentences) && pre.sentences.length) {
+            const adapted = adaptLocalLesson(pre);
+            if (!cancelled) {
+              setLocalLesson(pre); setIsLocalMode(true);
+              setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
+              const seqs = expandSequencesWithChunks(adapted, pre?.words);
+              setSequences(seqs); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
+              setLoading(false);
+            }
+            return;
+          }
+        }
+      } catch (e) { /* 缓存不可用 → 走原逻辑 */ }
+
       // 本地投稿课程：直接消费课时数据（单词 + 渐进例句），不依赖后端
       // 数据源：① sessionStorage（投稿链路写入）→ ② 本地课程库（后台课时，持久化兜底）
       try {
@@ -493,7 +523,7 @@ export default function QuestPractice() {
               setSequences(seqs);
               setCurrentSequenceIndex(0);
               setCurrentUnitIndex(0);
-              preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); });
+              if (!cancelled) setLoading(false);
             }
             return;
           }
@@ -521,7 +551,7 @@ export default function QuestPractice() {
                     setSequences(seqs)
                     setCurrentSequenceIndex(0)
                     setCurrentUnitIndex(0)
-                    preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); })
+                    if (!cancelled) setLoading(false);
                   }
                   return
                 }
@@ -548,7 +578,7 @@ export default function QuestPractice() {
             setSequences(seqs);
             setCurrentSequenceIndex(0);
             setCurrentUnitIndex(0);
-            preloadUnit(seqs).finally(() => { if (!cancelled) setLoading(false); });
+            if (!cancelled) setLoading(false);
           }
         }
       } catch (e) {
@@ -621,6 +651,9 @@ export default function QuestPractice() {
   const ensureTts = useCallback(async (stmt) => {
     if (!stmt || !stmt.russian) return "";
     if (ttsUrlCacheRef.current[stmt.id]) return ttsUrlCacheRef.current[stmt.id];
+    // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
+    const preUrl = getCachedTtsUrl(stmt.russian);
+    if (preUrl) { ttsUrlCacheRef.current[stmt.id] = preUrl; return preUrl; }
     let url = stmt.audio_url;
     if (!url) {
       try {
@@ -647,6 +680,13 @@ export default function QuestPractice() {
     const cid = stmt?.id || stmt?.russian || "";
     if (!cid) return null;
     if (ttsAudioCacheRef.current[cid]) return ttsAudioCacheRef.current[cid];
+    // 预加载页已预载内容就绪的 Audio → 直接复用（秒播）
+    const preAudio = getCachedTtsAudio(stmt.russian || "");
+    if (preAudio) {
+      const entry = { audio: preAudio, promise: Promise.resolve() };
+      ttsAudioCacheRef.current[cid] = entry;
+      return entry;
+    }
     const entry = { audio: null, promise: null };
     entry.promise = (async () => {
       try {
