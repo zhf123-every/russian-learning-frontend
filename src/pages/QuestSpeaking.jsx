@@ -353,6 +353,8 @@ export default function QuestSpeaking() {
     if (!url.startsWith("http")) url = `${API_BASE}${url}`;
     ttsUrlCacheRef.current[text] = url;
     return url;
+  }, [current, effectiveCourseId]);
+
   const ensureTtsAudio = useCallback((text) => {
     if (!text) return null;
     if (ttsAudioCacheRef.current[text]) return ttsAudioCacheRef.current[text];
@@ -382,8 +384,6 @@ export default function QuestSpeaking() {
       if (e) await e.promise;
     }, { concurrency: 4, onProgress: (done, total) => setTtsProgress({ done, total }) });
   }, [ensureTtsAudio]);
-
-  }, [current, effectiveCourseId]);
 
   // ---- TTS 播放 ----
   const stopAudio = useCallback(() => {
