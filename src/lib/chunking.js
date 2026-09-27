@@ -215,15 +215,27 @@ export function translateZhFallback(text) {
  */
 export function expandUnitToChunkSteps(unit, zhIdx) {
   const ru = String(unit?.russian || "").trim();
-  const chunks = splitSentenceToChunks(ru);
+  if (!ru) return null;
+  // 切块：优先使用后台 AI 预处理好的意群块（unit.chunks：字符串数组或 [{ru,zh}]）；
+  // 否则本地规则切块（仅作俄语输入节奏，中文不再逐词硬拼）
+  const rawChunks = Array.isArray(unit.chunks) && unit.chunks.length ? unit.chunks : null;
+  const chunks = rawChunks
+    ? rawChunks.map((c) => (typeof c === "string" ? c : (c?.ru || c?.text || ""))).filter(Boolean)
+    : splitSentenceToChunks(ru);
   if (chunks.length < 2) return null;
 
   const N = chunks.length;
-  const zhList = chunks.map((c) => chunkZhOf(c, zhIdx));
+  // 整句中文：数据预处理好的正确译文（sentence.chinese / zh），前端直接展示，绝不逐词拼接
+  const fullZh = String(unit.chinese || unit.zh || "").trim();
+  // 每块中文（面包屑副标题）：AI 存的块级中文优先；否则统一为整句中文
+  const zhList = chunks.map((_, i) => {
+    const ci = rawChunks ? rawChunks[i] : null;
+    const cz = ci && typeof ci === "object" ? String(ci.zh || ci.chinese || "").trim() : "";
+    return cz || fullZh;
+  });
   const cum = (k) => chunks.slice(0, k + 1).join(" ");
-  const cumZh = (k) => zhList.slice(0, k + 1).filter(Boolean).join("");
 
-  const makeStep = (k, targetRu, targetZh, isNew, isFinal) => {
+  const makeStep = (k, targetRu, isNew, isFinal) => {
     const tokens = String(targetRu).trim().split(/\s+/).filter(Boolean);
     const words = tokens.map((w, i) => ({
       order: i, form: w, lemma: w, pos: "", posColor: "", grammarLabel: "", roleLabel: "",
@@ -234,7 +246,7 @@ export function expandUnitToChunkSteps(unit, zhIdx) {
       russian: targetRu,
       fullRussian: unit.russian, // 整句原文：切块播放/预载发音用整句
       stressMarked: tokens.join(" "),
-      chinese: targetZh,
+      chinese: fullZh,           // 直接读整句中文（数据预处理好的），不逐词硬拼
       words,
       // chunk 元数据
       chunkOf: unit.id,
@@ -247,17 +259,17 @@ export function expandUnitToChunkSteps(unit, zhIdx) {
       chunkIsCumulative: !isNew,  // 累积重打步
       chunkIsFinal: isFinal,      // 最后累积步（= 完整句）
       chunkFull: ru,              // 完整句
-      chunkFullZh: unit.chinese || "",
+      chunkFullZh: fullZh,
     };
   };
 
   const steps = [];
   // 块 0：只有单打一步（单打 = 累积）
-  steps.push(makeStep(0, cum(0), cumZh(0), true, N === 1));
+  steps.push(makeStep(0, cum(0), true, N === 1));
   // 块 1..N-1：单打新块 + 累积重打
   for (let k = 1; k < N; k++) {
-    steps.push(makeStep(k, chunks[k], chunkZhOf(chunks[k], zhIdx), true, false)); // 单打新块
-    steps.push(makeStep(k, cum(k), cumZh(k), false, k === N - 1));               // 累积重打
+    steps.push(makeStep(k, chunks[k], true, false));      // 单打新块
+    steps.push(makeStep(k, cum(k), false, k === N - 1));  // 累积重打
   }
   return steps;
 }

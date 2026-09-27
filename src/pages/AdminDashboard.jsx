@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { API_BASE, apiFetch } from '../lib/api'
-import { parseAIJSON } from '../lib/ai'
+import { parseAIJSON, chat } from '../lib/ai'
 import { useAdminStore } from '../store/adminStore'
 
 // ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
@@ -69,6 +69,10 @@ export default function AdminDashboard() {
   const [genning, setGenning] = useState(false)
   const [newSentRu, setNewSentRu] = useState('')
   const [newSentZh, setNewSentZh] = useState('')
+  const [editSentIdx, setEditSentIdx] = useState(-1)      // 正在行内编辑的例句下标（-1=未编辑）
+  const [editSent, setEditSent] = useState({ ru: '', zh: '', chunks: '' })
+  const [jsonText, setJsonText] = useState('')            // 批量导入 JSON（句子）粘贴区
+  const [jsonBusy, setJsonBusy] = useState(false)
 
   // 刷新课程列表
   const refresh = () => setCourses(getCourses())
@@ -449,6 +453,111 @@ export default function AdminDashboard() {
     patchUnit({ sentences: (activeUnit.sentences || []).filter((_, i) => i !== idx) })
   }
 
+  // ========== AI 前置数据入库：批量导入 JSON 句子 + 修复中文（缺失/逐词硬拼），前端只渲染固定数据 ==========
+  // 检测某句中文是否需要 AI 修复：缺失 / 俄语残留 / 明显逐词硬拼（如「谁这是？」）
+  const needsZhFix = (s) => {
+    const zh = String(s.chinese || s.zh || '').trim()
+    if (!zh) return true
+    if (/[а-яё]/i.test(zh)) return true
+    if (/^(谁|什么|哪儿|哪里|怎么|为什么|多少|几)[^。！？]*?(这|那)是/.test(zh)) return true
+    return false
+  }
+  // AI 不可用时的本地兜底修复（仅处理典型「疑问词前置 + 这是」语序错位）
+  const localFixZh = (zh) => {
+    let t = String(zh || '').trim()
+    const m = t.match(/^(谁|什么|哪儿|哪里|怎么|为什么|多少|几)([^。！？]*?)(这|那)是/)
+    if (m) t = m[3] + '是' + m[2] + m[1] + t.slice(m[0].length)
+    return t
+  }
+  // 批量调用后端 AI（密钥在服务端）：整句地道中文 + 意群块 chunks
+  const aiFixSentences = async (sentences) => {
+    const items = sentences.map((s) => String(s.ru || s.russian || '').trim()).filter(Boolean)
+    if (!items.length) return {}
+    const content = await chat({
+      messages: [
+        { role: 'system', content: '你是资深俄语→中文翻译，擅长合并意群、调整语序，输出地道中文。' },
+        { role: 'user', content:
+          '请将以下俄语句子翻译成地道的中文，并自动合并意群，避免逐词硬拼（例如 "Кто это?" 应译为 "这是谁？" 而不是 "谁这是？"）。\n' +
+          '返回 JSON 格式：{"items":[{"ru":"原句","chinese":"地道整句中文","chunks":["意群块1","意群块2"]}]}，只输出 JSON。\n句子列表：\n' + JSON.stringify(items) },
+      ],
+    })
+    const r = parseAIJSON(content)
+    const map = {}
+    ;(Array.isArray(r && r.items) ? r.items : []).forEach((it) => {
+      const ru = String(it && it.ru || '').trim()
+      if (ru) map[ru] = { chinese: String(it.chinese || '').trim(), chunks: Array.isArray(it.chunks) ? it.chunks.filter(Boolean) : [] }
+    })
+    return map
+  }
+  // 粘贴句子 JSON 数组 [{ru, zh}] → 检测异常 → AI 修复 → 去重追加（前端此后直接读 chinese）
+  const importSentencesJson = async () => {
+    const text = (jsonText || '').trim()
+    if (!text) { flash('请先粘贴句子 JSON'); return }
+    let arr
+    try { arr = JSON.parse(text); if (!Array.isArray(arr)) throw new Error('顶层必须是数组') }
+    catch (e) { flash('JSON 解析失败：' + e.message); return }
+    const list = arr.map((s) => ({
+      ru: String(s.ru || s.russian || s.text || '').trim(),
+      zh: String(s.zh || '').trim(),
+      chinese: String(s.chinese || s.zh || '').trim(),
+    })).filter((s) => s.ru)
+    if (!list.length) { flash('没有可导入的句子（需 ru/russian 字段）'); return }
+    const need = list.filter((s) => needsZhFix(s))
+    let fixed = list
+    if (need.length) {
+      setJsonBusy(true)
+      try {
+        aiMap = await aiFixSentences(need)
+        fixed = list.map((s) => (aiMap[s.ru] ? { ...s, chinese: aiMap[s.ru].chinese || s.chinese, chunks: aiMap[s.ru].chunks } : s))
+        flash(`✅ AI 已修复 ${Object.keys(map).length} 句中文（语序/意群），点「保存课时内容」固定入库`)
+      } catch (e) {
+        fixed = list.map((s) => (needsZhFix(s) ? { ...s, chinese: localFixZh(s.chinese || s.zh) } : s))
+        flash('⚠️ AI 接口暂不可用：已用本地规则修复典型逐词句，其余请人工复核后保存')
+      }
+      setJsonBusy(false)
+    } else {
+      flash('✅ 每句中文都完整正确，无需 AI 修复')
+    }
+    // 已存在的句子：AI 修复命中则原地更新 chinese/chunks；新句子去重追加
+    const merged = [...(activeUnit.sentences || [])]
+    const existIdx = new Map()
+    merged.forEach((x, i) => { const k = String(x.ru || '').trim().toLowerCase(); if (k && !existIdx.has(k)) existIdx.set(k, i) })
+    fixed.forEach((s) => {
+      const k = String(s.ru).trim().toLowerCase()
+      const i = existIdx.get(k)
+      if (i >= 0) {
+        // 已存在句子：AI 修复（或本地兜底）给出正确中文时原地更新 chinese / chunks
+        const cur = merged[i].chinese || merged[i].zh || ''
+        if (s.chinese && s.chinese !== cur) {
+          merged[i] = { ...merged[i], chinese: s.chinese, chunks: s.chunks || merged[i].chunks }
+        }
+      } else {
+        merged.push(s)
+        existIdx.set(k, merged.length - 1)
+      }
+    })
+    patchUnit({ sentences: merged })
+    setJsonText('')
+  }
+  // —— 手动修正（后台保留）：行内编辑 sentence 的 ru / chinese / chunks ——
+  const startEditSent = (i) => {
+    const s = (activeUnit.sentences || [])[i]
+    setEditSentIdx(i)
+    setEditSent({ ru: s.ru || '', zh: s.chinese || s.zh || '', chunks: Array.isArray(s.chunks) ? JSON.stringify(s.chunks) : '' })
+  }
+  const saveEditSent = () => {
+    const ru = editSent.ru.trim()
+    if (!ru) { flash('俄语不能为空'); return }
+    let chunks
+    try { chunks = editSent.chunks.trim() ? JSON.parse(editSent.chunks) : undefined }
+    catch (e) { flash('chunks 不是合法 JSON 数组'); return }
+    if (chunks !== undefined && !Array.isArray(chunks)) { flash('chunks 必须是数组'); return }
+    const sentences = [...(activeUnit.sentences || [])]
+    sentences[editSentIdx] = { ...sentences[editSentIdx], ru, zh: editSent.zh.trim(), chinese: editSent.zh.trim(), chunks }
+    patchUnit({ sentences })
+    setEditSentIdx(-1)
+  }
+  const cancelEditSent = () => setEditSentIdx(-1)
   // 课时素材上传（视频/音频/PDF）
   const onPickUnitMaterial = (e) => {
     const files = Array.from(e.target.files || [])
@@ -519,14 +628,34 @@ export default function AdminDashboard() {
                   </div>
                   <div className="mt-3 space-y-2 max-h-[420px] overflow-y-auto pr-1">
                     {(activeUnit.sentences || []).map((s, i) => (
-                      <div key={i} className="flex items-start gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
-                        <span className="text-xs font-bold text-gray-400 w-6 shrink-0 pt-0.5">{String(i + 1).padStart(2, '0')}</span>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm text-gray-900">{s.ru}</div>
-                          <div className="text-xs text-gray-400 mt-0.5">{s.zh}</div>
+                      editSentIdx === i ? (
+                        <div key={i} className="rounded-xl border border-primary/40 bg-primary/5 px-3 py-2">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-bold text-primary w-6 shrink-0">{String(i + 1).padStart(2, '0')}</span>
+                            <span className="text-xs font-semibold text-gray-600">编辑例句（手动修正中文 / 意群块）</span>
+                          </div>
+                          <input className="input input-bordered input-sm w-full text-sm mb-1.5" placeholder="俄语（ru）" value={editSent.ru} onChange={e => setEditSent({ ...editSent, ru: e.target.value })} />
+                          <input className="input input-bordered input-sm w-full text-sm mb-1.5" placeholder="地道中文（chinese）" value={editSent.zh} onChange={e => setEditSent({ ...editSent, zh: e.target.value })} />
+                          <input className="input input-bordered input-sm w-full font-mono text-xs mb-2" placeholder={'chunks JSON 数组，如 ["Кто это?"]（可留空 = 前端按本地规则切块）'} value={editSent.chunks} onChange={e => setEditSent({ ...editSent, chunks: e.target.value })} />
+                          <div className="flex gap-2">
+                            <button className="btn btn-primary btn-xs" onClick={saveEditSent}>保存</button>
+                            <button className="btn btn-ghost btn-xs" onClick={cancelEditSent}>取消</button>
+                          </div>
                         </div>
-                        <button className="btn btn-error btn-xs btn-outline shrink-0" onClick={() => removeSentence(i)}>删</button>
-                      </div>
+                      ) : (
+                        <div key={i} className="flex items-start gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
+                          <span className="text-xs font-bold text-gray-400 w-6 shrink-0 pt-0.5">{String(i + 1).padStart(2, '0')}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm text-gray-900">{s.ru}</div>
+                            <div className="text-xs text-gray-400 mt-0.5">{s.chinese || s.zh || <span className="text-amber-600">（缺中文，请编辑或用 AI 修复）</span>}</div>
+                            {Array.isArray(s.chunks) && s.chunks.length > 0 && (
+                              <div className="text-[10px] text-gray-300 mt-0.5 font-mono">意群块：{s.chunks.join(' | ')}</div>
+                            )}
+                          </div>
+                          <button className="btn btn-ghost btn-xs text-gray-500 shrink-0" onClick={() => startEditSent(i)}>编</button>
+                          <button className="btn btn-error btn-xs btn-outline shrink-0" onClick={() => removeSentence(i)}>删</button>
+                        </div>
+                      )
                     ))}
                   </div>
                 </>
@@ -537,6 +666,23 @@ export default function AdminDashboard() {
                 <input className="input input-bordered flex-1 text-sm" placeholder="俄语例句" value={newSentRu} onChange={e => setNewSentRu(e.target.value)} />
                 <input className="input input-bordered flex-1 text-sm" placeholder="中文翻译" value={newSentZh} onChange={e => setNewSentZh(e.target.value)} />
                 <button className="btn btn-outline btn-sm" onClick={addSentence}>+ 添加</button>
+              </div>
+
+              {/* 批量导入 JSON（AI 前置修复中文，前端只渲染固定数据） */}
+              <div className="mt-4 rounded-xl border border-dashed border-gray-300 p-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-semibold text-gray-600">📋 批量导入 JSON（句子数组）+ AI 修复中文（缺失/逐词硬拼）</span>
+                  <button className="btn btn-outline btn-xs" onClick={importSentencesJson} disabled={jsonBusy}>
+                    {jsonBusy ? 'AI 修复中…' : '导入并 AI 修复'}
+                  </button>
+                </div>
+                <textarea
+                  className="textarea textarea-bordered mt-2 w-full font-mono text-xs"
+                  rows={3}
+                  placeholder={'[{ "ru": "Кто это?", "zh": "谁这是？" }, { "ru": "Это дом.", "zh": "这是房子。" }]\n说明：缺失中文 / 含俄语 / 明显逐词硬拼的句子会自动交给 AI 重译（整句中译 + 意群块 chunks），处理后直接入库。'}
+                  value={jsonText}
+                  onChange={e => setJsonText(e.target.value)}
+                />
               </div>
             </div>
           </div>

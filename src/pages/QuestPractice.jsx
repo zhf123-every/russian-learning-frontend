@@ -25,7 +25,7 @@ import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
 import { inferRoles } from "../lib/roleRules";
-import { expandSequencesWithChunks, translateZhFallback } from "../lib/chunking";
+import { expandSequencesWithChunks } from "../lib/chunking";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -1196,7 +1196,7 @@ export default function QuestPractice() {
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.russian}</span>
             </div>
           )}
-          <div style={styles.hintText}>{translateZhFallback(currentStatement?.chinese)}</div>
+          <div style={styles.hintText}>{currentStatement?.chinese || currentStatement?.russian}</div>
           {showAnswer && currentStatement?.stressMarked && (
             <div style={styles.answerReveal}>
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.stressMarked}</span>
