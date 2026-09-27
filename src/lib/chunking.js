@@ -232,6 +232,7 @@ export function expandUnitToChunkSteps(unit, zhIdx) {
       ...unit,
       id: `${unit.id}#c${k}`,
       russian: targetRu,
+      fullRussian: unit.russian, // 整句原文：切块播放/预载发音用整句
       stressMarked: tokens.join(" "),
       chinese: targetZh,
       words,

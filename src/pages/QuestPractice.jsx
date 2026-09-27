@@ -741,36 +741,56 @@ export default function QuestPractice() {
   }, [ensureTts]);
   ensureTtsAudioRef.current = ensureTtsAudio;
 
-  // 进答题页之前全量预载本单元所有句子发音（并发 4，进度显示；失败不阻塞）
+  // 进答题页之前全量预载本单元所有句子整句发音（切块后每块都播整句；并发 10，进度显示；失败不阻塞）
   const preloadUnit = useCallback(async (seqs) => {
-    setTtsProgress({ done: 0, total: 0 });
-    await preloadTtsAll(seqs, async (sq) => {
+    const fullList = [];
+    const seen = new Set();
+    (seqs || []).forEach((seq) => {
+      (seq.units || []).forEach((u) => {
+        if (!u?.russian) return;
+        const text = u.fullRussian || u.russian;
+        if (seen.has(text)) return;
+        seen.add(text);
+        fullList.push({ ...u, id: `${u.chunkOf || u.id}#full`, russian: text, chunkKey: `${u.chunkOf || u.id}#full` });
+      });
+    });
+    setTtsProgress({ done: 0, total: fullList.length });
+    await preloadTtsAll(fullList, async (sq) => {
       const e = ensureTtsAudio(sq);
       if (e) await e.promise;
     }, { concurrency: 10, limit: 100, timeout: 8000, onProgress: (done, total) => setTtsProgress({ done, total }) });
   }, [ensureTtsAudio]);
   preloadUnitRef.current = preloadUnit;
 
-  // 预取当前句音频（题目一出现即请求 URL + 预载内容，答题时缓存已就绪 → 即时播放）
+  // 预取当前句音频（整句：切块时也提前缓冲整句发音，答题时缓存已就绪 → 即时播放）
   useEffect(() => {
     if (!loading && !loadError && currentStatement) {
-      ensureTtsAudio(currentStatement);
+      const fullText = currentStatement.fullRussian || currentStatement.russian;
+      const speakStmt = fullText === currentStatement.russian
+        ? currentStatement
+        : { ...currentStatement, id: `${currentStatement.chunkOf || currentStatement.id}#full`, russian: fullText };
+      ensureTtsAudio(speakStmt);
     }
   }, [loading, loadError, currentStatement, ensureTtsAudio]);
 
   const playSentenceSound = useCallback(async (times = 1) => {
     const stmt = currentStatement;
     if (!stmt?.russian) return;
+    // 切块时播整句（fullRussian）：用户期望听到完整句子而非当前块
+    const fullText = stmt.fullRussian || stmt.russian;
+    const speakStmt = fullText === stmt.russian
+      ? stmt
+      : { ...stmt, id: `${stmt.chunkOf || stmt.id}#full`, russian: fullText, chunkKey: `${stmt.chunkOf || stmt.id}#full` };
     const myToken = ++playTokenRef.current; // 新播放立即作废旧播放（在途/排队均失效）
     try {
       let audio = null;
       // 百分百同步：已预载内容就绪的 Audio 直接秒播；未就绪（预载在途/首次）不等缓冲，
       // 用缓存 URL 立即 new Audio 流式播放，浏览器边下边播，杜绝等待延迟
-      const entry = ensureTtsAudio(stmt);
+      const entry = ensureTtsAudio(speakStmt);
       if (entry && entry.audio) {
         audio = entry.audio;
       } else {
-        const url = await ensureTts(stmt);
+        const url = await ensureTts(speakStmt);
         if (playTokenRef.current !== myToken) return;
         if (!url) return;
         audio = new Audio(url);
