@@ -279,7 +279,8 @@ export default function QuestSpeaking() {
           if (adapted.length === 0) setLoadError("该单元没有可学习的步骤");
           else {
             setUnitMeta(data.unit || null);
-            setSequences(expandSequencesWithChunks(adapted, null));
+            const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
+            setSequences(expandSequencesWithChunks(adapted, cloudWords));
           }
         }
       } catch (e) {
@@ -324,6 +325,7 @@ export default function QuestSpeaking() {
 
   // ---- TTS 发音源（与中译俄一致：voice=alena / type=statement；优先数据自带音频；同句缓存） ----
   const ttsUrlCacheRef = useRef({});
+  const ttsAudioCacheRef = useRef({}); // text -> { audio, promise }，同句复用已预载 Audio
   const ensureTtsUrl = useCallback(async (text) => {
     if (!text) return "";
     if (ttsUrlCacheRef.current[text]) return ttsUrlCacheRef.current[text];
@@ -361,6 +363,7 @@ export default function QuestSpeaking() {
       if (left <= 0) { onDone && onDone(); return; }
       left -= 1;
       const a = new Audio(url);
+      a.preload = "auto";
       a.playbackRate = speed;
       ttsRef.current = a;
       a.onended = () => setTimeout(step, 500);
@@ -524,7 +527,24 @@ export default function QuestSpeaking() {
   // ---- 进页面即加载语音评测服务 + 预取首题发音（对标句乐部：黑屏加载→就绪即答题） ----
   useEffect(() => {
     loadASR().catch(() => {});
-    if (current) ensureTtsUrl(current.russian).catch(() => {});
+    if (current) {
+      ensureTtsUrl(current.russian).then((url) => {
+        if (!url) return;
+        const t = current.russian;
+        if (ttsAudioCacheRef.current[t]) return;
+        const entry = { audio: null, promise: null };
+        entry.promise = (async () => {
+          const a = new Audio(url);
+          a.preload = "auto";
+          await new Promise((res) => {
+            a.addEventListener("canplay", res, { once: true });
+            a.addEventListener("error", res, { once: true });
+          });
+          entry.audio = a;
+        })();
+        ttsAudioCacheRef.current[t] = entry;
+      }).catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

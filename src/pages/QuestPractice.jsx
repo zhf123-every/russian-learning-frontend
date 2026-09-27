@@ -633,27 +633,61 @@ export default function QuestPractice() {
     return url;
   }, []);
 
-  // 预取当前句音频（题目一出现即开始请求，答题时缓存已就绪 → 答对即时播放）
+  // 预载音频内容：拿到 URL 后立即创建 Audio 并等 canplay（内容就绪），播放时秒开
+  const ttsAudioCacheRef = useRef({}); // id -> { audio, promise }，同句复用已预载 Audio
+  const ensureTtsAudio = useCallback((stmt) => {
+    const cid = stmt?.id || stmt?.russian || "";
+    if (!cid) return null;
+    if (ttsAudioCacheRef.current[cid]) return ttsAudioCacheRef.current[cid];
+    const entry = { audio: null, promise: null };
+    entry.promise = (async () => {
+      try {
+        const url = await ensureTts(stmt);
+        if (!url) return;
+        const audio = new Audio(url);
+        audio.preload = "auto";
+        await new Promise((res) => {
+          audio.addEventListener("canplay", res, { once: true });
+          audio.addEventListener("error", res, { once: true });
+        });
+        entry.audio = audio;
+      } catch (e) { /* 预载失败，播放时再兜底 */ }
+    })();
+    ttsAudioCacheRef.current[cid] = entry;
+    return entry;
+  }, [ensureTts]);
+
+  // 预取当前句音频（题目一出现即请求 URL + 预载内容，答题时缓存已就绪 → 即时播放）
   useEffect(() => {
     if (!loading && !loadError && currentStatement) {
-      ensureTts(currentStatement);
+      ensureTtsAudio(currentStatement);
     }
-  }, [loading, loadError, currentStatement, ensureTts]);
+  }, [loading, loadError, currentStatement, ensureTtsAudio]);
 
   const playSentenceSound = useCallback(async (times = 1) => {
     const stmt = currentStatement;
     if (!stmt?.russian) return;
     try {
+      let audio = null;
+      const entry = ensureTtsAudio(stmt);
+      if (entry) {
+        await entry.promise; // 等预载完成（已缓存立即返回）
+        audio = entry.audio;
+      }
+      if (!audio) {
+        const url = await ensureTts(stmt);
+        if (!url) return;
+        audio = new Audio(url);
+      }
       if (ttsAudioRef.current) {
         ttsAudioRef.current.pause();
         ttsAudioRef.current.currentTime = 0;
       }
-      const url = await ensureTts(stmt);
-      if (!url) return;
       const playOnce = (remaining) => {
-        const audio = new Audio(url);
-        ttsAudioRef.current = audio;
+        audio.pause();
+        audio.currentTime = 0;
         audio.playbackRate = settings.rate || 1;
+        ttsAudioRef.current = audio;
         audio.play().catch((e) => console.warn("播放失败:", e));
         if (remaining > 1) {
           audio.onended = () => {
@@ -665,7 +699,7 @@ export default function QuestPractice() {
     } catch (e) {
       console.warn("发音失败:", e);
     }
-  }, [currentStatement, ensureTts]);
+  }, [currentStatement, ensureTts, ensureTtsAudio, settings.rate]);
 
   // ---- 题目出现时自动播放两遍发音（即时，无延迟） ----
   useEffect(() => {

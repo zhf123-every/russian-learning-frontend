@@ -160,15 +160,46 @@ export default function QuestDictation() {
     return url;
   }, [effectiveCourseId]);
 
+  // 音频内容预载缓存：text -> { audio, promise }，同句复用已就绪 Audio
+  const ttsAudioCacheRef = useRef({});
+  const ensureTtsAudio = useCallback((text) => {
+    if (!text) return null;
+    if (ttsAudioCacheRef.current[text]) return ttsAudioCacheRef.current[text];
+    const entry = { audio: null, promise: null };
+    entry.promise = (async () => {
+      try {
+        const url = await ensureTtsUrl(text);
+        if (!url) return;
+        const audio = new Audio(url);
+        audio.preload = "auto";
+        await new Promise((res) => {
+          audio.addEventListener("canplay", res, { once: true });
+          audio.addEventListener("error", res, { once: true });
+        });
+        entry.audio = audio;
+      } catch (e) { /* 预载失败，播放时兜底 */ }
+    })();
+    ttsAudioCacheRef.current[text] = entry;
+    return entry;
+  }, [ensureTtsUrl]);
+
   const playAudio = useCallback((text) => {
     const textToPlay = text || currentStatement?.russian;
     if (!textToPlay) return;
     (async () => {
       try {
-        const url = await ensureTtsUrl(textToPlay);
-        if (!url) return;
+        let audio = null;
+        const entry = ensureTtsAudio(textToPlay);
+        if (entry) {
+          await entry.promise;
+          audio = entry.audio;
+        }
+        if (!audio) {
+          const url = await ensureTtsUrl(textToPlay);
+          if (!url) return;
+          audio = new Audio(url);
+        }
         if (ttsAudioRef.current) { ttsAudioRef.current.pause(); ttsAudioRef.current.onended = null; }
-        const audio = new Audio(url);
         ttsAudioRef.current = audio;
         audio.playbackRate = settings.rate || 1;
         audio.onplay = () => setIsPlaying(true);
@@ -177,7 +208,7 @@ export default function QuestDictation() {
         audio.play().catch((e) => { console.warn("播放失败:", e); setIsPlaying(false); });
       } catch (e) { setIsPlaying(false); }
     })();
-  }, [currentStatement?.russian, ensureTtsUrl]);
+  }, [currentStatement?.russian, ensureTtsUrl, ensureTtsAudio]);
 
   // ---- 全局快捷键 ----
   const { isComposingRef } = useKeyboardShortcuts({
@@ -353,7 +384,8 @@ export default function QuestDictation() {
             if (items.length === 0) {
               setLoadError("该单元没有可听写的句子");
             } else {
-              setStatements(expandStatements(items, null));
+              const cloudWords = items.flatMap((it) => (it.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" })));
+              setStatements(expandStatements(items, cloudWords));
             }
           } else {
             setLoadError("课程数据格式异常");
@@ -409,7 +441,7 @@ export default function QuestDictation() {
   // ---- 进模式前预取当前题发音（播放时命中缓存 → 即时，无延迟） ----
   useEffect(() => {
     if (!loading && !loadError && currentStatement?.russian) {
-      ensureTtsUrl(currentStatement.russian).catch(() => {});
+      ensureTtsAudio(currentStatement.russian);
     }
   }, [loading, loadError, questionIndex, currentStatement, ensureTtsUrl]);
 

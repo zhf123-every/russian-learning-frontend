@@ -280,7 +280,8 @@ export default function QuestListening() {
           if (adapted.length === 0) setLoadError("该单元没有可学习的步骤");
           else {
             setUnitMeta(data.unit || null);
-            setSequences(expandSequencesWithChunks(adapted, null));
+            const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
+            setSequences(expandSequencesWithChunks(adapted, cloudWords));
           }
         }
       } catch (e) {
@@ -325,6 +326,7 @@ export default function QuestListening() {
 
   // ---- TTS 发音源（与中译俄一致：voice=alena / type=statement；优先数据自带音频；同句缓存） ----
   const ttsUrlCacheRef = useRef({});
+  const ttsAudioCacheRef = useRef({}); // text -> { audio, promise }，同句复用已预载 Audio
   const ensureTtsUrl = useCallback(async (text) => {
     if (!text) return "";
     if (ttsUrlCacheRef.current[text]) return ttsUrlCacheRef.current[text];
@@ -362,6 +364,7 @@ export default function QuestListening() {
       if (left <= 0) { onDone && onDone(); return; }
       left -= 1;
       const a = new Audio(url);
+      a.preload = "auto";
       a.playbackRate = speed;
       ttsRef.current = a;
       a.onended = () => setTimeout(step, 500);
@@ -438,7 +441,22 @@ export default function QuestListening() {
   // ---- 进模式前预取当前题发音（播放时命中缓存 → 即时，无延迟） ----
   useEffect(() => {
     if (!loading && !loadError && current?.russian) {
-      ensureTtsUrl(current.russian).catch(() => {});
+      ensureTtsUrl(current.russian).then((url) => {
+        if (!url) return;
+        const t = current.russian;
+        if (ttsAudioCacheRef.current[t]) return;
+        const entry = { audio: null, promise: null };
+        entry.promise = (async () => {
+          const a = new Audio(url);
+          a.preload = "auto";
+          await new Promise((res) => {
+            a.addEventListener("canplay", res, { once: true });
+            a.addEventListener("error", res, { once: true });
+          });
+          entry.audio = a;
+        })();
+        ttsAudioCacheRef.current[t] = entry;
+      }).catch(() => {});
     }
   }, [loading, loadError, currentIdx, current, ensureTtsUrl]);
 
