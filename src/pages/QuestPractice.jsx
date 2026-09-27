@@ -761,6 +761,11 @@ export default function QuestPractice() {
   }, [ensureTtsAudio]);
   preloadUnitRef.current = preloadUnit;
 
+  // 播放竞态保护：callId（最新播放调用编号）+ currentStmtRef（当前题快照）
+  const callIdRef = useRef(0);
+  const currentStmtRef = useRef(null);
+  currentStmtRef.current = currentStatement;
+
   // 预取当前句音频：题目显示什么就预载什么（当前 step 的 russian），缓存就绪 → 即时播放
   useEffect(() => {
     if (!loading && !loadError && currentStatement) {
@@ -770,9 +775,11 @@ export default function QuestPractice() {
 
   // 发音：全局唯一音频控制器（暂停旧 → 复位 → 赋新 src → play），
   // 已预载就绪的 Audio 取其 src（浏览器已缓冲 → 赋给 globalAudio 秒开，零延迟）
+  // 异步竞态保护：callId 作废在途调用（切题/答对/新播放后，旧闭包绝不覆盖新播放）
   const playSentenceSound = useCallback((times = 1) => {
     const stmt = currentStatement;
     if (!stmt?.russian) return;
+    const myCallId = ++callIdRef.current;
     (async () => {
       let url = "";
       try {
@@ -780,6 +787,8 @@ export default function QuestPractice() {
         if (entry && entry.audio && entry.audio.src) url = entry.audio.src;
         if (!url) url = await ensureTts(stmt);
       } catch (e) { /* ignore */ }
+      if (callIdRef.current !== myCallId) return;   // 已被更新播放/切题取代 → 不播（防旧覆盖新）
+      if (currentStmtRef.current !== stmt) return;  // 当前题已变 → 放弃
       if (!url) return;
       playGlobalAudio(url, {
         times,
@@ -794,6 +803,7 @@ export default function QuestPractice() {
 
   // 立即停止全局唯一音频（切题/重试/暂停时调用；任何在途重播循环一并作废）
   const stopPlayback = useCallback(() => {
+    callIdRef.current += 1; // 作废所有在途播放调用（旧闭包 await 完成后不再播）
     stopGlobalAudio();
     ttsAudioPoolRef.current.forEach((a) => {
       try { a.onended = null; a.pause(); a.currentTime = 0; } catch (e) { /* ignore */ }
@@ -825,6 +835,7 @@ export default function QuestPractice() {
     const key = currentStatement ? String(currentStatement.russian || "").trim() : "";
     if (lastStmtKeyRef.current && lastStmtKeyRef.current !== key) {
       stopPlayback();
+      prefetchNextAudioRef.current(); // 切题瞬间立即预载后续句 → 下一题秒播
     }
     lastStmtKeyRef.current = key;
   }, [currentStatement, stopPlayback]);
