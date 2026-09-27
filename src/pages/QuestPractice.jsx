@@ -974,11 +974,7 @@ export default function QuestPractice() {
           : "none",
         ...THEME_OF(ui).vars,
         background: BG_STYLE(ui).background,
-        backgroundImage: ui.bgImage ? undefined : (combo >= 9
-          ? `radial-gradient(ellipse at center, rgba(245,158,11,${0.05 + Math.min(combo, 30) * 0.005}) 0%, transparent 70%)`
-          : combo >= 6
-          ? `radial-gradient(ellipse at center, rgba(34,197,94,${0.03 + Math.min(combo, 15) * 0.004}) 0%, transparent 70%)`
-          : "none"),
+        backgroundImage: ui.bgImage ? undefined : "none",
         transition: "box-shadow 0.3s ease, background 0.5s ease",
       }}
     >
