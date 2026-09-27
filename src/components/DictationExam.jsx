@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { analyzeSentence, pronunciationScore, ttsUrl } from '../lib/ai'
 import { useSettingsStore } from '../store/settingsStore'
+import { playGlobalAudio, stopGlobalAudio } from '../utils/audioService'
+
 import { toast } from '../lib/toast'
 
 // —— 工具函数 ——
@@ -167,10 +169,8 @@ export default function DictationExam({
         window.speechSynthesis.speak(u)
         return
       }
-      try { ttsAudioRef.current?.pause() } catch (e) { /* ignore */ }
-      const audio = ttsAudioRef.current || (ttsAudioRef.current = new Audio())
-      audio.src = ttsUrl(s.russian, v)
-      audio.play().catch(() => { /* 浏览器自动播放限制，用户可手动点 */ })
+      stopGlobalAudio() // 全局唯一音频：先停旧、复位
+      playGlobalAudio(ttsUrl(s.russian, v), { rate: 0.95 }) // 拦截时静默，用户手动点即可
     } else {
       playOriginal && playOriginal(i)
     }
@@ -205,7 +205,7 @@ export default function DictationExam({
   useEffect(() => () => {
     try { mediaRecRef.current?.state !== 'inactive' && mediaRecRef.current?.stop() } catch (e) { /* ignore */ }
     streamRef.current?.getTracks().forEach(t => t.stop())
-    try { ttsAudioRef.current?.pause() } catch (e) { /* ignore */ }
+    stopGlobalAudio() // 组件卸载：立即停止全局音频
   }, [])
 
   // —— 默写输入：边打边显示，输满单词长度自动跳下一格 ——
@@ -299,7 +299,7 @@ export default function DictationExam({
 
   // —— 录音 ——
   const startRec = async () => {
-    try { ttsAudioRef.current?.pause() } catch (e) { /* ignore */ }
+    stopGlobalAudio() // 组件卸载：立即停止全局音频
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream

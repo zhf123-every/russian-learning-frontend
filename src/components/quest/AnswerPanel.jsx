@@ -24,6 +24,7 @@ import { annotateWords } from "../../lib/wordAnnotate";
 import { inferRoles } from "../../lib/roleRules";
 import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQuestSettings";
 
+import { playGlobalAudio, stopGlobalAudio } from "../../utils/audioService";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 内存缓存：text -> audio_url，避免重复请求
 const ttsCache = new Map();
@@ -124,9 +125,8 @@ export default function AnswerPanel({
       }
 
       if (url) {
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.play().catch((e) => console.warn("播放失败:", e));
+        // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play（杜绝与答题页发音重叠）
+        playGlobalAudio(url, { rate: ui?.rate || 1 });
       }
     } catch (e) {
       console.warn("发音失败:", e);
@@ -136,7 +136,7 @@ export default function AnswerPanel({
   // 组件卸载时立即停止本组件的发音（切题/重试后不再继续播）
   useEffect(() => {
     return () => {
-      audioRef.current?.pause();
+      stopGlobalAudio(); // 组件卸载：立即停止全局音频（切题/重试后不再继续播）
       audioRef.current = null;
     };
   }, []);

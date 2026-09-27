@@ -43,6 +43,8 @@ import ShortcutTips from "../components/quest/ShortcutTips";
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 import { preloadTtsAll } from "../lib/ttsPreload";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
+import { playGlobalAudio, stopGlobalAudio } from "../utils/audioService";
+
 import { useQuestSettings, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -210,48 +212,33 @@ export default function QuestDictation() {
     const textToPlay = text || currentStatement?.russian;
     if (!textToPlay) return;
     const n = times ?? (ui.speakTimes ?? 2); // 进题自动播放次数（与播放设置关联）
-    const myToken = ++playTokenRef.current; // 新播放立即作废旧播放（在途/排队均失效）
     (async () => {
+      let url = "";
       try {
-        let audio = null;
         const entry = ensureTtsAudio(textToPlay);
         if (entry) {
           await entry.promise;
-          if (playTokenRef.current !== myToken) return;
-          audio = entry.audio;
+          if (entry.audio && entry.audio.src) url = entry.audio.src;
         }
-        if (!audio) {
-          const url = await ensureTtsUrl(textToPlay);
-          if (playTokenRef.current !== myToken) return;
-          if (!url) return;
-          audio = new Audio(url);
-        }
-        const playOnce = (remaining) => {
-          if (playTokenRef.current !== myToken) return;
-          audio.pause();
-          audio.currentTime = 0;
-          audio.playbackRate = settings.rate || 1;
-          ttsAudioRef.current = audio;
-          audio.onplay = () => setIsPlaying(true);
-          audio.onerror = () => { setIsPlaying(false); ttsAudioRef.current = null; };
-          audio.play().catch((e) => { console.warn("播放失败:", e); setIsPlaying(false); });
-          audio.onended = () => {
-            if (remaining <= 1) { setIsPlaying(false); ttsAudioRef.current = null; return; }
-            setTimeout(() => {
-              if (playTokenRef.current === myToken) playOnce(remaining - 1);
-            }, (ui.speakGap ?? 1) * 1000);
-          };
-        };
-        playOnce(n);
-      } catch (e) { setIsPlaying(false); }
+        if (!url) url = await ensureTtsUrl(textToPlay);
+      } catch (e) { /* ignore */ }
+      if (!url) return;
+      // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play（切题立即打断，绝不重叠）
+      playGlobalAudio(url, {
+        times: n,
+        rate: settings.rate || 1,
+        gap: (ui.speakGap ?? 1) * 1000,
+        onFinished: () => setIsPlaying(false),
+      });
+      setIsPlaying(true);
     })();
   }, [currentStatement?.russian, ensureTtsUrl, ensureTtsAudio, ui.speakTimes, ui.speakGap, settings.rate]);
 
-  // 立即停止当前发音并作废在途播放（切题/重试/暂停时调用）
+  // 立即停止全局唯一音频（切题/重试/暂停时调用；在途重播循环一并作废）
   const stopPlayback = useCallback(() => {
-    playTokenRef.current += 1;
+    stopGlobalAudio();
     const a = ttsAudioRef.current;
-    if (a) { a.onended = null; a.pause(); a.currentTime = 0; }
+    if (a) { try { a.onended = null; a.pause(); a.currentTime = 0; } catch (e) { /* ignore */ } }
     setIsPlaying(false);
   }, []);
 
@@ -510,6 +497,9 @@ export default function QuestDictation() {
     return () => clearInterval(timerRef.current);
   }, [loading, loadError]);
 
+  // 组件卸载：立即停止全局音频（离开答题页/切换模式后不再残留任何声音）
+  useEffect(() => () => { stopGlobalAudio(); }, []);
+
   // ---- 进入题目自动播放发音（需用户先交互一次）----
   useEffect(() => {
     if (
@@ -632,10 +622,9 @@ export default function QuestDictation() {
   };
 
   const togglePause = () => {
-    const a = ttsAudioRef.current;
-    if (!a) { setIsPaused(false); return; }
-    if (a.paused) { a.play().catch(() => {}); setIsPaused(false); }
-    else { a.pause(); setIsPaused(true); }
+    // 全局唯一音频：暂停→stopGlobalAudio 复位；恢复→重新播放当前句
+    if (isPaused) { setIsPaused(false); playAudio(null, 1); }
+    else { stopGlobalAudio(); setIsPaused(true); }
   };
 
   const toggleFullscreen = () => {

@@ -11,6 +11,8 @@ import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
+import { playGlobalAudio, stopGlobalAudio } from "../utils/audioService";
+
 import { preloadTtsAll } from "../lib/ttsPreload";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
 import SettingsModal, { loadHotkeys, keysOfEvent } from "../components/SettingsModal";
@@ -355,6 +357,9 @@ export default function QuestListening() {
     return () => clearInterval(timerRef.current);
   }, [loading, loadError]);
 
+  // 组件卸载：立即停止全局音频（离开答题页/切换模式后不再残留任何声音）
+  useEffect(() => () => { stopGlobalAudio(); }, []);
+
   const formatTime = (seconds) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -430,25 +435,20 @@ export default function QuestListening() {
   const stopAudio = useCallback(() => {
     chainRef.current += 1; // 使所有旧阶段链失效
     seqPlayRef.current = null;
-    if (ttsRef.current) {
-      try { ttsRef.current.pause(); ttsRef.current.onended = null; ttsRef.current = null; } catch (e) { /* 忽略 */ }
-    }
+    stopGlobalAudio(); // 全局唯一音频：立即停止并复位（任何在途重播循环一并作废）
+    ttsRef.current = null;
   }, []);
 
   const playTimes = useCallback((url, speed, times, onDone) => {
-    let left = times;
-    const step = () => {
-      if (seqPlayRef.current !== 'running') return;
-      if (left <= 0) { onDone && onDone(); return; }
-      left -= 1;
-      const a = new Audio(url);
-      a.preload = "auto";
-      a.playbackRate = speed;
-      ttsRef.current = a;
-      a.onended = () => setTimeout(step, 500);
-      a.play().catch(() => setTimeout(step, 300)); // 播放失败（含自动播放拦截）也推进
-    };
-    step();
+    if (seqPlayRef.current !== 'running') return;
+    // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play；
+    // times 次数由控制器内部循环（切题/stopAudio 立即作废），播完 onFinished 推进阶段链
+    playGlobalAudio(url, {
+      times,
+      rate: speed,
+      gap: 500,
+      onFinished: () => { if (seqPlayRef.current === 'running') onDone && onDone(); },
+    });
   }, []);
 
   const runStageChain = useCallback(async (text) => {
@@ -595,10 +595,15 @@ export default function QuestListening() {
     setElapsed(0);
   };
   const togglePause = () => {
-    const a = ttsRef.current;
-    if (!a) { setIsPaused(false); return; }
-    if (a.paused) { a.play().catch(() => {}); setIsPaused(false); }
-    else { a.pause(); setIsPaused(true); }
+    // 全局唯一音频：暂停→stopGlobalAudio 复位；恢复→重新从盲听阶段开始
+    if (isPaused) {
+      setIsPaused(false);
+      if (current?.russian) runStageChain(current.russian);
+    } else {
+      stopGlobalAudio();
+      seqPlayRef.current = null;
+      setIsPaused(true);
+    }
   };
   const toggleFullscreen = () => {
     if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); }

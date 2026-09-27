@@ -45,6 +45,7 @@ import FeedbackPopup from "../components/quest/FeedbackPopup";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 import { preloadTtsAll } from "../lib/ttsPreload";
+import { playGlobalAudio, stopGlobalAudio, preloadGlobalAudio } from "../utils/audioService";
 import { useQuestSettings, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -222,7 +223,8 @@ export default function QuestPractice() {
   const [showSettings, setShowSettings] = useState(false);
   const { ui, sfx, settings, refreshSettings } = useQuestSettings();
   const [showModePicker, setShowModePicker] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isPaused, setIsPaused] = useState(false)
+  const [audioBlocked, setAudioBlocked] = useState(false)   // 自动播放策略拦截提示（点亮后提示用户点击屏幕激活）;
   const [showAnswerMode, setShowAnswerMode] = useState(false);
   const [showLearning, setShowLearning] = useState(false);
   const [showTree, setShowTree] = useState(false);
@@ -766,58 +768,55 @@ export default function QuestPractice() {
     }
   }, [loading, loadError, currentStatement, ensureTtsAudio]);
 
-  const playSentenceSound = useCallback(async (times = 1) => {
+  // 发音：全局唯一音频控制器（暂停旧 → 复位 → 赋新 src → play），
+  // 已预载就绪的 Audio 取其 src（浏览器已缓冲 → 赋给 globalAudio 秒开，零延迟）
+  const playSentenceSound = useCallback((times = 1) => {
     const stmt = currentStatement;
     if (!stmt?.russian) return;
-    // 发音跟随题目显示：读 currentStatement.russian（单打=当前块，累积=已答+当前块整句）
-    const myToken = ++playTokenRef.current; // 新播放立即作废旧播放（在途/排队均失效）
-    try {
-      let audio = null;
-      // 百分百同步：已预载内容就绪的 Audio 直接秒播；未就绪（预载在途/首次）不等缓冲，
-      // 用缓存 URL 立即 new Audio 流式播放，浏览器边下边播，杜绝等待延迟
-      const entry = ensureTtsAudio(stmt);
-      if (entry && entry.audio) {
-        audio = entry.audio;
-      } else {
-        const url = await ensureTts(stmt);
-        if (playTokenRef.current !== myToken) return;
-        if (!url) return;
-        audio = new Audio(url);
-      }
-      const playOnce = (remaining) => {
-        if (playTokenRef.current !== myToken) return; // 被作废则不再播放
-        audio.pause();
-        audio.currentTime = 0;
-        audio.playbackRate = settings.rate || 1;
-        ttsAudioRef.current = audio;
-        ttsAudioPoolRef.current.add(audio);
-        audio.onended = () => {
-          ttsAudioPoolRef.current.delete(audio);
-          if (remaining > 1) {
-            setTimeout(() => {
-              if (playTokenRef.current === myToken) playOnce(remaining - 1);
-            }, 600);
-          }
-        };
-        audio.play().catch((e) => console.warn("播放失败:", e));
-      };
-      playOnce(times);
-    } catch (e) {
-      console.warn("发音失败:", e);
-    }
-  }, [currentStatement, ensureTts, ensureTtsAudio, settings.rate]);
+    (async () => {
+      let url = "";
+      try {
+        const entry = ensureTtsAudioRef.current(stmt);
+        if (entry && entry.audio && entry.audio.src) url = entry.audio.src;
+        if (!url) url = await ensureTts(stmt);
+      } catch (e) { /* ignore */ }
+      if (!url) return;
+      playGlobalAudio(url, {
+        times,
+        rate: settings.rate || 1,
+        gap: (ui.speakGap ?? 1) * 1000,
+        onBlocked: () => setAudioBlocked(true), // 自动播放策略拦截 → 点亮提示
+      });
+      setAudioBlocked(false);
+      prefetchNextAudioRef.current(); // 预加载后续句 → 连续答题切题不延迟
+    })();
+  }, [currentStatement, ensureTts, ensureTtsAudio, settings.rate, ui.speakGap]);
 
-  // 立即停止当前发音并作废在途播放（切题/重试/暂停时调用，保证不再继续播）
+  // 立即停止全局唯一音频（切题/重试/暂停时调用；任何在途重播循环一并作废）
   const stopPlayback = useCallback(() => {
-    playTokenRef.current += 1;
+    stopGlobalAudio();
     ttsAudioPoolRef.current.forEach((a) => {
-      a.onended = null;
-      a.pause();
-      a.currentTime = 0;
+      try { a.onended = null; a.pause(); a.currentTime = 0; } catch (e) { /* ignore */ }
     });
     ttsAudioPoolRef.current.clear();
     ttsAudioRef.current = null;
   }, []);
+  // 预加载后续句发音（切题/答对时调用 → 下一题秒播，连续答题零延迟）
+  const prefetchNextAudio = useCallback(() => {
+    const seq = sequences[currentSequenceIndex];
+    const units = (seq && seq.units) || [];
+    const nu = currentUnitIndex + 1;
+    const nextUnits = nu < units.length
+      ? units.slice(nu, nu + 2)
+      : (currentSequenceIndex + 1 < sequences.length ? ((sequences[currentSequenceIndex + 1].units || []).slice(0, 2)) : []);
+    if (!nextUnits.length) return;
+    preloadTtsAll(nextUnits, (it) => {
+      const e = ensureTtsAudioRef.current(it);
+      return e ? e.promise : Promise.resolve();
+    }, { concurrency: 2, limit: 2 });
+  }, [sequences, currentSequenceIndex, currentUnitIndex]);
+  const prefetchNextAudioRef = useRef(prefetchNextAudio);
+  prefetchNextAudioRef.current = prefetchNextAudio;
 
   // ---- 统一切题打断：任何导致 currentStatement 变化的路径（按钮/引擎快捷键/autoNext）
   // 在自动播放前先停旧题残留发音，杜绝答对/上一题声音带入新题连读 ----
@@ -829,6 +828,19 @@ export default function QuestPractice() {
     }
     lastStmtKeyRef.current = key;
   }, [currentStatement, stopPlayback]);
+  // 组件卸载：立即停止全局音频（离开答题页/切换模式后不再残留任何声音）
+  useEffect(() => () => { stopGlobalAudio(); }, []);
+
+  // 自动播放被拦截时：点击屏幕任意位置解锁并恢复当前题发音（Autoplay Policy 解除）
+  useEffect(() => {
+    if (!audioBlocked) return;
+    const unlock = () => {
+      setAudioBlocked(false);
+      playSentenceSound(1);
+    };
+    window.addEventListener('pointerdown', unlock, { once: true });
+    return () => window.removeEventListener('pointerdown', unlock);
+  }, [audioBlocked, playSentenceSound]);
 
   // ---- 题目出现时自动播放两遍发音（即时，无延迟） ----
   useEffect(() => {
@@ -849,18 +861,7 @@ export default function QuestPractice() {
     if (showAnswerPanel && currentStatement && ui.answerSpeak) {
       playSentenceSound(1); // 答对面板显示当前 step → 读当前 step（题目显示什么读什么）
       // 答对瞬间预载接下来 2 句发音 → 用户点「下一题」时秒播（连续答题不延迟）
-      const seq = sequences[currentSequenceIndex];
-      const units = (seq && seq.units) || [];
-      const nu = currentUnitIndex + 1;
-      const nextUnits = nu < units.length
-        ? units.slice(nu, nu + 2)
-        : (currentSequenceIndex + 1 < sequences.length ? ((sequences[currentSequenceIndex + 1].units || []).slice(0, 2)) : []);
-      if (nextUnits.length) {
-        preloadTtsAll(nextUnits, (it) => {
-          const e = ensureTtsAudio(it);
-          return e ? e.promise : Promise.resolve();
-        }, { concurrency: 2, limit: 2 });
-      }
+      prefetchNextAudioRef.current();
     }
   }, [showAnswerPanel, currentStatement, playSentenceSound, ui.answerSpeak, currentSequenceIndex, currentUnitIndex, sequences, ensureTtsAudio]);
 
@@ -925,10 +926,14 @@ export default function QuestPractice() {
   };
 
   const togglePause = () => {
-    const a = ttsAudioRef.current;
-    if (!a) { setIsPaused(false); return; }
-    if (a.paused) { a.play().catch(() => {}); setIsPaused(false); }
-    else { a.pause(); setIsPaused(true); }
+    // 全局唯一音频：暂停→stopGlobalAudio 复位；恢复→重新播放当前句
+    if (isPaused) {
+      setIsPaused(false);
+      playSentenceSound(1);
+    } else {
+      stopGlobalAudio();
+      setIsPaused(true);
+    }
   };
 
   const toggleFullscreen = () => {
@@ -1161,6 +1166,12 @@ export default function QuestPractice() {
       {/* 轻提示 */}
       {hint && (
         <div style={{ position: 'fixed', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 200, background: '#333', color: '#fff', padding: '8px 18px', borderRadius: 999, fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', whiteSpace: 'nowrap' }}>{hint.text}</div>
+      )}
+      {/* 自动播放策略被拦截 → 点亮提示，点击屏幕任意处即解锁 */}
+      {audioBlocked && (
+        <div style={{ position: 'fixed', top: 108, left: '50%', transform: 'translateX(-50%)', zIndex: 200, background: 'rgba(124,58,237,0.95)', color: '#fff', padding: '8px 18px', borderRadius: 999, fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', whiteSpace: 'nowrap' }}>
+          🔊 音频被浏览器拦截，请点击屏幕任意位置激活后自动恢复发音
+        </div>
       )}
 
       {/* 全局进度条 */}

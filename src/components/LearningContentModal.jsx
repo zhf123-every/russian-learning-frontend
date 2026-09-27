@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { splitSentenceToChunks } from '../lib/chunking'
 import { getKnowledge, readKnowledgeCache } from '../lib/knowledge'
+import { playGlobalAudio } from '../utils/audioService'
+
 
 // 学习内容弹窗 —— 对标句乐部「查看课程学习内容 Ctrl+1」
 // 左栏：chunking 渐进块列表（Это → дом → Это дом.）
@@ -24,7 +26,7 @@ function playTTS(text) {
           ? u
           : 'https://russian-learning-jetq.onrender.com' + u;
       }
-      new Audio(u).play().catch(() => {})
+      playGlobalAudio(u) // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play
     })
     .catch(() => {})
 }
