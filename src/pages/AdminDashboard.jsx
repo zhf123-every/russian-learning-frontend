@@ -35,7 +35,7 @@ const emptyForm = () => ({
   textbook: '走遍俄罗斯',
   difficulty: '入门',
   badge: '',
-  lessons: 12,
+  lessons: 0,
   students: 0,
   tags: [],
   coverUrl: '',
@@ -103,8 +103,6 @@ export default function AdminDashboard() {
   const [active, setActive] = useState(null)        // 当前管理课程序的课程
   const [units, setUnits] = useState([])            // 该课程的课时
   const [newUnitTitle, setNewUnitTitle] = useState('')
-  const [importText, setImportText] = useState('')
-  const [importing, setImporting] = useState(false)
 
   // —— 课时内容管理状态 ——
   const [activeUnit, setActiveUnit] = useState(null) // 当前编辑内容的课时
@@ -129,7 +127,6 @@ export default function AdminDashboard() {
         form.textbook && `教材：${form.textbook}`,
         form.grade && `年级：${form.grade}`,
         form.difficulty && `难度：${form.difficulty}`,
-        form.lessons && `课时数：${form.lessons}`,
         form.tags && form.tags.length && `标签：${form.tags.join('、')}`,
       ].filter(Boolean).join('\n')
       const content = await chat({
@@ -430,44 +427,6 @@ export default function AdminDashboard() {
     persistUnits(units.filter((_, i) => i !== idx))
   }
 
-  // AI 切课导入：粘贴整书文本 → 后端切课 → 追加为课时
-  const doImport = async () => {
-    const text = importText.trim()
-    if (!text) { flash('请先粘贴要切课的文本'); return }
-    setImporting(true)
-    try {
-      const isLocal = /^localhost|^127\./.test(location.hostname)
-      const base = isLocal ? '' : (API_BASE || '')
-      const res = await fetch(`${base}/api/course-split`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: active.title, category: active.category, level: active.difficulty || 'A1', text }),
-      })
-      const r = await res.json()
-      let lessons = Array.isArray(r.lessons) ? r.lessons : null
-      if (!lessons && r.content) {
-        try { lessons = JSON.parse(r.content).lessons } catch (e) { /* ignore */ }
-      }
-      if (!Array.isArray(lessons) || !lessons.length) {
-        flash('切课失败：' + (r.error || '未能识别出课，请确认文本包含「Урок N」标题行'))
-        setImporting(false)
-        return
-      }
-      const added = lessons.map((l, idx) => ({
-        id: 'unit_' + Date.now() + '_' + idx,
-        title: l.name || ('第 ' + (l.num || idx + 1) + ' 课'),
-        desc: l.desc || '',
-        vocab: l.vocab || '',
-        imported: true,
-      }))
-      persistUnits([...units, ...added])
-      flash(`已导入 ${added.length} 个课时（追加）`)
-    } catch (e) {
-      flash('切课请求失败：' + (e.message || '网络错误'))
-    }
-    setImporting(false)
-  }
-
   // ========== 第三步：课时内容管理 ==========
 
   // 进入课时内容
@@ -735,7 +694,7 @@ export default function AdminDashboard() {
           <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
             <div className="card-body p-5">
               <h2 className="card-title text-base text-gray-900">① 本课生词表（每行：词 | 释义）</h2>
-              <p className="text-xs text-gray-400 mt-0.5">AI 导入课时时已自动填入；可手动增删。</p>
+              <p className="text-xs text-gray-400 mt-0.5">每行：俄语词 | 中文释义，可手动增删。</p>
               <textarea
                 className="textarea textarea-bordered mt-3 w-full font-mono"
                 rows={6}
@@ -966,26 +925,6 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* AI 导入 */}
-          <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
-            <div className="card-body p-5">
-              <h2 className="card-title text-base text-gray-900">✨ AI 导入课时（按「Урок N」自动切课）</h2>
-              <p className="text-xs text-gray-400 mt-1">粘贴整本书/多课文本，后端按「Урок N · 课名」标题行切分，每课变成一个课时（追加到列表）。</p>
-              <textarea
-                className="textarea textarea-bordered mt-3 w-full"
-                rows={4}
-                value={importText}
-                onChange={e => setImportText(e.target.value)}
-                placeholder={'粘贴文本，例如：\nУрок 1 · 字母与问候\nдом | 房子\nмама | 妈妈\n...'}
-              />
-              <div className="mt-3 flex items-center gap-2">
-                <button className="btn btn-primary" onClick={doImport} disabled={importing}>
-                  {importing ? '切课中…' : '✨ 切课并导入'}
-                </button>
-                <span className="text-xs text-gray-400">导入后点课时行「内容」可编辑词表、AI 生成渐进例句、挂素材。</span>
-              </div>
-            </div>
-          </div>
         </div>
       </main>
     )
@@ -1090,15 +1029,6 @@ export default function AdminDashboard() {
                 </select>
               </div>
 
-              <div className="form-control">
-                <label className="label"><span className="label-text">课时数</span></label>
-                <input type="number" min={1} className="input input-bordered" value={form.lessons} onChange={e => setField('lessons', e.target.value)} />
-              </div>
-
-              <div className="form-control">
-                <label className="label"><span className="label-text">学习人数</span></label>
-                <input type="number" min={0} className="input input-bordered" value={form.students} onChange={e => setField('students', e.target.value)} placeholder="默认 0" />
-              </div>
             </div>
 
             {/* 二级标签多选（按一级分类联动） */}
@@ -1211,7 +1141,6 @@ export default function AdminDashboard() {
                         <td>
                           <div className="flex gap-1">
                             <button className="btn btn-primary btn-xs" onClick={() => manageUnits(c)}>搭课程序</button>
-                            <button className="btn btn-outline btn-xs" onClick={() => navigate(`/admin/lessons/${c.id}`)}>管理大纲</button>
                             <button className="btn btn-ghost btn-xs" onClick={() => edit(c)}>编辑</button>
                             <button className="btn btn-error btn-xs btn-outline" onClick={() => remove(c.id)}>删除</button>
                           </div>
