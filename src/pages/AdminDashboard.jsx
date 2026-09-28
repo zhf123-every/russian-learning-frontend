@@ -281,10 +281,55 @@ export default function AdminDashboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // 删除课程
-  const remove = (id) => {
+  // 从云端删除该课程（商城/前端读云端名单，删除必须同步云端才会生效）
+  const removeFromCloud = async (id) => {
+    if (!adminKey) { flash('请先输入管理员密钥并登录，才能删除云端课程'); return false }
+    setCloudBusy(true)
+    setCloudMsg('正在从云端删除…')
+    try {
+      const r = await apiFetch('/api/videos/list')
+      const j = await r.json()
+      if (!j.ok || !Array.isArray(j.videos)) { setCloudMsg('读取云端列表失败，请重试'); setCloudBusy(false); return false }
+      const next = j.videos.filter(v => !(v.kind === 'course' && v.id === id))
+      const sr = await apiFetch('/api/videos/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videos: next, adminKey }),
+      })
+      const sj = await sr.json()
+      if (sj.ok) {
+        setCloudCount(next.length)
+        setCloudMsg('✅ 已从云端删除该课程，商城已同步')
+        setCloudBusy(false)
+        return true
+      }
+      setCloudMsg('云端删除失败：' + (sj.error || '未知错误'))
+      setCloudBusy(false)
+      return false
+    } catch (e) {
+      setCloudMsg('云端删除失败：' + (e.message || '网络错误'))
+      setCloudBusy(false)
+      return false
+    }
+  }
+
+  // 删除课程：已发布课程需先删云端（保证商城同步），再删本地
+  const remove = async (id) => {
+    const c = getCourses().find(x => x.id === id)
+    if (!c) return
+    const cloudNote = c.status !== 'draft' ? '（已发布课程会同时从云端/商城移除）' : ''
+    if (!window.confirm(`确定删除课程《${c.title}》吗？${cloudNote}此操作不可恢复。`)) return
+    if (c.status !== 'draft') {
+      if (!adminKey) {
+        flash('⚠️ 该课程已发布到云端：请先输入管理员密钥并登录，删除后商城才会同步')
+        return
+      }
+      const ok = await removeFromCloud(id)
+      if (!ok) return // 云端删除失败则中止，避免本地删了商城还显示
+    }
     deleteCourse(id)
     refresh()
+    flash('课程已删除（本地 + 云端）')
   }
 
   // ========== 课程数据跨浏览器迁移（导出 / 导入） ==========
