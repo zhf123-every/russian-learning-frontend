@@ -50,6 +50,48 @@ export default function AdminDashboard() {
   const [editingId, setEditingId] = useState('')    // 非空 = 正在编辑某条档案
   const [courses, setCourses] = useState([])
   const [toast, setToast] = useState('')
+  // —— 连词成句课程生成器：单词 → 提示词 ——
+  const [genWords, setGenWords] = useState('')
+  const [genPrompt, setGenPrompt] = useState('')
+  const [showGenPrompt, setShowGenPrompt] = useState(false)
+
+  const generatePrompt = () => {
+    const words = String(genWords || '').trim()
+    if (!words) { setToast('请先输入本课单词（用逗号隔开）'); return }
+    const prompt = `你是一个资深俄语教学课程设计师。我会给你一组基础俄语词汇（名词、动词原形等）。请发挥你的语法知识，自动衍生出必要的变形词、否定词、不定式，并编排成"衍生式重构（先学零件、再组装、再变形）"的俄语递进式学习路径。
+【自动衍生规则（必须严格遵守）】
+1. 允许衍生：根据主语自动生成动词的人称变位（如：Я люблю, Ты любишь）；根据句法自动生成名词的格（如：книга -> книгу）；允许引入否定词 'не'；允许引入常用的动词不定式（-ть结尾）。
+2. 禁止衍生：禁止生成过去时、将来时、命令式、条件句或复杂从句。必须始终保持现在时、简单句，确保零基础用户能看懂。
+3. 难度阶梯：必须包含"基础零件 -> 基础组装 -> 否定变形 -> 不定式结构替换 -> 否定+不定式交叉组合"这5个阶段。
+4. 输出限制：必须严格输出 JSON 格式，字段为 \`pathId\` 和 \`steps\`。每个 step 包含 \`stepIndex\`、\`russian\`、\`chinese\`。请只输出 JSON，不要有任何解释或 markdown 包裹。
+5. 关卡数量：每组生成 10-15 关。
+单词如下：${words}`
+    setGenPrompt(prompt)
+    setShowGenPrompt(true)
+    setToast('提示词已生成，请复制后粘贴给 AI')
+  }
+
+  const copyPrompt = () => {
+    if (!genPrompt) return
+    let ok = false
+    try {
+      // 方案1（主）：隐藏 textarea + execCommand，同步执行，不依赖页面焦点权限
+      const ta = document.createElement('textarea')
+      ta.value = genPrompt
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      ok = document.execCommand('copy')
+      document.body.removeChild(ta)
+    } catch (e) { ok = false }
+    // 方案2（兜底）：Clipboard API
+    if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(genPrompt).catch(() => {})
+    }
+    setToast('提示词已复制，请粘贴给 AI 生成 JSON')
+  }
   // —— 云端同步状态 ——
   const { adminKey, login, logout } = useAdminStore()
   const [adminInput, setAdminInput] = useState(adminKey || '')
@@ -768,21 +810,57 @@ export default function AdminDashboard() {
                 <button className="btn btn-outline btn-sm" onClick={addSentence}>+ 添加</button>
               </div>
 
-              {/* 批量导入 JSON（AI 前置修复中文，前端只渲染固定数据） */}
-              <div className="mt-4 rounded-xl border border-dashed border-gray-300 p-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-xs font-semibold text-gray-600">📋 批量导入 JSON（句子数组 / 滚动学习路径 / 对话）+ AI 修复中文（缺失/逐词硬拼）</span>
-                  <button className="btn btn-outline btn-xs" onClick={importSentencesJson} disabled={jsonBusy}>
-                    {jsonBusy ? 'AI 修复中…' : '导入并 AI 修复'}
-                  </button>
+              {/* 批量导入 JSON（AI 前置修复中文）+ 连词成句课程生成器（并排） */}
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                <div className="rounded-xl border border-dashed border-gray-300 p-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-xs font-semibold text-gray-600">📋 批量导入 JSON（句子数组 / 滚动学习路径 / 对话）+ AI 修复中文（缺失/逐词硬拼）</span>
+                    <button className="btn btn-outline btn-xs" onClick={importSentencesJson} disabled={jsonBusy}>
+                      {jsonBusy ? 'AI 修复中…' : '导入并 AI 修复'}
+                    </button>
+                  </div>
+                  <textarea
+                    className="textarea textarea-bordered mt-2 w-full font-mono text-xs"
+                    rows={3}
+                    placeholder={'[{ "ru": "Кто это?", "zh": "谁这是？" }, { "ru": "Это дом.", "zh": "这是房子。" }]\n或滚动路径：{ "pathId": "path_01", "steps": [{ "stepIndex": 1, "russian": "Это", "chinese": "这", "newChunks": [{ "word": "Это", "translation": "这", "role": "主语" }], "allChunks": [] }] }\n说明：缺失中文 / 含俄语 / 明显逐词硬拼的句子自动交 AI 重译；滚动路径（连词成句滚雪球）与对话数据按原结构透传保存。'}
+                    value={jsonText}
+                    onChange={e => setJsonText(e.target.value)}
+                  />
                 </div>
-                <textarea
-                  className="textarea textarea-bordered mt-2 w-full font-mono text-xs"
-                  rows={3}
-                  placeholder={'[{ "ru": "Кто это?", "zh": "谁这是？" }, { "ru": "Это дом.", "zh": "这是房子。" }]\n或滚动路径：{ "pathId": "path_01", "steps": [{ "stepIndex": 1, "russian": "Это", "chinese": "这", "newChunks": [{ "word": "Это", "translation": "这", "role": "主语" }], "allChunks": [] }] }\n说明：缺失中文 / 含俄语 / 明显逐词硬拼的句子自动交 AI 重译；滚动路径（连词成句滚雪球）与对话数据按原结构透传保存。'}
-                  value={jsonText}
-                  onChange={e => setJsonText(e.target.value)}
-                />
+
+                {/* 连词成句课程生成器：单词 → 提示词 → 一键复制 */}
+                <div className="card border border-gray-200 bg-base-100 shadow-sm">
+                  <div className="card-body p-4">
+                    <h3 className="card-title text-sm text-gray-900">连词成句课程生成器</h3>
+                    <label className="label pb-1">
+                      <span className="label-text text-xs text-gray-600">请输入本课单词（用逗号隔开）</span>
+                    </label>
+                    <textarea
+                      className="textarea textarea-bordered w-full font-mono text-xs"
+                      rows={3}
+                      placeholder="Это, Иван, и, Анна, дома"
+                      value={genWords}
+                      onChange={e => setGenWords(e.target.value)}
+                    />
+                    <div className="mt-2">
+                      <button className="btn btn-outline btn-sm" onClick={generatePrompt}>生成提示词</button>
+                    </div>
+                    {showGenPrompt && (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <span className="text-xs font-semibold text-gray-600">生成的提示词（复制后粘贴给 AI 生成 JSON）</span>
+                          <button className="btn btn-outline btn-xs" onClick={copyPrompt}>一键复制</button>
+                        </div>
+                        <textarea
+                          className="textarea textarea-bordered mt-1 w-full font-mono text-xs"
+                          rows={7}
+                          readOnly
+                          value={genPrompt}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
