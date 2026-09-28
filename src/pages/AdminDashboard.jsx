@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   // —— 连词成句课程生成器：单词 → 提示词 ——
   const [genWords, setGenWords] = useState('')
   const [genPrompt, setGenPrompt] = useState('')
+  const [genBusy, setGenBusy] = useState(false)
   const [showGenPrompt, setShowGenPrompt] = useState(false)
 
   const generatePrompt = () => {
@@ -77,6 +78,79 @@ export default function AdminDashboard() {
     setGenPrompt(prompt)
     setShowGenPrompt(true)
     setToast('提示词已生成，请复制后粘贴给 AI')
+  }
+
+  // 🤖 AI 一键生成滚动路径：填词 → 后端 AI 直接返回 JSON → 自动导入本课时（零复制粘贴）
+  const aiGenPath = async () => {
+    const words = String(genWords || '').trim()
+    if (!words) { setToast('请先输入本课单词（用逗号隔开）'); return }
+    const wordsStr = words.split(/[，,]/).map(w => w.trim()).filter(Boolean).join(', ')
+    const system = '你是一个资深俄语教学课程设计师。严格按用户要求只输出 JSON 数组，不要输出任何解释或 markdown 包裹。'
+    const user = `我会给你一组基础俄语词汇（名词、动词原形等）。请发挥你的语法知识，自动衍生出必要的变形词、否定词、不定式、形容词、数词、副词、变格等，并编排成"衍生式重构（先学零件、再组装、再变形）"的俄语递进式学习路径。
+【自动衍生规则（必须严格遵守）】
+1. 允许衍生（按需组合，不强制全部使用）：动词按主语人称变位（Я люблю, Ты любишь, Он любит）；引入常用不定式（-ть结尾，如 читать）；引入否定词 не。名词按句法变格——宾格（книга -> книгу）、所属生格（Анна -> Анны）、前置格（школа -> в школе）。修饰：形容词（хорошо -> хорошая）、数词（одна книга）。状语：程度副词（очень / много / мало）、方式副词（хорошо / плохо）、时间状语（сегодня / утром）、地点状语（дома / в школе）。结构：疑问词（что / кто / как / когда）、人称宾格（ты -> тебя）、并列连接（и / а）、语气词（тоже / конечно）。
+2. 禁止衍生：禁止过去时、将来时、命令式、条件句或复杂从句。必须始终保持现在时、简单句，确保零基础用户能看懂。
+3. 长雪球：每组只围绕一个核心句型家族，从零件开始逐词/逐成分滚雪球，必须滚到完整长句（主谓宾 + 状语 + 修饰，8-12 个词）才结束，严禁中途截断成短句。
+4. 主语多样化：整组主语不能从头到尾都是同一个词，禁止整组使用"Это X"模式充当主体；主语应在 Я / Ты / Он / Она / Мы / 人名之间自然轮换，同一主语最多连续 3 步。
+5. 组件化加长：每步增加一个"最小语法成分"（可以是单词或短语，如 в школе、очень хорошо、сегодня утром、читать книгу），使句子逐步变长；严禁在同一 step 内并列多个平行句子。
+6. 输出限制：必须严格输出 JSON **数组**，每个元素为 {\"pathId\": \"...\", \"steps\": [{\"stepIndex\": 1, \"russian\": \"...\", \"chinese\": \"...\"}]}。**不要输出 newChunks / allChunks**（后台会自动补全词卡）。请只输出 JSON 数组。
+7. 关卡数量：每条路径生成 20-40 关。
+单词如下：${wordsStr}`
+    setGenBusy(true)
+    let attempt = 0
+    while (attempt < 2) {
+      attempt++
+      try {
+        const content = await chat({ messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
+        const parsed = parseAIJSON(content)
+        if (!parsed) throw new Error('AI 未返回合法 JSON')
+        const arr = Array.isArray(parsed) ? parsed : [parsed]
+        const paths = arr.filter(p => p && Array.isArray(p.steps))
+        if (!paths.length) throw new Error('AI 返回中没有 pathId+steps 路径')
+        // 本地补全词卡：词表匹配 + 语法规则（AI 只出 russian/chinese，避免超长截断）
+        let vocab = []
+        try { vocab = JSON.parse(localStorage.getItem('rlearn_v1_vocab') || '[]') } catch (e) { vocab = [] }
+        const vocabMap = {}
+        vocab.forEach(c => { if (c && c.word) { const k = String(c.word).toLowerCase(); if (k && !vocabMap[k]) vocabMap[k] = c } })
+        const posColor = { '名词': 'orange', '动词': 'red', '形容词': 'green', '副词': 'green', '代词': 'orange', '数词': 'green', '连接词': 'gray', '疑问词': 'purple', '语气词': 'gray' }
+        const makeChunk = (w) => {
+          const clean = String(w).toLowerCase().replace(/[.,!?;:«»"'()]/g, '')
+          const c = vocabMap[clean]
+          let role = '', color = 'orange'
+          if (['не','и','а','но','да','тоже','очень','конечно'].includes(clean)) { role = '连接/语气词'; color = 'gray' }
+          else if (['что','кто','как','когда','где','почему'].includes(clean)) { role = '疑问词'; color = 'purple' }
+          else if (/(ть|тся|чь)$/.test(clean)) { role = '动词'; color = 'red' }
+          if (c) { role = c.pos || role; color = posColor[role] || color }
+          return { word: w, translation: c ? (c.chinese || '') : '', role, color }
+        }
+        paths.forEach(p => {
+          let prevWords = new Set()
+          p.steps = p.steps.map(st => {
+            const tokens = String(st.russian || '').trim().split(/\s+/).filter(Boolean)
+            const newTokens = tokens.filter(t => !prevWords.has(t.toLowerCase()))
+            tokens.forEach(t => prevWords.add(t.toLowerCase()))
+            const allChunks = tokens.map(makeChunk)
+            const newChunks = newTokens.map(makeChunk)
+            return { ...st, newChunks, allChunks }
+          })
+        })
+        const prev = [...(activeUnit.scaffoldingPaths || [])]
+        const pathIds = new Set(prev.map(p => p.pathId))
+        paths.forEach(p => {
+          if (pathIds.has(p.pathId)) { const i = prev.findIndex(x => x.pathId === p.pathId); prev[i] = p }
+          else { prev.push(p); pathIds.add(p.pathId) }
+        })
+        patchUnit({ scaffoldingPaths: prev })
+        const emptySteps = paths.reduce((a, p) => a + p.steps.filter(s => (s.allChunks || []).some(c => !c.translation)).length, 0)
+        setToast(`✅ AI 已生成 ${paths.length} 条路径（共 ${paths.reduce((a, p) => a + (p.steps || []).length, 0)} 关），词卡已按词表+规则补全；${emptySteps} 关有单词未收录词表（可去词汇表补充）。记得点「保存课时内容」固定入库`)
+        setTimeout(() => { const el = document.getElementById('scaffold-section'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 300)
+        return
+      } catch (e) {
+        if (attempt === 1) { setToast('⏳ AI 生成较慢（冷启动/超时），自动重试第 2 次…'); continue }
+        setToast('⚠️ AI 生成失败：' + e.message + '（可改用「生成提示词」复制后到外部 AI 生成再导入）')
+      }
+    }
+    setGenBusy(false)
   }
 
   const copyPrompt = () => {
@@ -937,7 +1011,12 @@ export default function AdminDashboard() {
                       onChange={e => setGenWords(e.target.value)}
                     />
                     <div className="mt-2">
-                      <button className="btn btn-outline btn-sm" onClick={generatePrompt}>生成提示词</button>
+                      <div className="flex items-center gap-2">
+                        <button className="btn btn-primary btn-sm" onClick={aiGenPath} disabled={genBusy}>
+                          {genBusy ? 'AI 生成中…' : '🤖 AI 一键生成路径'}
+                        </button>
+                        <button className="btn btn-outline btn-sm" onClick={generatePrompt}>生成提示词</button>
+                      </div>
                     </div>
                     {showGenPrompt && (
                       <div className="mt-3">

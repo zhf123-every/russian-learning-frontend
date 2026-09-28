@@ -10,16 +10,16 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     proxy: {
-      '/api': 'https://russian-learning-jetq.onrender.com',
-      '/audio_cache': 'https://russian-learning-jetq.onrender.com',
+      '/api': { target: 'https://russian-learning-jetq.onrender.com', changeOrigin: true, timeout: 180000, proxyTimeout: 180000 },
+      '/audio_cache': { target: 'https://russian-learning-jetq.onrender.com', changeOrigin: true, timeout: 180000, proxyTimeout: 180000 },
     },
   },
   preview: {
     port: 4173,
     strictPort: true,
     proxy: {
-      '/api': 'https://russian-learning-jetq.onrender.com',
-      '/audio_cache': 'https://russian-learning-jetq.onrender.com',
+      '/api': { target: 'https://russian-learning-jetq.onrender.com', changeOrigin: true, timeout: 180000, proxyTimeout: 180000 },
+      '/audio_cache': { target: 'https://russian-learning-jetq.onrender.com', changeOrigin: true, timeout: 180000, proxyTimeout: 180000 },
     },
   },
   test: {
