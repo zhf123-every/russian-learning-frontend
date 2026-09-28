@@ -73,6 +73,45 @@ export default function AdminDashboard() {
   const [editSent, setEditSent] = useState({ ru: '', zh: '', chunks: '' })
   const [jsonText, setJsonText] = useState('')            // 批量导入 JSON（句子）粘贴区
   const [jsonBusy, setJsonBusy] = useState(false)
+  const [aiDescBusy, setAiDescBusy] = useState(false)     // AI 自动生成课程简介中
+
+  // —— AI 自动生成课程简介（【课程介绍】【学习目标】【适合谁学】）——
+  const aiGenDesc = async () => {
+    const title = form.title.trim()
+    if (!title) { flash('请先填写课程标题，再生成简介'); return }
+    setAiDescBusy(true)
+    try {
+      const ctx = [
+        title && `课程标题：${title}`,
+        form.category && `分类：${form.category}`,
+        form.textbook && `教材：${form.textbook}`,
+        form.grade && `年级：${form.grade}`,
+        form.difficulty && `难度：${form.difficulty}`,
+        form.lessons && `课时数：${form.lessons}`,
+        form.tags && form.tags.length && `标签：${form.tags.join('、')}`,
+      ].filter(Boolean).join('\n')
+      const content = await chat({
+        messages: [
+          { role: 'system', content: '你是俄语课程运营编辑，擅长为俄语学习课程撰写专业、有吸引力、分三段的介绍文案，全部使用简体中文。' },
+          { role: 'user', content:
+            `请根据以下课程信息，撰写三段式课程简介：\n${ctx}\n\n` +
+            '要求：\n1. 第一段以【课程介绍】开头：说明课程内容、学习范围和亮点（100字左右）；\n' +
+            '2. 第二段以【学习目标】开头：写3-5条可衡量的学习目标（80字左右）；\n' +
+            '3. 第三段以【适合谁学】开头：列出适合的学习人群（60字左右）；\n' +
+            '直接输出三段文字，每段以对应方括号标题起行，不要额外解释。' },
+        ],
+      })
+      const text = String(content || '').trim()
+      if (!text || !text.includes('【')) { flash('⚠️ AI 生成结果异常，请重试'); return }
+      setField('subtitle', text)
+      flash('✅ 已用 AI 生成课程简介，可再手动微调')
+    } catch (e) {
+      flash('⚠️ AI 接口暂不可用：' + (e.message || '请稍后重试'))
+    } finally {
+      setAiDescBusy(false)
+    }
+  }
+
 
   // 刷新课程列表
   const refresh = () => setCourses(getCourses())
@@ -841,8 +880,13 @@ export default function AdminDashboard() {
               </div>
 
               <div className="form-control sm:col-span-2">
-                <label className="label"><span className="label-text">课程简介</span></label>
-                <textarea className="textarea textarea-bordered" rows={2} value={form.subtitle} onChange={e => setField('subtitle', e.target.value)} placeholder="一句话简介，如：第1-15课 · 语音基础与日常会话" />
+                <label className="label">
+                  <span className="label-text">课程简介</span>
+                  <button type="button" className="btn btn-primary btn-xs" onClick={aiGenDesc} disabled={aiDescBusy}>
+                    {aiDescBusy ? '生成中…' : '✨ AI 自动生成'}
+                  </button>
+                </label>
+                <textarea className="textarea textarea-bordered" rows={5} value={form.subtitle} onChange={e => setField('subtitle', e.target.value)} placeholder="可手动填写一句话简介，或点击右上角「✨ AI 自动生成」生成：课程介绍 / 学习目标 / 适合谁学" />
               </div>
 
               <div className="form-control">

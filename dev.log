@@ -1,54 +1,138 @@
-﻿
+
 > russian-learning-react@0.1.0 dev
 > vite
 
-Port 5173 is in use, trying another one...
 
-  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m2152[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m4910[22m[2m[0m ms[22m
 
-  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5174[22m/[39m
-  [32m➜[39m  [1mNetwork[22m: [36mhttp://198.18.0.1:[1m5174[22m/[39m
-  [32m➜[39m  [1mNetwork[22m: [36mhttp://100.66.17.107:[1m5174[22m/[39m
-  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.8:[1m5174[22m/[39m
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://198.18.0.1:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://100.66.17.107:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.8:[1m5173[22m/[39m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
 /*! 🌼 daisyUI 5.7.42 */
-[2m22:55:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m22:55:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-node.exe : [2m23:21:18[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/course-lesson-gen[39m
-所在位置 行:1 字符: 1
-+ & "C:\Users\张宏飞\AppData\Local\Doubao\User Data\sandbox_runtime\bases\ ...
-+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: ([2m23:21:18[2...lesson-gen[39m:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 
-Error: socket hang up
-    at TLSSocket.socketOnEnd (node:_http_client:599:25)
-    at TLSSocket.emit (node:events:531:35)
-    at endReadableNT (node:internal/streams/readable:1698:12)
-    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
-[2m23:22:42[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/course-lesson-gen[39m
-Error: Client network socket disconnected before secure TLS connection was established
-    at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
-    at TLSSocket.emit (node:events:531:35)
-    at endReadableNT (node:internal/streams/readable:1698:12)
-    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
-[2m00:00:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:06:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:06:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:11:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:34:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:36:34[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mindex.html[22m
-[2m00:37:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:39:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestPractice.jsx[22m
-[2m00:39:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestPractice.jsx[22m
-[2m00:42:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestPractice.jsx[22m
-[2m00:45:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:45:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:46:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:46:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:47:39[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:48:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:49:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:49:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:51:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestPractice.jsx[22m
-[2m00:52:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
-[2m00:54:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m11:21:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/GlobalTheme.jsx, /src/styles/tailwind.css[22m
+[2m11:21:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/GlobalTheme.jsx, /src/styles/tailwind.css[22m
+[2m11:22:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/dashboard.css, /src/styles/tailwind.css[22m
+[2m11:52:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
+[2m11:52:11[22m [31m[1m[vite][22m[39m [31mInternal server error: C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\pages\AdminDashboard.jsx: Missing semicolon. (75:49)
+
+[0m [90m 73 |[31m   [36mconst[31m [editSent[33m,[31m setEditSent] [33m=[31m useState({ ru[33m:[31m [32m''[31m[33m,[31m zh[33m:[31m [32m''[31m[33m,[31m chunks[33m:[31m [32m''[31m })
+ [90m 74 |[31m   [36mconst[31m [jsonText[33m,[31m setJsonText] [33m=[31m useState([32m''[31m)            [90m// 批量导入 JSON（句子）粘贴区[31m
+[31m[1m>[22m[31m[90m 75 |[31m   [36mconst[31m [jsonBusy[33m,[31m setJsonBusy] [33m=[31m useState([36mfalse[31m)  [36mconst[31m [aiDescBusy[33m,[31m setAiDescBusy] [33m=[31m useState([36mfalse[31m)     [90m// AI 自动生成课程简介中[31m
+ [90m    |[31m                                                  [31m[1m^[22m[31m
+ [90m 76 |[31m
+ [90m 77 |[31m   [90m// —— AI 自动生成课程简介（【课程介绍】【学习目标】【适合谁学】）——[31m
+ [90m 78 |[31m   [36mconst[31m aiGenDesc [33m=[31m [36masync[31m () [33m=>[31m {[0m[39m
+  Plugin: [35mvite:react-babel[39m
+  File: [36mC:/Users/张宏飞/Desktop/website_source/russian-learning-frontend-main/src/pages/AdminDashboard.jsx[39m:75:49
+[33m  73 |    const [editSent, setEditSent] = useState({ ru: '', zh: '', chunks: '' })
+  74 |    const [jsonText, setJsonText] = useState('')            // 批量导入 JSON（句子）粘贴区
+  75 |    const [jsonBusy, setJsonBusy] = useState(false)  const [aiDescBusy, setAiDescBusy] = useState(false)     // AI 自动生成课程简介中
+     |                                                   ^
+  76 |  
+  77 |    // —— AI 自动生成课程简介（【课程介绍】【学习目标】【适合谁学】）——[39m
+      at constructor (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:369:19)
+      at JSXParserMixin.raise (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:6620:19)
+      at JSXParserMixin.semicolon (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:6916:10)
+      at JSXParserMixin.parseVarStatement (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13260:10)
+      at JSXParserMixin.parseStatementContent (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12880:23)
+      at JSXParserMixin.parseStatementLike (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12796:17)
+      at JSXParserMixin.parseStatementListItem (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12776:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13345:61)
+      at JSXParserMixin.parseBlockBody (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13338:10)
+      at JSXParserMixin.parseBlock (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13326:10)
+      at JSXParserMixin.parseFunctionBody (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12129:24)
+      at JSXParserMixin.parseFunctionBodyAndFinish (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12115:10)
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13474:12
+      at JSXParserMixin.withSmartMixTopicForbiddingContext (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12432:14)
+      at JSXParserMixin.parseFunction (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13473:10)
+      at JSXParserMixin.parseExportDefaultExpression (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13936:19)
+      at JSXParserMixin.parseExport (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13857:25)
+      at JSXParserMixin.parseStatementContent (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12907:27)
+      at JSXParserMixin.parseStatementLike (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12796:17)
+      at JSXParserMixin.parseModuleItem (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12773:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13345:36)
+      at JSXParserMixin.parseBlockBody (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13338:10)
+      at JSXParserMixin.parseProgram (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12651:10)
+      at JSXParserMixin.parseTopLevel (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12641:25)
+      at JSXParserMixin.parse (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:14517:25)
+      at parse (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:14551:38)
+      at parser (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\core\lib\parser\index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\core\lib\transformation\normalize-file.js:51:37)
+      at normalizeFile.next (<anonymous>)
+      at run (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\core\lib\transformation\index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\core\lib\transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:261:32)
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:273:13
+      at async.call.result.err.err (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:223:11)
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:189:28
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\core\lib\gensync-utils\async.js:67:7
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:113:33
+      at step (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:287:14)
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:273:13
+      at async.call.result.err.err (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:223:11)
+[2m11:52:15[22m [31m[1m[vite][22m[39m [31mInternal server error: C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\pages\AdminDashboard.jsx: Missing semicolon. (75:49)
+
+[0m [90m 73 |[31m   [36mconst[31m [editSent[33m,[31m setEditSent] [33m=[31m useState({ ru[33m:[31m [32m''[31m[33m,[31m zh[33m:[31m [32m''[31m[33m,[31m chunks[33m:[31m [32m''[31m })
+ [90m 74 |[31m   [36mconst[31m [jsonText[33m,[31m setJsonText] [33m=[31m useState([32m''[31m)            [90m// 批量导入 JSON（句子）粘贴区[31m
+[31m[1m>[22m[31m[90m 75 |[31m   [36mconst[31m [jsonBusy[33m,[31m setJsonBusy] [33m=[31m useState([36mfalse[31m)  [36mconst[31m [aiDescBusy[33m,[31m setAiDescBusy] [33m=[31m useState([36mfalse[31m)     [90m// AI 自动生成课程简介中[31m
+ [90m    |[31m                                                  [31m[1m^[22m[31m
+ [90m 76 |[31m
+ [90m 77 |[31m   [90m// —— AI 自动生成课程简介（【课程介绍】【学习目标】【适合谁学】）——[31m
+ [90m 78 |[31m   [36mconst[31m aiGenDesc [33m=[31m [36masync[31m () [33m=>[31m {[0m[39m
+  Plugin: [35mvite:react-babel[39m
+  File: [36mC:/Users/张宏飞/Desktop/website_source/russian-learning-frontend-main/src/pages/AdminDashboard.jsx[39m:75:49
+[33m  73 |    const [editSent, setEditSent] = useState({ ru: '', zh: '', chunks: '' })
+  74 |    const [jsonText, setJsonText] = useState('')            // 批量导入 JSON（句子）粘贴区
+  75 |    const [jsonBusy, setJsonBusy] = useState(false)  const [aiDescBusy, setAiDescBusy] = useState(false)     // AI 自动生成课程简介中
+     |                                                   ^
+  76 |  
+  77 |    // —— AI 自动生成课程简介（【课程介绍】【学习目标】【适合谁学】）——[39m
+      at constructor (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:369:19)
+      at JSXParserMixin.raise (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:6620:19)
+      at JSXParserMixin.semicolon (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:6916:10)
+      at JSXParserMixin.parseVarStatement (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13260:10)
+      at JSXParserMixin.parseStatementContent (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12880:23)
+      at JSXParserMixin.parseStatementLike (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12796:17)
+      at JSXParserMixin.parseStatementListItem (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12776:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13345:61)
+      at JSXParserMixin.parseBlockBody (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13338:10)
+      at JSXParserMixin.parseBlock (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13326:10)
+      at JSXParserMixin.parseFunctionBody (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12129:24)
+      at JSXParserMixin.parseFunctionBodyAndFinish (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12115:10)
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13474:12
+      at JSXParserMixin.withSmartMixTopicForbiddingContext (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12432:14)
+      at JSXParserMixin.parseFunction (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13473:10)
+      at JSXParserMixin.parseExportDefaultExpression (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13936:19)
+      at JSXParserMixin.parseExport (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13857:25)
+      at JSXParserMixin.parseStatementContent (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12907:27)
+      at JSXParserMixin.parseStatementLike (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12796:17)
+      at JSXParserMixin.parseModuleItem (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12773:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13345:36)
+      at JSXParserMixin.parseBlockBody (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:13338:10)
+      at JSXParserMixin.parseProgram (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12651:10)
+      at JSXParserMixin.parseTopLevel (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12641:25)
+      at JSXParserMixin.parse (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:14517:25)
+      at parse (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:14551:38)
+      at parser (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\core\lib\parser\index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\core\lib\transformation\normalize-file.js:51:37)
+      at normalizeFile.next (<anonymous>)
+      at run (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\core\lib\transformation\index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\core\lib\transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:261:32)
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:273:13
+      at async.call.result.err.err (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:223:11)
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:189:28
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\core\lib\gensync-utils\async.js:67:7
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:113:33
+      at step (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:287:14)
+      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:273:13
+      at async.call.result.err.err (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\gensync\index.js:223:11)
+[2m11:52:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
