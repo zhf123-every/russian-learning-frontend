@@ -50,6 +50,7 @@ export default function AdminDashboard() {
   const [editingId, setEditingId] = useState('')    // 非空 = 正在编辑某条档案
   const [courses, setCourses] = useState([])
   const [toast, setToast] = useState('')
+  const [saveBanner, setSaveBanner] = useState(null) // 保存课时后的成功横幅 + 下一步引导
   // —— 连词成句课程生成器：单词 → 提示词 ——
   const [genWords, setGenWords] = useState('')
   const [genPrompt, setGenPrompt] = useState('')
@@ -440,12 +441,24 @@ export default function AdminDashboard() {
   // 更新 activeUnit 副本
   const patchUnit = (patch) => setActiveUnit(prev => ({ ...prev, ...patch }))
 
+  // 课时是否已挂内容（生词/例句/滚雪球路径/素材任一非空）
+  const unitHasContent = (u) =>
+    (u.sentences && u.sentences.length) ||
+    (u.scaffoldingPaths && u.scaffoldingPaths.length) ||
+    (u.materials && u.materials.length)
+
   // 保存课时内容（写回课程 units）
   const saveUnit = () => {
     if (!activeUnit) return
     const nextUnits = units.map(u => (u.id === activeUnit.id ? activeUnit : u))
     persistUnits(nextUnits)
-    flash('课时内容已保存')
+    const sent = (activeUnit.sentences || []).length
+    const paths = (activeUnit.scaffoldingPaths || []).length
+    const words = (activeUnit.words || []).length
+    const stats = [words ? words + ' 词' : '', sent ? sent + ' 句' : '', paths ? paths + ' 条路径' : ''].filter(Boolean).join(' · ')
+    const left = nextUnits.filter(u => !unitHasContent(u)).length
+    setSaveBanner({ title: activeUnit.title, stats: stats || '（暂无内容）', left })
+    flash(`已保存《${activeUnit.title}》` + (stats ? '：' + stats : '') + (left ? `，还有 ${left} 个课时未挂内容` : '，所有课时已就绪'))
     setView('units')
   }
 
@@ -863,6 +876,33 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {saveBanner && (
+            <div className="alert alert-success mb-4 shadow-lg border-2 border-success/60" style={{ padding: '12px 16px' }}>
+              <div className="flex-1">
+                <div className="text-sm font-bold">✅ 已保存《{saveBanner.title}》{saveBanner.stats}</div>
+                <div className="text-xs mt-1 opacity-80">
+                  {saveBanner.left > 0
+                    ? `还有 ${saveBanner.left} 个课时未挂内容，建议逐课保存后再发布。`
+                    : '本课程所有课时都已挂内容，可以发布上架了！'}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {saveBanner.left > 0 ? (
+                  <button
+                    className="btn btn-primary btn-xs"
+                    onClick={() => {
+                      const n = units.findIndex(u => !unitHasContent(u))
+                      if (n >= 0) openUnit(units[n])
+                    }}
+                  >继续编辑下一课</button>
+                ) : (
+                  <button className="btn btn-primary btn-xs" onClick={() => { setSaveBanner(null); publish() }}>🚀 发布上架</button>
+                )}
+                <button className="btn btn-ghost btn-xs" onClick={() => setSaveBanner(null)}>知道了</button>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <button className="btn btn-ghost btn-sm -ml-2 text-gray-500" onClick={() => setView('list')}>← 返回课程列表</button>
@@ -877,11 +917,11 @@ export default function AdminDashboard() {
             <div className="card-body p-5">
               <h2 className="card-title text-base text-gray-900">课时列表</h2>
               {units.length === 0 ? (
-                <p className="py-8 text-center text-sm text-gray-400">还没有课时。手动添加，或用下方「AI 导入」把整本书切成课时。</p>
+                <p className="py-8 text-center text-sm text-gray-400">还没有课时，点右上角「手动添加课时」创建第一课。</p>
               ) : (
                 <div className="space-y-2">
                   {units.map((u, i) => {
-                    const hasContent = (u.sentences && u.sentences.length) || (u.materials && u.materials.length)
+                    const hasContent = unitHasContent(u)
                     return (
                       <div key={u.id} className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
                         <span className="text-xs font-bold text-gray-400 w-6 shrink-0">{String(i + 1).padStart(2, '0')}</span>
