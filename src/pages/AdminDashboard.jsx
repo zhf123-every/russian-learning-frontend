@@ -303,7 +303,7 @@ export default function AdminDashboard() {
     const list = getCourses()
     if (editingId) {
       const i = list.findIndex(c => c.id === editingId)
-      if (i >= 0) list[i] = { ...list[i], ...base, id: editingId }
+      if (i >= 0) list[i] = { ...list[i], ...base, units: Array.isArray(list[i].units) ? list[i].units : [], id: editingId }
       flash('草稿已更新')
     } else {
       base.id = 'course_' + Date.now()
@@ -324,7 +324,7 @@ export default function AdminDashboard() {
     const list = getCourses()
     if (editingId) {
       const i = list.findIndex(c => c.id === editingId)
-      if (i >= 0) list[i] = { ...list[i], ...base, id: editingId }
+      if (i >= 0) list[i] = { ...list[i], ...base, units: Array.isArray(list[i].units) ? list[i].units : [], id: editingId }
       flash('已更新并发布上架！')
     } else {
       base.id = 'course_' + Date.now()
