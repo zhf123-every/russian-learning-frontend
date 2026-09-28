@@ -225,13 +225,18 @@ export default function GameDetail() {
   const doingCount = units.filter((u) => u.status === '进行中').length
   const progress = units.length ? Math.round((doneCount / units.length) * 100) : 0
 
+  // 课时是否已挂内容：渐进例句 sentences 或滚雪球路径 scaffoldingPaths 任一非空即可
+  const hasUnitContent = (u) =>
+    (Array.isArray(u.sentences) && u.sentences.length > 0) ||
+    (Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length > 0)
+
   // 弹窗点“开始”：按模式跳对应学习页
   const handleStart = (mode) => {
     const u = pickedUnit
     setPickedUnit(null)
     if (!u) return
     // 投稿课程（无 packId）：自带本课内容（单词 + 渐进例句），走本地学习模式，学习页直接消费 lesson 数据
-    const isLocalCourse = !game.packId && Array.isArray(u.sentences) && u.sentences.length > 0
+    const isLocalCourse = !game.packId && hasUnitContent(u)
     if (isLocalCourse) {
       try { sessionStorage.setItem('rlearn_local_lesson_' + u.id, JSON.stringify(u)) } catch (e) { /* 忽略 */ }
       if (mode.key === 'chinese_to_english' || mode.key === 'dictation' || mode.key === 'listening' || mode.key === 'speaking') {
@@ -243,7 +248,7 @@ export default function GameDetail() {
       return
     }
     // 后台课程课时但没有挂内容 → 提示，不进学习页（避免跳到不存在的后端单元）
-    if (!game.packId && !(Array.isArray(u.sentences) && u.sentences.length)) {
+    if (!game.packId && !hasUnitContent(u)) {
       toast('该课时还没有内容：请先在后台上传生词表并生成渐进例句')
       return
     }
@@ -432,8 +437,8 @@ export default function GameDetail() {
             {units.map((u, i) => {
               const dm = DIFF_META[u.difficulty] || DIFF_META.easy
               const sm = STATUS_META[u.status] || STATUS_META['未开始']
-              const stats = Array.isArray(u.sentences) && u.sentences.length > 0
-                ? (Array.isArray(u.words) ? u.words.length : 0) + ' 词 · ' + u.sentences.length + ' 句'
+              const stats = hasUnitContent(u)
+                ? (Array.isArray(u.words) ? u.words.length : 0) + ' 词 · ' + (Array.isArray(u.sentences) ? u.sentences.length : 0) + ' 句' + (Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length ? ' · ' + u.scaffoldingPaths.length + ' 条路径' : '')
                 : dm.label
               const desc = u.subtitle || u.description || ''
               return (
