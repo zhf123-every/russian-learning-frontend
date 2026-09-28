@@ -332,6 +332,38 @@ export default function AdminDashboard() {
     flash('课程已删除（本地 + 云端）')
   }
 
+  // 清空商城课程：移除云端名单中所有 kind='course'（投稿视频等非课程项保留）
+  const clearStoreCourses = async () => {
+    if (!adminKey) { setCloudMsg('请先输入管理员密钥并登录'); return }
+    if (!window.confirm('确定清空游戏商城里的所有课程吗？\n云端课程将全部移除（投稿视频/非课程内容保留），此操作不可恢复。')) return
+    setCloudBusy(true)
+    setCloudMsg('正在清空商城课程…')
+    try {
+      const r = await apiFetch('/api/videos/list')
+      const j = await r.json()
+      if (!j.ok || !Array.isArray(j.videos)) { setCloudMsg('读取云端列表失败，请重试'); setCloudBusy(false); return }
+      const keep = j.videos.filter(v => v.kind !== 'course')
+      const sr = await apiFetch('/api/videos/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videos: keep, adminKey }),
+      })
+      const sj = await sr.json()
+      if (sj.ok) {
+        setCloudCount(keep.length)
+        setCloudMsg('✅ 商城课程已清空，访客商城立即同步')
+        const list = getCourses().map(c => ({ ...c, cloudSynced: false }))
+        saveCourses(list)
+        refresh()
+      } else {
+        setCloudMsg('清空失败：' + (sj.error || '未知错误'))
+      }
+    } catch (e) {
+      setCloudMsg('清空失败：' + (e.message || '网络错误'))
+    }
+    setCloudBusy(false)
+  }
+
   // ========== 课程数据跨浏览器迁移（导出 / 导入） ==========
   const exportCourses = () => {
     const raw = localStorage.getItem('rb_admin_courses') || '[]'
@@ -1176,6 +1208,12 @@ export default function AdminDashboard() {
                 📥 导入课程数据
                 <input type="file" accept=".json,application/json" className="hidden" onChange={e => { importCoursesFile(e.target.files && e.target.files[0]); e.target.value = '' }} />
               </label>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+              <span className="text-xs text-gray-500 text-error">危险操作：</span>
+              <button className="btn btn-xs btn-error btn-outline" onClick={clearStoreCourses} disabled={cloudBusy || !adminKey}>
+                🗑️ 清空商城课程
+              </button>
             </div>
             {cloudCount >= 0 && <div className="mt-2 text-xs text-gray-400">云端名单共 {cloudCount} 项（视频 + 课程）</div>}
             <div className="mt-3 text-xs text-gray-400">
