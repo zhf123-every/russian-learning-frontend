@@ -437,35 +437,34 @@ export default function GameDetail() {
             {units.map((u, i) => {
               const dm = DIFF_META[u.difficulty] || DIFF_META.easy
               const sm = STATUS_META[u.status] || STATUS_META['未开始']
-              const stats = hasUnitContent(u)
-                ? (Array.isArray(u.words) ? u.words.length : 0) + ' 词 · ' + (Array.isArray(u.sentences) ? u.sentences.length : 0) + ' 句' + (Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length ? ' · ' + u.scaffoldingPaths.length + ' 条路径' : '')
-                : dm.label
               const desc = u.subtitle || u.description || ''
               return (
                 <div
                   key={u.id}
                   onClick={() => setPickedUnit(u)}
-                  className="relative flex h-full min-h-[150px] cursor-pointer flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-3 pr-8 transition-all hover:scale-[1.02] hover:bg-gray-100/80 hover:shadow-xl hover:shadow-purple-100/20 sm:p-5 sm:pr-10"
+                  className="relative flex h-full min-h-[150px] cursor-pointer flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-3 pr-8 transition-all hover:scale-[1.02] hover:bg-gray-100/80 hover:shadow-xl hover:shadow-purple-100/20 sm:p-5 sm:pr-10 dark:border-zinc-700/60 dark:bg-zinc-900 dark:hover:bg-zinc-800"
                 >
                   {/* 右上角序号 */}
                   <div className="absolute right-2 top-2 z-0 sm:right-3 sm:top-3">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gray-100 font-mono text-xs text-gray-500 sm:h-8 sm:w-8 sm:text-sm">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gray-100 font-mono text-xs text-gray-500 sm:h-8 sm:w-8 sm:text-sm dark:bg-zinc-800 dark:text-zinc-400">
                       #{i + 1}
                     </div>
                   </div>
+                  {/* 第X课 */}
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-purple-500 sm:text-xs dark:text-purple-400">第{i + 1}课</div>
                   {/* 标题 */}
-                  <h3 className="line-clamp-1 text-sm font-bold text-gray-900 sm:text-base" title={u.title}>{u.title}</h3>
+                  <h3 className="mt-1 line-clamp-2 text-base font-bold text-gray-900 sm:text-lg dark:text-zinc-100" title={u.title}>{u.title}</h3>
                   {/* 副标题 */}
                   {desc && (
-                    <p className="mt-1 line-clamp-2 text-xs text-gray-500/90 sm:mt-2 sm:text-sm" title={desc}>
+                    <p className="mt-1 line-clamp-2 text-xs text-gray-500/90 sm:text-sm dark:text-zinc-400" title={desc}>
                       {desc}
                     </p>
                   )}
                   {/* 底部信息 */}
-                  <div className="mt-auto flex items-center gap-3 pt-3 text-[10px] text-gray-500 sm:text-xs">
+                  <div className="mt-auto flex items-center gap-3 pt-3 text-[10px] text-gray-500 sm:text-xs dark:text-zinc-400">
                     <div className="flex items-center gap-1">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                      {stats}
+                      {dm.label}
                     </div>
                     <div className="flex items-center gap-1">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>

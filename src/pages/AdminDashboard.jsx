@@ -196,6 +196,8 @@ export default function AdminDashboard() {
   const [jsonText, setJsonText] = useState('')            // 批量导入 JSON（句子）粘贴区
   const [jsonBusy, setJsonBusy] = useState(false)
   const [aiDescBusy, setAiDescBusy] = useState(false)     // AI 自动生成课程简介中
+  const [aiUnitTitleBusy, setAiUnitTitleBusy] = useState(false) // AI 生成课时名（手动添加表单）
+  const [aiRenameBusy, setAiRenameBusy] = useState(null)  // AI 重命名课时列表中的行 index
 
   // —— AI 自动生成课程简介（【课程介绍】【学习目标】【适合谁学】）——
   const aiGenDesc = async () => {
@@ -232,6 +234,74 @@ export default function AdminDashboard() {
       setAiDescBusy(false)
     }
   }
+
+  // —— AI 生成课时标题（手动添加课时表单：基于课程标题推导主题名）——
+  const aiGenUnitTitle = async () => {
+    const courseTitle = form.title.trim()
+    if (!courseTitle) { flash('请先填写课程标题，再生成课时名'); return }
+    setAiUnitTitleBusy(true)
+    try {
+      const content = await chat({
+        messages: [
+          { role: 'system', content: '你是俄语教学课程设计师，擅长为课时起简洁贴切的中文主题名。' },
+          { role: 'user', content:
+            `请为课程「${courseTitle}」的第 ${units.length + 1} 课生成一个课时标题（中文）。\n\n` +
+            '要求：\n1. 标题体现本课学习主题（如“基础俄语句子学习”“介绍我的家人”“认识新朋友”“我的房间”），不要使用“第X课”编号；\n' +
+            '2. 长度 6-10 个汉字；\n3. 面向零基础俄语学习者，积极、易懂、口语化；\n4. 只输出标题文本本身，不要任何解释、引号或多余内容。' },
+        ],
+      })
+      const text = String(content || '').trim().replace(/^["「『]|["」』]$/g, '')
+      if (!text) { flash('⚠️ AI 生成结果异常，请重试'); return }
+      setNewUnitTitle(text)
+      flash('✅ 已生成课时名，可微调后点击「+ 添加」')
+    } catch (e) {
+      flash('⚠️ AI 接口暂不可用：' + (e.message || '请稍后重试'))
+    } finally {
+      setAiUnitTitleBusy(false)
+    }
+  }
+
+  // —— AI 根据课时内容重命名（课时列表每行：读取本课句子/词汇/路径概要）——
+  const aiRenameUnit = async (idx) => {
+    const u = units[idx]
+    if (!u) return
+    setAiRenameBusy(idx)
+    try {
+      const parts = []
+      if (Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length) {
+        const samples = u.scaffoldingPaths.slice(0, 3).flatMap(p => (p.steps || []).slice(0, 3).map(s => s.russian || '')).filter(Boolean).slice(0, 8)
+        parts.push('滚雪球句子：' + samples.join('；'))
+      }
+      if (Array.isArray(u.sentences) && u.sentences.length) {
+        parts.push('例句：' + u.sentences.slice(0, 5).map(s => (s.ru || '') + (s.zh ? '(' + s.zh + ')' : '')).join('；'))
+      }
+      if (Array.isArray(u.words) && u.words.length) {
+        parts.push('词汇：' + u.words.slice(0, 10).map(w => w.ru || w.word || '').join('、'))
+      }
+      const summary = parts.join('\n') || '（本课时暂无内容）'
+      const content = await chat({
+        messages: [
+          { role: 'system', content: '你是俄语教学课程设计师，擅长为课时起简洁贴切的中文主题名。' },
+          { role: 'user', content:
+            '根据本课的内容概要，为本课生成一个简洁贴切的课程标题（中文）。\n\n' +
+            '要求：\n1. 标题体现本课学习主题（如“基础俄语句子学习”“介绍我的家人”“认识新朋友”“我的房间”），不要使用“第X课”编号；\n' +
+            '2. 长度 6-10 个汉字；\n3. 面向零基础俄语学习者，积极、易懂、口语化；\n4. 只输出标题文本本身，不要任何解释、引号或多余内容。\n\n' +
+            `本课内容概要：\n${summary}` },
+        ],
+      })
+      const text = String(content || '').trim().replace(/^["「『]|["」』]$/g, '')
+      if (!text) { flash('⚠️ AI 生成结果异常，请重试'); return }
+      const next = [...units]
+      next[idx] = { ...u, title: text }
+      persistUnits(next)
+      flash(`✅ 已将本课重命名为《${text}》`)
+    } catch (e) {
+      flash('⚠️ AI 接口暂不可用：' + (e.message || '请稍后重试'))
+    } finally {
+      setAiRenameBusy(null)
+    }
+  }
+
 
 
   // 刷新课程列表
@@ -1136,6 +1206,9 @@ export default function AdminDashboard() {
                           {u.desc && <div className="text-xs text-gray-400 mt-0.5 truncate">{u.desc}</div>}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
+                          <button className="btn btn-ghost btn-xs" title="AI 根据本课内容生成课时名" disabled={aiRenameBusy !== null} onClick={() => aiRenameUnit(i)}>
+                            {aiRenameBusy === i ? '…' : '🤖 改名'}
+                          </button>
                           <button className="btn btn-primary btn-xs" onClick={() => openUnit(u)}>内容</button>
                           <button className="btn btn-ghost btn-xs" disabled={i === 0} onClick={() => moveUnit(i, -1)}>↑</button>
                           <button className="btn btn-ghost btn-xs" disabled={i === units.length - 1} onClick={() => moveUnit(i, 1)}>↓</button>
@@ -1161,6 +1234,9 @@ export default function AdminDashboard() {
                   onKeyDown={e => { if (e.key === 'Enter') addUnit() }}
                   placeholder={'课时标题，留空自动命名「第 ' + (units.length + 1) + ' 课」'}
                 />
+                <button type="button" className="btn btn-outline btn-primary" onClick={aiGenUnitTitle} disabled={aiUnitTitleBusy}>
+                  {aiUnitTitleBusy ? '生成中…' : '🤖 AI 生成课时名'}
+                </button>
                 <button className="btn btn-primary" onClick={addUnit}>+ 添加</button>
               </div>
             </div>
