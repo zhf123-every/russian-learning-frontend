@@ -581,6 +581,11 @@ export default function AdminDashboard() {
   const removeSentence = (idx) => {
     patchUnit({ sentences: (activeUnit.sentences || []).filter((_, i) => i !== idx) })
   }
+  // 删除一条滚动学习路径
+  const removePath = (pi) => {
+    const paths = [...(activeUnit.scaffoldingPaths || [])].filter((_, i) => i !== pi)
+    patchUnit({ scaffoldingPaths: paths })
+  }
 
   // ========== AI 前置数据入库：批量导入 JSON 句子 + 修复中文（缺失/逐词硬拼），前端只渲染固定数据 ==========
   // 检测某句中文是否需要 AI 修复：缺失 / 俄语残留 / 明显逐词硬拼（如「谁这是？」）
@@ -728,6 +733,9 @@ export default function AdminDashboard() {
     }
     flash(`✅ 导入完成：句子 ${sentences.length} 条、滚动路径 ${paths.length} 条、对话 ${dialogues.length} 条（点「保存课时内容」固定入库）`)
     setJsonText('')
+    if (paths.length) {
+      setTimeout(() => { const el = document.getElementById('scaffold-section'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 300)
+    }
   }
   // —— 手动修正（后台保留）：行内编辑 sentence 的 ru / chinese / chunks ——
   const startEditSent = (i) => {
@@ -856,6 +864,37 @@ export default function AdminDashboard() {
                 <input className="input input-bordered flex-1 text-sm" placeholder="俄语例句" value={newSentRu} onChange={e => setNewSentRu(e.target.value)} />
                 <input className="input input-bordered flex-1 text-sm" placeholder="中文翻译" value={newSentZh} onChange={e => setNewSentZh(e.target.value)} />
                 <button className="btn btn-outline btn-sm" onClick={addSentence}>+ 添加</button>
+              </div>
+
+              {/* ③ 滚动学习路径（scaffoldingPaths）——连词成句滚雪球 */}
+              <div id="scaffold-section" className="card mt-4 border border-purple-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
+                <div className="card-body p-5">
+                  <h2 className="card-title text-base text-gray-900">③ 滚动学习路径（连词成句滚雪球）</h2>
+                  <p className="text-xs text-gray-400 mt-1">按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。粘贴 pathId + steps 结构 JSON 后立即显示在这里。</p>
+                  {(!activeUnit.scaffoldingPaths || !activeUnit.scaffoldingPaths.length) ? (
+                    <p className="py-6 text-center text-sm text-gray-400">还没有路径。在下方「批量导入 JSON」粘贴 pathId + steps 数据即可。</p>
+                  ) : (
+                    <div className="mt-3 space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                      {(activeUnit.scaffoldingPaths || []).map((p, pi) => (
+                        <div key={pi} className="rounded-xl border border-purple-200 bg-purple-50/50 px-3 py-2.5">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <span className="text-xs font-bold text-purple-700">路径 {p.pathId} · {p.steps.length} 关</span>
+                            <button className="btn btn-error btn-xs btn-outline" onClick={() => removePath(pi)}>删路径</button>
+                          </div>
+                          <div className="mt-2 space-y-1">
+                            {(p.steps || []).map((st, si) => (
+                              <div key={si} className="flex items-center gap-2 text-xs rounded-lg bg-white/70 px-2 py-1.5">
+                                <span className="font-bold text-gray-400 w-7 shrink-0">{st.stepIndex || si + 1}</span>
+                                <span className="font-mono text-gray-800 min-w-0 truncate flex-1">{st.russian}</span>
+                                <span className="text-gray-400 shrink-0">{st.chinese}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* 批量导入 JSON（AI 前置修复中文）+ 连词成句课程生成器（并排） */}
