@@ -529,53 +529,114 @@ export default function AdminDashboard() {
     return map
   }
   // 粘贴句子 JSON 数组 [{ru, zh}] → 检测异常 → AI 修复 → 去重追加（前端此后直接读 chinese）
+  // —— 兼容三类导入：句子数组 / 滚动学习路径 {pathId,steps} / 对话 dialogues ——
+  const normalizeImportData = (data) => {
+    const out = { sentences: [], paths: [], dialogues: [] }
+    const items = Array.isArray(data) ? data : [data]
+    items.forEach((it) => {
+      if (!it || typeof it !== 'object') return
+      // ① 滚动学习路径：{ pathId, steps: [...] }（连词成句「滚雪球」步骤）
+      if (Array.isArray(it.steps) && (it.pathId || it.steps.length)) {
+        out.paths.push({
+          pathId: String(it.pathId || 'path_' + Date.now()),
+          steps: it.steps.map((st, i) => ({
+            stepIndex: Number(st.stepIndex) || i + 1,
+            russian: String(st.russian || st.ru || '').trim(),
+            chinese: String(st.chinese || st.zh || '').trim(),
+            audioUrl: String(st.audioUrl || st.audio || '').trim(),
+            newChunks: Array.isArray(st.newChunks) ? st.newChunks : [],
+            allChunks: Array.isArray(st.allChunks) ? st.allChunks : [],
+          })).filter((st) => st.russian),
+        })
+        return
+      }
+      // ② 混合对象 / 对话：{ sentences:[...] } / { dialogues:[...] } / { dialogue:[...] }
+      if (Array.isArray(it.sentences) || Array.isArray(it.dialogues) || Array.isArray(it.dialogue)) {
+        if (Array.isArray(it.sentences)) out.sentences.push(...it.sentences)
+        if (Array.isArray(it.dialogues)) out.dialogues.push(...it.dialogues)
+        if (Array.isArray(it.dialogue)) out.dialogues.push(...it.dialogue)
+        return
+      }
+      // ③ 单句（数组元素）：{ ru / russian / text }
+      if (it.ru || it.russian || it.text) out.sentences.push(it)
+    })
+    return out
+  }
   const importSentencesJson = async () => {
     const text = (jsonText || '').trim()
-    if (!text) { flash('请先粘贴句子 JSON'); return }
-    let arr
-    try { arr = JSON.parse(text); if (!Array.isArray(arr)) throw new Error('顶层必须是数组') }
+    if (!text) { flash('请先粘贴 JSON'); return }
+    let data
+    try { data = JSON.parse(text) }
     catch (e) { flash('JSON 解析失败：' + e.message); return }
-    const list = arr.map((s) => ({
-      ru: String(s.ru || s.russian || s.text || '').trim(),
-      zh: String(s.zh || '').trim(),
-      chinese: String(s.chinese || s.zh || '').trim(),
-    })).filter((s) => s.ru)
-    if (!list.length) { flash('没有可导入的句子（需 ru/russian 字段）'); return }
-    const need = list.filter((s) => needsZhFix(s))
-    let fixed = list
-    if (need.length) {
-      setJsonBusy(true)
-      try {
-        aiMap = await aiFixSentences(need)
-        fixed = list.map((s) => (aiMap[s.ru] ? { ...s, chinese: aiMap[s.ru].chinese || s.chinese, chunks: aiMap[s.ru].chunks } : s))
-        flash(`✅ AI 已修复 ${Object.keys(map).length} 句中文（语序/意群），点「保存课时内容」固定入库`)
-      } catch (e) {
-        fixed = list.map((s) => (needsZhFix(s) ? { ...s, chinese: localFixZh(s.chinese || s.zh) } : s))
-        flash('⚠️ AI 接口暂不可用：已用本地规则修复典型逐词句，其余请人工复核后保存')
-      }
-      setJsonBusy(false)
-    } else {
-      flash('✅ 每句中文都完整正确，无需 AI 修复')
-    }
-    // 已存在的句子：AI 修复命中则原地更新 chinese/chunks；新句子去重追加
-    const merged = [...(activeUnit.sentences || [])]
-    const existIdx = new Map()
-    merged.forEach((x, i) => { const k = String(x.ru || '').trim().toLowerCase(); if (k && !existIdx.has(k)) existIdx.set(k, i) })
-    fixed.forEach((s) => {
-      const k = String(s.ru).trim().toLowerCase()
-      const i = existIdx.get(k)
-      if (i >= 0) {
-        // 已存在句子：AI 修复（或本地兜底）给出正确中文时原地更新 chinese / chunks
-        const cur = merged[i].chinese || merged[i].zh || ''
-        if (s.chinese && s.chinese !== cur) {
-          merged[i] = { ...merged[i], chinese: s.chinese, chunks: s.chunks || merged[i].chunks }
+    const { sentences, paths, dialogues } = normalizeImportData(data)
+    // 1) 句子：AI 修复中文 + 去重追加（老逻辑，兼容老数据）
+    if (sentences.length) {
+      const list = sentences.map((s) => ({
+        ru: String(s.ru || s.russian || s.text || '').trim(),
+        zh: String(s.zh || '').trim(),
+        chinese: String(s.chinese || s.zh || '').trim(),
+      })).filter((s) => s.ru)
+      if (list.length) {
+        const need = list.filter((s) => needsZhFix(s))
+        let fixed = list
+        if (need.length) {
+          setJsonBusy(true)
+          try {
+            const aiMap = await aiFixSentences(need)
+            fixed = list.map((s) => (aiMap[s.ru] ? { ...s, chinese: aiMap[s.ru].chinese || s.chinese, chunks: aiMap[s.ru].chunks } : s))
+            flash(`✅ AI 已修复 ${Object.keys(aiMap).length} 句中文（语序/意群）`)
+          } catch (e) {
+            fixed = list.map((s) => (needsZhFix(s) ? { ...s, chinese: localFixZh(s.chinese || s.zh) } : s))
+            flash('⚠️ AI 接口暂不可用：已用本地规则修复典型逐词句，其余请人工复核后保存')
+          }
+          setJsonBusy(false)
         }
-      } else {
-        merged.push(s)
-        existIdx.set(k, merged.length - 1)
+        const merged = [...(activeUnit.sentences || [])]
+        const existIdx = new Map()
+        merged.forEach((x, i) => { const k = String(x.ru || '').trim().toLowerCase(); if (k && !existIdx.has(k)) existIdx.set(k, i) })
+        fixed.forEach((s) => {
+          const k = String(s.ru).trim().toLowerCase()
+          const i = existIdx.get(k)
+          if (i >= 0) {
+            const cur = merged[i].chinese || merged[i].zh || ''
+            if (s.chinese && s.chinese !== cur) {
+              merged[i] = { ...merged[i], chinese: s.chinese, chunks: s.chunks || merged[i].chunks }
+            }
+          } else {
+            merged.push(s)
+            existIdx.set(k, merged.length - 1)
+          }
+        })
+        patchUnit({ sentences: merged })
       }
-    })
-    patchUnit({ sentences: merged })
+    }
+    // 2) 滚动学习路径：按 pathId 去重合并（同 pathId 用新 steps 覆盖）
+    if (paths.length) {
+      const prev = [...(activeUnit.scaffoldingPaths || [])]
+      const pathIds = new Set(prev.map((p) => p.pathId))
+      paths.forEach((p) => {
+        if (pathIds.has(p.pathId)) {
+          const i = prev.findIndex((x) => x.pathId === p.pathId)
+          prev[i] = p
+        } else {
+          prev.push(p)
+          pathIds.add(p.pathId)
+        }
+      })
+      patchUnit({ scaffoldingPaths: prev })
+    }
+    // 3) 对话：透传保存（按 JSON 去重）
+    if (dialogues.length) {
+      const prev = [...(activeUnit.dialogues || [])]
+      const seen = new Set(prev.map((d) => JSON.stringify(d)))
+      dialogues.forEach((d) => { const k = JSON.stringify(d); if (!seen.has(k)) { prev.push(d); seen.add(k) } })
+      patchUnit({ dialogues: prev })
+    }
+    if (!sentences.length && !paths.length && !dialogues.length) {
+      flash('未识别到可导入内容：需要 句子数组 / {pathId,steps} 滚动路径 / dialogues')
+      return
+    }
+    flash(`✅ 导入完成：句子 ${sentences.length} 条、滚动路径 ${paths.length} 条、对话 ${dialogues.length} 条（点「保存课时内容」固定入库）`)
     setJsonText('')
   }
   // —— 手动修正（后台保留）：行内编辑 sentence 的 ru / chinese / chunks ——
@@ -710,7 +771,7 @@ export default function AdminDashboard() {
               {/* 批量导入 JSON（AI 前置修复中文，前端只渲染固定数据） */}
               <div className="mt-4 rounded-xl border border-dashed border-gray-300 p-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-xs font-semibold text-gray-600">📋 批量导入 JSON（句子数组）+ AI 修复中文（缺失/逐词硬拼）</span>
+                  <span className="text-xs font-semibold text-gray-600">📋 批量导入 JSON（句子数组 / 滚动学习路径 / 对话）+ AI 修复中文（缺失/逐词硬拼）</span>
                   <button className="btn btn-outline btn-xs" onClick={importSentencesJson} disabled={jsonBusy}>
                     {jsonBusy ? 'AI 修复中…' : '导入并 AI 修复'}
                   </button>
@@ -718,7 +779,7 @@ export default function AdminDashboard() {
                 <textarea
                   className="textarea textarea-bordered mt-2 w-full font-mono text-xs"
                   rows={3}
-                  placeholder={'[{ "ru": "Кто это?", "zh": "谁这是？" }, { "ru": "Это дом.", "zh": "这是房子。" }]\n说明：缺失中文 / 含俄语 / 明显逐词硬拼的句子会自动交给 AI 重译（整句中译 + 意群块 chunks），处理后直接入库。'}
+                  placeholder={'[{ "ru": "Кто это?", "zh": "谁这是？" }, { "ru": "Это дом.", "zh": "这是房子。" }]\n或滚动路径：{ "pathId": "path_01", "steps": [{ "stepIndex": 1, "russian": "Это", "chinese": "这", "newChunks": [{ "word": "Это", "translation": "这", "role": "主语" }], "allChunks": [] }] }\n说明：缺失中文 / 含俄语 / 明显逐词硬拼的句子自动交 AI 重译；滚动路径（连词成句滚雪球）与对话数据按原结构透传保存。'}
                   value={jsonText}
                   onChange={e => setJsonText(e.target.value)}
                 />
