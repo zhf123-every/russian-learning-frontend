@@ -406,7 +406,7 @@ export default function QuestDictation() {
         if (isLocal || isBackendUnit) {
           let stored = null
           try { stored = JSON.parse(sessionStorage.getItem("rlearn_local_lesson_" + effectiveCourseId) || "null") } catch (e) { stored = null }
-          if (!(stored && Array.isArray(stored.sentences) && stored.sentences.length)) {
+          if (!(stored && ((Array.isArray(stored.sentences) && stored.sentences.length) || (Array.isArray(stored.scaffoldingPaths) && stored.scaffoldingPaths.length)))) {
             stored = findLocalUnitById(effectiveCourseId)
           }
           if (stored && Array.isArray(stored.scaffoldingPaths) && stored.scaffoldingPaths.length) {
@@ -448,7 +448,19 @@ export default function QuestDictation() {
             for (const v of cloudJson.videos) {
               if (v && v.kind === 'course' && Array.isArray(v.units)) {
                 const u = v.units.find(x => x.id === effectiveCourseId)
-                if (u && Array.isArray(u.sentences) && u.sentences.length) {
+                if (u && Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length) {
+                  const items = scaffoldingToItems(u.scaffoldingPaths)
+                  if (!cancelled) {
+                    setLocalLesson(u)
+                    setIsLocalMode(true)
+                    setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
+                    const stmts = expandStatements(items, u.words)
+                    setStatements(stmts)
+                    if (!cancelled) setLoading(false);
+                  }
+                  return
+                }
+                if (u && ((Array.isArray(u.sentences) && u.sentences.length) || (Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length))) {
                   const items = u.sentences.filter(x => x && x.ru).map((st, i) => ({
                     id: `cloud_${i + 1}`,
                     russian: st.ru || "",

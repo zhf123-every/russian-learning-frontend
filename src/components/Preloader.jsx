@@ -106,8 +106,12 @@ export default function Preloader() {
         try {
           lesson = JSON.parse(sessionStorage.getItem("rlearn_local_lesson_" + unitId) || "null");
         } catch (e) { lesson = null; }
-        if (lesson && Array.isArray(lesson.sentences) && lesson.sentences.length) {
+        if (lesson && ((Array.isArray(lesson.sentences) && lesson.sentences.length) || (Array.isArray(lesson.scaffoldingPaths) && lesson.scaffoldingPaths.length))) {
           sentences = lesson.sentences.filter((x) => x && x.ru).map((x) => x.ru);
+          // 课时内容为滚雪球路径（scaffoldingPaths）时：直接提取各步骤俄语句子，无需后端
+          if (!sentences.length && Array.isArray(lesson.scaffoldingPaths)) {
+            sentences = lesson.scaffoldingPaths.flatMap((p) => (Array.isArray(p.steps) ? p.steps : []).map((s) => String(s.russian || s.ru || "").trim()).filter(Boolean));
+          }
         } else {
           const res = await fetch(`${API_BASE}/api/units/${courseId || unitId}/build-steps`);
           if (!res.ok) throw new Error("核心数据加载失败");

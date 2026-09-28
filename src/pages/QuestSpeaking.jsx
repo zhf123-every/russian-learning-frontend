@@ -251,7 +251,7 @@ export default function QuestSpeaking() {
             }
             return;
           }
-          if (Array.isArray(pre.sentences) && pre.sentences.length) {
+          if ((Array.isArray(pre.sentences) && pre.sentences.length) || (Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length)) {
             const adapted = adaptLocalLesson(pre);
             if (!cancelled) {
               setLocalLesson(pre); setIsLocalMode(true);
@@ -271,8 +271,8 @@ export default function QuestSpeaking() {
         if (isLocal || isBackendUnit) {
           let stored = null;
           try { stored = JSON.parse(sessionStorage.getItem("rlearn_local_lesson_" + effectiveCourseId) || "null") } catch (e) { stored = null }
-          if (!(stored && Array.isArray(stored.sentences) && stored.sentences.length)) stored = findLocalUnitById(effectiveCourseId);
-          if (stored && Array.isArray(stored.sentences) && stored.sentences.length) {
+          if (!(stored && ((Array.isArray(stored.sentences) && stored.sentences.length) || (Array.isArray(stored.scaffoldingPaths) && stored.scaffoldingPaths.length)))) stored = findLocalUnitById(effectiveCourseId);
+          if (stored && ((Array.isArray(stored.sentences) && stored.sentences.length) || (Array.isArray(stored.scaffoldingPaths) && stored.scaffoldingPaths.length))) {
             const adapted = adaptLocalLesson(stored);
             if (!cancelled) {
               setLocalLesson(stored);
@@ -296,7 +296,7 @@ export default function QuestSpeaking() {
             for (const v of cloudJson.videos) {
               if (v && v.kind === 'course' && Array.isArray(v.units)) {
                 const u = v.units.find(x => x.id === effectiveCourseId);
-                if (u && Array.isArray(u.sentences) && u.sentences.length) {
+                if (u && ((Array.isArray(u.sentences) && u.sentences.length) || (Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length))) {
                   const adapted = adaptLocalLesson(u);
                   if (!cancelled) {
                     setLocalLesson(u);
