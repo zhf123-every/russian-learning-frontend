@@ -26,6 +26,7 @@ import { addStudyTime } from "../lib/learningStats";
 import { getCourseById } from "../utils/courseService";
 import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { expandUnitToChunkSteps, buildZhIndex } from "../lib/chunking";
+import { scaffoldingToItems } from "../lib/scaffolding";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -345,6 +346,16 @@ export default function QuestDictation() {
       try {
         const pre = getCachedLesson(effectiveCourseId);
         if (pre) {
+          if (Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length) {
+            const items = scaffoldingToItems(pre.scaffoldingPaths);
+            if (!cancelled) {
+              setLocalLesson(pre); setIsLocalMode(true);
+              const stmts = expandStatements(items, pre.words);
+              setStatements(stmts);
+              setLoading(false);
+            }
+            return;
+          }
           if (Array.isArray(pre.sentences) && pre.sentences.length) {
             const items = pre.sentences.filter(x => x && x.ru).map((st, i) => ({
               id: `local_${i + 1}`,
@@ -397,6 +408,16 @@ export default function QuestDictation() {
           try { stored = JSON.parse(sessionStorage.getItem("rlearn_local_lesson_" + effectiveCourseId) || "null") } catch (e) { stored = null }
           if (!(stored && Array.isArray(stored.sentences) && stored.sentences.length)) {
             stored = findLocalUnitById(effectiveCourseId)
+          }
+          if (stored && Array.isArray(stored.scaffoldingPaths) && stored.scaffoldingPaths.length) {
+            const items = scaffoldingToItems(stored.scaffoldingPaths);
+            if (!cancelled) {
+              setLocalLesson(stored); setIsLocalMode(true);
+              const stmts = expandStatements(items, stored.words);
+              setStatements(stmts);
+              setLoading(false);
+            }
+            return;
           }
           if (stored && Array.isArray(stored.sentences) && stored.sentences.length) {
             const items = stored.sentences.filter(x => x && x.ru).map((st, i) => ({

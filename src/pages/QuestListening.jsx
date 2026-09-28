@@ -10,6 +10,7 @@ import { markUnitDone } from "../lib/lessonProgress";
 import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
+import { scaffoldingToSequences } from "../lib/scaffolding";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { playGlobalAudio, stopGlobalAudio } from "../utils/audioService";
 
@@ -70,6 +71,10 @@ function adaptBuildSteps(data) {
 }
 
 function adaptLocalLesson(lesson) {
+  // 优先：后台固定的滚雪球步骤（scaffoldingPaths）→ 直接按步骤出题（不再现切 chunking）
+  if (Array.isArray(lesson.scaffoldingPaths) && lesson.scaffoldingPaths.length) {
+    return scaffoldingToSequences(lesson.scaffoldingPaths, lesson.title || "本课");
+  }
   const sentences = Array.isArray(lesson.sentences) ? lesson.sentences.filter(x => x && x.ru) : [];
   const words = Array.isArray(lesson.words) ? lesson.words.filter(w => w && w.ru) : [];
   const buildUnit = (ru, zh, idx) => {

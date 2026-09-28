@@ -26,6 +26,7 @@ import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
 import { inferRoles } from "../lib/roleRules";
 import { expandSequencesWithChunks } from "../lib/chunking";
+import { scaffoldingToSequences } from "../lib/scaffolding";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -107,6 +108,10 @@ function adaptBuildSteps(data) {
 // 学习流程 = 逐词推进：出一个单词 → 打字拼写该词 → 紧接着打该词相关的渐进句（每词 2-3 句，短→中→长）
 // 生词少的课每词多配几句凑够渐进梯度；词表缺失时退回「全部句子渐进」
 function adaptLocalLesson(lesson) {
+  // 优先：后台固定的滚雪球步骤（scaffoldingPaths）→ 直接按步骤出题（不再现切 chunking）
+  if (Array.isArray(lesson.scaffoldingPaths) && lesson.scaffoldingPaths.length) {
+    return scaffoldingToSequences(lesson.scaffoldingPaths, lesson.title || "本课");
+  }
   const sentences = Array.isArray(lesson.sentences) ? lesson.sentences.filter(x => x && x.ru) : [];
   const words = Array.isArray(lesson.words) ? lesson.words.filter(w => w && w.ru) : [];
 
