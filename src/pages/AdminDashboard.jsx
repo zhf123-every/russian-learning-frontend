@@ -387,7 +387,6 @@ export default function AdminDashboard() {
     setActive(c)
     setUnits(c.units || [])
     setNewUnitTitle('')
-    setImportText('')
     setView('units')
     window.scrollTo({ top: 0 })
   }
