@@ -697,3 +697,10 @@ html[data-theme="dark"] .course-card:hover{background:#1a1a1d!important}
 html[data-theme="dark"] .course-btn:hover{background:#333338!important}
 
 html[data-theme="dark"] .exp-chart{border-color:#3b2a5c!important}
+
+/* 深夜模式：半透明白顶栏/底栏/空状态 → 深色半透明 */
+html[data-theme="dark"] .db-topbar{background:rgba(18,18,20,.94)!important}
+html[data-theme="dark"] .db-tabbar{background:rgba(18,18,20,.96)!important}
+html[data-theme="dark"] .course-empty{background:rgba(18,18,20,.5)!important;border-color:#333338!important}
+html[data-theme="dark"] .db-continue .ck{background:rgba(255,255,255,.08)!important}
+html[data-theme="dark"] .db-track{background:rgba(255,255,255,.14)!important}

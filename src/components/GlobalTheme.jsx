@@ -37,6 +37,19 @@ html[data-theme="dark"] .text-foreground { color: #f1f5f9 !important; }
 html[data-theme="dark"] .text-muted-foreground { color: #a8b2c1 !important; }
 html[data-theme="dark"] .border-gray-300, html[data-theme="dark"] .border-gray-200, html[data-theme="dark"] .border-gray-100 { border-color: #2a2a2e !important; }
 html[data-theme="dark"] .border-border { border-color: #27272a !important; }
+/* daisyUI 主题类（后台/商城/表单等页面用 bg-base-100 等） */
+html[data-theme="dark"] .bg-base-100 { background-color: #121214 !important; }
+html[data-theme="dark"] .bg-base-200 { background-color: #161618 !important; }
+html[data-theme="dark"] .bg-base-300 { background-color: #1d1d20 !important; }
+html[data-theme="dark"] .bg-base-content { background-color: #f4f4f5 !important; }
+html[data-theme="dark"] .text-base-content { color: #f4f4f5 !important; }
+html[data-theme="dark"] .input, html[data-theme="dark"] .select, html[data-theme="dark"] .textarea { background-color: #161618 !important; color: #f4f4f5 !important; border-color: #333338 !important; }
+html[data-theme="dark"] .card { background-color: #121214 !important; border-color: #27272a !important; }
+html[data-theme="dark"] .modal-box { background-color: #141416 !important; color: #f4f4f5 !important; }
+html[data-theme="dark"] .dropdown-content, html[data-theme="dark"] .menu { background-color: #141416 !important; }
+html[data-theme="dark"] .table :where(th, td) { color: #f4f4f5 !important; border-color: #27272a !important; }
+html[data-theme="dark"] .label-text { color: #a1a1aa !important; }
+html[data-theme="dark"] .alert { background-color: #161618 !important; border-color: #27272a !important; }
 html[data-theme="dark"] .hover\\:bg-gray-100:hover, html[data-theme="dark"] .hover\\:bg-gray-100\\/80:hover { background-color: #1d1d20 !important; }
 html[data-theme="dark"] .hover\\:bg-gray-50:hover { background-color: #1a1a1d !important; }
 html[data-theme="dark"] .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.55) !important; }
