@@ -4,7 +4,7 @@ import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { API_BASE, apiFetch } from '../lib/api'
 import { parseAIJSON, chat } from '../lib/ai'
-import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps } from '../lib/snowballEngine'
+import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps, russianizeNumbers } from '../lib/snowballEngine'
 import { useAdminStore } from '../store/adminStore'
 
 // ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
@@ -255,13 +255,13 @@ export default function AdminDashboard() {
         }
         steps = (steps || []).filter(s => s && s.russian && String(s.russian).trim())
         steps = steps.map((s, idx) => ({ ...s, stepIndex: idx + 1 }))
-        // 硬校验：末步必须 100% = 原句
+        // 硬校验：末步必须 100% = 原句（数字已由引擎统一俄语化，此处忽略数字写法比较）
         if (!verifyFinalStep(steps, original)) {
           const last = steps[steps.length - 1]
           const lastRuss = last ? String(last.russian || '').replace(/\s+/g, ' ').trim() : ''
           const origNorm = original.replace(/\s+/g, ' ').trim()
-          if (last && lastRuss === origNorm) last.russian = original
-          else steps.push({ stepIndex: steps.length + 1, russian: original, chinese: last ? (last.chinese || '') : '' })
+          if (last && lastRuss === origNorm) last.russian = russianizeNumbers(original)
+          else steps.push({ stepIndex: steps.length + 1, russian: russianizeNumbers(original), chinese: last ? (last.chinese || '') : '' })
         }
         // 词卡补全（词表匹配 + 词性规则）
         paths.push({ pathId: 'path_' + String(i + 1).padStart(2, '0'), steps: buildChunksForSteps(steps) })

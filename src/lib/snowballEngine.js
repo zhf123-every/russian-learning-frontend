@@ -5,6 +5,25 @@
 import { chat } from './ai'
 import { parseAIJSON } from './ai'
 
+// 数字 → 俄语单词（0-9999；教学句子范围内够用）
+const RU_N1 = ['ноль', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять', 'десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать']
+const RU_N10 = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто']
+const RU_N100 = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот']
+const RU_N1000 = ['', 'тысяча', 'две тысячи', 'три тысячи', 'четыре тысячи', 'пять тысяч', 'шесть тысяч', 'семь тысяч', 'восемь тысяч', 'девять тысяч']
+export function numberToRussian(n) {
+  n = Math.floor(n)
+  if (n < 0) return '-' + numberToRussian(-n)
+  if (n < 20) return RU_N1[n]
+  if (n < 100) return (RU_N10[Math.floor(n / 10)] + (n % 10 ? ' ' + RU_N1[n % 10] : '')).trim()
+  if (n < 1000) return (RU_N100[Math.floor(n / 100)] + (n % 100 ? ' ' + numberToRussian(n % 100) : '')).trim()
+  if (n < 10000) return (RU_N1000[Math.floor(n / 1000)] + (n % 1000 ? ' ' + numberToRussian(n % 1000) : '')).trim()
+  return String(n)
+}
+// 把一段俄语文本中的阿拉伯数字替换为俄语单词（"500 лет." → "пятьсот лет."）
+export function russianizeNumbers(text) {
+  return String(text || '').replace(/\d+/g, (m) => numberToRussian(parseInt(m, 10)))
+}
+
 // 1. 拆 token：按空格拆分；独立标点（如 ", " 开头的逗号）附着到前一个词；词尾标点（"Москвы."）保持附着
 export function splitTokens(sentence) {
   const raw = String(sentence || '').trim().split(/\s+/).filter(Boolean)
@@ -33,7 +52,7 @@ export function buildMachineSteps(tokens) {
     for (let i = 1; i <= n; i++) steps.push(tokens.slice(0, i))
     const dedup = steps.filter((s) => normFull(s) !== normFull(tokens))
     dedup.push(tokens.slice(0))
-    return dedup
+    return dedup.map((s) => s.map((w) => russianizeNumbers(w)))
   }
   // 组1：w1 / w1+w2 / w3 / w1+w2+w3
   steps.push(tokens.slice(0, 1))
@@ -60,7 +79,7 @@ export function buildMachineSteps(tokens) {
   // 末步 = 全句（去重：与末步仅差末尾标点的步骤一并去掉）
   const dedup = steps.filter((s) => normFull(s) !== normFull(tokens))
   dedup.push(tokens.slice(0))
-  return dedup
+  return dedup.map((s) => s.map((w) => russianizeNumbers(w)))
 }
 
 // 3. AI 审核：修正语序/语义/逻辑，合并歧义碎片，翻译中文；末步必须=原句
@@ -84,7 +103,7 @@ export async function aiReviewSteps(original, machineSteps) {
    - 介词短语（в центре, на Волге, на улице, на этаже, у которого）在中文里必须与其后的名词整合成完整意群，禁止介词单独悬空
    - 禁止使用省略号"..."；禁止括号语法注释（如"这个（与格）"）；禁止"这是"硬拼（"普列斯这是"错误）
    - 每一步的中文单独读出来必须通顺自然、完整、非空，只翻译当前步骤的俄语片段本身，禁止带上未拼出的部分（如 "Этому городу" 只能译"这座城市"，禁止"这座城市已经"；"уже" 只能译"已经"；"500" 只能译"五百"；"500 лет" 只能译"五百年"）
-   - 数字一律用俄语单词：russian 步骤中数字写俄语（500 → пятьсот；500 лет → пятьсот лет），禁止阿拉伯数字；中文翻译用中文汉字（пятьсот → 五百；пятьсот лет → 五百年），禁止阿拉伯数字；最后一步必须 100% 等于原文，保持原文数字写法（如原文 "500 лет" 的末步不得改写成 "пятьсот лет"）
+   - 中文翻译中数字用中文汉字（500 → 五百；500 лет → 五百年），禁止阿拉伯数字；russian 步骤中的数字由系统自动俄语化（пятьсот），你无需处理数字写法
    - 常用词与固定搭配用自然中文，禁止逐词直译：родной город = 家乡/故乡（绝对禁止任何含"城市"的译法，如"家乡城市""故乡城市"），мой родной город = 我的家乡；每一步的中文不得与上一步完全重复
 4. 禁止重复步骤（硬要求）：
    - 两个步骤的 russian 仅相差末尾标点（如"…город"与"…город."）视为重复，必须只保留一个（保留最后一步）
@@ -109,14 +128,16 @@ export async function aiReviewSteps(original, machineSteps) {
   }
   // 后处理：清理中文里的括号语法注释（如"城市（与格）"），只保留括号外文本
   parsed.steps = parsed.steps.map((s) => ({ ...s, chinese: String(s.chinese || '').replace(/（[^）]*）|\([^)]*\)/g, '').replace(/\s+/g, ' ').trim() }))
+  // 后处理：所有步骤（含末步）中的阿拉伯数字一律替换为俄语单词（"500" → "пятьсот"）
+  parsed.steps = parsed.steps.map((s) => ({ ...s, russian: russianizeNumbers(s.russian) }))
   return parsed.steps
 }
 
-// 4. 硬校验：末步必须=原句（含标点，忽略多余空格）
+// 4. 硬校验：末步必须=原句（原句先做数字俄语化再比较，因为所有步骤的数字已统一俄语化）
 export function verifyFinalStep(steps, original) {
   const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim()
   const last = steps && steps.length ? norm(steps[steps.length - 1].russian) : ''
-  return !!last && last === norm(original)
+  return !!last && last === norm(russianizeNumbers(original))
 }
 
 // 5. 词卡补全：词表匹配 + 词性规则（与后台现有 makeChunk 逻辑一致，供新工具复用）
