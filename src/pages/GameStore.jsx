@@ -3,8 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { VIDEOS, GUIDES } from '../data/gameLibrary'
 import { isCoursePurchased, savePurchase } from '../lib/courseAccess'
 import ModePickerModal, { VIDEO_MODES } from '../components/ModePickerModal'
-import ContributeModal from '../components/ContributeModal'
-import CourseContributeModal from '../components/CourseContributeModal'
 import { useGameVideoStore } from '../store/gameVideoStore'
 import { useGameCourseStore } from '../store/gameCourseStore'
 import { useAdminStore } from '../store/adminStore'
@@ -153,8 +151,6 @@ export default function GameStore() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [, setTick] = useState(0)
   const [videoTarget, setVideoTarget] = useState(null) // 视频类卡片 → 弹窗
-  const [showContribute, setShowContribute] = useState(false) // 上传视频弹窗
-  const [showCourseContribute, setShowCourseContribute] = useState(false) // 投稿课程弹窗
   const [showAdmin, setShowAdmin] = useState(false) // 管理员登录弹窗
   // 隐藏管理入口：只有 URL 带 ?admin=1（仅你知道）才显示"管理登录"，普通访客看不到任何投稿/管理按钮
   const [isAdminMode, setIsAdminMode] = useState(() => new URLSearchParams(location.search).get('admin') === '1')
@@ -266,15 +262,10 @@ export default function GameStore() {
   const baseSubs = SUBCATS[activeCat] || ['全部']
   const subTagsForActive = [...baseSubs, ...dynamicTextbooks.filter(t => !baseSubs.includes(t))]
 
-  // 点「上传视频」：未登录管理员 → 先登录；已登录 → 打开投稿弹窗
-  const openContribute = () => {
-    if (!adminKey) { if (!isAdminMode) return; setShowAdmin(true); return }
-    setShowContribute(true)
-  }
-
+  // 点「上传视频」：未登录管理员 → 先登录；已登录 → 打开投稿弹窗（投稿功能已移除，入口不再展示）
   const doAdminLogin = async () => {
     const ok = await adminLogin(adminInput)
-    if (ok) { setShowAdmin(false); setAdminInput(''); toast('已进入管理模式'); setShowContribute(true) }
+    if (ok) { setShowAdmin(false); setAdminInput(''); toast('已进入管理模式') }
     else { toast('密钥错误') }
   }
 
@@ -505,29 +496,13 @@ export default function GameStore() {
             <div className="flex items-center justify-end mb-4">
               <div className="flex items-center gap-3">
                 {adminKey ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setShowCourseContribute(true)}
-                      className="text-sm text-primary font-semibold flex items-center gap-1 cursor-pointer hover:underline"
-                    >
-                      ＋ 投稿课程
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowContribute(true)}
-                      className="text-sm text-primary font-semibold flex items-center gap-1 cursor-pointer hover:underline"
-                    >
-                      ＋ 上传视频
-                    </button>
-                    <button
-                      type="button"
-                      onClick={doAdminLogout}
-                      className="text-sm text-gray-400 flex items-center gap-1 cursor-pointer hover:text-gray-600"
-                    >
-                      退出管理
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={doAdminLogout}
+                    className="text-sm text-gray-400 flex items-center gap-1 cursor-pointer hover:text-gray-600"
+                  >
+                    退出管理
+                  </button>
                 ) : isAdminMode ? (
                   <button
                     type="button"
@@ -607,16 +582,6 @@ export default function GameStore() {
           onClose={() => setVideoTarget(null)}
           onStart={onVideoStart}
         />
-      )}
-
-      {/* ===== 上传视频弹窗（投稿到通关视频） ===== */}
-      {showContribute && (
-        <ContributeModal onClose={() => setShowContribute(false)} />
-      )}
-
-      {/* ===== 投稿课程弹窗（通关秘籍区） ===== */}
-      {showCourseContribute && (
-        <CourseContributeModal onClose={() => setShowCourseContribute(false)} />
       )}
 
       {/* ===== 管理员登录弹窗 ===== */}
