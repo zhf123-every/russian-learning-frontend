@@ -91,11 +91,8 @@ export default function AdminDashboard() {
     setToast('提示词已生成，请复制后粘贴给 AI')
   }
 
-  // 🤖 AI 一键生成滚动路径：填词 → 后端 AI 直接返回 JSON → 自动导入本课时（零复制粘贴）
-  const aiGenPath = async () => {
-    const words = getGenWords()
-    if (!words) { setToast('请先在生成器输入框填写本课单词（逗号隔开）'); return }
-    const wordsStr = words.split(/[，,]/).map(w => w.trim()).filter(Boolean).join(', ')
+  // 单组单词 → AI 生成路径（核心逻辑，单课生成与批量生成共用；失败自动重试一次）
+  const genPathOnce = async (wordsStr) => {
     const system = '你是一个资深俄语教学课程设计师。严格按用户要求只输出 JSON 数组，不要输出任何解释或 markdown 包裹。'
     const user = `你是一个极度严谨的俄语教学课程设计师。请严格按照"单句逐词派生（长雪球）"生成 JSON，完全对标"句乐部"连词成句打字模式（先学零件 → 再组装 → 再变形）。
 【核心铁律：违反任何一条直接判定失败！】
@@ -113,9 +110,8 @@ export default function AdminDashboard() {
 8. 强制语义审查：输出前默读中文，如果中文听起来像"我很了解这个和妈妈"，立即停止并结束该 pathId。
 【输出限制】
 9. 严格输出 JSON **数组**，每个元素为 {"pathId": "...", "steps": [{"stepIndex": 1, "russian": "...", "chinese": "..."}]}。**不要输出 newChunks / allChunks**（后台会自动补全词卡）。每组生成 15-25 关。只输出 JSON，无任何解释或 markdown 包裹。
-10. 输出前自查：逐条核对 1-8 条铁律，只要有一条不满足就立即修正后再输出。
+10. 输出前自查：逐条核对 1-8 条铁律，只要有一条不满足就修正后再输出。
 单词如下：${wordsStr}`
-    setGenBusy(true)
     let attempt = 0
     while (attempt < 2) {
       attempt++
@@ -153,25 +149,71 @@ export default function AdminDashboard() {
             return { ...st, newChunks, allChunks }
           })
         })
-        const prev = [...(activeUnit.scaffoldingPaths || [])]
-        const pathIds = new Set(prev.map(p => p.pathId))
-        paths.forEach(p => {
-          if (pathIds.has(p.pathId)) { const i = prev.findIndex(x => x.pathId === p.pathId); prev[i] = p }
-          else { prev.push(p); pathIds.add(p.pathId) }
-        })
-        patchUnit({ scaffoldingPaths: prev })
-        const emptySteps = paths.reduce((a, p) => a + p.steps.filter(s => (s.allChunks || []).some(c => !c.translation)).length, 0)
-        setToast(`✅ AI 已生成 ${paths.length} 条路径（共 ${paths.reduce((a, p) => a + (p.steps || []).length, 0)} 关），词卡已按词表+规则补全；${emptySteps} 关有单词未收录词表（可去词汇表补充）。记得点「保存课时内容」固定入库`)
-        setTimeout(() => { const el = document.getElementById('scaffold-section'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 300)
-        return
+        return paths
       } catch (e) {
-        if (attempt === 1) { setToast('⏳ AI 生成较慢（冷启动/超时），自动重试第 2 次…'); continue }
-        setToast('⚠️ AI 生成失败：' + e.message + '（可改用「生成提示词」复制后到外部 AI 生成再导入）')
+        if (attempt === 1) continue // 冷启动/超时自动重试一次
+        throw new Error(e.message || 'AI 生成失败')
       }
+    }
+    throw new Error('AI 生成失败')
+  }
+
+  // 🤖 AI 一键生成滚动路径：填词 → 后端 AI 直接返回 JSON → 自动导入本课时（零复制粘贴）
+  const aiGenPath = async () => {
+    const words = getGenWords()
+    if (!words) { setToast('请先在生成器输入框填写本课单词（逗号隔开）'); return }
+    const wordsStr = words.split(/[，,]/).map(w => w.trim()).filter(Boolean).join(', ')
+    setGenBusy(true)
+    try {
+      const paths = await genPathOnce(wordsStr)
+      const prev = [...(activeUnit.scaffoldingPaths || [])]
+      const pathIds = new Set(prev.map(p => p.pathId))
+      paths.forEach(p => {
+        if (pathIds.has(p.pathId)) { const i = prev.findIndex(x => x.pathId === p.pathId); prev[i] = p }
+        else { prev.push(p); pathIds.add(p.pathId) }
+      })
+      patchUnit({ scaffoldingPaths: prev })
+      const emptySteps = paths.reduce((a, p) => a + p.steps.filter(s => (s.allChunks || []).some(c => !c.translation)).length, 0)
+      setToast(`✅ AI 已生成 ${paths.length} 条路径（共 ${paths.reduce((a, p) => a + (p.steps || []).length, 0)} 关），词卡已按词表+规则补全；${emptySteps} 关有单词未收录词表（可去词汇表补充）。记得点「保存课时内容」固定入库`)
+      setTimeout(() => { const el = document.getElementById('scaffold-section'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 300)
+    } catch (e) {
+      setToast('⚠️ AI 生成失败：' + e.message + '（可改用「生成提示词」复制后到外部 AI 生成再导入）')
     }
     setGenBusy(false)
   }
 
+  // 🚀 批量生成：多组单词（每组一行=一课）→ 循环 AI 生成 → 自动创建课时并保存
+  const batchGenPaths = async () => {
+    const raw = String(genWords || '').trim()
+    if (!raw) { setToast('请先在生成器输入框填写单词，每组一行=一课'); return }
+    const wordGroups = raw.split(/\r?\n/).map(l => l.split(/[，,]/).map(w => w.trim()).filter(Boolean)).filter(g => g.length)
+    if (!wordGroups.length) { setToast('请先输入单词，每组一行=一课'); return }
+    const total = wordGroups.length
+    if (!window.confirm(`将按 ${total} 组单词循环调用 AI 生成路径，并自动创建 ${total} 个新课时（第 ${units.length + 1} 课起）。继续？`)) return
+    setGenBusy(true)
+    let ok = 0, fail = 0
+    const newUnits = []
+    for (let i = 0; i < total; i++) {
+      const wordsStr = wordGroups[i].join(', ')
+      setToast(`⏳ 正在生成第 ${i + 1}/${total} 课：${wordsStr.slice(0, 24)}${wordsStr.length > 24 ? '…' : ''}`)
+      try {
+        const paths = await genPathOnce(wordsStr)
+        newUnits.push({
+          id: 'unit_' + Date.now() + '_' + i,
+          title: `第 ${units.length + newUnits.length + 1} 课`,
+          desc: '', vocab: '', imported: false,
+          words: wordGroups[i], sentences: [], scaffoldingPaths: paths,
+        })
+        ok++
+      } catch (e) {
+        fail++
+        console.warn('批量第 ' + (i + 1) + ' 课生成失败：', e.message)
+      }
+    }
+    if (newUnits.length) persistUnits([...units, ...newUnits])
+    setGenBusy(false)
+    setToast(`✅ 批量完成：成功 ${ok} 课，失败 ${fail} 课` + (fail ? '（失败的组可单独重试）' : '，已自动保存为「第 N 课」'))
+  }
   const copyPrompt = () => {
     if (!genPrompt) return
     let ok = false
@@ -1037,21 +1079,24 @@ export default function AdminDashboard() {
                   <div className="card-body p-4">
                     <h3 className="card-title text-sm text-gray-900">连词成句课程生成器</h3>
                     <label className="label pb-1">
-                      <span className="label-text text-xs text-gray-600">请输入本课单词（用逗号隔开）</span>
+                      <span className="label-text text-xs text-gray-600">请输入单词（逗号隔开；每组一行 = 一课，可批量生成）</span>
                     </label>
                     <textarea
                       className="textarea textarea-bordered w-full font-mono text-xs"
-                      rows={3}
-                      placeholder="Это, Иван, и, Анна, дома（留空则用本课已有词条）"
+                      rows={4}
+                      placeholder={'это, Иван, Анна, дом\nдом, лампа, вода, книга（每组一行=一课，留空则用本课已有词条）'}
                       value={genWords}
                       onChange={e => setGenWords(e.target.value)}
                     />
                     <div className="mt-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button className="btn btn-primary btn-sm" onClick={aiGenPath} disabled={genBusy}>
                           {genBusy ? 'AI 生成中…' : '🤖 AI 一键生成路径'}
                         </button>
-                        <button className="btn btn-outline btn-sm" onClick={generatePrompt}>生成提示词</button>
+                        <button className="btn btn-outline btn-sm" onClick={generatePrompt} disabled={genBusy}>生成提示词</button>
+                        <button className="btn btn-secondary btn-sm" onClick={batchGenPaths} disabled={genBusy}>
+                          {genBusy ? '批量生成中…' : `🚀 批量生成（${genWords.trim() ? genWords.split(/\r?\n/).filter(l => l.trim() && l.split(/[，,]/).some(w => w.trim())).length : 0} 课）`}
+                        </button>
                       </div>
                     </div>
                     {showGenPrompt && (
