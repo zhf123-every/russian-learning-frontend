@@ -57,7 +57,7 @@ export default function AdminDashboard() {
   const [genBusy, setGenBusy] = useState(false)
   const [showGenPrompt, setShowGenPrompt] = useState(false)
 
-  // 生成器取词：优先用生成器单词框；留空则自动读取①生词表（每行：词 | 释义）
+  // 生成器取词：优先用生成器单词框；留空则自动读取本课已保存的词条（老数据兼容）
   const getGenWords = () => {
     let w = String(genWords || '').trim()
     if (!w && activeUnit && activeUnit.vocab) {
@@ -68,20 +68,23 @@ export default function AdminDashboard() {
 
   const generatePrompt = () => {
     const words = getGenWords()
-    if (!words) { setToast('请先输入本课单词（生成器输入框，或先填①生词表自动读取）'); return }
-    const prompt = `你是一个资深俄语教学课程设计师。我会给你一组基础俄语词汇。请发挥你的语法知识，自动衍生出必要的变形词、否定词、不定式、形容词、数词、副词、变格等，并编排成"衍生式重构（先学零件、再组装、再变形）"的俄语递进式学习路径。
-【自动衍生规则】
-1. 允许衍生（按需组合）：动词变位（Я люблю, Ты любишь）；不定式（читать）；否定词не；名词变格（宾格 книгу，生格 Анны，前置格 в школе）；形容词（хорошая）；数词（одна）；程度/方式副词（очень, хорошо）；时间/地点状语（сегодня, дома, в школе）；疑问词（кто, что, где）；人称代词变格（ты -> тебя）；连接词（и, а）；语气词（тоже, конечно）。
-2. 禁止衍生：禁止生成过去时、将来时、命令式、条件句或复杂从句。必须始终是现在时、简单句。
-【长雪球与防发癫规则（必须严格遵守，违反则失败！）】
-3. 结构分叉刹车（极其重要）：禁止把一个句子无限拉长！当句子达到 8-12 个词时，必须停止在当前 pathId 中增加新词，改为开启新的 pathId 进行"变体替换"（如换主语、变否定、变疑问、替换宾语）。
-4. 语义防火墙：禁止乱搭配！例如"знать"（知道）绝对不能接"тут/там/у мамы"等地点状语；"очень"不能直接修饰"не знаю"（应使用 совсем не знаю 或 плохо знаю）。如果不确定搭配是否自然，请立即停止扩展该句子。
-5. 严禁堆砌名单：绝对禁止连续使用"и"来叠加宾语。最多只能叠加 2 个宾语（如 Иван и Анна），绝对禁止出现 Иван, Анна, Антон, папа и мама 这种人名报菜名。
-6. 主语轮换：主语应在 Я / Ты / Он / Она / Мы / 人名 之间自然轮换，同一主语最多连续 3 步。
-7. 组件化加长：每步只增加一个"最小语法成分"（如单词或短语 в школе、очень хорошо），每步的 russian 与上一步保持可追溯的递进关系。严禁在同一 step 内并列多个平行句子。
-【输出限制】
-8. 严格输出 JSON 格式。字段：pathId、steps（含 stepIndex、russian、chinese）。可选附 newChunks / allChunks（每个单词含 word / translation / role / color）。
-9. 每组生成 15-25 关（通过变体替换来凑满关卡，而不是无限拉长单句）。只输出 JSON，无任何解释或 markdown 包裹。
+    if (!words) { setToast('请先在生成器输入框填写本课单词（逗号隔开）'); return }
+    const prompt = `你是一个极度严谨的俄语教学课程设计师。请严格按照"单句逐词派生（长雪球）"生成 JSON，完全对标"句乐部"连词成句打字模式（先学零件 → 再组装 → 再变形）。
+【核心铁律：违反任何一条直接判定失败！】
+1. 锁死主语：一个肯定雪球只能有一个主语！在句子滚到 8-12 个词之前，绝对禁止切换主语！
+2. 严禁横向替换：绝对禁止生成"Я знаю Ивана. Ты знаешь Анну."这种横向换主语或换宾语的平行句！每一步必须比上一步多出一个词或一个词组！
+3. 零件 + 组装模式（对标句乐部）：允许"零件关"：动词原形（знать）、不定式（читать）、否定词（не）、宾语（Анну）可单独成一关；但零件关之后必须立即进入组装关（主谓、主谓宾），严禁连续只堆零件。组装顺序：主语 -> 谓语（可先出原形零件再变位）-> 主谓 -> 宾语 -> 主谓宾 -> 扩展。
+4. 强制纵向加长（上限8-12个词）：宾语允许用形容词（новую книгу）、数词（одну книгу）、物主代词（мою книгу）扩展；程度副词必须放在动词前面（如 Иван хорошо знает Анну）。滚到 8-12 词后停止加长，开启新 pathId 做变体替换。
+5. 语义搭配绝对禁令：状态/心理动词（знать, любить）禁止加时间/地点状语（сегодня, в школе），只能加程度副词或扩展宾语；加不自然就直接结束。
+6. 禁止滥用"Да"；严禁堆砌名单：禁止用"и"叠加不相关宾语，禁止把代词（это）和人物名词（маму）用 и 并列。
+【变体替换规则】
+7. 肯定雪球滚到 8-12 词达标后，开启新 pathId：
+   【否定路径】按否定零件滚雪球：не -> не знает -> не знает Анну -> Иван не знает Анну -> не очень хорошо -> Иван не очень хорошо знает Анну
+   【疑问路径】二选一：a) 取肯定句末尾加问号（Иван хорошо знает Анну?）；b) 用疑问词滚雪球（Кто -> Кто знает -> Кто хорошо знает Анну?）
+   【不定式路径】零件：читать -> читать книгу -> Иван хочет читать книгу
+8. 强制语义审查：输出前默读中文，如果中文听起来像"我很了解这个和妈妈"，立即停止并结束该 pathId。
+9. 严格输出 JSON 格式：字段为 pathId、steps（含 stepIndex, russian, chinese）。可选附 newChunks / allChunks（每个单词含 word / translation / role / color）。每组生成 15-25 关。只输出 JSON，无任何解释或 markdown 包裹。
+10. 输出前自查：逐条核对 1-8 条铁律，只要有一条不满足就立即修正后再输出。
 单词如下：${words}`
     setGenPrompt(prompt)
     setShowGenPrompt(true)
@@ -91,22 +94,26 @@ export default function AdminDashboard() {
   // 🤖 AI 一键生成滚动路径：填词 → 后端 AI 直接返回 JSON → 自动导入本课时（零复制粘贴）
   const aiGenPath = async () => {
     const words = getGenWords()
-    if (!words) { setToast('请先输入本课单词（生成器输入框，或先填①生词表自动读取）'); return }
+    if (!words) { setToast('请先在生成器输入框填写本课单词（逗号隔开）'); return }
     const wordsStr = words.split(/[，,]/).map(w => w.trim()).filter(Boolean).join(', ')
     const system = '你是一个资深俄语教学课程设计师。严格按用户要求只输出 JSON 数组，不要输出任何解释或 markdown 包裹。'
-    const user = `你是一个资深俄语教学课程设计师。我会给你一组基础俄语词汇。请发挥你的语法知识，自动衍生出必要的变形词、否定词、不定式、形容词、数词、副词、变格等，并编排成"衍生式重构（先学零件、再组装、再变形）"的俄语递进式学习路径。
-【自动衍生规则】
-1. 允许衍生（按需组合）：动词变位（Я люблю, Ты любишь）；不定式（читать）；否定词не；名词变格（宾格 книгу，生格 Анны，前置格 в школе）；形容词（хорошая）；数词（одна）；程度/方式副词（очень, хорошо）；时间/地点状语（сегодня, дома, в школе）；疑问词（кто, что, где）；人称代词变格（ты -> тебя）；连接词（и, а）；语气词（тоже, конечно）。
-2. 禁止衍生：禁止生成过去时、将来时、命令式、条件句或复杂从句。必须始终是现在时、简单句。
-【长雪球与防发癫规则（必须严格遵守，违反则失败！）】
-3. 结构分叉刹车（极其重要）：禁止把一个句子无限拉长！当句子达到 8-12 个词时，必须停止在当前 pathId 中增加新词，改为开启新的 pathId 进行"变体替换"（如换主语、变否定、变疑问、替换宾语）。
-4. 语义防火墙：禁止乱搭配！例如"знать"（知道）绝对不能接"тут/там/у мамы"等地点状语；"очень"不能直接修饰"не знаю"（应使用 совсем не знаю 或 плохо знаю）。如果不确定搭配是否自然，请立即停止扩展该句子。
-5. 严禁堆砌名单：绝对禁止连续使用"и"来叠加宾语。最多只能叠加 2 个宾语（如 Иван и Анна），绝对禁止出现 Иван, Анна, Антон, папа и мама 这种人名报菜名。
-6. 主语轮换：主语应在 Я / Ты / Он / Она / Мы / 人名 之间自然轮换，同一主语最多连续 3 步。
-7. 组件化加长：每步只增加一个"最小语法成分"（如单词或短语 в школе、очень хорошо），每步的 russian 与上一步保持可追溯的递进关系。严禁在同一 step 内并列多个平行句子。
+    const user = `你是一个极度严谨的俄语教学课程设计师。请严格按照"单句逐词派生（长雪球）"生成 JSON，完全对标"句乐部"连词成句打字模式（先学零件 → 再组装 → 再变形）。
+【核心铁律：违反任何一条直接判定失败！】
+1. 锁死主语：一个肯定雪球只能有一个主语！在句子滚到 8-12 个词之前，绝对禁止切换主语！
+2. 严禁横向替换：绝对禁止生成"Я знаю Ивана. Ты знаешь Анну."这种横向换主语或换宾语的平行句！每一步必须比上一步多出一个词或一个词组！
+3. 零件 + 组装模式（对标句乐部）：允许"零件关"：动词原形（знать）、不定式（читать）、否定词（не）、宾语（Анну）可单独成一关；但零件关之后必须立即进入组装关（主谓、主谓宾），严禁连续只堆零件。组装顺序：主语 -> 谓语（可先出原形零件再变位）-> 主谓 -> 宾语 -> 主谓宾 -> 扩展。
+4. 强制纵向加长（上限8-12个词）：宾语允许用形容词（новую книгу）、数词（одну книгу）、物主代词（мою книгу）扩展；程度副词必须放在动词前面（如 Иван хорошо знает Анну）。滚到 8-12 词后停止加长，开启新 pathId 做变体替换。
+5. 语义搭配绝对禁令：状态/心理动词（знать, любить）禁止加时间/地点状语（сегодня, в школе），只能加程度副词或扩展宾语；加不自然就直接结束。
+6. 禁止滥用"Да"；严禁堆砌名单：禁止用"и"叠加不相关宾语，禁止把代词（это）和人物名词（маму）用 и 并列。
+【变体替换规则】
+7. 肯定雪球滚到 8-12 词达标后，开启新 pathId：
+   【否定路径】按否定零件滚雪球：не -> не знает -> не знает Анну -> Иван не знает Анну -> не очень хорошо -> Иван не очень хорошо знает Анну
+   【疑问路径】二选一：a) 取肯定句末尾加问号（Иван хорошо знает Анну?）；b) 用疑问词滚雪球（Кто -> Кто знает -> Кто хорошо знает Анну?）
+   【不定式路径】零件：читать -> читать книгу -> Иван хочет читать книгу
+8. 强制语义审查：输出前默读中文，如果中文听起来像"我很了解这个和妈妈"，立即停止并结束该 pathId。
 【输出限制】
-8. 严格输出 JSON **数组**，每个元素为 {"pathId": "...", "steps": [{"stepIndex": 1, "russian": "...", "chinese": "..."}]}。**不要输出 newChunks / allChunks**（后台会自动补全词卡）。请只输出 JSON 数组。
-9. 每组生成 15-25 关（通过变体替换来凑满关卡，而不是无限拉长单句）。只输出 JSON，无任何解释或 markdown 包裹。
+9. 严格输出 JSON **数组**，每个元素为 {"pathId": "...", "steps": [{"stepIndex": 1, "russian": "...", "chinese": "..."}]}。**不要输出 newChunks / allChunks**（后台会自动补全词卡）。每组生成 15-25 关。只输出 JSON，无任何解释或 markdown 包裹。
+10. 输出前自查：逐条核对 1-8 条铁律，只要有一条不满足就立即修正后再输出。
 单词如下：${wordsStr}`
     setGenBusy(true)
     let attempt = 0
@@ -200,7 +207,6 @@ export default function AdminDashboard() {
 
   // —— 课时内容管理状态 ——
   const [activeUnit, setActiveUnit] = useState(null) // 当前编辑内容的课时
-  const [genning, setGenning] = useState(false)
   const [newSentRu, setNewSentRu] = useState('')
   const [newSentZh, setNewSentZh] = useState('')
   const [editSentIdx, setEditSentIdx] = useState(-1)      // 正在行内编辑的例句下标（-1=未编辑）
@@ -702,34 +708,6 @@ export default function AdminDashboard() {
     setView('units')
   }
 
-  // ✨ AI 生成渐进例句：生词表 → 每词至少 1 句长句
-  const genSentences = async () => {
-    const vocab = (activeUnit.vocab || '').trim()
-    if (!vocab) { flash('请先填写本课生词表（每行：词 | 释义）'); return }
-    if (genning) return
-    setGenning(true)
-    try {
-      const isLocal = /^localhost|^127\./.test(location.hostname)
-      const base = isLocal ? '' : (API_BASE || '')
-      const res = await fetch(`${base}/api/course-lesson-gen`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: active.title, category: active.category, level: active.difficulty || 'A1', words: vocab }),
-      })
-      const jj = await res.json()
-      if (!jj.ok) throw new Error(jj.error || 'AI 生成失败')
-      const r = parseAIJSON(jj.content)
-      if (!r || !Array.isArray(r.words) || !Array.isArray(r.sentences) || !r.sentences.length) {
-        throw new Error('未能解析出句子，请重试')
-      }
-      patchUnit({ words: r.words, sentences: r.sentences })
-      flash(`✨ 已生成 ${r.words.length} 个单词 · ${r.sentences.length} 句渐进例句（记得点「保存课时内容」）`)
-    } catch (e) {
-      flash('AI 生成失败：' + (e.message || '请稍后重试'))
-    }
-    setGenning(false)
-  }
-
   // 手动添加例句
   const addSentence = () => {
     const ru = newSentRu.trim()
@@ -945,42 +923,18 @@ export default function AdminDashboard() {
             <div>
               <button className="btn btn-ghost btn-sm -ml-2 text-gray-500" onClick={() => setView('units')}>← 返回课程序</button>
               <h1 className="text-xl font-extrabold text-gray-900 mt-1">{active.title} · {activeUnit.title}</h1>
-              <p className="text-xs text-gray-400 mt-0.5">第三步 · 挂内容：生词表 + 渐进例句 + 素材</p>
+              <p className="text-xs text-gray-400 mt-0.5">第三步 · 挂内容：例句 + 滚动路径 + 素材</p>
             </div>
             <button className="btn btn-primary btn-sm" onClick={saveUnit}>💾 保存课时内容</button>
           </div>
 
-          {/* ① 生词表 */}
+          {/* ① 例句 */}
           <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
             <div className="card-body p-5">
-              <h2 className="card-title text-base text-gray-900">① 本课生词表（每行：词 | 释义）</h2>
-              <p className="text-xs text-gray-400 mt-0.5">每行：俄语词 | 中文释义，可手动增删。</p>
-              <textarea
-                className="textarea textarea-bordered mt-3 w-full font-mono"
-                rows={6}
-                value={activeUnit.vocab || ''}
-                onChange={e => patchUnit({ vocab: e.target.value })}
-                placeholder={'дом | 房子\nмама | 妈妈\n...'}
-              />
-              <div className="mt-2 text-xs text-gray-400">已填 {((activeUnit.vocab || '').trim().split(/\r?\n/).filter(Boolean)).length} 个词条</div>
-            </div>
-          </div>
-
-          {/* ② AI 生成渐进例句 */}
-          <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
-            <div className="card-body p-5">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <h2 className="card-title text-base text-gray-900">② 渐进例句（AI 生成）</h2>
-                <button className="btn btn-primary btn-sm" onClick={genSentences} disabled={genning}>
-                  {genning ? '生成中…' : '✨ AI 生成渐进例句'}
-                </button>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                每个生词至少 1 句、完整成分的长句（主谓宾+情景状语+时态），按句型家族渐进梯度生成，句数 = 词数 × 1.2（上限 120 句）。
-              </p>
+              <h2 className="card-title text-base text-gray-900">① 例句（可手动添加 / 编辑）</h2>
 
               {(!activeUnit.sentences || !activeUnit.sentences.length) ? (
-                <p className="py-8 text-center text-sm text-gray-400">还没有例句。填好词表后点「✨ AI 生成渐进例句」。</p>
+                <p className="py-8 text-center text-sm text-gray-400">还没有例句，可手动添加；主内容走「滚动学习路径」。</p>
               ) : (
                 <>
                   <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
@@ -1029,10 +983,10 @@ export default function AdminDashboard() {
                 <button className="btn btn-outline btn-sm" onClick={addSentence}>+ 添加</button>
               </div>
 
-              {/* ③ 滚动学习路径（scaffoldingPaths）——连词成句滚雪球 */}
+              {/* ② 滚动学习路径（scaffoldingPaths）——连词成句滚雪球 */}
               <div id="scaffold-section" className="card mt-4 border border-purple-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
                 <div className="card-body p-5">
-                  <h2 className="card-title text-base text-gray-900">③ 滚动学习路径（连词成句滚雪球）</h2>
+                  <h2 className="card-title text-base text-gray-900">② 滚动学习路径（连词成句滚雪球）</h2>
                   <p className="text-xs text-gray-400 mt-1">按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。粘贴 pathId + steps 结构 JSON 后立即显示在这里。</p>
                   {(!activeUnit.scaffoldingPaths || !activeUnit.scaffoldingPaths.length) ? (
                     <p className="py-6 text-center text-sm text-gray-400">还没有路径。在下方「批量导入 JSON」粘贴 pathId + steps 数据即可。</p>
@@ -1088,7 +1042,7 @@ export default function AdminDashboard() {
                     <textarea
                       className="textarea textarea-bordered w-full font-mono text-xs"
                       rows={3}
-                      placeholder="Это, Иван, и, Анна, дома（留空则自动读取①生词表）"
+                      placeholder="Это, Иван, и, Анна, дома（留空则用本课已有词条）"
                       value={genWords}
                       onChange={e => setGenWords(e.target.value)}
                     />
