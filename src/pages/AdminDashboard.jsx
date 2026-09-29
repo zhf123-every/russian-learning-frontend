@@ -258,9 +258,17 @@ export default function AdminDashboard() {
         console.warn('批量第 ' + (i + 1) + ' 课生成失败：', e.message)
       }
     }
-    if (newUnits.length) persistUnits([...units, ...newUnits])
+    if (newUnits.length) {
+      persistUnits([...units, ...newUnits])
+      const last = newUnits[newUnits.length - 1]
+      setActiveUnit(last)
+      setTimeout(() => {
+        const el = document.getElementById('scaffold-section')
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 400)
+    }
     setGenBusy(false)
-    setToast(`✅ 批量完成：成功 ${ok} 课，失败 ${fail} 课` + (fail ? '（失败的组可单独重试）' : '，已自动保存为「第 N 课」'))
+    setToast(`✅ 批量完成：成功 ${ok} 课，失败 ${fail} 课` + (fail ? '（失败的组可单独重试）' : `，已自动切换到「${newUnits[newUnits.length - 1]?.title || ''}」并在下方展示路径，可逐课点选检查`))
   }
   const copyPrompt = () => {
     if (!genPrompt) return
