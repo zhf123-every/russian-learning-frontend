@@ -1100,8 +1100,9 @@ export default function AdminDashboard() {
                         <textarea
                           className="textarea textarea-bordered mt-1 w-full font-mono text-xs"
                           rows={7}
-                          readOnly
                           value={genPrompt}
+                          onChange={e => setGenPrompt(e.target.value)}
+                          placeholder="生成的提示词可在此直接编辑（增删单词/规则），改完点「一键复制」复制修改后的版本"
                         />
                       </div>
                     )}
