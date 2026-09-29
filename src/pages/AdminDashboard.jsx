@@ -57,9 +57,18 @@ export default function AdminDashboard() {
   const [genBusy, setGenBusy] = useState(false)
   const [showGenPrompt, setShowGenPrompt] = useState(false)
 
+  // 生成器取词：优先用生成器单词框；留空则自动读取①生词表（每行：词 | 释义）
+  const getGenWords = () => {
+    let w = String(genWords || '').trim()
+    if (!w && activeUnit && activeUnit.vocab) {
+      w = String(activeUnit.vocab).split(/\r?\n/).map(l => l.split('|')[0].trim()).filter(Boolean).join(', ')
+    }
+    return w
+  }
+
   const generatePrompt = () => {
-    const words = String(genWords || '').trim()
-    if (!words) { setToast('请先输入本课单词（用逗号隔开）'); return }
+    const words = getGenWords()
+    if (!words) { setToast('请先输入本课单词（生成器输入框，或先填①生词表自动读取）'); return }
     const prompt = `你是一个资深俄语教学课程设计师。我会给你一组基础俄语词汇。请发挥你的语法知识，自动衍生出必要的变形词、否定词、不定式、形容词、数词、副词、变格等，并编排成"衍生式重构（先学零件、再组装、再变形）"的俄语递进式学习路径。
 【自动衍生规则】
 1. 允许衍生（按需组合）：动词变位（Я люблю, Ты любишь）；不定式（читать）；否定词не；名词变格（宾格 книгу，生格 Анны，前置格 в школе）；形容词（хорошая）；数词（одна）；程度/方式副词（очень, хорошо）；时间/地点状语（сегодня, дома, в школе）；疑问词（кто, что, где）；人称代词变格（ты -> тебя）；连接词（и, а）；语气词（тоже, конечно）。
@@ -81,8 +90,8 @@ export default function AdminDashboard() {
 
   // 🤖 AI 一键生成滚动路径：填词 → 后端 AI 直接返回 JSON → 自动导入本课时（零复制粘贴）
   const aiGenPath = async () => {
-    const words = String(genWords || '').trim()
-    if (!words) { setToast('请先输入本课单词（用逗号隔开）'); return }
+    const words = getGenWords()
+    if (!words) { setToast('请先输入本课单词（生成器输入框，或先填①生词表自动读取）'); return }
     const wordsStr = words.split(/[，,]/).map(w => w.trim()).filter(Boolean).join(', ')
     const system = '你是一个资深俄语教学课程设计师。严格按用户要求只输出 JSON 数组，不要输出任何解释或 markdown 包裹。'
     const user = `你是一个资深俄语教学课程设计师。我会给你一组基础俄语词汇。请发挥你的语法知识，自动衍生出必要的变形词、否定词、不定式、形容词、数词、副词、变格等，并编排成"衍生式重构（先学零件、再组装、再变形）"的俄语递进式学习路径。
@@ -1079,7 +1088,7 @@ export default function AdminDashboard() {
                     <textarea
                       className="textarea textarea-bordered w-full font-mono text-xs"
                       rows={3}
-                      placeholder="Это, Иван, и, Анна, дома"
+                      placeholder="Это, Иван, и, Анна, дома（留空则自动读取①生词表）"
                       value={genWords}
                       onChange={e => setGenWords(e.target.value)}
                     />
