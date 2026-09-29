@@ -222,35 +222,7 @@ export default function GameStore() {
       setCloudVideos(cloud.filter(v => v && v.title && (v.videoUrl || v.kind === 'course') && v.kind !== 'course'))
       setCloudCourses(await resolveCloudThumbs(cloud.filter(v => v && v.kind === 'course' && v.title)))
       try { localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify({ list: cloud, ts: Date.now() })) } catch (e) { /* 容量不足忽略 */ }
-      // 自动补同步：登录过管理员 且 本地有投稿（视频或课程），云端缺本地记录 → 推本地完整名单上云
-      const localVideos = useGameVideoStore.getState().videos
-      const localCourses = useGameCourseStore.getState().courses
-      const localAll = [...localVideos, ...localCourses]
-      if (adminKey && localAll.length) {
-        const cloudIds = new Set(cloud.map(v => v.id))
-        const localIds = new Set(localAll.map(v => v.id))
-        const needSync = localAll.some(v => !cloudIds.has(v.id)) || cloud.some(v => !localIds.has(v.id))
-        if (needSync) {
-          try {
-            // 合并式：云端已有条目保留（尤其云端课程），本地新增补齐——绝不用本机残缺名单覆盖云端
-            const seenSync = new Set()
-            const mergedAll = [...localAll, ...cloud].filter(v => { if (seenSync.has(v.id)) return false; seenSync.add(v.id); return true })
-            const sr = await apiFetch('/api/videos/sync', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ videos: sanitizeForCloud(mergedAll), adminKey })
-            })
-            const sj = await sr.json()
-            if (alive && sj.ok) {
-              setCloudVideos(localVideos.filter(v => v && v.title && v.videoUrl))
-              setCloudCourses(localCourses.filter(c => c && c.title))
-              toast('已将你投稿的视频和课程同步到云端，所有访客可见')
-            } else if (alive && !sj.ok) {
-              toast('⚠️ 云端同步失败：' + (sj.error || '未知错误') + '。请退出后重新登录管理员再试')
-            }
-          } catch (e) { if (alive) toast('⚠️ 云端同步异常，请重新登录管理员后再试') }
-        }
-      }
+      // 注：投稿上云由投稿弹窗（投稿视频/投稿课程）负责；商城页不再自动把本地投稿推上云
     }
     loadCloud()
     return () => { alive = false }
@@ -258,11 +230,17 @@ export default function GameStore() {
   const adminLogin = useAdminStore(s => s.login)
   const adminLogout = useAdminStore(s => s.logout)
 
-  // 通关视频区 = 云端投稿（前） + 本地投稿（去重） + 内置视频（后）
-  const mergedVideos = [...cloudVideos, ...uploadedVideos]
-  const seen = new Set()
-  const dedup = mergedVideos.filter(v => { if (seen.has(v.id)) return false; seen.add(v.id); return true })
-  const allVideos = [...dedup, ...VIDEOS]
+  // 通关视频区 = 仅内置视频（云端/本地投稿视频不在此商城页展示）
+  const allVideos = [...VIDEOS]
+
+  // 后台发布课程判定：带 src=admin 标记，或旧数据有 units 课时结构（投稿课程用 lessons 无 units）
+  const isAdminCourse = (c) => c && (c.src === 'admin' || c.src === 'admin_publish' || (Array.isArray(c.units) && c.units.length > 0))
+  // 通关秘籍区 = 后台发布课程（云端去重，前） + 内置秘籍（后）；投稿课程不在此商城页展示
+  const adminCloudCourses = cloudCourses.filter(isAdminCourse)
+  const mergedCourses = [...adminCloudCourses]
+  const cseen = new Set()
+  const dedupCourses = mergedCourses.filter(c => { if (cseen.has(c.id)) return false; cseen.add(c.id); return true })
+  const allGuides = [...dedupCourses, ...GUIDES]
 
   // 分类过滤：推荐/全部 → 全部；其他 → 按新主分类（旧数据走映射）
   const catMatch = (v) => activeCat === '推荐' || activeCat === '全部' || mapCat(v) === activeCat
@@ -270,8 +248,8 @@ export default function GameStore() {
   const subMatch = (v) => activeSub === '全部' || mapSub(v) === activeSub
   // 学段过滤：旧数据（无 stage）一律归"零基础"
   const stageMatch = (v) => activeStage === '全部' || (v.grade || v.stage || '零基础') === activeStage
-  // 来源过滤：内置 / 管理员投稿 / 全部
-  const isUploaded = (v) => uploadedVideos.some(u => u.id === v.id) || uploadedCourses.some(c => c.id === v.id) || cloudVideos.some(c => c.id === v.id) || cloudCourses.some(c => c.id === v.id)
+  // 来源过滤：内置 / 管理员投稿 / 全部（商城已不展示投稿内容，后台发布课程视为官方内置）
+  const isUploaded = (v) => uploadedVideos.some(u => u.id === v.id) || uploadedCourses.some(c => c.id === v.id)
   const sourceMatch = (v) => activeSource === 'all' || (activeSource === 'uploaded' ? isUploaded(v) : !isUploaded(v))
   const queryMatch = (v) => {
     const q = query.trim().toLowerCase()
@@ -279,11 +257,6 @@ export default function GameStore() {
     return ((v.title || '') + ' ' + (v.desc || '') + ' ' + (v.category || v.cat || '')).toLowerCase().includes(q)
   }
   const filteredVideos = allVideos.filter(v => catMatch(v) && subMatch(v) && stageMatch(v) && sourceMatch(v) && queryMatch(v))
-  // 通关秘籍区 = 投稿课程（云端+本地去重，前） + 内置秘籍（后）
-  const mergedCourses = [...cloudCourses, ...uploadedCourses]
-  const cseen = new Set()
-  const dedupCourses = mergedCourses.filter(c => { if (cseen.has(c.id)) return false; cseen.add(c.id); return true })
-  const allGuides = [...dedupCourses, ...GUIDES]
   const filteredGuides = allGuides.filter(g => catMatch(g) && subMatch(g) && stageMatch(g) && sourceMatch(g) && queryMatch(g))
   // 教材同步组子分类：仅当选中"教材同步"时，从投稿数据里出现过的教材去重自动生成（对标句乐部教材版本动态标签；其他主分类用固定子分类组）
   const allItemsForTextbook = [...allVideos, ...allGuides]
@@ -454,7 +427,7 @@ export default function GameStore() {
                           )}
                           <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{it.eps || (it.kind === 'video' ? '1 集' : '1 关')}</span>
                         </div>
-                        <div className="text-sm font-semibold line-clamp-1">{it.title}</div>
+                        <div className="text-sm font-semibold line-clamp-1 text-gray-900 dark:text-white">{it.title}</div>
                         <div className="text-xs text-gray-400 mt-0.5 truncate">{it.author || '管理员'} · {it.total || 1} 课 · {fmtViews(it.views)} 人在学</div>
                         <UnlockBar game={it} />
                       </div>
@@ -599,7 +572,7 @@ export default function GameStore() {
                         <span className="absolute top-1.5 left-2 text-[10px] text-white bg-primary/80 rounded px-1.5 py-0.5">投稿</span>
                       )}
                     </div>
-                    <div className="text-sm font-semibold line-clamp-1">{it.title}</div>
+                    <div className="text-sm font-semibold line-clamp-1 text-gray-900 dark:text-white">{it.title}</div>
                     <div className="text-xs text-gray-400 mt-0.5 truncate">{it.author || '管理员'} · {it.total || 1} 课 · {fmtViews(it.views)} 人在学</div>
                     {uploaded ? (
                       <div className="mt-2.5 flex items-center">

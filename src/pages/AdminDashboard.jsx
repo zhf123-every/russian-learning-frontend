@@ -722,6 +722,7 @@ export default function AdminDashboard() {
       const localObj = localPub.map(c => ({
         ...c,
         kind: 'course',
+        src: 'admin', // 后台发布课程标记：商城仅展示 src=admin 的课程（投稿课程不展示）
         section: 'guide',
         cat: c.category,
         category: c.category,

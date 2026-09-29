@@ -21,7 +21,7 @@ import { loadUi, THEME_OF } from "../hooks/useQuestSettings";
  * 只覆盖常用工具类，答题页（走 --qs-* 变量）与特殊设计不受影响。
  */
 const DARK_OVERRIDES = `
-html[data-theme="dark"] body { background: #000; }
+html[data-theme="dark"] body { background: #000; color: #f4f4f5; }
 html[data-theme="dark"] .bg-white { background-color: #121214 !important; }
 html[data-theme="dark"] .bg-gray-50, html[data-theme="dark"] .bg-gray-100 { background-color: #161618 !important; }
 html[data-theme="dark"] .bg-gray-200 { background-color: #1d1d20 !important; }
@@ -31,8 +31,9 @@ html[data-theme="dark"] .bg-card { background-color: #141416 !important; }
 html[data-theme="dark"] .bg-background { background-color: #000 !important; }
 html[data-theme="dark"] .text-gray-950, html[data-theme="dark"] .text-gray-900 { color: #f3f4f6 !important; }
 html[data-theme="dark"] .text-gray-800, html[data-theme="dark"] .text-gray-700 { color: #e5e7eb !important; }
-html[data-theme="dark"] .text-gray-600, html[data-theme="dark"] .text-gray-500 { color: #a1a1aa !important; }
-html[data-theme="dark"] .text-gray-400 { color: #71717a !important; }
+html[data-theme="dark"] .text-gray-600, html[data-theme="dark"] .text-gray-500 { color: #c7c7cf !important; }
+html[data-theme="dark"] .text-gray-400 { color: #9ca3af !important; }
+html[data-theme="dark"] .text-gray-300 { color: #b9bcc4 !important; }
 html[data-theme="dark"] .text-foreground { color: #f1f5f9 !important; }
 html[data-theme="dark"] .text-muted-foreground { color: #a8b2c1 !important; }
 html[data-theme="dark"] .border-gray-300, html[data-theme="dark"] .border-gray-200, html[data-theme="dark"] .border-gray-100 { border-color: #2a2a2e !important; }
