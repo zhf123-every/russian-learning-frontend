@@ -280,6 +280,9 @@ export function expandSequencesWithChunks(sequences, wordList) {
   return (Array.isArray(sequences) ? sequences : []).map((seq) => {
     const units = (seq.units || []).flatMap((u) => {
       if (u && u.spellWord) return []; // 拼写单词已融入 chunking（块1单打=打第一个词），去掉避免「Это→Это」重复
+      // 后台滚雪球课程（scaffoldingPaths）：每个 step 已是完整一题（russian=该步句子、chinese=该步中文），
+      // 前端不再二次切块，保证下划线数量、中文提示、发音严格对应同一句
+      if (u && u.scaffoldStepIndex !== undefined) return [u];
       const steps = expandUnitToChunkSteps(u, zhIdx);
       return steps || [u];
     });
