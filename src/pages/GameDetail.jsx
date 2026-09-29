@@ -12,6 +12,7 @@ import { getCourseById } from '../utils/courseService'
 import { getUnitDoneMap } from '../lib/lessonProgress'
 import { getCourseStats, fmtDuration, fmtLastAt } from '../lib/learningStats'
 import { isCoursePurchased } from '../lib/courseAccess'
+import { resolvePlayUrl } from '../lib/playUrl'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { toast } from '../lib/toast'
 
@@ -71,6 +72,18 @@ export default function GameDetail() {
   const [submitting, setSubmitting] = useState(false)
   const [courseStats, setCourseStats] = useState({ totalMs: 0, lastAt: 0 })
   const [purchased, setPurchased] = useState(false)
+
+  // 封面：b2:// 云端封面解析为可显示链接；普通 http/blob 原样使用
+  const [coverSrc, setCoverSrc] = useState('')
+  useEffect(() => {
+    let alive = true
+    const src = game?.posterUrl || game?.thumbnail || game?.cover || ''
+    setCoverSrc(src && String(src).startsWith('b2://') ? '' : src)
+    if (src && String(src).startsWith('b2://')) {
+      resolvePlayUrl(src).then((u) => { if (alive) setCoverSrc(u) }).catch(() => { if (alive) setCoverSrc('') })
+    }
+    return () => { alive = false }
+  }, [game?.posterUrl, game?.thumbnail, game?.cover])
 
   // 学习时长/最近学习 + 购买状态（进入页面时读取；学完返回会重新进入本页刷新）
   useEffect(() => {
@@ -278,8 +291,8 @@ export default function GameDetail() {
           <div className="flex flex-col gap-5 md:flex-row md:gap-6">
             {/* 封面 */}
             <div className={`flex h-[135px] w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-100 md:w-60 ${typeof game.cover === 'string' && game.cover.startsWith('bg-') ? game.cover : ''}`}>
-              {game.posterUrl || game.thumbnail ? (
-                <img src={game.posterUrl || game.thumbnail} alt={game.title} className="h-full w-full object-cover" onError={e => { e.currentTarget.style.display = 'none' }} />
+              {coverSrc ? (
+                <img src={coverSrc} alt={game.title} className="h-full w-full object-cover" onError={() => setCoverSrc('')} />
               ) : (
                 <span className="select-none text-5xl font-black text-purple-700/60">{String(game.title || '课').charAt(0)}</span>
               )}

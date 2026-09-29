@@ -11,6 +11,7 @@ import { useAdminStore } from '../store/adminStore'
 import { toast } from '../lib/toast'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { apiFetch } from '../lib/api'
+import { resolvePlayUrl } from '../lib/playUrl'
 
 // 游戏商城 · 课程包商城（总入口）
 // 课程类（kind=cover）：已解锁点卡片 → 课程详情页 /game/:id（学习路线+大纲）
@@ -175,6 +176,26 @@ export default function GameStore() {
     return c
   })
 
+  // 批量把 b2:// 云端封面解析为可显示链接（后台发布课程走 B2 存储，<img>/CSS 不认 b2:// 协议）
+  const resolveCloudThumbs = async (courses) => {
+    const out = []
+    for (const c of courses) {
+      let item = c
+      const src = c.thumbnail || c.posterUrl || c.cover
+      if (src && String(src).startsWith('b2://')) {
+        try {
+          const u = await resolvePlayUrl(src)
+          if (u && u !== src) {
+            const pick = (v) => (v && String(v).startsWith('b2://')) ? u : v
+            item = { ...c, thumbnail: pick(c.thumbnail), posterUrl: pick(c.posterUrl), cover: pick(c.cover) }
+          }
+        } catch (e) { /* 单张解析失败保留原值 */ }
+      }
+      out.push(item)
+    }
+    return out
+  }
+
   // 页面加载时拉取云端投稿名单，合并展示；若本地有投稿而云端缺失，用管理员密钥自动补同步（所有人可见）
   useEffect(() => {
     let alive = true
@@ -186,7 +207,7 @@ export default function GameStore() {
           const j = JSON.parse(cached)
           if (j && Array.isArray(j.list) && j.list.length) {
             setCloudVideos(j.list.filter(v => v && v.title && (v.videoUrl || v.kind === 'course') && v.kind !== 'course'))
-            setCloudCourses(j.list.filter(v => v && v.kind === 'course' && v.title))
+            setCloudCourses(await resolveCloudThumbs(j.list.filter(v => v && v.kind === 'course' && v.title)))
           }
         }
       } catch (e) { /* 缓存损坏忽略 */ }
@@ -199,7 +220,7 @@ export default function GameStore() {
       } catch (e) { /* 后端不可用时仅显示本地 */ }
       if (!alive) return
       setCloudVideos(cloud.filter(v => v && v.title && (v.videoUrl || v.kind === 'course') && v.kind !== 'course'))
-      setCloudCourses(cloud.filter(v => v && v.kind === 'course' && v.title))
+      setCloudCourses(await resolveCloudThumbs(cloud.filter(v => v && v.kind === 'course' && v.title)))
       try { localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify({ list: cloud, ts: Date.now() })) } catch (e) { /* 容量不足忽略 */ }
       // 自动补同步：登录过管理员 且 本地有投稿（视频或课程），云端缺本地记录 → 推本地完整名单上云
       const localVideos = useGameVideoStore.getState().videos

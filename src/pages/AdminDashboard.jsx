@@ -39,6 +39,7 @@ const emptyForm = () => ({
   students: 0,
   tags: [],
   coverUrl: '',
+  cover: '', // 封面上传 B2 后的持久地址（b2:// 或 dataURL 待上传）
   coverName: '',
   materials: [], // { name, type, url }
 })
@@ -434,11 +435,48 @@ export default function AdminDashboard() {
     setTimeout(() => setToast(''), 2500)
   }
 
-  // 封面图：文件 → objectURL 本地预览
-  const onPickCover = (e) => {
-    const f = e.target.files && e.target.files[0]
+  // 封面图：文件 → dataURL（本地预览 + 待保存/发布时上传 B2 持久化，避免 blob 临时链接刷新失效）
+  const applyCoverFile = async (f) => {
     if (!f) return
-    setForm(prev => ({ ...prev, coverUrl: URL.createObjectURL(f), coverName: f.name }))
+    const dataUrl = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f) })
+    setForm(prev => ({ ...prev, coverUrl: dataUrl, cover: dataUrl, coverName: f.name }))
+    flash('封面已选择：保存或发布时自动上传云端（全网可见）')
+  }
+  const onPickCover = (e) => { applyCoverFile(e.target.files && e.target.files[0]) }
+  const onCoverDrop = (e) => { e.preventDefault(); e.stopPropagation(); applyCoverFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) }
+
+  // 封面 dataURL → 上传 B2（thumbs 目录）→ 返回 b2:// URL；失败返回 ''（用占位图兜底）
+  const uploadCoverToB2 = async (dataUrl) => {
+    try {
+      if (!adminKey) return ''
+      const pr = await apiFetch('/api/upload/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: 'cover_' + Date.now() + '.jpg', kind: 'image', contentType: 'image/jpeg', adminKey })
+      })
+      const pj = await pr.json()
+      if (!pj.ok || !pj.uploadUrl) return ''
+      const blob = await (await fetch(dataUrl)).blob()
+      const res = await new Promise((resolve) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('PUT', pj.uploadUrl, true)
+        xhr.setRequestHeader('Content-Type', 'image/jpeg')
+        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300)
+        xhr.onerror = () => resolve(false)
+        xhr.send(blob)
+      })
+      return res ? pj.objectUrl : ''
+    } catch (e) { return '' }
+  }
+
+  // 保存/发布前解析封面：dataURL → 上传 B2 拿持久地址；已持久化（b2:// 或 http）原样返回
+  const resolveCover = async () => {
+    const raw = form.cover || form.coverUrl || ''
+    if (String(raw).startsWith('data:')) {
+      const b2 = await uploadCoverToB2(raw)
+      return b2 || raw
+    }
+    return raw
   }
 
   // 课件上传：多选（PDF/Word/MP3/MP4）→ 本地 URL 模拟
@@ -458,7 +496,7 @@ export default function AdminDashboard() {
   }
 
   // 组装课程档案对象
-  const buildCourse = (status) => {
+  const buildCourse = (status, coverOverride) => {
     const title = form.title.trim()
     if (!title) { flash('请先填写课程标题'); return null }
     const now = Date.now()
@@ -474,7 +512,7 @@ export default function AdminDashboard() {
       lessons: Number(form.lessons) || 1,
       students: Number(form.students) || 0,
       tags: form.tags,
-      cover: form.coverUrl || 'https://picsum.photos/seed/course_' + now + '/400/280',
+      cover: coverOverride || form.coverUrl || 'https://picsum.photos/seed/course_' + now + '/400/280',
       materials: form.materials,
       isGrammar: form.category === '语法专项', // 一级分类为「语法专项」即语法课程（点亮变格天赋树）
       units: [], // 第二步「课程序」填充
@@ -485,8 +523,9 @@ export default function AdminDashboard() {
   }
 
   // 保存草稿
-  const saveDraft = () => {
-    const base = buildCourse('draft')
+  const saveDraft = async () => {
+    const coverResolved = await resolveCover()
+    const base = buildCourse('draft', coverResolved)
     if (!base) return
     const list = getCourses()
     if (editingId) {
@@ -507,7 +546,8 @@ export default function AdminDashboard() {
 
   // 直接发布上架（发布后自动同步到云端，全网可见，游戏商城页/商城立即可见）
   const publish = async () => {
-    const base = buildCourse('published')
+    const coverResolved = await resolveCover()
+    const base = buildCourse('published', coverResolved)
     if (!base) return
     const list = getCourses()
     if (editingId) {
@@ -542,6 +582,7 @@ export default function AdminDashboard() {
       students: c.students || 0,
       tags: c.tags || [],
       coverUrl: c.cover || '',
+      cover: c.cover || '',
       coverName: '',
       materials: c.materials || [],
     })
@@ -1355,13 +1396,21 @@ export default function AdminDashboard() {
               </div>
 
               <div className="form-control">
-                <label className="label"><span className="label-text">封面图（本地预览）</span></label>
+                <label className="label"><span className="label-text">封面图（可点击选择或拖拽图片到下方区域）</span></label>
                 <input type="file" accept="image/*" className="file-input file-input-bordered file-input-sm" onChange={onPickCover} />
-                {form.coverUrl ? (
-                  <img src={form.coverUrl} alt="封面预览" className="mt-2 h-32 w-full rounded-lg border border-gray-200 object-cover" />
-                ) : (
-                  <div className="mt-2 flex h-32 items-center justify-center rounded-lg border border-dashed border-gray-300 text-xs text-gray-400">未选择封面（发布后自动生成占位图）</div>
-                )}
+                <div
+                  className="group mt-2 h-32 w-full cursor-pointer overflow-hidden rounded-lg border border-gray-200 transition-colors hover:border-primary"
+                  onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                  onDrop={onCoverDrop}
+                  onClick={() => document.querySelector('#admin-cover-picker')?.click()}
+                >
+                  <input id="admin-cover-picker" type="file" accept="image/*" className="hidden" onChange={onPickCover} />
+                  {form.coverUrl ? (
+                    <img src={form.coverUrl} alt="封面预览" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center border border-dashed border-gray-300 text-xs text-gray-400 group-hover:border-primary group-hover:text-primary">点击选择 或 拖拽图片到此处</div>
+                  )}
+                </div>
               </div>
 
               <div className="form-control">

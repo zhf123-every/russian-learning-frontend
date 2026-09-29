@@ -1,8 +1,20 @@
 // ========== 课程服务 · 前台读取课程完整数据（含大纲 lessonsList / 试学配置） ==========
 // 数据源优先级：云端（全网共享，含大纲）→ 本地投稿课程（gameCourseStore）→ 后台发布课程（rb_admin_courses）
 import { apiFetch } from '../lib/api'
+import { resolvePlayUrl } from '../lib/playUrl'
 import { getCourses } from './storage'
 import { useGameCourseStore } from '../store/gameCourseStore'
+
+// b2:// 云端封面（后台发布/投稿课程）→ 预签名可显示链接；http/https/data 原样
+async function resolveCourseCover(course) {
+  if (!course) return null
+  const src = course.posterUrl || course.thumbnail || course.cover
+  if (!src || !String(src).startsWith('b2://')) return course
+  const u = await resolvePlayUrl(src)
+  if (!u || u === src) return course
+  const pick = (v) => (v && String(v).startsWith('b2://')) ? u : v
+  return { ...course, posterUrl: pick(course.posterUrl), thumbnail: pick(course.thumbnail), cover: pick(course.cover) }
+}
 
 /**
  * 根据课程 ID 读取完整课程数据（包括 lessonsList / freeTrialCount / isVipOnly）
@@ -18,7 +30,7 @@ export async function getCourseById(courseId) {
       const j = JSON.parse(cached)
       if (j && Array.isArray(j.list)) {
         const hit = j.list.find(v => v.kind === 'course' && v.id === courseId)
-        if (hit) return hit
+        if (hit) return await resolveCourseCover(hit)
       }
     }
   } catch (e) { /* 缓存损坏忽略 */ }
@@ -28,21 +40,21 @@ export async function getCourseById(courseId) {
     const j = await r.json()
     if (j.ok && Array.isArray(j.videos)) {
       const hit = j.videos.find(v => v.kind === 'course' && v.id === courseId)
-      if (hit) return hit
+      if (hit) return await resolveCourseCover(hit)
     }
   } catch (e) { /* 云端不可用时继续查本地 */ }
 
   // 2) 本地投稿课程（gameCourseStore）
   try {
     const local = useGameCourseStore.getState().find(courseId)
-    if (local) return local
+    if (local) return await resolveCourseCover(local)
   } catch (e) { /* 忽略 */ }
 
   // 3) 后台发布课程（rb_admin_courses）
   try {
     const adminCourses = getCourses()
     const hit = adminCourses.find(c => c.id === courseId)
-    if (hit) return hit
+    if (hit) return await resolveCourseCover(hit)
   } catch (e) { /* 忽略 */ }
 
   return null
