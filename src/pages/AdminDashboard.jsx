@@ -107,7 +107,7 @@ export default function AdminDashboard() {
    【疑问路径】二选一：a) 取肯定句末尾加问号（Иван хорошо знает Анну?）；b) 用疑问词滚雪球（Кто -> Кто знает -> Кто хорошо знает Анну?）
    【不定式路径】零件：читать -> читать книгу -> Иван хочет читать книгу
 8. 强制语义审查：输出前默读中文，如果中文听起来像"我很了解这个和妈妈"，立即停止并结束该 pathId。
-9. 严格输出 JSON 格式：字段为 pathId、steps（含 stepIndex, russian, chinese）。可选附 newChunks / allChunks（每个单词含 word / translation / role / color）。russian 以我提供的单词为核心素材（必须全部用上），允许自动衍生所有必要成分（动词变位/не/疑问词/不定式/形容词/数词/程度副词/时间地点状语），衍生成分不受输入限制。每组生成 15-25 关。只输出 JSON，无任何解释或 markdown 包裹。
+9. 严格输出 JSON 格式：字段为 pathId、steps（含 stepIndex, russian, chinese）。可选附 newChunks / allChunks（每个单词含 word / translation / role / color）。russian 以我提供的单词为核心素材（必须全部用上），允许自动衍生所有必要成分（动词变位/не/疑问词/不定式/形容词/数词/程度副词/时间地点状语），衍生成分不受输入限制。每组生成 10-15 关。只输出 JSON，无任何解释或 markdown 包裹。
 10. 输出前自查：逐条核对 1-8 条铁律，只要有一条不满足就立即修正后再输出。
 单词如下：${words}`
     setGenPrompt(prompt)
@@ -157,7 +157,7 @@ export default function AdminDashboard() {
    【不定式路径】零件：читать -> читать книгу -> Иван хочет читать книгу
 8. 强制语义审查：输出前默读中文，如果中文听起来像"我很了解这个和妈妈"，立即停止并结束该 pathId。
 【输出限制】
-9. 严格输出 JSON **数组**，每个元素为 {"pathId": "...", "steps": [{"stepIndex": 1, "russian": "...", "chinese": "..."}]}。**不要输出 newChunks / allChunks**（后台会自动补全词卡）。russian 以我提供的单词为核心素材（必须全部用上），允许自动衍生所有必要成分（动词变位/не/疑问词/不定式/形容词/数词/程度副词/时间地点状语），衍生成分不受输入限制。每组生成 15-25 关。只输出 JSON，无任何解释或 markdown 包裹。
+9. 严格输出 JSON **数组**，每个元素为 {"pathId": "...", "steps": [{"stepIndex": 1, "russian": "...", "chinese": "..."}]}。**不要输出 newChunks / allChunks**（后台会自动补全词卡）。russian 以我提供的单词为核心素材（必须全部用上），允许自动衍生所有必要成分（动词变位/не/疑问词/不定式/形容词/数词/程度副词/时间地点状语），衍生成分不受输入限制。每组生成 10-15 关。只输出 JSON，无任何解释或 markdown 包裹。
 10. 输出前自查：逐条核对 1-8 条铁律，只要有一条不满足就修正后再输出。
 单词如下：${wordsStr}`
     let attempt = 0
@@ -240,6 +240,7 @@ export default function AdminDashboard() {
     if (!window.confirm(`将按 ${total} 组单词循环调用 AI 生成路径，并自动创建 ${total} 个新课时（第 ${units.length + 1} 课起）。继续？`)) return
     setGenBusy(true)
     let ok = 0, fail = 0
+    const errs = []
     const newUnits = []
     for (let i = 0; i < total; i++) {
       const wordsStr = wordGroups[i].join(', ')
@@ -255,6 +256,7 @@ export default function AdminDashboard() {
         ok++
       } catch (e) {
         fail++
+        errs.push('第 ' + (i + 1) + ' 课：' + (e.message || '未知错误'))
         console.warn('批量第 ' + (i + 1) + ' 课生成失败：', e.message)
       }
     }
@@ -268,7 +270,7 @@ export default function AdminDashboard() {
       }, 400)
     }
     setGenBusy(false)
-    setToast(`✅ 批量完成：成功 ${ok} 课，失败 ${fail} 课` + (fail ? '（失败的组可单独重试）' : `，已自动切换到「${newUnits[newUnits.length - 1]?.title || ''}」并在下方展示路径，可逐课点选检查`))
+    setToast(`✅ 批量完成：成功 ${ok} 课，失败 ${fail} 课` + (fail ? `（原因：${errs[0] || '未知'}）` : `，已自动切换到「${newUnits[newUnits.length - 1]?.title || ''}」并在下方展示路径，可逐课点选检查`))
   }
   const copyPrompt = () => {
     if (!genPrompt) return
