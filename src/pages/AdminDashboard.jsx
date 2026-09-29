@@ -293,6 +293,16 @@ export default function AdminDashboard() {
 
   const snowballLineCount = String(sentencesInput || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).length
 
+  // 删除某条路径中的特定步骤（末步=原句，不可删；删除后步骤重新编号）
+  const removeSnowballStep = (pathId, stepIndex) => {
+    setSnowballResult(prev => (prev || []).map(p => {
+      if (p.pathId !== pathId) return p
+      const steps = p.steps.filter(s => s.stepIndex !== stepIndex).map((s, i) => ({ ...s, stepIndex: i + 1 }))
+      return { ...p, steps }
+    }))
+    setToast(`🗑️ 已删除 ${pathId} 的第 ${stepIndex} 步（删除后步骤已重新编号）`)
+  }
+
   // 保存机器生成+审核的路径到本课时（复用现有合并逻辑）
   const saveSnowball = () => {
     if (!snowballResult || !snowballResult.length) return
@@ -1333,6 +1343,10 @@ export default function AdminDashboard() {
                                 <span className="w-6 shrink-0 text-right text-gray-400">{s.stepIndex}</span>
                                 <span className="font-medium text-gray-800">{s.russian}</span>
                                 <span className="text-gray-500">{s.chinese}</span>
+                                {s.stepIndex < p.steps.length && (
+                                  <button className="ml-auto shrink-0 px-1 text-gray-300 hover:text-red-500" title="删除此步骤（末步=原句，不可删）"
+                                    onClick={() => removeSnowballStep(p.pathId, s.stepIndex)}>✕</button>
+                                )}
                               </div>
                             ))}
                           </div>
