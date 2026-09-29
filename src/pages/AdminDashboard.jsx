@@ -58,6 +58,8 @@ export default function AdminDashboard() {
   const [sentencesInput, setSentencesInput] = useState('')
   const [snowballBusy, setSnowballBusy] = useState(false)
   const [snowballResult, setSnowballResult] = useState(null)
+  const [snowballBatch, setSnowballBatch] = useState(2)
+  const [snowballDone, setSnowballDone] = useState(0)
   const [genPrompt, setGenPrompt] = useState('')
   const [genBusy, setGenBusy] = useState(false)
   const [showGenPrompt, setShowGenPrompt] = useState(false)
@@ -236,13 +238,20 @@ export default function AdminDashboard() {
   }
 
   // 🧊 课文句子 → 机器生成滚雪球 + AI 审核（末步强制=原句；AI 只审核语序/语义/翻译，不编排路径，杜绝发散错误）
-  const genSnowballCourse = async () => {
+  // mode='append'：只生成下一批（少量多次，降低长句 AI 出错率），追加到已有结果；mode='full'：清空后全量重新生成
+  const genSnowballCourse = async (mode = 'append') => {
     const lines = String(sentencesInput || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
     if (!lines.length) { setToast('请先粘贴课文句子（每行一句）'); return }
+    const prevPaths = mode === 'append' ? (snowballResult || []) : []
+    const start = mode === 'append' ? snowballDone : 0
+    const end = mode === 'append' ? Math.min(snowballDone + snowballBatch, lines.length) : lines.length
+    if (mode === 'append' && snowballDone >= lines.length) { setToast('✅ 全部句子都已生成，如需重做请点「重新生成全部」'); return }
     setSnowballBusy(true)
     try {
       const paths = []
-      for (let i = 0; i < lines.length; i++) {
+      const offset = prevPaths.length
+      for (let k = 0; k < end - start; k++) {
+        const i = start + k
         const original = lines[i]
         const tokens = splitTokens(original)
         const machine = buildMachineSteps(tokens)
@@ -263,17 +272,26 @@ export default function AdminDashboard() {
           if (last && lastRuss === origNorm) last.russian = russianizeNumbers(original)
           else steps.push({ stepIndex: steps.length + 1, russian: russianizeNumbers(original), chinese: last ? (last.chinese || '') : '' })
         }
-        // 词卡补全（词表匹配 + 词性规则）
-        paths.push({ pathId: 'path_' + String(i + 1).padStart(2, '0'), steps: buildChunksForSteps(steps) })
+        // 词卡补全（词表匹配 + 词性规则）；pathId 从已有结果数续接，避免重复覆盖
+        paths.push({ pathId: 'path_' + String(offset + k + 1).padStart(2, '0'), steps: buildChunksForSteps(steps) })
       }
-      setSnowballResult(paths)
-      setToast(`✅ 已生成 ${paths.length} 条路径（机器生成 + AI 审核，末步强制=原句），点「保存到本课时」固定入库`)
+      if (mode === 'append') {
+        setSnowballResult([...prevPaths, ...paths])
+        setSnowballDone(end)
+        setToast(`✅ 已追加生成 ${paths.length} 条（共 ${prevPaths.length + paths.length}/${lines.length}），继续点「生成下一批」或直接保存`)
+      } else {
+        setSnowballResult(paths)
+        setSnowballDone(lines.length)
+        setToast(`✅ 已重新生成全部 ${paths.length} 条路径（机器生成 + AI 审核，末步强制=原句），点「保存到本课时」固定入库`)
+      }
       setTimeout(() => { const el = document.getElementById('scaffold-section'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 300)
     } catch (e) {
       setToast('⚠️ 生成失败：' + e.message + '（AI 审核不可用时会退回纯机器路径，中文留空待补）')
     }
     setSnowballBusy(false)
   }
+
+  const snowballLineCount = String(sentencesInput || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).length
 
   // 保存机器生成+审核的路径到本课时（复用现有合并逻辑）
   const saveSnowball = () => {
@@ -1285,8 +1303,16 @@ export default function AdminDashboard() {
                       onChange={e => setSentencesInput(e.target.value)}
                     />
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <button className="btn btn-primary btn-sm" onClick={genSnowballCourse} disabled={snowballBusy}>
-                        {snowballBusy ? '生成+审核中…' : '🧊 机器生成 + AI 审核'}
+                      <label className="flex items-center gap-1 text-xs text-gray-600">每批
+                        <input type="number" min="1" max="5" className="input input-xs input-bordered w-14 text-center" value={snowballBatch}
+                          onChange={e => setSnowballBatch(Math.min(5, Math.max(1, parseInt(e.target.value, 10) || 1)))} />
+                        条
+                      </label>
+                      <button className="btn btn-primary btn-sm" onClick={() => genSnowballCourse('append')} disabled={snowballBusy || snowballDone >= snowballLineCount}>
+                        {snowballBusy ? '生成+审核中…' : snowballDone >= snowballLineCount ? '✅ 已全部生成' : `🧊 生成下一批（${Math.min(snowballDone + 1, snowballLineCount)}-${Math.min(snowballDone + snowballBatch, snowballLineCount)} / ${snowballLineCount}）`}
+                      </button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => genSnowballCourse('full')} disabled={snowballBusy}>
+                        ↺ 重新生成全部
                       </button>
                       {snowballResult && (
                         <button className="btn btn-secondary btn-sm" onClick={saveSnowball}>
@@ -1294,6 +1320,9 @@ export default function AdminDashboard() {
                         </button>
                       )}
                     </div>
+                    {!snowballBusy && snowballDone > 0 && snowballDone < snowballLineCount && (
+                      <p className="mt-1 text-xs text-gray-400">少量多次生成可降低长句出错率；改过句子后请点「重新生成全部」，避免追加错位</p>
+                    )}
                     {snowballResult && (
                       <div className="mt-3 max-h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
                         {snowballResult.map(p => (
