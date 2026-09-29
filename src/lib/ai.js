@@ -24,19 +24,33 @@ export async function callAI(messages) {
   return j.content
 }
 
-// 解析 AI 返回的 JSON（去除 markdown 代码块包裹）
+// 解析 AI 返回的 JSON（去除 markdown 代码块包裹；支持对象与数组）
 export function parseAIJSON(content) {
   let t = (content || '').trim()
   // 去掉 ```json ... ``` 包裹
   t = t.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
-  // 提取 { ... }
-  const a = t.indexOf('{'), b = t.lastIndexOf('}')
-  if (a >= 0 && b > a) t = t.slice(a, b + 1)
+  // 1) 先尝试整体解析（AI 可能直接返回合法 JSON 对象或数组）
   try {
-    return JSON.parse(t)
-  } catch (e) {
-    return null
+    const v = JSON.parse(t)
+    if (v && typeof v === 'object') return v
+  } catch (e) { /* 继续提取 */ }
+  // 2) 提取 [ ... ]（数组）
+  const c = t.indexOf('['), d = t.lastIndexOf(']')
+  if (c >= 0 && d > c) {
+    try {
+      const v = JSON.parse(t.slice(c, d + 1))
+      if (Array.isArray(v)) return v
+    } catch (e) { /* 继续 */ }
   }
+  // 3) 提取 { ... }（对象）
+  const a = t.indexOf('{'), b = t.lastIndexOf('}')
+  if (a >= 0 && b > a) {
+    try {
+      const v = JSON.parse(t.slice(a, b + 1))
+      if (v && typeof v === 'object') return v
+    } catch (e) { return null }
+  }
+  return null
 }
 
 // 语法解释：调用后端 /api/grammar（服务端持有密钥）
