@@ -27,10 +27,11 @@ export function buildMachineSteps(tokens) {
   const n = tokens.length
   const steps = []
   if (!n) return steps
-  const lastStr = tokens.join(' ')
+  // 去重比较：忽略末尾标点（"…город" 与 "…город." 视为同一步，防止重复）
+  const normFull = (arr) => arr.join(' ').replace(/[.,!?;:…]+$/, '').trim()
   if (n <= 3) {
     for (let i = 1; i <= n; i++) steps.push(tokens.slice(0, i))
-    const dedup = steps.filter((s) => s.join(' ') !== lastStr)
+    const dedup = steps.filter((s) => normFull(s) !== normFull(tokens))
     dedup.push(tokens.slice(0))
     return dedup
   }
@@ -55,8 +56,8 @@ export function buildMachineSteps(tokens) {
     }
     g += 3
   }
-  // 末步 = 全句（去重）
-  const dedup = steps.filter((s) => s.join(' ') !== lastStr)
+  // 末步 = 全句（去重：与末步仅差末尾标点的步骤一并去掉）
+  const dedup = steps.filter((s) => normFull(s) !== normFull(tokens))
   dedup.push(tokens.slice(0))
   return dedup
 }
@@ -79,8 +80,12 @@ export async function aiReviewSteps(original, machineSteps) {
    - 禁止使用省略号"..."；禁止括号语法注释（如"这个（与格）"）；禁止"这是"硬拼（"普列斯这是"错误）
    - 每一步的中文单独读出来必须通顺自然、完整、非空，是"当前已拼出部分的含义"用中文通顺表达（允许调整语序、合并意群，但不得增加未拼出的语义）
    - 数字用中文习惯表达（500 лет → 五百年；"这座城市已经有500年了"）
-4. 硬约束：最后一步必须 100% 等于原文整句（含标点），不得增删改。
-5. 末步中文必须是整句的完整、地道翻译（如 "Это мой друг, который живёт в Москве." 的末步中文必须是"这是我的朋友，他住在莫斯科。"，绝对禁止写成最后片段的翻译"在莫斯科。"）。
+   - 常用词用自然中文（родной город → 家乡/故乡，禁止"家乡城市"）；每一步的中文不得与上一步完全重复
+4. 禁止重复步骤（硬要求）：
+   - 两个步骤的 russian 仅相差末尾标点（如"…город"与"…город."）视为重复，必须只保留一个（保留最后一步）
+   - 破折号"—"不应单独成步：若 "Плёс —" 与 "Плёс — это" 两步中文相同，把破折号步合并到下一步
+5. 硬约束：最后一步必须 100% 等于原文整句（含标点），不得增删改。
+6. 末步中文必须是整句的完整、地道翻译（如 "Это мой друг, который живёт в Москве." 的末步中文必须是"这是我的朋友，他住在莫斯科。"，绝对禁止写成最后片段的翻译"在莫斯科。"）。
 
 【输出格式】严格 JSON 对象：
 {"steps":[{"stepIndex":1,"russian":"...","chinese":"..."}, ...]}
@@ -91,6 +96,12 @@ export async function aiReviewSteps(original, machineSteps) {
   const content = await chat({ messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
   const parsed = parseAIJSON(content)
   if (!parsed || !Array.isArray(parsed.steps)) throw new Error('AI 审核未返回合法步骤')
+  // 后处理：去掉与末步仅差末尾标点的重复步骤（防"整句无句号"+"整句有句号"两步并存）
+  if (parsed.steps.length > 1) {
+    const normLast = (s) => String(s.russian || '').replace(/\s+/g, ' ').replace(/[.,!?;:…]+$/, '').trim()
+    const lastNorm = normLast(parsed.steps[parsed.steps.length - 1])
+    parsed.steps = parsed.steps.filter((s, idx) => idx === parsed.steps.length - 1 || normLast(s) !== lastNorm)
+  }
   return parsed.steps
 }
 
