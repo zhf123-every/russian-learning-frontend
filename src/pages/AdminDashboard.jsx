@@ -4,6 +4,7 @@ import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { API_BASE, apiFetch } from '../lib/api'
 import { parseAIJSON, chat } from '../lib/ai'
+import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps } from '../lib/snowballEngine'
 import { useAdminStore } from '../store/adminStore'
 
 // ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
@@ -54,6 +55,9 @@ export default function AdminDashboard() {
   const [saveBanner, setSaveBanner] = useState(null) // 保存课时后的成功横幅 + 下一步引导
   // —— 连词成句课程生成器：单词 → 提示词 ——
   const [genWords, setGenWords] = useState('')
+  const [sentencesInput, setSentencesInput] = useState('')
+  const [snowballBusy, setSnowballBusy] = useState(false)
+  const [snowballResult, setSnowballResult] = useState(null)
   const [genPrompt, setGenPrompt] = useState('')
   const [genBusy, setGenBusy] = useState(false)
   const [showGenPrompt, setShowGenPrompt] = useState(false)
@@ -229,6 +233,59 @@ export default function AdminDashboard() {
       setToast('⚠️ AI 生成失败：' + e.message + '（可改用「生成提示词」复制后到外部 AI 生成再导入）')
     }
     setGenBusy(false)
+  }
+
+  // 🧊 课文句子 → 机器生成滚雪球 + AI 审核（末步强制=原句；AI 只审核语序/语义/翻译，不编排路径，杜绝发散错误）
+  const genSnowballCourse = async () => {
+    const lines = String(sentencesInput || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    if (!lines.length) { setToast('请先粘贴课文句子（每行一句）'); return }
+    setSnowballBusy(true)
+    try {
+      const paths = []
+      for (let i = 0; i < lines.length; i++) {
+        const original = lines[i]
+        const tokens = splitTokens(original)
+        const machine = buildMachineSteps(tokens)
+        let steps = []
+        try {
+          steps = await aiReviewSteps(original, machine)
+        } catch (e) {
+          // AI 审核不可用：退回纯机器路径（中文留空待补，不阻塞生成）
+          steps = machine.map((s, idx) => ({ stepIndex: idx + 1, russian: s.join(' '), chinese: '' }))
+        }
+        steps = (steps || []).filter(s => s && s.russian && String(s.russian).trim())
+        steps = steps.map((s, idx) => ({ ...s, stepIndex: idx + 1 }))
+        // 硬校验：末步必须 100% = 原句
+        if (!verifyFinalStep(steps, original)) {
+          const last = steps[steps.length - 1]
+          const lastRuss = last ? String(last.russian || '').replace(/\s+/g, ' ').trim() : ''
+          const origNorm = original.replace(/\s+/g, ' ').trim()
+          if (last && lastRuss === origNorm) last.russian = original
+          else steps.push({ stepIndex: steps.length + 1, russian: original, chinese: last ? (last.chinese || '') : '' })
+        }
+        // 词卡补全（词表匹配 + 词性规则）
+        paths.push({ pathId: 'path_' + String(i + 1).padStart(2, '0'), steps: buildChunksForSteps(steps) })
+      }
+      setSnowballResult(paths)
+      setToast(`✅ 已生成 ${paths.length} 条路径（机器生成 + AI 审核，末步强制=原句），点「保存到本课时」固定入库`)
+      setTimeout(() => { const el = document.getElementById('scaffold-section'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 300)
+    } catch (e) {
+      setToast('⚠️ 生成失败：' + e.message + '（AI 审核不可用时会退回纯机器路径，中文留空待补）')
+    }
+    setSnowballBusy(false)
+  }
+
+  // 保存机器生成+审核的路径到本课时（复用现有合并逻辑）
+  const saveSnowball = () => {
+    if (!snowballResult || !snowballResult.length) return
+    const prev = [...(activeUnit.scaffoldingPaths || [])]
+    const pathIds = new Set(prev.map(p => p.pathId))
+    snowballResult.forEach(p => {
+      if (pathIds.has(p.pathId)) { const i = prev.findIndex(x => x.pathId === p.pathId); prev[i] = p }
+      else { prev.push(p); pathIds.add(p.pathId) }
+    })
+    patchUnit({ scaffoldingPaths: prev })
+    setToast(`✅ 已保存 ${snowballResult.length} 条路径到本课时，记得点「保存课时内容」固定入库`)
   }
 
   // 🚀 批量生成：多组单词（每组一行=一课）→ 循环 AI 生成 → 自动创建课时并保存
@@ -1212,6 +1269,45 @@ export default function AdminDashboard() {
                           onChange={e => setGenPrompt(e.target.value)}
                           placeholder="生成的提示词可在此直接编辑（增删单词/规则），改完点「一键复制」复制修改后的版本"
                         />
+                      </div>
+                    )}
+
+                    {/* 课文句子 → 机器生成滚雪球 + AI 审核（用户拍板方案：机器按拆词规则生成，AI 只审核语义/语序，末步强制=原句） */}
+                    <div className="divider my-3 text-xs text-gray-400">或：课文句子 → 机器生成 + AI 审核（末步强制=原句）</div>
+                    <label className="label pb-1">
+                      <span className="label-text text-xs text-gray-600">粘贴课文句子（每行一句）：先按拆词规则机器生成路径，再交 AI 审核语序/语义并翻译中文，最后一步 100% 等于原句</span>
+                    </label>
+                    <textarea
+                      className="textarea textarea-bordered w-full font-mono text-xs"
+                      rows={4}
+                      placeholder={'Улица Чистые пруды — это старая улица в центре Москвы.\nЭта улица небольшая, но известная.'}
+                      value={sentencesInput}
+                      onChange={e => setSentencesInput(e.target.value)}
+                    />
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button className="btn btn-primary btn-sm" onClick={genSnowballCourse} disabled={snowballBusy}>
+                        {snowballBusy ? '生成+审核中…' : '🧊 机器生成 + AI 审核'}
+                      </button>
+                      {snowballResult && (
+                        <button className="btn btn-secondary btn-sm" onClick={saveSnowball}>
+                          💾 保存到本课时（{snowballResult.length} 条路径）
+                        </button>
+                      )}
+                    </div>
+                    {snowballResult && (
+                      <div className="mt-3 max-h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
+                        {snowballResult.map(p => (
+                          <div key={p.pathId} className="mb-2 rounded border border-gray-200 bg-white p-2">
+                            <div className="mb-1 text-xs font-semibold text-gray-600">{p.pathId}</div>
+                            {p.steps.map(s => (
+                              <div key={s.stepIndex} className="flex items-baseline gap-2 py-0.5 text-xs">
+                                <span className="w-6 shrink-0 text-right text-gray-400">{s.stepIndex}</span>
+                                <span className="font-medium text-gray-800">{s.russian}</span>
+                                <span className="text-gray-500">{s.chinese}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

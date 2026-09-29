@@ -1,0 +1,120 @@
+// 滚雪球课程引擎：机器按拆词规则生成路径（保证末步=原句）→ AI 审核修正语序/语义/逻辑 → 硬校验
+// 思路（用户确认）：第一步第1个词 → 第二步前2个词 → 第三步第3个词 → 第四步前3个词 →
+// 后续每组3词：零件-零件-组装 → 最后一步必须 100% 等于原句。
+// AI 只负责审核（语序不通/逻辑不顺/语义不当）与中文翻译，不参与路径结构编排，杜绝"AI 发癫"。
+import { chat } from './ai'
+import { parseAIJSON } from './ai'
+
+// 1. 拆 token：按空格拆分；独立标点（如 ", " 开头的逗号）附着到前一个词；词尾标点（"Москвы."）保持附着
+export function splitTokens(sentence) {
+  const raw = String(sentence || '').trim().split(/\s+/).filter(Boolean)
+  const tokens = []
+  for (const w of raw) {
+    if (/^[.,!?;:…]+$/.test(w) && tokens.length) {
+      tokens[tokens.length - 1] += w
+    } else {
+      tokens.push(w)
+    }
+  }
+  return tokens
+}
+
+// 2. 机器生成步骤（确定性规则，用户确认的"零件-组装交替"模式）
+//   组1（词1-3）：w1 → w1+w2 → w3 → w1+w2+w3
+//   后续组（每3词，从词4起）：wk → wk+1 → wk+wk+1+wk+2
+//   末步强制 = 全句（去重后追加）
+export function buildMachineSteps(tokens) {
+  const n = tokens.length
+  const steps = []
+  if (!n) return steps
+  const lastStr = tokens.join(' ')
+  if (n <= 3) {
+    for (let i = 1; i <= n; i++) steps.push(tokens.slice(0, i))
+    const dedup = steps.filter((s) => s.join(' ') !== lastStr)
+    dedup.push(tokens.slice(0))
+    return dedup
+  }
+  // 组1：w1 / w1+w2 / w3 / w1+w2+w3
+  steps.push(tokens.slice(0, 1))
+  steps.push(tokens.slice(0, 2))
+  steps.push(tokens.slice(2, 3))
+  steps.push(tokens.slice(0, 3))
+  // 后续组（每3词）：wk / wk+1 / wk..wk+2
+  let g = 3
+  while (g < n) {
+    const left = n - g
+    if (left >= 3) {
+      steps.push(tokens.slice(g, g + 1))
+      steps.push(tokens.slice(g + 1, g + 2))
+      steps.push(tokens.slice(g, g + 3))
+    } else if (left === 2) {
+      steps.push(tokens.slice(g, g + 1))
+      steps.push(tokens.slice(g, g + 2))
+    } else {
+      steps.push(tokens.slice(g, g + 1))
+    }
+    g += 3
+  }
+  // 末步 = 全句（去重）
+  const dedup = steps.filter((s) => s.join(' ') !== lastStr)
+  dedup.push(tokens.slice(0))
+  return dedup
+}
+
+// 3. AI 审核：修正语序/语义/逻辑，合并歧义碎片，翻译中文；末步必须=原句
+export async function aiReviewSteps(original, machineSteps) {
+  const system = '你是一位严格的俄语教学滚雪球课程审核员。只输出 JSON，不要任何解释或 markdown 包裹。'
+  const user = `用户将"机器按拆词规则生成的滚雪球步骤"发给你。请审核并修正，产出符合"句乐部"学习逻辑（先学零件→再组装→再变形）的最终步骤。
+
+【审核修正任务】
+1. 语义与语序审核：逐条检查每个步骤的俄语片段是否语序通顺、语义自然、符合俄语表达习惯。发现问题必须修正：
+   - 专有名词与固定搭配应作为整体先出现（如 "Чистые пруды"、"в центре Москвы"、"Александр Меньшиков" 不应被拆成读不通的碎片步骤）
+   - 语法上必须成对出现的成分（如 "небольшая, но известная"、"знают и любят"）尽量出现在同一步骤
+   - 合并或删除会产生歧义、读不通的碎片步骤，让每一步都"读得通、有教学意义"
+2. 保持滚雪球精神：每步比上一步多一个词或一个最小语法成分，由短到长逐步组装；步骤数量可以增减，一般 5-12 步。
+3. 中文翻译：为每一步给出当前俄语片段的地道中文翻译（是"当前已拼出的部分"的中文，随长度逐步完整，不是整句翻译；也不得逐词硬拼）。
+4. 硬约束：最后一步必须 100% 等于原文整句（含标点），不得增删改。
+
+【输出格式】严格 JSON 对象：
+{"steps":[{"stepIndex":1,"russian":"...","chinese":"..."}, ...]}
+只输出 JSON。
+
+原文：${original}
+机器生成的步骤：${JSON.stringify(machineSteps.map((s) => s.join(' ')))}`
+  const content = await chat({ messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
+  const parsed = parseAIJSON(content)
+  if (!parsed || !Array.isArray(parsed.steps)) throw new Error('AI 审核未返回合法步骤')
+  return parsed.steps
+}
+
+// 4. 硬校验：末步必须=原句（含标点，忽略多余空格）
+export function verifyFinalStep(steps, original) {
+  const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim()
+  const last = steps && steps.length ? norm(steps[steps.length - 1].russian) : ''
+  return !!last && last === norm(original)
+}
+
+// 5. 词卡补全：词表匹配 + 词性规则（与后台现有 makeChunk 逻辑一致，供新工具复用）
+export function buildChunksForSteps(steps) {
+  let vocab = []
+  try { vocab = JSON.parse(localStorage.getItem('rlearn_v1_vocab') || '[]') } catch (e) { vocab = [] }
+  const vocabMap = {}
+  vocab.forEach((c) => { if (c && c.word) { const k = String(c.word).toLowerCase(); if (k && !vocabMap[k]) vocabMap[k] = c } })
+  const posColor = { '名词': 'orange', '动词': 'red', '形容词': 'green', '副词': 'green', '代词': 'orange', '数词': 'green', '连接词': 'gray', '疑问词': 'purple', '语气词': 'gray' }
+  const makeChunk = (w) => {
+    const clean = String(w).toLowerCase().replace(/[.,!?;:«»"'()—]/g, '')
+    const c = vocabMap[clean]
+    let role = '', color = 'orange'
+    if (['не', 'и', 'а', 'но', 'да', 'тоже', 'очень', 'конечно'].includes(clean)) { role = '连接/语气词'; color = 'gray' }
+    else if (['что', 'кто', 'как', 'когда', 'где', 'почему'].includes(clean)) { role = '疑问词'; color = 'purple' }
+    else if (/(ть|тся|чь)$/.test(clean)) { role = '动词'; color = 'red' }
+    if (c) { role = c.pos || role; color = posColor[role] || color }
+    return { word: w, translation: c ? (c.chinese || '') : '', role, color }
+  }
+  return steps.map((st) => {
+    const tokens = String(st.russian || '').trim().split(/\s+/).filter(Boolean)
+    let prevWords = new Set()
+    const newTokens = tokens.filter((t) => !prevWords.has(t.toLowerCase()) && (prevWords.add(t.toLowerCase()), true))
+    return { ...st, newChunks: newTokens.map(makeChunk), allChunks: tokens.map(makeChunk) }
+  })
+}
