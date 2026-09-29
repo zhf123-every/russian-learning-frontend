@@ -14,6 +14,17 @@ export function prefetchCloudList() {
     .then((j) => {
       cached = j
       inflight = null
+      // 顺手预载所有课程封面：触发下载 + 写入 Service Worker 缓存，用户看到封面时无需等待
+      try {
+        const courses = (j.videos || []).filter((v) => v && v.kind === 'course')
+        const urls = courses
+          .map((c) => c.thumbnail || c.posterUrl || c.cover)
+          .filter((u) => u && String(u).startsWith('http'))
+        urls.forEach((u) => {
+          const img = new Image()
+          img.src = u
+        })
+      } catch (e) { /* 预载失败不影响主流程 */ }
       return j
     })
     .catch((e) => {
