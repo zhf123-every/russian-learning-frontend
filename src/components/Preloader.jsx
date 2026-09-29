@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { cacheLesson, cacheTtsUrl, cacheTtsAudio } from "../utils/ttsPreloadShared";
 import { ensureDictFull, warmUpIndex } from "../lib/wordAnnotate";
+import { apiFetch } from "../lib/api";
 
 // 后端基址（与各答题页一致：dev 走本地 8000，生产走 VITE_API_BASE）
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -106,8 +107,34 @@ export default function Preloader() {
         try {
           lesson = JSON.parse(sessionStorage.getItem("rlearn_local_lesson_" + unitId) || "null");
         } catch (e) { lesson = null; }
-        if (lesson && ((Array.isArray(lesson.sentences) && lesson.sentences.length) || (Array.isArray(lesson.scaffoldingPaths) && lesson.scaffoldingPaths.length))) {
-          sentences = lesson.sentences.filter((x) => x && x.ru).map((x) => x.ru);
+        const lessonHasContent = (x) => x && ((Array.isArray(x.sentences) && x.sentences.length) || (Array.isArray(x.scaffoldingPaths) && x.scaffoldingPaths.length));
+        // 兜底①：本地课程库（后台课时持久化 rb_admin_courses）
+        if (!lessonHasContent(lesson)) {
+          try {
+            const courses = JSON.parse(localStorage.getItem("rb_admin_courses") || "[]");
+            for (const c of courses) {
+              const u = (Array.isArray(c.units) ? c.units : []).find((x) => x.id === unitId || x.id === courseId);
+              if (lessonHasContent(u)) { lesson = u; break; }
+            }
+          } catch (e) { /* 忽略 */ }
+        }
+        // 兜底②：云端课程库（后台已同步到 B2，访客无 localStorage 也能学）
+        if (!lessonHasContent(lesson)) {
+          try {
+            const cloudRes = await apiFetch("/api/videos/list");
+            const cloudJson = await cloudRes.json();
+            if (cloudJson.ok && Array.isArray(cloudJson.videos)) {
+              for (const v of cloudJson.videos) {
+                if (v && v.kind === "course" && Array.isArray(v.units)) {
+                  const u = v.units.find((x) => x.id === unitId || x.id === courseId);
+                  if (lessonHasContent(u)) { lesson = u; break; }
+                }
+              }
+            }
+          } catch (e) { /* 云端不可用，走后端 */ }
+        }
+        if (lessonHasContent(lesson)) {
+          sentences = (lesson.sentences || []).filter((x) => x && x.ru).map((x) => x.ru);
           // 课时内容为滚雪球路径（scaffoldingPaths）时：直接提取各步骤俄语句子，无需后端
           if (!sentences.length && Array.isArray(lesson.scaffoldingPaths)) {
             sentences = lesson.scaffoldingPaths.flatMap((p) => (Array.isArray(p.steps) ? p.steps : []).map((s) => String(s.russian || s.ru || "").trim()).filter(Boolean));
