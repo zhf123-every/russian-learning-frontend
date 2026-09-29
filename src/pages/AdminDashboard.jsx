@@ -293,6 +293,14 @@ export default function AdminDashboard() {
 
   const snowballLineCount = String(sentencesInput || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).length
 
+  // 编辑结果预览中的某一步（russian/chinese 可直接改，保存时用改后的值）
+  const updateSnowballStep = (pathId, stepIndex, field, value) => {
+    setSnowballResult(prev => (prev || []).map(p => {
+      if (p.pathId !== pathId) return p
+      return { ...p, steps: p.steps.map(s => (s.stepIndex === stepIndex ? { ...s, [field]: value } : s)) }
+    }))
+  }
+
   // 删除某条路径中的特定步骤（末步=原句，不可删；删除后步骤重新编号）
   const removeSnowballStep = (pathId, stepIndex) => {
     setSnowballResult(prev => (prev || []).map(p => {
@@ -1339,12 +1347,14 @@ export default function AdminDashboard() {
                           <div key={p.pathId} className="mb-2 rounded border border-gray-200 bg-white p-2">
                             <div className="mb-1 text-xs font-semibold text-gray-600">{p.pathId}</div>
                             {p.steps.map(s => (
-                              <div key={s.stepIndex} className="flex items-baseline gap-2 py-0.5 text-xs">
+                              <div key={s.stepIndex} className="flex items-center gap-1.5 py-0.5 text-xs">
                                 <span className="w-6 shrink-0 text-right text-gray-400">{s.stepIndex}</span>
-                                <span className="font-medium text-gray-800">{s.russian}</span>
-                                <span className="text-gray-500">{s.chinese}</span>
+                                <input className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 font-medium text-gray-800 focus:border-purple-400 focus:outline-none"
+                                  value={s.russian} onChange={e => updateSnowballStep(p.pathId, s.stepIndex, 'russian', e.target.value)} />
+                                <input className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-gray-500 focus:border-purple-400 focus:outline-none"
+                                  value={s.chinese || ''} onChange={e => updateSnowballStep(p.pathId, s.stepIndex, 'chinese', e.target.value)} />
                                 {s.stepIndex < p.steps.length && (
-                                  <button className="ml-auto shrink-0 px-1 text-gray-300 hover:text-red-500" title="删除此步骤（末步=原句，不可删）"
+                                  <button className="ml-1 shrink-0 px-1 text-gray-300 hover:text-red-500" title="删除此步骤（末步=原句，不可删）"
                                     onClick={() => removeSnowballStep(p.pathId, s.stepIndex)}>✕</button>
                                 )}
                               </div>
