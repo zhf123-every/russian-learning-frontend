@@ -172,10 +172,9 @@ export default function GameStore() {
     return c
   })
 
-  // 批量把 b2:// 云端封面解析为可显示链接（后台发布课程走 B2 存储，<img>/CSS 不认 b2:// 协议）
+  // 批量把 b2:// 云端封面解析为可显示链接（后台发布课程走 B2 存储，<img>/CSS 不认 b2:// 协议）；并行解析，多课程同时请求更快
   const resolveCloudThumbs = async (courses) => {
-    const out = []
-    for (const c of courses) {
+    const entries = await Promise.all(courses.map(async (c) => {
       let item = c
       const src = c.thumbnail || c.posterUrl || c.cover
       if (src && String(src).startsWith('b2://')) {
@@ -187,9 +186,9 @@ export default function GameStore() {
           }
         } catch (e) { /* 单张解析失败保留原值 */ }
       }
-      out.push(item)
-    }
-    return out
+      return item
+    }))
+    return entries
   }
 
   // 页面加载时拉取云端投稿名单，合并展示；若本地有投稿而云端缺失，用管理员密钥自动补同步（所有人可见）
@@ -216,8 +215,16 @@ export default function GameStore() {
       } catch (e) { /* 后端不可用时仅显示本地 */ }
       if (!alive) return
       setCloudVideos(cloud.filter(v => v && v.title && (v.videoUrl || v.kind === 'course') && v.kind !== 'course'))
-      setCloudCourses(await resolveCloudThumbs(cloud.filter(v => v && v.kind === 'course' && v.title)))
-      try { localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify({ list: cloud, ts: Date.now() })) } catch (e) { /* 容量不足忽略 */ }
+      const resolvedCourses = await resolveCloudThumbs(cloud.filter(v => v && v.kind === 'course' && v.title))
+      setCloudCourses(resolvedCourses)
+      // 写回缓存：把解析后的封面 URL（https）存进缓存，下次打开直接显示，无需再请求解析
+      try {
+        const resolvedCloud = cloud.map(v => {
+          const hit = resolvedCourses.find(x => x.id === v.id)
+          return hit || v
+        })
+        localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify({ list: resolvedCloud, ts: Date.now() }))
+      } catch (e) { /* 容量不足忽略 */ }
       // 注：投稿上云由投稿弹窗（投稿视频/投稿课程）负责；商城页不再自动把本地投稿推上云
     }
     loadCloud()
