@@ -134,12 +134,6 @@ export default function CourseDetail() {
           {/* 底部：统计 + CTA */}
           <div className="detail-footer-bottom mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-3">
             <div className="detail-stats flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-              <span className="detail-author inline-flex items-center gap-1.5">
-                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                  {String(course.author || '管').charAt(0)}
-                </span>
-                <span className="truncate">{course.author || '管理员'}</span>
-              </span>
               <span className="detail-stat-usage inline-flex items-center gap-1">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                 {fmtViews(course.views ?? course.students ?? 0)} 人使用

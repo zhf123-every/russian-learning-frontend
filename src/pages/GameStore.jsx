@@ -419,7 +419,7 @@ export default function GameStore() {
                           <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{it.eps || (it.kind === 'video' ? '1 集' : '1 关')}</span>
                         </div>
                         <div className="text-sm font-semibold line-clamp-1 text-gray-900 dark:text-white">{it.title}</div>
-                        <div className="text-xs text-gray-400 mt-0.5 truncate">{it.author || '管理员'} · {it.total || 1} 课 · {fmtViews(it.views)} 人在学</div>
+                        <div className="text-xs text-gray-400 mt-0.5 truncate">{it.total || 1} 课 · {fmtViews(it.views)} 人在学</div>
                         <UnlockBar game={it} />
                       </div>
                     ))}
@@ -548,7 +548,7 @@ export default function GameStore() {
                       )}
                     </div>
                     <div className="text-sm font-semibold line-clamp-1 text-gray-900 dark:text-white">{it.title}</div>
-                    <div className="text-xs text-gray-400 mt-0.5 truncate">{it.author || '管理员'} · {it.total || 1} 课 · {fmtViews(it.views)} 人在学</div>
+                    <div className="text-xs text-gray-400 mt-0.5 truncate">{it.total || 1} 课 · {fmtViews(it.views)} 人在学</div>
                     {uploaded ? (
                       <div className="mt-2.5 flex items-center">
                         <span className="inline-flex items-center gap-1 text-xs font-semibold text-success">
