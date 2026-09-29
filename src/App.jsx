@@ -32,8 +32,15 @@ import SaveProficiency from './pages/SaveProficiency'
 import SaveUnknown from './pages/SaveUnknown'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminLessons from './pages/AdminLessons'
+import { useEffect } from 'react'
+import { prefetchCloudList } from './lib/cloudPrefetch'
 
 export default function App() {
+  // 应用启动即在后台预拉云端课程名单（含 https 封面），进商城页时封面直接秒出
+  useEffect(() => {
+    prefetchCloudList().catch(() => { /* 后端不可用则商城页自行拉取 */ })
+  }, [])
+
   return (
     <Routes>
       {/* 全屏沉浸页：不套外壳（答题 / 听写 / 测试 / 五步精听学习进行页） */}

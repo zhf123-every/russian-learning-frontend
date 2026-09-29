@@ -9,6 +9,7 @@ import { useAdminStore } from '../store/adminStore'
 import { toast } from '../lib/toast'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { apiFetch } from '../lib/api'
+import { getCloudCache } from '../lib/cloudPrefetch'
 import { resolvePlayUrl } from '../lib/playUrl'
 
 // 游戏商城 · 课程包商城（总入口）
@@ -206,25 +207,33 @@ export default function GameStore() {
           }
         }
       } catch (e) { /* 缓存损坏忽略 */ }
-      // ② 再拉云端名单（后台静默刷新，成功后写回缓存）
+      // ② 拉云端名单：先渲染 App 启动时预拉的内存缓存（含 https 封面 → 秒出），再现场拉最新名单刷新（保证新发布课程可见）
+      const applyCloud = async (cloudList) => {
+        if (!alive) return
+        setCloudVideos(cloudList.filter(v => v && v.title && (v.videoUrl || v.kind === 'course') && v.kind !== 'course'))
+        const resolvedCourses = await resolveCloudThumbs(cloudList.filter(v => v && v.kind === 'course' && v.title))
+        if (!alive) return
+        setCloudCourses(resolvedCourses)
+        // 写回缓存：把解析后的封面 URL（https）存进缓存，下次打开直接显示，无需再请求解析
+        try {
+          const resolvedCloud = cloudList.map(v => {
+            const hit = resolvedCourses.find(x => x.id === v.id)
+            return hit || v
+          })
+          localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify({ list: resolvedCloud, ts: Date.now() }))
+        } catch (e) { /* 容量不足忽略 */ }
+      }
+      const mem = getCloudCache()
+      if (mem && mem.ok && Array.isArray(mem.videos) && mem.videos.length) {
+        applyCloud(mem.videos) // 不 await：立即渲染内存名单（封面已就绪 → 秒出）
+      }
       let cloud = []
       try {
         const r = await apiFetch('/api/videos/list')
         const j = await r.json()
         if (j.ok && Array.isArray(j.videos)) cloud = j.videos
       } catch (e) { /* 后端不可用时仅显示本地 */ }
-      if (!alive) return
-      setCloudVideos(cloud.filter(v => v && v.title && (v.videoUrl || v.kind === 'course') && v.kind !== 'course'))
-      const resolvedCourses = await resolveCloudThumbs(cloud.filter(v => v && v.kind === 'course' && v.title))
-      setCloudCourses(resolvedCourses)
-      // 写回缓存：把解析后的封面 URL（https）存进缓存，下次打开直接显示，无需再请求解析
-      try {
-        const resolvedCloud = cloud.map(v => {
-          const hit = resolvedCourses.find(x => x.id === v.id)
-          return hit || v
-        })
-        localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify({ list: resolvedCloud, ts: Date.now() }))
-      } catch (e) { /* 容量不足忽略 */ }
+      if (cloud.length) await applyCloud(cloud)
       // 注：投稿上云由投稿弹窗（投稿视频/投稿课程）负责；商城页不再自动把本地投稿推上云
     }
     loadCloud()
