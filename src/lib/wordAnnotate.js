@@ -55,8 +55,9 @@ function countVowels(word) {
 function toStress(word) {
   if (!word) return "";
   const bare = (word || "").replace(/'/g, "");
-  if (countVowels(bare) <= 1) return bare;
-  return bare.replace(/'/g, "\u0301");
+  if (countVowels(bare) <= 1) return bare; // 单音节词不标重音
+  // 把词典撇号重音转成组合重音符号（必须在含撇号的原文上替换，不能先删撇号再替换）
+  return (word || "").replace(/'/g, "\u0301");
 }
 
 const CASE_CODES = ["nom", "gen", "dat", "acc", "inst", "prep"];
