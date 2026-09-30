@@ -252,70 +252,90 @@ export default function AnswerPanel({
         {/* 单词卡片行 */}
         {words.length > 0 ? (
           <div style={styles.cardsRow}>
-            {words.map((w, i) => {
-              // 颜色：下划线用词性色（设置面板 posColors → 数据词性色 → 词性映射），边框/标签用句法角色色（对齐句乐部两套颜色）
-              const posVisMap = uiCfg.posVis || {};
-              if (w.pos && posVisMap[w.pos] === false) return null;
-              const customPosColor = posColorOf(uiCfg, w.pos);
-              const underlineColor = customPosColor || w.posColor || getPosColor(w.pos) || "";
-              const roleColor = getRoleColor(w.syntacticRole);
-              const effColor = underlineColor || roleColor || "#9CA3AF"; // 下划线主色
-              // 边框/标签：有真实角色色用角色色；虚词/无角色（映射缺失=灰）回退词性色，杜绝灰边框
-              const borderColor = (w.syntacticRole && w.syntacticRole !== "default" && ROLE_COLORS[w.syntacticRole]) ? roleColor : effColor;
-              const roleLabel = w.roleLabel || getRoleLabel(w.syntacticRole);
-              // 显示带重音符的词形：优先 form（带重音），其次 stress_marked / lemma；撇号重音转为组合重音 ´
-              const toStress = (s) => String(s || "").replace(/'/g, "\u0301");
-              const displayWord = toStress(w.form || w.stress_marked || w.lemma || "");
-              const posLabel = getPosLabel(w.pos);
-              // 语法标注：优先数据预组装的中文（新 build-steps），否则按英文枚举构建（旧数据）
-              const grammarLabel = w.grammarLabel || buildGrammarLabel(w);
-              const chinese = w.chinese || w.meaning || w.translation || "";
-
+            {(() => {
+              // 相邻且句法角色相同（非 default/待确认）的词 → 合并为一个外框（词内部各自保留下划线/释义/语法，不再各自画边框）
+              const posVisMap0 = uiCfg.posVis || {};
+              const visWords = [];
+              words.forEach((w, i) => { if (!(w.pos && posVisMap0[w.pos] === false)) visWords.push({ w, i }); });
+              const merged = [];
+              for (const item of visWords) {
+                const last = merged[merged.length - 1];
+                const lastW = last && last.items[last.items.length - 1].w;
+                const canMerge = lastW && item.w.syntacticRole && lastW.syntacticRole
+                  && item.w.syntacticRole !== "default" && item.w.syntacticRole !== "待确认"
+                  && item.w.syntacticRole === lastW.syntacticRole;
+                if (canMerge) last.items.push(item);
+                else merged.push({ items: [item] });
+              }
               return (
-                <div
-                  key={i}
-                  className="word-card"
-                  style={{
-                    ...styles.wordCard,
-                    borderColor: `${borderColor}60`,
-                  }}
-                  onClick={() => speakRussian(displayWord, w.audio_url, w.id, "word")}
-                  title="点击发音"
-                >
-                  {/* 顶部：句法角色标签（角色色）；default/待确认等无效标签不显示 */}
-                  {roleLabel && roleLabel !== "default" && roleLabel !== "待确认" && (
-                    <span style={{ ...styles.roleTag, background: borderColor }}>
-                      {roleLabel}
-                    </span>
-                  )}
-
-                  {/* 重音符（灰色小字） */}
-                  <div style={styles.phonetic}>{displayWord}</div>
-
-                  {/* 大字单词 */}
-                  <div className="word-card-bigword" style={{ ...styles.bigWord, color: "var(--qs-text, #1F2937)" }}>
-                    {displayWord}
-                  </div>
-
-                  {/* 彩色下划线（词性色，与边框/标签的角色色分离） */}
-                  <div style={{ ...styles.underline, background: effColor }} />
-
-                  {/* 中文释义 */}
-                  {uiCfg.showWordTrans !== false && chinese && <div style={styles.chinese}>{chinese}</div>}
-
-                  {/* 语法标注（性数格） */}
-                  {grammarLabel && <div style={{ ...styles.pos, fontSize: "10px", color: "var(--qs-sub, #9CA3AF)", marginTop: "2px" }}>{grammarLabel}</div>}
-
-                  {/* 词性（词性色，深夜模式同样生效） */}
-                  {uiCfg.showPos !== false && posLabel && <div style={{ ...styles.pos, color: effColor }}>{posLabel}</div>}
-                </div>
+                <>
+                  {merged.map((g, gi) => {
+                    const first = g.items[0].w;
+                    const gRole = first.syntacticRole;
+                    const gRoleColor = getRoleColor(gRole);
+                    const gBorder = (gRole && gRole !== "default" && ROLE_COLORS[gRole]) ? gRoleColor : null;
+                    const isGroup = g.items.length > 1;
+                    const gLabel = (gRole && gRole !== "default" && gRole !== "待确认") ? (getRoleLabel(gRole) || gRole) : "";
+                    return (
+                      <Fragment key={gi}>
+                        <div
+                          className="word-card"
+                          style={isGroup
+                            ? { ...styles.wordCard, borderColor: gBorder ? `${gBorder}60` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
+                            : { ...styles.wordCard, borderColor: gBorder ? `${gBorder}60` : "var(--qs-border, #E5E7EB)" }}
+                        >
+                          {gLabel && <span style={{ ...styles.roleTag, background: gBorder || "#9CA3AF" }}>{gLabel}</span>}
+                          {g.items.map(({ w, i }, j) => {
+                            // 颜色：下划线用词性色，边框/标签用句法角色色（两套颜色分离）
+                            const customPosColor = posColorOf(uiCfg, w.pos);
+                            const underlineColor = customPosColor || w.posColor || getPosColor(w.pos) || "";
+                            const roleColor = getRoleColor(w.syntacticRole);
+                            const effColor = underlineColor || roleColor || "#9CA3AF";
+                            // 显示带重音符的词形：优先 form（带重音），其次 stress_marked / lemma
+                            const toStress = (s) => String(s || "").replace(/'/g, "\u0301");
+                            const displayWord = toStress(w.form || w.stress_marked || w.lemma || "");
+                            const posLabel = getPosLabel(w.pos);
+                            const grammarLabel = w.grammarLabel || buildGrammarLabel(w);
+                            const chinese = w.chinese || w.meaning || w.translation || "";
+                            const cellStyle = {
+                              display: "flex", flexDirection: "column", alignItems: "center",
+                              padding: "0 14px", minWidth: 100, minHeight: 190, justifyContent: "flex-start",
+                              cursor: "pointer",
+                              borderRight: (isGroup && j < g.items.length - 1) ? ("1px dashed " + (gBorder ? `${gBorder}40` : "var(--qs-border, #E5E7EB)")) : "none",
+                            };
+                            return (
+                              <Fragment key={i}>
+                                <div
+                                  style={cellStyle}
+                                  onClick={() => speakRussian(displayWord, w.audio_url, w.id, "word")}
+                                  title="点击发音"
+                                >
+                                  {/* 重音符（灰色小字） */}
+                                  <div style={styles.phonetic}>{displayWord}</div>
+                                  {/* 大字单词 */}
+                                  <div className="word-card-bigword" style={{ ...styles.bigWord, color: "var(--qs-text, #1F2937)" }}>
+                                    {displayWord}
+                                  </div>
+                                  {/* 彩色下划线（词性色） */}
+                                  <div style={{ ...styles.underline, background: effColor }} />
+                                  {/* 中文释义 */}
+                                  {uiCfg.showWordTrans !== false && chinese && <div style={styles.chinese}>{chinese}</div>}
+                                  {/* 语法标注（性数格） */}
+                                  {grammarLabel && <div style={{ ...styles.pos, fontSize: "10px", color: "var(--qs-sub, #9CA3AF)", marginTop: "2px" }}>{grammarLabel}</div>}
+                                  {/* 词性（词性色） */}
+                                  {uiCfg.showPos !== false && posLabel && <div style={{ ...styles.pos, color: effColor }}>{posLabel}</div>}
+                                </div>
+                                {punctMap[i] && <span style={{ ...styles.stmtPunct, alignSelf: "center", marginTop: 0 }}>{punctMap[i]}</span>}
+                              </Fragment>
+                            );
+                          })}
+                        </div>
+                      </Fragment>
+                    );
+                  })}
+                </>
               );
-            }).map((card, i) => (
-              <Fragment key={i}>
-                {card}
-                {punctMap[i] && <span style={styles.stmtPunct}>{punctMap[i]}</span>}
-              </Fragment>
-            ))}
+            })()}
           </div>
         ) : (
           <div style={styles.fallbackRow}>
