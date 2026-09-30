@@ -470,7 +470,7 @@ export default function DictationExam({
                               <div className="dict-wc-pos">{w.pos || '—'}</div>
                               <div className="dict-wc-word">{w.stressed || w.word}</div>
                               <div className="dict-wc-mean">{w.mean || '—'}</div>
-                              {comp && <div className="dict-wc-role">{comp}</div>}
+                              {comp && comp !== "待确认" && <div className="dict-wc-role">{comp}</div>}
                             </div>
                           )
                         })}
@@ -490,7 +490,7 @@ export default function DictationExam({
                         {analysis.components.map((c, i) => (
                           <span className="dict-comp" key={i}>
                             <b>{c.text}</b>
-                            {c.role && <em>{c.role}</em>}
+                            {c.role && c.role !== "待确认" && <em>{c.role}</em>}
                           </span>
                         ))}
                       </div>

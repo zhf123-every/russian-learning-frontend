@@ -21,6 +21,75 @@ const COPULA = new Set([
   "оказаться", "казаться", "считаться", "остаться",
 ]);
 
+// ===== 高频句型模板（优先于通用规则执行，杜绝"Это X"句型里定语/表语/宾语互相标错） =====
+const ESTE_WORDS = new Set(["это", "то", "вот"])
+const POSSESSIVE = new Set(["мой", "твой", "его", "её", "наш", "ваш", "их", "свой", "моя", "моё", "мои", "твоя", "твоё", "твои", "наша", "наше", "наши", "ваша", "ваше", "ваши"])
+const isNounish2 = (w) => w.pos === "noun" || w.pos === "pronoun" || w.pos === "numeral"
+const isPrepAfter2 = (i, words) => i > 0 && words[i - 1].pos === "preposition"
+const lemmaOf2 = (w) => String(w.lemma || w.form || w.word || "").trim().toLowerCase()
+
+// 模板1："Это/То/Вот + [修饰词]* + 名词"（无动词）→ 句首指示词=主语、末尾名词=表语、中间形容词/物主代词=定语
+// 例：Это дом. / Это мой новый большой дом. / Это очень хороший дом. / Это я.
+function applyEstePattern(words) {
+  const n = words.length
+  if (n < 2) return false
+  if (!ESTE_WORDS.has(lemmaOf2(words[0]))) return false
+  if (words.some((w) => w.pos === "verb")) return false // 有动词交给通用规则
+  // 从右往左找第一个"不在介词后"的名词/代词/数词 → 表语
+  let lastIdx = -1
+  for (let i = n - 1; i > 0; i--) {
+    if (isNounish2(words[i]) && !isPrepAfter2(i, words)) { lastIdx = i; break }
+  }
+  if (lastIdx <= 0) return false
+  words[0].syntacticRole = "subject"; words[0].roleLabel = "主语"
+  words[lastIdx].syntacticRole = "predicative"; words[lastIdx].roleLabel = "表语"
+  // 中间 形容词/物主代词 → 定语（не/副词/介词短语/人称代词留给通用规则）
+  for (let i = 1; i < lastIdx; i++) {
+    const w = words[i]
+    if (w.syntacticRole) continue
+    if (w.pos === "adjective" || (w.pos === "pronoun" && POSSESSIVE.has(lemmaOf2(w)))) { w.syntacticRole = "attribute"; w.roleLabel = "定语" }
+  }
+  return true
+}
+
+// 模板2："名词/代词 … это … 名词"（无动词，"X — это Y" 判断句，это 在中间）
+// 例：Плёс — это мой родной город. → Плёс=主语、мой/родной=定语、город=表语、это=语气词
+function applyEsteMiddlePattern(words) {
+  const n = words.length
+  if (n < 3) return false
+  if (words.some((w) => w.pos === "verb")) return false
+  // 找 esto 词（i>0，不在句首）
+  let mi = -1
+  for (let i = 1; i < n; i++) {
+    if (ESTE_WORDS.has(lemmaOf2(words[i]))) { mi = i; break }
+  }
+  if (mi <= 0) return false
+  // esto 前：句首必须是名词/代词（主语）
+  const first = words[0]
+  if (!(first.pos === "noun" || first.pos === "pronoun")) return false
+  // esto 后：优先找名词做表语（跳过 мой/новый 等修饰词），没有名词再退而求其次找代词/数词
+  let lastIdx = -1
+  for (let i = mi + 1; i < n; i++) {
+    if (words[i].pos === "noun" && !isPrepAfter2(i, words)) { lastIdx = i; break }
+  }
+  if (lastIdx < 0) {
+    for (let i = mi + 1; i < n; i++) {
+      if (isNounish2(words[i]) && !isPrepAfter2(i, words)) { lastIdx = i; break }
+    }
+  }
+  if (lastIdx < 0) return false
+  words[0].syntacticRole = "subject"; words[0].roleLabel = "主语"
+  words[lastIdx].syntacticRole = "predicative"; words[lastIdx].roleLabel = "表语"
+  // esto 与表语之间：形容词/物主代词 → 定语
+  for (let i = mi + 1; i < lastIdx; i++) {
+    const w = words[i]
+    if (w.syntacticRole) continue
+    if (w.pos === "adjective" || (w.pos === "pronoun" && POSSESSIVE.has(lemmaOf2(w)))) { w.syntacticRole = "attribute"; w.roleLabel = "定语" }
+  }
+  words[mi].syntacticRole = "particle"; words[mi].roleLabel = "语气词"
+  return true
+}
+
 export function inferRoles(sentence, dictWords) {
   const words = (dictWords || []).map((w) => ({ ...w }));
   const n = words.length;
@@ -32,6 +101,10 @@ export function inferRoles(sentence, dictWords) {
   const lemmaOf = (w) => String(w.lemma || w.form || "").trim().toLowerCase();
 
   const hasVerb = words.some(isVerb);
+
+  // 0) 高频句型模板优先标注（"Это X" / "X — это Y"）：杜绝定语/表语/宾语互标错
+  applyEstePattern(words);
+  applyEsteMiddlePattern(words);
 
   // 1) 谓语：动词（系动词亦谓语）
   words.forEach((w) => {
@@ -110,9 +183,9 @@ export function inferRoles(sentence, dictWords) {
     else if (w.pos === "interjection") { w.syntacticRole = "interjection"; w.roleLabel = "感叹词"; }
   });
 
-  // 8) 兜底：词典未收录等未命中角色 → 无标签（边框回退词性色）
+  // 8) 兜底：词典未收录等未命中角色 → 待确认（前端不显示成分标签，只显示词性与释义）
   words.forEach((w) => {
-    if (!w.syntacticRole) { w.syntacticRole = "default"; w.roleLabel = ""; }
+    if (!w.syntacticRole) { w.syntacticRole = "default"; w.roleLabel = "待确认"; }
   });
 
   return words;

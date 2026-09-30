@@ -275,8 +275,8 @@ export default function AnswerPanel({
                   onClick={() => speakRussian(displayWord, w.audio_url, w.id, "word")}
                   title="点击发音"
                 >
-                  {/* 顶部：句法角色标签（角色色）；default/空等无效标签不显示 */}
-                  {roleLabel && roleLabel !== "default" && (
+                  {/* 顶部：句法角色标签（角色色）；default/待确认等无效标签不显示 */}
+                  {roleLabel && roleLabel !== "default" && roleLabel !== "待确认" && (
                     <span style={{ ...styles.roleTag, background: borderColor }}>
                       {roleLabel}
                     </span>
