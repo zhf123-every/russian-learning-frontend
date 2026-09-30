@@ -810,7 +810,7 @@ export default function QuestListening() {
                 <path d="M5 19H19" />
               </svg>
             </button>
-            <span style={{ fontSize: 18, color: "var(--qs-text)", fontWeight: 500 }}>{title}（{currentIdx + 1}/{total})</span>
+            <span style={{ fontSize: 18, color: "var(--qs-text)", fontWeight: 500 }}>（{currentIdx + 1}/{total})</span>
           </div>
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28, background: "linear-gradient(135deg, rgba(139,92,246,0.05), rgba(59,130,246,0.05))" }}>
@@ -854,7 +854,7 @@ export default function QuestListening() {
             </svg>
           </button>
           <span style={{ fontSize: 18, color: "var(--qs-text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {title}（{currentIdx + 1}/{total})
+            （{currentIdx + 1}/{total})
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "nowrap" }}>

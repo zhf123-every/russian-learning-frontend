@@ -1106,7 +1106,7 @@ export default function QuestPractice() {
             </svg>
           </button>
           <div style={styles.progress}>
-            {unitMeta?.title || "练习"}（{currentSequenceIndex + 1}/{sequences.length}）
+            （{currentSequenceIndex + 1}/{sequences.length}）
           </div>
         </div>
         <div style={styles.toolbarRight}>

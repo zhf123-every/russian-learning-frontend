@@ -917,7 +917,7 @@ export default function QuestSpeaking() {
             </svg>
           </button>
           <span style={{ fontSize: 18, color: "var(--qs-text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {title}（{currentIdx + 1}/{total})
+            （{currentIdx + 1}/{total})
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "nowrap" }}>
