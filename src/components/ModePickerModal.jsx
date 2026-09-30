@@ -278,7 +278,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
               {/* 选择难度 */}
               <div>
                 <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--qs-sub)' }}>选择难度</span>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
+                <div className="mt-2 grid gap-2.5" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
                   {DIFFICULTIES.map((d) => {
                     const on = d.key === difficulty
                     return (
@@ -286,7 +286,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
                         key={d.key}
                         type="button"
                         onClick={() => setDifficulty(d.key)}
-                        className="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer"
+                        className="w-full py-2 rounded-full text-sm font-medium transition-all cursor-pointer"
                         style={{
                           background: on ? 'var(--qs-active, #7C3AED)' : 'var(--qs-surface2)',
                           color: on ? '#fff' : 'var(--qs-text)',
