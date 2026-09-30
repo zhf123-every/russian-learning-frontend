@@ -26,7 +26,7 @@ import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
 import { inferRoles } from "../lib/roleRules";
 import { expandSequencesWithChunks } from "../lib/chunking";
-import { scaffoldingToSequences } from "../lib/scaffolding";
+import { scaffoldingToSequences, filterSequencesByDifficulty } from "../lib/scaffolding";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -282,6 +282,57 @@ export default function QuestPractice() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackKey, setFeedbackKey] = useState(0); // 每次答对递增，强制触发音效
 
+  // ---- 难度（URL 传入；切换模式时经预加载页透传） = 出题粒度过滤 ----
+  const [diffKey, setDiffKey] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get("difficulty") || "beginner" } catch (e) { return "beginner" }
+  });
+  const [customTypes, setCustomTypes] = useState(() => {
+    try {
+      const c = new URLSearchParams(window.location.search).get("custom");
+      return c ? c.split(",").filter(Boolean) : [];
+    } catch (e) { return [] }
+  });
+  const diffKeyRef = useRef(diffKey); diffKeyRef.current = diffKey;
+  const customRef = useRef(customTypes); customRef.current = customTypes;
+  const rawSequencesRef = useRef([]); // 过滤前的原始 sequences（切难度时重新过滤，不从 0 重下数据）
+  const applyDiff = (seqs) => {
+    rawSequencesRef.current = seqs;
+    return filterSequencesByDifficulty(seqs, diffKeyRef.current, customRef.current);
+  };
+
+  // ---- 难度切换 → 重新过滤 + 从第 0 题开始（对标句乐部：选难度即重新开始） ----
+  useEffect(() => {
+    const raw = rawSequencesRef.current;
+    if (!raw.length) return;
+    setSequences(filterSequencesByDifficulty(raw, diffKey, customTypes));
+    setCurrentSequenceIndex(0);
+    setCurrentUnitIndex(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diffKey, customTypes]);
+
+  // ---- 学习进度持久化（退出重进继续上次；同难度才恢复，切难度则从头） ----
+  const progKey = () => `qs_progress_practice_${effectiveCourseId}`;
+  useEffect(() => {
+    if (loading || loadError || !sequences.length) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(progKey()) || "null");
+      if (saved && saved.difficulty === diffKey && saved.seqIndex !== undefined) {
+        const si = Math.min(saved.seqIndex, sequences.length - 1);
+        const seq = sequences[si];
+        const ui = seq ? Math.min(saved.unitIndex ?? 0, (seq.units || []).length - 1) : 0;
+        setCurrentSequenceIndex(si); setCurrentUnitIndex(ui);
+      }
+    } catch (e) { /* 缓存损坏则从头 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, loadError, sequences.length]);
+  useEffect(() => {
+    if (loading || !sequences.length) return;
+    try {
+      localStorage.setItem(progKey(), JSON.stringify({ seqIndex: currentSequenceIndex, unitIndex: currentUnitIndex, difficulty: diffKey, custom: customTypes }));
+    } catch (e) { /* 忽略 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, currentSequenceIndex, currentUnitIndex, sequences.length]);
+
   // ---- 游戏化统计（抽离到独立 Hook）----
   const {
     combo,
@@ -483,7 +534,7 @@ export default function QuestPractice() {
               setUnitMeta(pre.unit || null);
               const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
               const seqs = expandSequencesWithChunks(adapted, cloudWords);
-              setSequences(seqs); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
+              setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
               setLoading(false);
             }
             return;
@@ -494,7 +545,7 @@ export default function QuestPractice() {
               setLocalLesson(pre); setIsLocalMode(true);
               setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
               const seqs = expandSequencesWithChunks(adapted, pre?.words);
-              setSequences(seqs); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
+              setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
               setLoading(false);
             }
             return;
@@ -520,7 +571,7 @@ export default function QuestPractice() {
               setIsLocalMode(true);
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
               const seqs = expandSequencesWithChunks(adapted, stored?.words);
-              setSequences(seqs);
+              setSequences(applyDiff(seqs));
               setCurrentSequenceIndex(0);
               setCurrentUnitIndex(0);
               if (!cancelled) setLoading(false);
@@ -548,7 +599,7 @@ export default function QuestPractice() {
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
                     const seqs = expandSequencesWithChunks(adapted, u?.words)
-                    setSequences(seqs)
+                    setSequences(applyDiff(seqs))
                     setCurrentSequenceIndex(0)
                     setCurrentUnitIndex(0)
                     if (!cancelled) setLoading(false);
@@ -575,7 +626,7 @@ export default function QuestPractice() {
             // 云端词表：从各句 words 提取 {ru, zh}，供 chunking 块中文翻译（缺词不再兜底俄语）
             const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
             const seqs = expandSequencesWithChunks(adapted, cloudWords);
-            setSequences(seqs);
+            setSequences(applyDiff(seqs));
             setCurrentSequenceIndex(0);
             setCurrentUnitIndex(0);
             if (!cancelled) setLoading(false);
@@ -960,14 +1011,15 @@ export default function QuestPractice() {
     else { document.documentElement.requestFullscreen().catch(() => {}); }
   };
 
-  const handleModeStart = (mode) => {
+  const handleModeStart = (mode, difficulty, customTypes) => {
     const u = courseId || effectiveCourseId;
     const isLocal = new URLSearchParams(window.location.search).get('src') === 'local';
     const suffix = isLocal ? `?src=local&courseId=${effectiveCourseId}` : `?courseId=${effectiveCourseId}`;
+    const dq = `&difficulty=${difficulty || 'beginner'}${customTypes && customTypes.length ? '&custom=' + encodeURIComponent(customTypes.join(',')) : ''}`;
     setShowModePicker(false);
     if (mode.key === 'chinese_to_english' || mode.key === 'speaking' || mode.key === 'listening' || mode.key === 'dictation') {
       // 切换模式 → 先进入沉浸式预加载页（真实资源预载），完成后自动跳对应答题页
-      navigate(`/preload/${mode.key}/${u}${suffix}`);
+      navigate(`/preload/${mode.key}/${u}${suffix}${dq}`);
     } else {
       alert('该模式暂未开放，当前支持「中译俄 / 听写 / 听力 / 口语」模式');
     }

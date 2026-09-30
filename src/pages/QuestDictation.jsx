@@ -26,7 +26,7 @@ import { addStudyTime } from "../lib/learningStats";
 import { getCourseById } from "../utils/courseService";
 import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { expandUnitToChunkSteps, buildZhIndex } from "../lib/chunking";
-import { scaffoldingToItems } from "../lib/scaffolding";
+import { scaffoldingToItems, filterItemsByDifficulty } from "../lib/scaffolding";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -98,6 +98,53 @@ export default function QuestDictation() {
   const [localLesson, setLocalLesson] = useState(null);
   const [isLocalMode, setIsLocalMode] = useState(false);
   const [questionIndex, setQuestionIndex] = useState(0);
+
+  // ---- 难度（URL 传入） = 出题粒度过滤 ----
+  const [diffKey, setDiffKey] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get("difficulty") || "beginner" } catch (e) { return "beginner" }
+  });
+  const [customTypes, setCustomTypes] = useState(() => {
+    try {
+      const c = new URLSearchParams(window.location.search).get("custom");
+      return c ? c.split(",").filter(Boolean) : [];
+    } catch (e) { return [] }
+  });
+  const diffKeyRef = useRef(diffKey); diffKeyRef.current = diffKey;
+  const customRef = useRef(customTypes); customRef.current = customTypes;
+  const rawItemsRef = useRef([]);
+  const applyDiffItems = (items) => {
+    rawItemsRef.current = items;
+    return filterItemsByDifficulty(items, diffKeyRef.current, customRef.current);
+  };
+
+  // ---- 难度切换 → 重新过滤 + 从头开始 ----
+  useEffect(() => {
+    const raw = rawItemsRef.current;
+    if (!raw.length) return;
+    setStatements(filterItemsByDifficulty(raw, diffKey, customTypes));
+    setQuestionIndex(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diffKey, customTypes]);
+
+  // ---- 学习进度持久化（同难度才恢复） ----
+  const progKey = () => `qs_progress_dictation_${effectiveCourseId}`;
+  useEffect(() => {
+    if (loading || loadError || !statements.length) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(progKey()) || "null");
+      if (saved && saved.difficulty === diffKey && saved.idx !== undefined) {
+        setQuestionIndex(Math.max(0, Math.min(saved.idx, statements.length - 1)));
+      }
+    } catch (e) { /* 缓存损坏则从头 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, loadError, statements.length]);
+  useEffect(() => {
+    if (loading || !statements.length) return;
+    try {
+      localStorage.setItem(progKey(), JSON.stringify({ idx: questionIndex, difficulty: diffKey, custom: customTypes }));
+    } catch (e) { /* 忽略 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, questionIndex, statements.length]);
 
   // ---- 计时器 ----
   const [elapsed, setElapsed] = useState(0);
@@ -351,7 +398,7 @@ export default function QuestDictation() {
             if (!cancelled) {
               setLocalLesson(pre); setIsLocalMode(true);
               const stmts = expandStatements(items, pre.words);
-              setStatements(stmts);
+              setStatements(applyDiffItems(stmts));
               setLoading(false);
             }
             return;
@@ -366,7 +413,7 @@ export default function QuestDictation() {
             if (!cancelled) {
               setLocalLesson(pre); setIsLocalMode(true);
               const stmts = expandStatements(items, pre.words);
-              setStatements(stmts);
+              setStatements(applyDiffItems(stmts));
               setLoading(false);
             }
             return;
@@ -389,7 +436,7 @@ export default function QuestDictation() {
               else {
                 const cloudWords = items.flatMap((it) => (it.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" })));
                 const stmts = expandStatements(items, cloudWords);
-                setStatements(stmts);
+                setStatements(applyDiffItems(stmts));
                 setLoading(false);
               }
             }
@@ -414,7 +461,7 @@ export default function QuestDictation() {
             if (!cancelled) {
               setLocalLesson(stored); setIsLocalMode(true);
               const stmts = expandStatements(items, stored.words);
-              setStatements(stmts);
+              setStatements(applyDiffItems(stmts));
               setLoading(false);
             }
             return;
@@ -430,7 +477,7 @@ export default function QuestDictation() {
               setLocalLesson(stored);
               setIsLocalMode(true);
               const stmts = expandStatements(items, stored.words);
-              setStatements(stmts);
+              setStatements(applyDiffItems(stmts));
               if (!cancelled) setLoading(false);
             }
             return;
@@ -455,7 +502,7 @@ export default function QuestDictation() {
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
                     const stmts = expandStatements(items, u.words)
-                    setStatements(stmts)
+                    setStatements(applyDiffItems(stmts))
                     if (!cancelled) setLoading(false);
                   }
                   return
@@ -472,7 +519,7 @@ export default function QuestDictation() {
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
                     const stmts = expandStatements(items, u.words)
-                    setStatements(stmts)
+                    setStatements(applyDiffItems(stmts))
                     if (!cancelled) setLoading(false);
                   }
                   return
@@ -507,7 +554,7 @@ export default function QuestDictation() {
             } else {
               const cloudWords = items.flatMap((it) => (it.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" })));
               const stmts = expandStatements(items, cloudWords);
-              setStatements(stmts);
+              setStatements(applyDiffItems(stmts));
               if (!cancelled) setLoading(false);
             }
           } else {
@@ -669,14 +716,15 @@ export default function QuestDictation() {
     else { document.documentElement.requestFullscreen().catch(() => {}); }
   };
 
-  const handleModeStart = (mode) => {
+  const handleModeStart = (mode, difficulty, customTypes) => {
     const u = courseId || effectiveCourseId;
     const isLocal = new URLSearchParams(window.location.search).get('src') === 'local';
     const suffix = isLocal ? `?src=local&courseId=${effectiveCourseId}` : `?courseId=${effectiveCourseId}`;
+    const dq = `&difficulty=${difficulty || 'beginner'}${customTypes && customTypes.length ? '&custom=' + encodeURIComponent(customTypes.join(',')) : ''}`;
     setShowModePicker(false);
     if (mode.key === 'chinese_to_english' || mode.key === 'speaking' || mode.key === 'listening' || mode.key === 'dictation') {
       // 切换模式 → 先进入沉浸式预加载页（真实资源预载），完成后自动跳对应答题页
-      navigate(`/preload/${mode.key}/${u}${suffix}`);
+      navigate(`/preload/${mode.key}/${u}${suffix}${dq}`);
     } else {
       alert('该模式暂未开放，当前支持「中译俄 / 听写 / 听力 / 口语」模式');
     }

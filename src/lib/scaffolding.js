@@ -77,11 +77,84 @@ export function scaffoldingToSequences(paths, title) {
   });
 }
 
+// ============================================================
+// 难度 = 出题粒度过滤（对标句乐部：初级=全出 / 中级=去单词 / 高级=只整句 / 自定义=勾选）
+// 粒度判定：滚雪球课程用 scaffoldStepIndex（最后一步=整句，词数分单词/语块/组合语块）；
+//           chunking 课程用 chunk 元数据（单打新块=词/语块，累积步=组合语块，最后累积=整句）；
+//           兜底按词数。
+// ============================================================
+export function unitTokenCount(unit) {
+  const n = String(unit?.russian || unit?.ru || "").trim().split(/\s+/).filter(Boolean).length;
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function granularityOfUnit(unit) {
+  if (!unit) return "word";
+  // 滚雪球课程（scaffoldingPaths 直接出题，unit 带 scaffoldStepIndex）
+  if (unit.scaffoldStepIndex !== undefined) {
+    const isFinal = unit.scaffoldStepIndex >= (unit.scaffoldN || 1) - 1;
+    if (isFinal) return "sentence";
+  }
+  // chunking 课程（expandUnitToChunkSteps 产物）
+  if (unit.chunkIsFinal) return "sentence";
+  if (unit.chunkIsNew) {
+    return unitTokenCount(unit) <= 1 ? "word" : "chunk";
+  }
+  if (unit.chunkIsCumulative) return "comb";
+  // 兜底：按词数分（最后一步整句已在上面覆盖）
+  const n = unitTokenCount(unit);
+  if (n <= 1) return "word";
+  if (n <= 3) return "chunk";
+  return "comb";
+}
+
+// 弹窗题型名 → 粒度 key
+const TYPE_TO_GRAN = {
+  "短语单词": "word", "核心语块": "chunk", "组合语块": "comb", "完整句子": "sentence",
+  "句子": "sentence", "语块": "chunk",
+};
+
+/** 难度 key（beginner/intermediate/advanced/custom）+ custom 勾选（中文题型名数组）→ 允许的粒度集合 */
+function allowedGranularities(difficultyKey, customTypes) {
+  if (!difficultyKey || difficultyKey === "beginner") return null; // null = 全部
+  if (difficultyKey === "intermediate") return new Set(["chunk", "comb", "sentence"]);
+  if (difficultyKey === "advanced") return new Set(["sentence"]);
+  if (difficultyKey === "custom") {
+    const list = Array.isArray(customTypes) && customTypes.length
+      ? customTypes
+      : ["句子", "语块", "组合语块", "短语单词"];
+    const set = new Set(list.map((t) => TYPE_TO_GRAN[t]).filter(Boolean));
+    if (set.size === 0) return null; // 勾选异常时退回全部
+    return set;
+  }
+  return null;
+}
+
+/** sequences（sequence→units 嵌套）按难度过滤；空序列剔除 */
+export function filterSequencesByDifficulty(sequences, difficultyKey, customTypes) {
+  const allowed = allowedGranularities(difficultyKey, customTypes);
+  if (!allowed) return sequences;
+  return (Array.isArray(sequences) ? sequences : [])
+    .map((seq) => {
+      const units = (seq.units || []).filter((u) => allowed.has(granularityOfUnit(u)));
+      return { ...seq, units, totalUnits: units.length };
+    })
+    .filter((seq) => (seq.units || []).length > 0);
+}
+
+/** 扁平 items（QuestDictation 用）按难度过滤 */
+export function filterItemsByDifficulty(items, difficultyKey, customTypes) {
+  const allowed = allowedGranularities(difficultyKey, customTypes);
+  if (!allowed) return items;
+  return (Array.isArray(items) ? items : []).filter((it) => allowed.has(granularityOfUnit(it)));
+}
+
 // paths → items（QuestDictation 听写页用：{id, russian, chinese, words, audio_url}）
 export function scaffoldingToItems(paths) {
   const items = [];
   (Array.isArray(paths) ? paths : []).forEach((p, pi) => {
-    (Array.isArray(p.steps) ? p.steps : []).forEach((st, si) => {
+    const steps = (Array.isArray(p.steps) ? p.steps : []).filter((s) => s && String(s.russian || s.ru || "").trim());
+    steps.forEach((st, si) => {
       if (!st || !String(st.russian || st.ru || "").trim()) return;
       const russian = String(st.russian || st.ru || "").trim();
       const allChunks = Array.isArray(st.allChunks) ? st.allChunks : [];
@@ -94,6 +167,9 @@ export function scaffoldingToItems(paths) {
         chinese: String(st.chinese || st.zh || "").trim(),
         words,
         audio_url: st.audioUrl || st.audio || "",
+        // 滚雪球元数据（难度粒度判定用：最后一步=整句）
+        scaffoldStepIndex: si,
+        scaffoldN: steps.length,
       });
     });
   });

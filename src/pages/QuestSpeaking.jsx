@@ -10,7 +10,7 @@ import { markUnitDone } from "../lib/lessonProgress";
 import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
-import { scaffoldingToSequences } from "../lib/scaffolding";
+import { scaffoldingToSequences, filterSequencesByDifficulty } from "../lib/scaffolding";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { preloadTtsAll } from "../lib/ttsPreload";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
@@ -169,6 +169,55 @@ export default function QuestSpeaking() {
   const [order, setOrder] = useState([]); // 乱序后的原始索引
   const [isPaused, setIsPaused] = useState(false);
 
+  // ---- 难度（URL 传入；原地开启模式切难度） = 出题粒度过滤 ----
+  const [diffKey, setDiffKey] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get("difficulty") || "beginner" } catch (e) { return "beginner" }
+  });
+  const [customTypes, setCustomTypes] = useState(() => {
+    try {
+      const c = new URLSearchParams(window.location.search).get("custom");
+      return c ? c.split(",").filter(Boolean) : [];
+    } catch (e) { return [] }
+  });
+  const diffKeyRef = useRef(diffKey); diffKeyRef.current = diffKey;
+  const customRef = useRef(customTypes); customRef.current = customTypes;
+  const rawSequencesRef = useRef([]);
+  const applyDiff = (seqs) => {
+    rawSequencesRef.current = seqs;
+    return filterSequencesByDifficulty(seqs, diffKeyRef.current, customRef.current);
+  };
+
+  // ---- 难度切换 → 重新过滤 + 从第 0 题开始 ----
+  useEffect(() => {
+    const raw = rawSequencesRef.current;
+    if (!raw.length) return;
+    setSequences(filterSequencesByDifficulty(raw, diffKey, customTypes));
+    setCurrentIdx(0);
+    setOrder([]); setShuffled(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diffKey, customTypes]);
+
+  // ---- 学习进度持久化（同难度才恢复；切难度/乱序则从头） ----
+  const progKey = () => `qs_progress_speaking_${effectiveCourseId}`;
+  useEffect(() => {
+    if (loading || loadError || !sequences.length) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(progKey()) || "null");
+      if (saved && saved.difficulty === diffKey && saved.idx !== undefined) {
+        const idx = Math.min(saved.idx, sequences.flatMap((s) => s.units || []).length - 1);
+        setCurrentIdx(Math.max(0, idx));
+      }
+    } catch (e) { /* 缓存损坏则从头 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, loadError, sequences.length]);
+  useEffect(() => {
+    if (loading || !sequences.length) return;
+    try {
+      localStorage.setItem(progKey(), JSON.stringify({ idx: currentIdx, difficulty: diffKey, custom: customTypes }));
+    } catch (e) { /* 忽略 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, currentIdx, sequences.length]);
+
   // 顶栏弹窗
   const [showSettings, setShowSettings] = useState(false);
   const [showExit, setShowExit] = useState(false);
@@ -246,7 +295,7 @@ export default function QuestSpeaking() {
               setUnitMeta(pre.unit || null);
               const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
               const seqs = expandSequencesWithChunks(adapted, cloudWords);
-              setSequences(seqs);
+              setSequences(applyDiff(seqs));
               setLoading(false);
             }
             return;
@@ -257,7 +306,7 @@ export default function QuestSpeaking() {
               setLocalLesson(pre); setIsLocalMode(true);
               setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
               const seqs = expandSequencesWithChunks(adapted, pre?.words);
-              setSequences(seqs);
+              setSequences(applyDiff(seqs));
               setLoading(false);
             }
             return;
@@ -279,7 +328,7 @@ export default function QuestSpeaking() {
               setIsLocalMode(true);
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
               const seqs = expandSequencesWithChunks(adapted, stored?.words);
-              setSequences(seqs);
+              setSequences(applyDiff(seqs));
               if (!cancelled) setLoading(false);
             }
             return;
@@ -303,7 +352,7 @@ export default function QuestSpeaking() {
                     setIsLocalMode(true);
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" });
                     const seqs = expandSequencesWithChunks(adapted, u?.words);
-                    setSequences(seqs);
+                    setSequences(applyDiff(seqs));
                     if (!cancelled) setLoading(false);
                   }
                   return;
@@ -326,7 +375,7 @@ export default function QuestSpeaking() {
             setUnitMeta(data.unit || null);
             const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
             const seqs = expandSequencesWithChunks(adapted, cloudWords);
-            setSequences(seqs);
+            setSequences(applyDiff(seqs));
             if (!cancelled) setLoading(false);
           }
         }
@@ -715,15 +764,21 @@ export default function QuestSpeaking() {
     if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); }
     else { document.documentElement.requestFullscreen().catch(() => {}); }
   };
-  const handleModeStart = (mode) => {
+  const handleModeStart = (mode, difficulty, customTypes) => {
     const u = courseId || effectiveCourseId;
     const isLocal = new URLSearchParams(window.location.search).get('src') === 'local';
     const suffix = isLocal ? '?src=local' : '';
-    if (mode.key === 'speaking') { setShowModePicker(false); return; }
+    const dq = `${suffix ? '&' : '?'}difficulty=${difficulty || 'beginner'}${customTypes && customTypes.length ? '&custom=' + encodeURIComponent(customTypes.join(',')) : ''}`;
+    if (mode.key === 'speaking') {
+      // 原地开启：难度直接生效（重新过滤 + 从头开始）
+      setDiffKey(difficulty || 'beginner');
+      if (customTypes && customTypes.length) setCustomTypes(customTypes);
+      setShowModePicker(false); return;
+    }
     setShowModePicker(false);
     const mk = (mode.key === 'chinese_to_english' || mode.key === 'dictation' || mode.key === 'listening') ? mode.key : 'chinese_to_english';
     // 切换模式 → 先进入沉浸式预加载页（真实资源预载），完成后自动跳对应答题页
-    navigate(`/preload/${mk}/${u}${suffix}`);
+    navigate(`/preload/${mk}/${u}${suffix}${dq}`);
   };
 
   // ---- 点击弹窗外部关闭倍速设置 ----

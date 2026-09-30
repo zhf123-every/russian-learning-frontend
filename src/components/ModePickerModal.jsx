@@ -196,7 +196,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
   const [activeKey, setActiveKey] = useState(readyModes[0]?.key || modes[0].key)
   const active = modes.find((m) => m.key === activeKey) || modes[0]
   const [difficulty, setDifficulty] = useState(initialDifficulty)
-  const [customTypes, setCustomTypes] = useState(['句子', '语块', '组合语块'])
+  const [customTypes, setCustomTypes] = useState(['句子', '语块', '组合语块', '短语单词'])
   const diff = DIFFICULTIES.find((d) => d.key === difficulty) || DIFFICULTIES[0]
   const handlePick = (m) => { if (m.ready) setActiveKey(m.key) }
   const toggleCustom = (t) => setCustomTypes((prev) => (prev.includes(t) ? (prev.length > 1 ? prev.filter((x) => x !== t) : prev) : [...prev, t]))
@@ -337,7 +337,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
           {/* 底部按钮 */}
           <div className="mt-auto pt-4 flex items-center gap-3 px-6 md:px-8 pb-6">
             <button onClick={onClose} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors shadow-sm cursor-pointer h-9 px-4 py-2" style={{ border: '1px solid var(--qs-border)', background: 'var(--qs-surface2)', color: 'var(--qs-text)' }}>重新开始</button>
-            <button onClick={() => onStart && onStart(active, difficulty)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors text-white shadow cursor-pointer h-9 px-4 py-2 flex-1" style={{ background: 'var(--qs-active, #7C3AED)' }}>{active.cta}</button>
+            <button onClick={() => onStart && onStart(active, difficulty, customTypes)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors text-white shadow cursor-pointer h-9 px-4 py-2 flex-1" style={{ background: 'var(--qs-active, #7C3AED)' }}>{active.cta}</button>
           </div>
         </div>
 
