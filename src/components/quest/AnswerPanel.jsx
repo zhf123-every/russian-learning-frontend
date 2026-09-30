@@ -30,6 +30,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 const ttsCache = new Map();
 
 // 句法角色 → 颜色映射（对齐句乐部实测：边框/标签用角色色，主语橙/谓语红/宾语蓝）
+// 虚词角色（否定/前置词/连接词/语气词/感叹词/数词）补专属色，与词性色区分，避免边框=下划线同色
 const ROLE_COLORS = {
   subject: "#B45309",
   predicate: "#BE123C",
@@ -38,6 +39,12 @@ const ROLE_COLORS = {
   attribute: "#A855F7",
   predicative: "#14B8A6",
   complement: "#EC4899",
+  negation: "#374151",      // 否定 - 深石板灰（与 default 浅灰区分）
+  preposition: "#0EA5E9",   // 前置词 - 天蓝（区别于介词词性深靛蓝/宾语蓝）
+  conjunction: "#D97706",   // 连接词 - 暗金黄（区别于连词词性粉/副词黄）
+  particle: "#7C3AED",      // 语气词 - 深紫罗兰（区别于助词词性青）
+  interjection: "#DB2777",  // 感叹词 - 洋红（区别于感叹词词性橙）
+  numeral: "#16A34A",       // 数词 - 深绿（区别于数词词性紫/动词绿）
   default: "#9CA3AF",
 };
 
