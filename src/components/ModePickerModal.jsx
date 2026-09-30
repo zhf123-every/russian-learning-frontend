@@ -197,16 +197,16 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
       <div
         className="modal-pop"
         style={{
-          width: 'min(920px, 96vw)', maxHeight: '92vh', background: '#fff', borderRadius: 18,
+          width: 'min(920px, 96vw)', maxHeight: '92vh', background: 'var(--qs-surface, #ffffff)', borderRadius: 18,
           display: 'flex', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ===== 左栏：页眉 + 模式列表（对标句乐部：页眉标题 + 卡片式按钮竖列） ===== */}
-        <div className="flex flex-col overflow-y-auto custom-scrollbar" style={{ width: 288, flexShrink: 0, borderRight: '1px solid #f0f0f4', background: '#fff' }}>
+        <div className="flex flex-col overflow-y-auto custom-scrollbar" style={{ width: 288, flexShrink: 0, borderRight: '1px solid var(--qs-border)', background: 'var(--qs-surface, #ffffff)' }}>
           <div className="p-5 pb-3">
-            <h2 className="text-lg font-bold text-foreground tracking-tight">选择练习模式</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Select Practice Mode</p>
+            <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--qs-text)' }}>选择练习模式</h2>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--qs-sub)' }}>Select Practice Mode</p>
           </div>
           <div className="px-3 pb-3 space-y-1.5">
           {modes.map((m) => {
@@ -216,16 +216,19 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
                 key={m.key}
                 type="button"
                 onClick={() => handlePick(m)}
+                onMouseEnter={(e) => { if (!on && m.ready) e.currentTarget.style.background = 'var(--qs-surface2)' }}
+                onMouseLeave={(e) => { if (!on && m.ready) e.currentTarget.style.background = 'transparent' }}
                 className={`relative w-full text-left p-2.5 rounded-xl border transition-all select-none group ${
-                  on
-                    ? 'bg-primary/10 border-primary text-foreground shadow-xs font-medium'
-                    : m.ready
-                      ? 'bg-transparent border-transparent hover:bg-muted/60 text-muted-foreground hover:text-foreground'
-                      : 'bg-transparent border-transparent text-muted-foreground opacity-50 cursor-not-allowed'
+                  on ? 'shadow-xs font-medium' : m.ready ? '' : 'opacity-50 cursor-not-allowed'
                 }`}
+                style={{
+                  background: on ? 'var(--qs-active)1A' : 'transparent',
+                  borderColor: on ? 'var(--qs-active)' : 'transparent',
+                  color: on ? 'var(--qs-text)' : m.ready ? 'var(--qs-sub)' : 'var(--qs-sub)',
+                }}
               >
                 <div className="flex items-center gap-3 w-full">
-                  <div className={`relative size-11 rounded-lg overflow-hidden flex-shrink-0 bg-muted transition-all ${on ? 'opacity-100 scale-105' : 'opacity-70 group-hover:opacity-90'}`}>
+                  <div className={`relative size-11 rounded-lg overflow-hidden flex-shrink-0 transition-all ${on ? 'opacity-100 scale-105' : 'opacity-70 group-hover:opacity-90'}`} style={{ background: 'var(--qs-surface2)' }}>
                     <img src={MODE_IMG[m.key]} alt={m.name} className="size-full object-cover transition-all" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -241,41 +244,41 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
         </div>
 
         {/* ===== 右栏：hero 横幅 + 内容区 + 底部按钮（对标句乐部） ===== */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: '#fff' }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--qs-surface, #ffffff)' }}>
           {/* hero 横幅：模式图背景 + 渐变遮罩 + 标题/标签 */}
           <div className="relative h-44 md:h-48 w-full flex-shrink-0 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute inset-0 z-10 pointer-events-none" style={{ background: 'linear-gradient(to top, color-mix(in srgb, var(--qs-surface, #fff) 95%, transparent), color-mix(in srgb, var(--qs-surface, #fff) 35%, transparent) 55%, transparent)' }}></div>
             <img src="/images/game-modes/hero.webp" alt={active.name} className="size-full object-cover opacity-65 pointer-events-none" style={{ objectPosition: '50% 42%' }} />
             <div className="absolute bottom-3 left-6 md:left-8 z-20 flex items-center gap-2.5 flex-wrap pr-12">
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">{active.name}</h1>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: 'var(--qs-text)' }}>{active.name}</h1>
               {active.heroTag && (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wide backdrop-blur-md bg-background/85 text-foreground border border-border/70 shadow-xs inline-flex items-center shrink-0">{active.heroTag}</span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wide backdrop-blur-md shadow-xs inline-flex items-center shrink-0" style={{ background: 'color-mix(in srgb, var(--qs-surface, #fff) 85%, transparent)', color: 'var(--qs-text)', border: '1px solid var(--qs-border)' }}>{active.heroTag}</span>
               )}
             </div>
-            <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 14, width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.7)', color: '#555', fontSize: 16, cursor: 'pointer', zIndex: 30 }}>✕</button>
+            <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 14, width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--qs-border)', background: 'var(--qs-surface2)', color: 'var(--qs-text)', fontSize: 16, cursor: 'pointer', zIndex: 30 }}>✕</button>
           </div>
 
           {/* 内容区 */}
           <div className="px-6 md:px-8 pb-6 pt-2.5 flex flex-col" style={{ flex: 1, overflowY: 'auto' }}>
-            <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed mb-4 max-w-2xl">{active.desc}</p>
+            <p className="text-xs sm:text-sm leading-relaxed mb-4 max-w-2xl" style={{ color: 'var(--qs-sub)' }}>{active.desc}</p>
             <div className="space-y-3.5">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">核心特性</span>
+              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--qs-sub)' }}>核心特性</span>
               <div className="grid grid-cols-3 gap-2 md:gap-3">
                 {active.features.map((f) => (
-                  <div key={f.title} className="min-h-16 md:min-h-18 rounded-xl border border-border/70 bg-card flex flex-col items-center justify-center gap-0.5 p-2 text-center">
-                    <span className="text-xs font-semibold text-foreground">{f.title}</span>
-                    <span className="text-[10px] text-muted-foreground">{f.sub}</span>
+                  <div key={f.title} className="min-h-16 md:min-h-18 rounded-xl flex flex-col items-center justify-center gap-0.5 p-2 text-center" style={{ border: '1px solid var(--qs-border)', background: 'var(--qs-surface2)' }}>
+                    <span className="text-xs font-semibold" style={{ color: 'var(--qs-text)' }}>{f.title}</span>
+                    <span className="text-[10px]" style={{ color: 'var(--qs-sub)' }}>{f.sub}</span>
                   </div>
                 ))}
               </div>
               {active.rhythm && active.rhythm.length > 0 && (
-                <div className="rounded-xl border border-border/60 bg-muted/20 p-3.5 space-y-2">
-                  <div className="text-xs font-semibold text-foreground">推荐学习节奏</div>
-                  <div className="space-y-1.5 text-xs text-muted-foreground leading-relaxed">
+                <div className="rounded-xl p-3.5 space-y-2" style={{ border: '1px solid var(--qs-border)', background: 'var(--qs-surface2)' }}>
+                  <div className="text-xs font-semibold" style={{ color: 'var(--qs-text)' }}>推荐学习节奏</div>
+                  <div className="space-y-1.5 text-xs leading-relaxed" style={{ color: 'var(--qs-sub)' }}>
                     {active.rhythm.map((r, i) => (
                       <p key={i} className="flex items-start gap-1.5">
-                        <span className="size-1 rounded-full bg-primary/60 mt-1.5 shrink-0"></span>
-                        <span><strong className="text-foreground font-medium">{r.head}：</strong>{r.text}</span>
+                        <span className="size-1 rounded-full mt-1.5 shrink-0" style={{ background: 'var(--qs-active)' }}></span>
+                        <span><strong className="font-medium" style={{ color: 'var(--qs-text)' }}>{r.head}：</strong>{r.text}</span>
                       </p>
                     ))}
                   </div>
@@ -286,8 +289,8 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
 
           {/* 底部按钮 */}
           <div className="mt-auto pt-4 flex items-center gap-3 px-6 md:px-8 pb-6">
-            <button onClick={onClose} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground cursor-pointer h-9 px-4 py-2">重新开始</button>
-            <button onClick={() => onStart && onStart(active)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-purple-600 text-white shadow hover:bg-purple-700 cursor-pointer h-9 px-4 py-2 flex-1">{active.cta}</button>
+            <button onClick={onClose} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors shadow-sm cursor-pointer h-9 px-4 py-2" style={{ border: '1px solid var(--qs-border)', background: 'var(--qs-surface2)', color: 'var(--qs-text)' }}>重新开始</button>
+            <button onClick={() => onStart && onStart(active)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors text-white shadow hover:bg-purple-700 cursor-pointer h-9 px-4 py-2 flex-1" style={{ background: 'var(--qs-active, #7C3AED)' }}>{active.cta}</button>
           </div>
         </div>
 
