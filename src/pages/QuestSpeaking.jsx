@@ -213,7 +213,7 @@ export default function QuestSpeaking() {
   useEffect(() => {
     if (loading || !sequences.length) return;
     try {
-      localStorage.setItem(progKey(), JSON.stringify({ idx: currentIdx, difficulty: diffKey, custom: customTypes }));
+      localStorage.setItem(progKey(), JSON.stringify({ idx: currentIdx, difficulty: diffKey, custom: customTypes, ts: Date.now() }));
     } catch (e) { /* 忽略 */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, currentIdx, sequences.length]);

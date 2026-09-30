@@ -141,7 +141,7 @@ export default function QuestDictation() {
   useEffect(() => {
     if (loading || !statements.length) return;
     try {
-      localStorage.setItem(progKey(), JSON.stringify({ idx: questionIndex, difficulty: diffKey, custom: customTypes }));
+      localStorage.setItem(progKey(), JSON.stringify({ idx: questionIndex, difficulty: diffKey, custom: customTypes, ts: Date.now() }));
     } catch (e) { /* 忽略 */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, questionIndex, statements.length]);

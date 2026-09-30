@@ -1,6 +1,6 @@
 // 课程详情页（课程类：学习路线 + 大纲）
 // /game/:id  —— 课程类（kind=cover）进来；视频类不走这里，直接弹模式弹窗
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { findGameById } from '../data/gameLibrary'
 import { COURSES } from '../data/gameMallData'
@@ -239,6 +239,38 @@ export default function GameDetail() {
   const doingCount = units.filter((u) => u.status === '进行中').length
   const progress = units.length ? Math.round((doneCount / units.length) * 100) : 0
 
+  // ---- 继续学习：定位"最近学过"的课时（读 4 种答题模式的进度缓存） ----
+  const [progressVersion, setProgressVersion] = useState(0)
+  useEffect(() => {
+    const onFocus = () => setProgressVersion((v) => v + 1) // 从答题页返回时刷新
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+  const continueUnit = useMemo(() => {
+    if (!units.length) return null
+    const keys = ['qs_progress_practice_', 'qs_progress_listening_', 'qs_progress_speaking_', 'qs_progress_dictation_']
+    let best = null, bestTs = -1
+    units.forEach((u) => {
+      keys.forEach((k) => {
+        try {
+          const saved = JSON.parse(localStorage.getItem(k + u.id) || 'null')
+          if (!saved) return
+          if ((saved.ts || 0) > bestTs) { bestTs = saved.ts; best = u }
+        } catch (e) { /* 忽略 */ }
+      })
+    })
+    if (best) {
+      // 最近学过且未完成 → 直接继续；已完成 → 优先下一个未完成课，否则复习最近这课
+      if (best.status !== '已完成') return best
+      const nextUnfinished = units.find((u) => u.status !== '已完成')
+      return nextUnfinished || best
+    }
+    // 没有答题进度 → 第一个未完成课（进行中/未开始），全部完成则回到第 1 课
+    return units.find((u) => u.status !== '已完成') || units[0]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [units, progressVersion])
+  const continueIdx = continueUnit ? units.findIndex((u) => u === continueUnit) : -1
+
   // 课时是否已挂内容：渐进例句 sentences 或滚雪球路径 scaffoldingPaths 任一非空即可
   const hasUnitContent = (u) =>
     (Array.isArray(u.sentences) && u.sentences.length > 0) ||
@@ -307,11 +339,11 @@ export default function GameDetail() {
                 {units.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setPickedUnit(units.find((u) => u.status !== '已完成') || units[0])}
+                    onClick={() => continueUnit && setPickedUnit(continueUnit)}
                     className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:brightness-110"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z" /></svg>
-                    继续学习「第 1 课」
+                    {continueUnit ? `继续学习「第 ${continueIdx + 1} 课」` : '继续学习'}
                   </button>
                 )}
               </div>

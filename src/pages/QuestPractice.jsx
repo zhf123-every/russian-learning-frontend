@@ -328,7 +328,7 @@ export default function QuestPractice() {
   useEffect(() => {
     if (loading || !sequences.length) return;
     try {
-      localStorage.setItem(progKey(), JSON.stringify({ seqIndex: currentSequenceIndex, unitIndex: currentUnitIndex, difficulty: diffKey, custom: customTypes }));
+      localStorage.setItem(progKey(), JSON.stringify({ seqIndex: currentSequenceIndex, unitIndex: currentUnitIndex, difficulty: diffKey, custom: customTypes, ts: Date.now() }));
     } catch (e) { /* 忽略 */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, currentSequenceIndex, currentUnitIndex, sequences.length]);
