@@ -16,6 +16,9 @@ async function resolveCourseCover(course) {
   return { ...course, posterUrl: pick(course.posterUrl), thumbnail: pick(course.thumbnail), cover: pick(course.cover) }
 }
 
+// 会话内课程内存缓存（30 秒时效）：详情页/大纲页来回跳转秒回，避免每次重新拉云端全量列表
+const _courseMemo = new Map()
+
 /**
  * 根据课程 ID 读取完整课程数据（包括 lessonsList / freeTrialCount / isVipOnly）
  * @param {string} courseId 课程 ID
@@ -23,6 +26,9 @@ async function resolveCourseCover(course) {
  */
 export async function getCourseById(courseId) {
   if (!courseId) return null
+  // 0.5) 会话内内存缓存（30 秒内重复进入秒回）
+  const m = _courseMemo.get(courseId)
+  if (m && Date.now() - m.t < 30e3) return m.v
   // 0) 本地缓存优先（商城页已把云端名单缓存到 localStorage，二次访问即时）
   try {
     const cached = localStorage.getItem('rlearn_cloud_list_cache')
@@ -30,7 +36,11 @@ export async function getCourseById(courseId) {
       const j = JSON.parse(cached)
       if (j && Array.isArray(j.list)) {
         const hit = j.list.find(v => v.kind === 'course' && v.id === courseId)
-        if (hit) return await resolveCourseCover(hit)
+        if (hit) {
+          const resolved = await resolveCourseCover(hit)
+          _courseMemo.set(courseId, { v: resolved, t: Date.now() })
+          return resolved
+        }
       }
     }
   } catch (e) { /* 缓存损坏忽略 */ }
@@ -40,21 +50,41 @@ export async function getCourseById(courseId) {
     const j = await r.json()
     if (j.ok && Array.isArray(j.videos)) {
       const hit = j.videos.find(v => v.kind === 'course' && v.id === courseId)
-      if (hit) return await resolveCourseCover(hit)
+      if (hit) {
+        const resolved = await resolveCourseCover(hit)
+        _courseMemo.set(courseId, { v: resolved, t: Date.now() })
+        // 顺手合并写回本地缓存，下次进入（含刷新页面）直接命中
+        try {
+          const cj = JSON.parse(localStorage.getItem('rlearn_cloud_list_cache') || '{"list":[]}')
+          if (!Array.isArray(cj.list)) cj.list = []
+          const idx = cj.list.findIndex(v => v.id === hit.id)
+          if (idx >= 0) cj.list[idx] = hit; else cj.list.push(hit)
+          localStorage.setItem('rlearn_cloud_list_cache', JSON.stringify(cj))
+        } catch (e2) { /* ignore */ }
+        return resolved
+      }
     }
   } catch (e) { /* 云端不可用时继续查本地 */ }
 
   // 2) 本地投稿课程（gameCourseStore）
   try {
     const local = useGameCourseStore.getState().find(courseId)
-    if (local) return await resolveCourseCover(local)
+    if (local) {
+      const resolved = await resolveCourseCover(local)
+      _courseMemo.set(courseId, { v: resolved, t: Date.now() })
+      return resolved
+    }
   } catch (e) { /* 忽略 */ }
 
   // 3) 后台发布课程（rb_admin_courses）
   try {
     const adminCourses = getCourses()
     const hit = adminCourses.find(c => c.id === courseId)
-    if (hit) return await resolveCourseCover(hit)
+    if (hit) {
+      const resolved = await resolveCourseCover(hit)
+      _courseMemo.set(courseId, { v: resolved, t: Date.now() })
+      return resolved
+    }
   } catch (e) { /* 忽略 */ }
 
   return null

@@ -221,14 +221,15 @@ export default function GameDetail() {
   }, [setHeaderLeft, navigate])
 
   if (loading && !game) {
-    return <div className='db-page'><div className='db-container' style={{ padding: 60, textAlign: 'center' }}><div className='loading loading-spinner text-primary' style={{ width: 40 }} /></div></div>
+    return <div className='db-page'><div className='db-container' style={{ padding: 60, textAlign: 'center' }}><div className='loading loading-spinner text-primary' style={{ width: 40 }} /><div style={{ marginTop: 12, fontSize: 13, color: '#9ca3af' }}>正在加载课程…（云端响应较慢时请稍候）</div></div></div>
   }
 
   if (!game) {
     return (
       <div className="db-page"><div className="db-container" style={{ padding: 60, textAlign: 'center' }}>
         <div style={{ fontSize: 40 }}>🕹️</div>
-        <h2>课程不存在或已下线</h2>
+        <h2>课程不存在或云端加载超时</h2>
+        <p style={{ marginTop: 6, fontSize: 13, color: '#9ca3af' }}>后端响应较慢（免费层可能处于休眠），请稍后刷新重试</p>
         <button className="btn sm primary" onClick={() => navigate('/unlocked-games')}>回商城看看</button>
       </div></div>
     )
