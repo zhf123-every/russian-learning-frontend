@@ -245,17 +245,18 @@ export default function GameDetail() {
     (Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length > 0)
 
   // 弹窗点“开始”：按模式跳对应学习页
-  const handleStart = (mode) => {
+  const handleStart = (mode, difficulty, customTypes) => {
     const u = pickedUnit
     setPickedUnit(null)
     if (!u) return
+    const dq = `&difficulty=${difficulty || 'beginner'}${customTypes && customTypes.length ? '&custom=' + encodeURIComponent(customTypes.join(',')) : ''}`
     // 投稿课程（无 packId）：自带本课内容（单词 + 渐进例句），走本地学习模式，学习页直接消费 lesson 数据
     const isLocalCourse = !game.packId && hasUnitContent(u)
     if (isLocalCourse) {
       try { sessionStorage.setItem('rlearn_local_lesson_' + u.id, JSON.stringify(u)) } catch (e) { /* 忽略 */ }
       if (mode.key === 'chinese_to_english' || mode.key === 'dictation' || mode.key === 'listening' || mode.key === 'speaking') {
         // 先进入沉浸式预加载页，加载完成后自动跳对应答题页
-        navigate(`/preload/${mode.key}/${u.id}?courseId=${game.id}&src=local`)
+        navigate(`/preload/${mode.key}/${u.id}?courseId=${game.id}&src=local${dq}`)
       } else {
         toast('该模式暂仅支持内置课程包，投稿课程支持「中译俄 / 听写 / 听力 / 口语」模式')
       }
@@ -268,7 +269,7 @@ export default function GameDetail() {
     }
     if (mode.key === 'reading') { navigate(`/quest/${game.packId || ''}?mode=reading`); return }
     const packQ = game.packId ? `pack=${game.packId}&` : ''
-    navigate(`/preload/${mode.key}/${u.id}?${packQ}courseId=${game.id}`)
+    navigate(`/preload/${mode.key}/${u.id}?${packQ}courseId=${game.id}${dq}`)
   }
 
   // 学习路线：抽首尾几个节点展示（完整路线见大纲）
