@@ -36,9 +36,9 @@ const ROLE_COLORS = {
   predicate: "#BE123C",
   object: "#2563EB",
   adverbial: "#F59E0B",
-  attribute: "#A855F7",
+  attribute: "#C026D3",    // 定语 - 品红紫（区别于形容词词性紫 #A855F7，避免边框=下划线）
   predicative: "#14B8A6",
-  complement: "#EC4899",
+  complement: "#BE185D",   // 补语 - 玫红（区别于连词词性粉 #EC4899，避免边框=下划线）
   negation: "#374151",      // 否定 - 深石板灰（与 default 浅灰区分）
   preposition: "#0EA5E9",   // 前置词 - 天蓝（区别于介词词性深靛蓝/宾语蓝）
   conjunction: "#D97706",   // 连接词 - 暗金黄（区别于连词词性粉/副词黄）
