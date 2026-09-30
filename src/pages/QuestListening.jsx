@@ -953,11 +953,12 @@ export default function QuestListening() {
                       const pl = getPosLabel(w.pos);
                       const showZh = annot.length <= 1 && (w.chinese || current.chinese);
                       const displayWord = w.form || w.lemma || "";
+                      const plainWord = displayWord.replace(/\u0301/g, ""); // 大字不带重音，重音保留在灰色小字
                       return (
                         <div key={i} style={{ position: "relative", display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "20px 24px 14px", minWidth: 120, border: "1px solid " + color + "60", borderRadius: 12, background: "var(--qs-surface2)", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
                           {roleLabel && roleLabel !== "待确认" && <span style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", padding: "2px 10px", borderRadius: 10, fontSize: 11, fontWeight: 700, color: "#fff", background: color, whiteSpace: "nowrap" }}>{roleLabel}</span>}
                           <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 4, marginTop: 4, minHeight: 18, fontFamily: '"PT Serif", Georgia, serif' }}>{displayWord}</div>
-                          <div style={{ fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: "2.5rem", fontWeight: 700, color: "#1F2937", lineHeight: 1.2, marginBottom: 6 }}>{displayWord}</div>
+                          <div style={{ fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: "2.5rem", fontWeight: 700, color: "#1F2937", lineHeight: 1.2, marginBottom: 6 }}>{plainWord}</div>
                           <div style={{ width: "100%", height: 4, borderRadius: 2, marginBottom: 8, minWidth: 50, background: color }} />
                           {showZh && <div style={{ fontSize: 14, color: "#4B5563", fontWeight: 500 }}>{w.chinese || current.chinese}</div>}
                           {grammarLabel && <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>{grammarLabel}</div>}

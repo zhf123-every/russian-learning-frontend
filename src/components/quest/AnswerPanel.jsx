@@ -296,6 +296,7 @@ export default function AnswerPanel({
                             // 显示带重音符的词形：优先 form（带重音），其次 stress_marked / lemma
                             const toStress = (s) => String(s || "").replace(/'/g, "\u0301");
                             const displayWord = toStress(w.form || w.stress_marked || w.lemma || "");
+                            const plainWord = displayWord.replace(/\u0301/g, ""); // 大字不带重音，重音只保留在灰色小字
                             const posLabel = getPosLabel(w.pos);
                             const grammarLabel = w.grammarLabel || buildGrammarLabel(w);
                             const chinese = w.chinese || w.meaning || w.translation || "";
@@ -314,9 +315,9 @@ export default function AnswerPanel({
                                 >
                                   {/* 重音符（灰色小字） */}
                                   <div style={styles.phonetic}>{displayWord}</div>
-                                  {/* 大字单词 */}
+                                  {/* 大字单词（不带重音） */}
                                   <div className="word-card-bigword" style={{ ...styles.bigWord, color: "var(--qs-text, #1F2937)" }}>
-                                    {displayWord}
+                                    {plainWord}
                                   </div>
                                   {/* 彩色下划线（词性色） */}
                                   <div style={{ ...styles.underline, background: effColor }} />
