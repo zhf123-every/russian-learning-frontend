@@ -298,41 +298,39 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
                 </div>
               </div>
 
-              {/* 包含题型 + 适合标签 */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--qs-sub)' }}>
-                  {diff.custom ? '自定义练习题型' : `${diff.label}包含题型`}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: 'var(--qs-active)1A', color: 'var(--qs-active, #7C3AED)' }}>{diff.tag}</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {diff.types.map((t) => {
-                  const checked = effectiveTypes.includes(t)
-                  if (diff.custom) {
+              {/* 包含题型大卡片（对标句乐部：大卡片容器 + 内部每题型独立小卡片） */}
+              <div className="rounded-xl p-4 space-y-3" style={{ border: '1px solid var(--qs-border)', background: 'var(--qs-surface2)' }}>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--qs-text)' }}>
+                    {diff.custom ? '自定义练习题型' : `${diff.label}包含题型`}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: 'var(--qs-active)1A', color: 'var(--qs-active, #7C3AED)' }}>{diff.tag}</span>
+                </div>
+                <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))' }}>
+                  {diff.types.map((t) => {
+                    const checked = effectiveTypes.includes(t)
+                    if (diff.custom) {
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => toggleCustom(t)}
+                          className="rounded-lg px-2.5 py-2.5 text-xs font-medium transition-all cursor-pointer text-center"
+                          style={{
+                            border: '1px solid ' + (checked ? 'var(--qs-active, #7C3AED)' : 'var(--qs-border)'),
+                            background: checked ? 'var(--qs-active)14' : 'var(--qs-surface, #ffffff)',
+                            color: checked ? 'var(--qs-active, #7C3AED)' : 'var(--qs-text)',
+                          }}
+                        >{checked ? '✓ ' : ''}{t}</button>
+                      )
+                    }
                     return (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => toggleCustom(t)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer inline-flex items-center gap-1.5"
-                        style={{
-                          background: checked ? 'var(--qs-active)1A' : 'var(--qs-surface2)',
-                          color: checked ? 'var(--qs-active, #7C3AED)' : 'var(--qs-text)',
-                          border: '1px solid ' + (checked ? 'var(--qs-active, #7C3AED)' : 'var(--qs-border)'),
-                        }}
-                      >
-                        <span style={{ fontSize: 11 }}>{checked ? '☑' : '☐'}</span>{t}
-                      </button>
+                      <div key={t} className="rounded-lg px-2.5 py-2.5 text-xs font-medium text-center" style={{ border: '1px solid var(--qs-border)', background: 'var(--qs-surface, #ffffff)', color: 'var(--qs-text)' }}>{t}</div>
                     )
-                  }
-                  return (
-                    <span key={t} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'var(--qs-surface2)', color: 'var(--qs-text)', border: '1px solid var(--qs-border)' }}>{t}</span>
-                  )
-                })}
+                  })}
+                </div>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--qs-sub)' }}>{diff.desc}</p>
               </div>
-
-              {/* 难度说明 */}
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--qs-sub)' }}>{diff.desc}</p>
             </div>
           </div>
 
