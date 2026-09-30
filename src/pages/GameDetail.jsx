@@ -62,6 +62,39 @@ export default function GameDetail() {
   const [pickedUnit, setPickedUnit] = useState(null)
   const [activeTab, setActiveTab] = useState('大纲') // 句乐部式 Tab：学习路线 / 大纲 / 评价
 
+  // ---- 继续学习：定位"最近学过"的课时（读 4 种答题模式的进度缓存） ----
+  // 注意：必须在组件所有条件 return 之前声明 hooks，避免 React #310
+  const [progressVersion, setProgressVersion] = useState(0)
+  useEffect(() => {
+    const onFocus = () => setProgressVersion((v) => v + 1) // 从答题页返回时刷新
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+  const continueUnit = useMemo(() => {
+    if (!units.length) return null
+    const keys = ['qs_progress_practice_', 'qs_progress_listening_', 'qs_progress_speaking_', 'qs_progress_dictation_']
+    let best = null, bestTs = -1
+    units.forEach((u) => {
+      keys.forEach((k) => {
+        try {
+          const saved = JSON.parse(localStorage.getItem(k + u.id) || 'null')
+          if (!saved) return
+          if ((saved.ts || 0) > bestTs) { bestTs = saved.ts; best = u }
+        } catch (e) { /* 忽略 */ }
+      })
+    })
+    if (best) {
+      // 最近学过且未完成 → 直接继续；已完成 → 优先下一个未完成课，否则复习最近这课
+      if (best.status !== '已完成') return best
+      const nextUnfinished = units.find((u) => u.status !== '已完成')
+      return nextUnfinished || best
+    }
+    // 没有答题进度 → 第一个未完成课（进行中/未开始），全部完成则回到第 1 课
+    return units.find((u) => u.status !== '已完成') || units[0]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [units, progressVersion])
+  const continueIdx = continueUnit ? units.findIndex((u) => u === continueUnit) : -1
+
   // ===== 评价逻辑（后端 B2 全网同步 + localStorage 缓存兜底） =====
   const REVIEW_CACHE_KEY = 'rlearn_course_reviews_cache'
   const [reviews, setReviews] = useState([])
@@ -238,38 +271,6 @@ export default function GameDetail() {
   const doneCount = units.filter((u) => u.status === '已完成').length
   const doingCount = units.filter((u) => u.status === '进行中').length
   const progress = units.length ? Math.round((doneCount / units.length) * 100) : 0
-
-  // ---- 继续学习：定位"最近学过"的课时（读 4 种答题模式的进度缓存） ----
-  const [progressVersion, setProgressVersion] = useState(0)
-  useEffect(() => {
-    const onFocus = () => setProgressVersion((v) => v + 1) // 从答题页返回时刷新
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [])
-  const continueUnit = useMemo(() => {
-    if (!units.length) return null
-    const keys = ['qs_progress_practice_', 'qs_progress_listening_', 'qs_progress_speaking_', 'qs_progress_dictation_']
-    let best = null, bestTs = -1
-    units.forEach((u) => {
-      keys.forEach((k) => {
-        try {
-          const saved = JSON.parse(localStorage.getItem(k + u.id) || 'null')
-          if (!saved) return
-          if ((saved.ts || 0) > bestTs) { bestTs = saved.ts; best = u }
-        } catch (e) { /* 忽略 */ }
-      })
-    })
-    if (best) {
-      // 最近学过且未完成 → 直接继续；已完成 → 优先下一个未完成课，否则复习最近这课
-      if (best.status !== '已完成') return best
-      const nextUnfinished = units.find((u) => u.status !== '已完成')
-      return nextUnfinished || best
-    }
-    // 没有答题进度 → 第一个未完成课（进行中/未开始），全部完成则回到第 1 课
-    return units.find((u) => u.status !== '已完成') || units[0]
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [units, progressVersion])
-  const continueIdx = continueUnit ? units.findIndex((u) => u === continueUnit) : -1
 
   // 课时是否已挂内容：渐进例句 sentences 或滚雪球路径 scaffoldingPaths 任一非空即可
   const hasUnitContent = (u) =>
