@@ -1205,8 +1205,8 @@ export default function QuestPractice() {
 
 
 
-      {/* 主内容区 */}
-      <div style={styles.mainContent}>
+      {/* 主内容区（答对展示面板加宽，一行容纳更多词卡；答题中保持原宽） */}
+      <div style={{ ...styles.mainContent, maxWidth: showAnswerPanel ? 1120 : styles.mainContent.maxWidth }}>
 
         {/* 答对详情页 */}
         {showAnswerPanel ? (

@@ -276,8 +276,10 @@ export default function AnswerPanel({
                     const gBorder = (gRole && gRole !== "default" && ROLE_COLORS[gRole]) ? gRoleColor : null;
                     const isGroup = g.items.length > 1;
                     const gLabel = (gRole && gRole !== "default" && gRole !== "待确认") ? (getRoleLabel(gRole) || gRole) : "";
+                    const lastIdx = g.items[g.items.length - 1].i;
                     return (
                       <Fragment key={gi}>
+                        <div className="word-cell" style={styles.wordCell}>
                         <div
                           className="word-card"
                           style={isGroup
@@ -325,10 +327,12 @@ export default function AnswerPanel({
                                   {/* 词性（词性色） */}
                                   {uiCfg.showPos !== false && posLabel && <div style={{ ...styles.pos, color: effColor }}>{posLabel}</div>}
                                 </div>
-                                {punctMap[i] && <span style={{ ...styles.stmtPunct, alignSelf: "center", marginTop: 0 }}>{punctMap[i]}</span>}
                               </Fragment>
                             );
                           })}
+                        </div>
+                        {/* 末尾标点：显示在词卡框外右侧（word-cell 内不换行，垂直居中），不再被挤到词卡下方 */}
+                        {punctMap[lastIdx] && <span style={{ ...styles.stmtPunct, marginTop: 0, alignSelf: "center" }}>{punctMap[lastIdx]}</span>}
                         </div>
                       </Fragment>
                     );
@@ -386,7 +390,7 @@ const styles = {
   },
   card: {
     width: "100%",
-    maxWidth: 960,
+    maxWidth: 1120,
     background: "transparent",
     borderRadius: 0,
     padding: "40px 24px 32px",
@@ -402,6 +406,12 @@ const styles = {
     alignItems: "flex-start",
     gap: 16,
     marginBottom: 40,
+  },
+  // 词卡 + 其后标点组成的"不可换行单元"：标点始终在词卡框外右侧，不被挤到下一行
+  wordCell: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
   },
   wordCard: {
     position: "relative",
