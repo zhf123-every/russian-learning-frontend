@@ -160,6 +160,14 @@ export const VIDEO_MODES = [
   },
 ]
 
+// ============ 难度清单（对标句乐部：难度 = 出题粒度过滤） ============
+export const DIFFICULTIES = [
+  { key: 'beginner', label: '初级', tag: '适合新课初学', types: ['短语单词', '核心语块', '组合语块', '完整句子'], desc: '从单词和短语基础开始，层层递进到整句输出，梯度平缓无压力。' },
+  { key: 'intermediate', label: '中级', tag: '适合巩固进阶', types: ['核心语块', '组合语块', '完整句子'], desc: '跳过零散单词，聚焦结构化语块与连贯整句，高效培养地道语感。' },
+  { key: 'advanced', label: '高级', tag: '适合熟练挑战', types: ['完整句子'], desc: '无任何语块辅助，直接面对整句挑战，全面检验盲打与瞬间反应速度。' },
+  { key: 'custom', label: '自定义', tag: '至少保留1项', types: ['句子', '语块', '组合语块', '短语单词'], desc: '自由勾选要练习的题型粒度，按需组合，勾选后立即生效。', custom: true },
+]
+
 // ============ 模式图标映射（对标句乐部：44px 圆角图片图标；WebP 缩略图秒开） ============
 const MODE_IMG = {
   chinese_to_english: '/images/game-modes/chinese_to_russian_sm.webp',
@@ -182,12 +190,17 @@ function preloadModeImgs() {
 }
 
 // ============ 弹窗本体 ============
-export default function ModePickerModal({ title = '本课', modes = COURSE_MODES, onClose, onStart }) {
+export default function ModePickerModal({ title = '本课', modes = COURSE_MODES, onClose, onStart, initialDifficulty = 'beginner' }) {
   const readyModes = modes.filter((m) => m.ready)
   preloadModeImgs() // 挂载即预加载插图
   const [activeKey, setActiveKey] = useState(readyModes[0]?.key || modes[0].key)
   const active = modes.find((m) => m.key === activeKey) || modes[0]
+  const [difficulty, setDifficulty] = useState(initialDifficulty)
+  const [customTypes, setCustomTypes] = useState(['句子', '语块', '组合语块'])
+  const diff = DIFFICULTIES.find((d) => d.key === difficulty) || DIFFICULTIES[0]
   const handlePick = (m) => { if (m.ready) setActiveKey(m.key) }
+  const toggleCustom = (t) => setCustomTypes((prev) => (prev.includes(t) ? (prev.length > 1 ? prev.filter((x) => x !== t) : prev) : [...prev, t]))
+  const effectiveTypes = diff.custom ? customTypes : diff.types
 
   return (
     <div
@@ -258,39 +271,75 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
             <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 14, width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--qs-border)', background: 'var(--qs-surface2)', color: 'var(--qs-text)', fontSize: 16, cursor: 'pointer', zIndex: 30 }}>✕</button>
           </div>
 
-          {/* 内容区 */}
+          {/* 内容区：选择难度 + 包含题型 + 适合标签 + 说明（对标句乐部） */}
           <div className="px-6 md:px-8 pb-6 pt-2.5 flex flex-col" style={{ flex: 1, overflowY: 'auto' }}>
             <p className="text-xs sm:text-sm leading-relaxed mb-4 max-w-2xl" style={{ color: 'var(--qs-sub)' }}>{active.desc}</p>
             <div className="space-y-3.5">
-              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--qs-sub)' }}>核心特性</span>
-              <div className="grid grid-cols-3 gap-2 md:gap-3">
-                {active.features.map((f) => (
-                  <div key={f.title} className="min-h-16 md:min-h-18 rounded-xl flex flex-col items-center justify-center gap-0.5 p-2 text-center" style={{ border: '1px solid var(--qs-border)', background: 'var(--qs-surface2)' }}>
-                    <span className="text-xs font-semibold" style={{ color: 'var(--qs-text)' }}>{f.title}</span>
-                    <span className="text-[10px]" style={{ color: 'var(--qs-sub)' }}>{f.sub}</span>
-                  </div>
-                ))}
-              </div>
-              {active.rhythm && active.rhythm.length > 0 && (
-                <div className="rounded-xl p-3.5 space-y-2" style={{ border: '1px solid var(--qs-border)', background: 'var(--qs-surface2)' }}>
-                  <div className="text-xs font-semibold" style={{ color: 'var(--qs-text)' }}>推荐学习节奏</div>
-                  <div className="space-y-1.5 text-xs leading-relaxed" style={{ color: 'var(--qs-sub)' }}>
-                    {active.rhythm.map((r, i) => (
-                      <p key={i} className="flex items-start gap-1.5">
-                        <span className="size-1 rounded-full mt-1.5 shrink-0" style={{ background: 'var(--qs-active)' }}></span>
-                        <span><strong className="font-medium" style={{ color: 'var(--qs-text)' }}>{r.head}：</strong>{r.text}</span>
-                      </p>
-                    ))}
-                  </div>
+              {/* 选择难度 */}
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--qs-sub)' }}>选择难度</span>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {DIFFICULTIES.map((d) => {
+                    const on = d.key === difficulty
+                    return (
+                      <button
+                        key={d.key}
+                        type="button"
+                        onClick={() => setDifficulty(d.key)}
+                        className="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer"
+                        style={{
+                          background: on ? 'var(--qs-active, #7C3AED)' : 'var(--qs-surface2)',
+                          color: on ? '#fff' : 'var(--qs-text)',
+                          border: '1px solid ' + (on ? 'var(--qs-active, #7C3AED)' : 'var(--qs-border)'),
+                        }}
+                      >{d.label}</button>
+                    )
+                  })}
                 </div>
-              )}
+              </div>
+
+              {/* 包含题型 + 适合标签 */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--qs-sub)' }}>
+                  {diff.custom ? '自定义练习题型' : `${diff.label}包含题型`}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: 'var(--qs-active)1A', color: 'var(--qs-active, #7C3AED)' }}>{diff.tag}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {diff.types.map((t) => {
+                  const checked = effectiveTypes.includes(t)
+                  if (diff.custom) {
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => toggleCustom(t)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer inline-flex items-center gap-1.5"
+                        style={{
+                          background: checked ? 'var(--qs-active)1A' : 'var(--qs-surface2)',
+                          color: checked ? 'var(--qs-active, #7C3AED)' : 'var(--qs-text)',
+                          border: '1px solid ' + (checked ? 'var(--qs-active, #7C3AED)' : 'var(--qs-border)'),
+                        }}
+                      >
+                        <span style={{ fontSize: 11 }}>{checked ? '☑' : '☐'}</span>{t}
+                      </button>
+                    )
+                  }
+                  return (
+                    <span key={t} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'var(--qs-surface2)', color: 'var(--qs-text)', border: '1px solid var(--qs-border)' }}>{t}</span>
+                  )
+                })}
+              </div>
+
+              {/* 难度说明 */}
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--qs-sub)' }}>{diff.desc}</p>
             </div>
           </div>
 
           {/* 底部按钮 */}
           <div className="mt-auto pt-4 flex items-center gap-3 px-6 md:px-8 pb-6">
             <button onClick={onClose} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors shadow-sm cursor-pointer h-9 px-4 py-2" style={{ border: '1px solid var(--qs-border)', background: 'var(--qs-surface2)', color: 'var(--qs-text)' }}>重新开始</button>
-            <button onClick={() => onStart && onStart(active)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors text-white shadow hover:bg-purple-700 cursor-pointer h-9 px-4 py-2 flex-1" style={{ background: 'var(--qs-active, #7C3AED)' }}>{active.cta}</button>
+            <button onClick={() => onStart && onStart(active, difficulty)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors text-white shadow cursor-pointer h-9 px-4 py-2 flex-1" style={{ background: 'var(--qs-active, #7C3AED)' }}>{active.cta}</button>
           </div>
         </div>
 
