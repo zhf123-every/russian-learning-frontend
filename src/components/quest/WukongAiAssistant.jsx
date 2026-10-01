@@ -3,22 +3,34 @@ import { callAI } from '../../lib/ai'
 import { toast } from '../../lib/toast'
 
 // 悟空 AI 助手：右下角浮动（孙悟空踩在筋斗云上表演"逐帧动画"动作，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
-// 结构：筋斗云是独立底座（完全静止，只有悟空动）；悟空本体用 JS 帧播放器按序列切换图片（后空翻=11帧、招手=4帧）
-// 时间轴（每 tick=180ms，共 89 tick ≈ 16s 循环）：
-//   0-18 tick 待机站姿 → 19-20 蓄力上抛 → 21-53 后空翻 11 帧（每帧 3 tick，0°→180°倒立→360°）
-//   54-59 待机 → 60-71 招手 4 帧 → 72-88 待机 → 回绕
+// 结构：筋斗云是独立底座（完全静止，只有悟空动）；悟空本体用 JS 帧播放器按序列切换图片（后空翻=20帧补间序列、招手=4帧）
+// 时间轴（每 tick=90ms，共 178 tick ≈ 16s 循环）：
+//   0-29 tick 待机（直立站立） → 30-49 后空翻 20 帧（每帧 1 tick：站立→屈膝蓄力→蹬地跳起→腾空→蜷缩→倒立→翻越下落→落地站稳）
+//   50-69 待机 → 70-81 招手 4 帧（每帧 3 tick） → 82-177 待机 → 回绕
 // props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
 const WUKONG_CLOUD = '/images/ai-assistant/wukong-cloud.webp'    // 筋斗云底座（静止）
-const WUKONG_IDLE  = '/images/ai-assistant/wukong-body-1.webp'   // 悟空待机：站立瞭望
-const FLIP_FRAMES = [                                            // 后空翻 8 帧（AI 真实姿态分解：起跳腾空→蜷缩翻滚→倒立→翻越倾斜下落→落地站稳）
-  '/images/ai-assistant/flip-1.webp',
-  '/images/ai-assistant/flip-2.webp',
-  '/images/ai-assistant/flip-3.webp',
-  '/images/ai-assistant/flip-4.webp',
-  '/images/ai-assistant/flip-5.webp',
-  '/images/ai-assistant/flip-6.webp',
-  '/images/ai-assistant/flip-7.webp',
-  '/images/ai-assistant/flip-8.webp',
+const WUKONG_IDLE  = '/images/ai-assistant/anim/flip-00.webp'    // 悟空待机：直立站立（与后空翻序列首帧共用）
+const FLIP_FRAMES = [                                            // 后空翻 20 帧连续补间（AI 真实关键姿态：站立→半蹲→屈膝蓄力→蹬地→腾空→蜷缩→倒立→翻越→落地→站稳）
+  '/images/ai-assistant/anim/flip-00.webp',
+  '/images/ai-assistant/anim/flip-01.webp',
+  '/images/ai-assistant/anim/flip-02.webp',
+  '/images/ai-assistant/anim/flip-03.webp',
+  '/images/ai-assistant/anim/flip-04.webp',
+  '/images/ai-assistant/anim/flip-05.webp',
+  '/images/ai-assistant/anim/flip-06.webp',
+  '/images/ai-assistant/anim/flip-07.webp',
+  '/images/ai-assistant/anim/flip-08.webp',
+  '/images/ai-assistant/anim/flip-09.webp',
+  '/images/ai-assistant/anim/flip-10.webp',
+  '/images/ai-assistant/anim/flip-11.webp',
+  '/images/ai-assistant/anim/flip-12.webp',
+  '/images/ai-assistant/anim/flip-13.webp',
+  '/images/ai-assistant/anim/flip-14.webp',
+  '/images/ai-assistant/anim/flip-15.webp',
+  '/images/ai-assistant/anim/flip-16.webp',
+  '/images/ai-assistant/anim/flip-17.webp',
+  '/images/ai-assistant/anim/flip-18.webp',
+  '/images/ai-assistant/anim/flip-19.webp',
 ]
 const WAVE_FRAMES = [                                            // 招手 4 帧（抬手→举高→大幅摆→胸前挥）
   '/images/ai-assistant/wave-1.webp',
@@ -69,15 +81,14 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
       const t = tickRef.current
       let nextAct = 'idle'
       let nextFi = 0
-      if (t <= 18) { nextAct = 'idle' }
-      else if (t <= 20) { nextAct = 'prep' }
-      else if (t <= 53) { nextAct = 'flip'; nextFi = Math.min(7, Math.floor((t - 21) / 4)) }
-      else if (t <= 59) { nextAct = 'idle' }
-      else if (t <= 71) { nextAct = 'wave'; nextFi = Math.min(3, Math.floor((t - 60) / 3)) }
-      else if (t >= 88) { nextAct = 'idle'; tickRef.current = 0 }
+      if (t <= 19) { nextAct = 'idle' }
+      else if (t <= 39) { nextAct = 'flip'; nextFi = Math.min(19, t - 20) }
+      else if (t <= 54) { nextAct = 'idle' }
+      else if (t <= 66) { nextAct = 'wave'; nextFi = Math.min(3, Math.floor((t - 55) / 3)) }
+      else if (t >= 67) { nextAct = 'idle'; if (t >= 109) tickRef.current = 0 }
       setAct(nextAct)
       setFi(nextFi)
-    }, 180)
+    }, 90)
     return () => clearInterval(iv)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [btnDragging])
