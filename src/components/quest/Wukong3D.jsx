@@ -53,6 +53,10 @@ function makeSprite(url, height, ratio) {
 
 export default function Wukong3D({ paused = false }) {
   const mountRef = useRef(null)
+  // 场景只挂载一次（useEffect 依赖 []）；paused 用 ref 读取，
+  // 拖拽时只暂停/恢复动画，绝不销毁重建场景（否则贴图重载期间悟空消失、多次拖拽叠加多份 canvas）
+  const pausedRef = useRef(paused)
+  useEffect(() => { pausedRef.current = paused }, [paused])
 
   useEffect(() => {
     const mount = mountRef.current
@@ -142,7 +146,7 @@ export default function Wukong3D({ paused = false }) {
     }
 
     const iv = setInterval(() => {
-      if (paused) {
+      if (pausedRef.current) {
         renderer.render(scene, camera)
         return
       }
@@ -221,7 +225,7 @@ export default function Wukong3D({ paused = false }) {
         }
       })
     }
-  }, [paused])
+  }, [])
 
   return <div ref={mountRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
 }
