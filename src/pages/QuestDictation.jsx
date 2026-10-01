@@ -41,6 +41,7 @@ import SentenceTreeModal from "../components/SentenceTreeModal";
 import ReportErrorModal from "../components/ReportErrorModal";
 import ShortcutTips from "../components/quest/ShortcutTips";
 import ExitConfirmModal from "../components/quest/ExitConfirmModal";
+import WukongAiAssistant from "../components/quest/WukongAiAssistant";
 ;
 import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 import { preloadTtsAll } from "../lib/ttsPreload";
@@ -1073,6 +1074,9 @@ export default function QuestDictation() {
         onClose={() => setShowExit(false)}
         courseId={studyCourseId}
       />
+
+      {/* 悟空 AI 助手（右下角浮动孙悟空，点击弹出 AI 问答弹窗） */}
+      <WukongAiAssistant statement={currentStatement} modeLabel="听写" />
     </div>
   );
 }

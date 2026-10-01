@@ -22,6 +22,7 @@ import LearningContentModal from "../components/LearningContentModal";
 import SentenceTreeModal from "../components/SentenceTreeModal";
 import ReportErrorModal from "../components/ReportErrorModal";
 import ExitConfirmModal from "../components/quest/ExitConfirmModal";
+import WukongAiAssistant from "../components/quest/WukongAiAssistant";
 import { toast } from "../lib/toast";
 import { getPosColor, getPosLabel, buildGrammarLabel } from "../constants/posColors";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
@@ -226,7 +227,6 @@ export default function QuestListening() {
   const [showTree, setShowTree] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showAnswerMode, setShowAnswerMode] = useState(false);
-  const [showAi, setShowAi] = useState(false);
   const [showNote, setShowNote] = useState(false);
   const [coverText, setCoverText] = useState(null); // 进模式前遮罩
 
@@ -772,7 +772,6 @@ export default function QuestListening() {
         case 'courseContent': setShowLearning(true); break;
         case 'wordByWord': playSingleSlow(); break;
         case 'playSound': if (current) runStageChain(current.russian); break;
-        case 'toggleAI': setShowAi(true); break;
         case 'toggleSettings': setShowSettings(true); break;
         case 'toggleNotes': setShowNote(true); break;
         default: break;
@@ -782,10 +781,7 @@ export default function QuestListening() {
     return () => window.removeEventListener('keydown', onKey);
   }, [togglePause, goPrev, goNext, goPrevSeq, goNextSeq, ready, current, runStageChain, playSingleSlow]);
 
-  // ---- AI 助手 ----
-  const [aiQ, setAiQ] = useState("");
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiAns, setAiAns] = useState("");
+  // ---- 笔记 ----
   const [noteText, setNoteText] = useState("");
   const [annot, setAnnot] = useState([]);
   const saveNote = () => {
@@ -808,30 +804,6 @@ export default function QuestListening() {
     toast('已记录通关笔记');
     setNoteText("");
     setShowNote(false);
-  };
-
-  const askAi = async (q) => {
-    const text = q || aiQ;
-    if (!text.trim() || aiBusy) return;
-    setAiBusy(true);
-    setAiAns("思考中…");
-    try {
-      const res = await fetch(`${API_BASE}/api/ai`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [
-          { role: 'system', content: '你是俄语学习助手。用简洁中文回答学习者关于当前句子的发音、词汇、语法问题。' },
-          { role: 'user', content: `当前学习的句子：${current?.russian || ''}（中文：${current?.chinese || ''}）。问题：${text}` },
-        ] }),
-      });
-      const data = await res.json();
-      setAiAns(data.content || "（无回答）");
-    } catch (e) {
-      setAiAns("AI 连接失败，请重试。");
-    } finally {
-      setAiBusy(false);
-      setAiQ("");
-    }
   };
 
   // ---- 渲染 ----
@@ -1056,7 +1028,7 @@ export default function QuestListening() {
                 <kbd style={{ borderRadius: 6, background: "var(--qs-surface2)", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "var(--qs-text)", border: "1px solid var(--qs-border)", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Space</kbd>
                 <span>暂停</span>
               </button>
-              <button onClick={() => setShowAi(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
+              <button onClick={addVocab} style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 6, border: "none", background: "transparent", color: "#374151", fontSize: 13, cursor: "pointer", padding: "6px 10px", pointerEvents: "auto" }}>
                 <kbd style={{ borderRadius: 6, background: "var(--qs-surface2)", padding: "3px 6px", fontSize: 11, fontWeight: 500, color: "var(--qs-text)", border: "1px solid var(--qs-border)", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.05)" }}>Ctrl N</kbd>
                 <span>生词</span>
               </button>
@@ -1077,11 +1049,6 @@ export default function QuestListening() {
           </div>
         </div>
       </div>
-
-      {/* ===== AI 学习助手（浮动右下） ===== */}
-      <button onClick={() => setShowAi(true)} aria-label="AI 学习助手" title="AI 学习助手" style={{ position: "fixed", right: 20, bottom: 20, width: 48, height: 48, borderRadius: "50%", border: "none", background: "linear-gradient(135deg,#7C3AED,#9333EA)", color: "#fff", fontSize: 18, cursor: "pointer", boxShadow: "0 8px 24px rgba(124,58,237,0.35)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600 }}>
-        AI
-      </button>
 
       {/* ===== 弹窗 ===== */}
       {showSettings && <SettingsModal onClose={() => {
@@ -1152,47 +1119,15 @@ export default function QuestListening() {
         </div>
       )}
 
-      {/* AI 学习助手弹窗 */}
-      {showAi && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setShowAi(false)}>
-          <div style={{ width: "min(560px, 96vw)", maxHeight: "80vh", background: "#fff", borderRadius: 18, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.35)" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #f0f0f4" }}>
-              <div>
-                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#111" }}>AI 学习助手</h2>
-                <p style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>针对当前句子的发音、词汇、语法问题</p>
-              </div>
-              <button onClick={() => setShowAi(false)} style={{ width: 30, height: 30, borderRadius: "50%", border: "none", background: "#f3f4f6", color: "#555", cursor: "pointer", fontSize: 14 }}>✕</button>
-            </div>
-            <div style={{ padding: 16, overflowY: "auto", flex: 1 }}>
-              <div style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {["解释这句话", "逐词讲解", "语法分析", "怎么发音"].map((q) => (
-                  <button key={q} onClick={() => askAi(q)} disabled={aiBusy} style={{ borderRadius: 999, border: "1px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 12, padding: "6px 12px", cursor: "pointer" }}>{q}</button>
-                ))}
-              </div>
-              <div style={{ fontSize: 14, color: "#111", whiteSpace: "pre-wrap", lineHeight: 1.8, minHeight: 80, maxHeight: 300, overflowY: "auto", background: "#fafafa", borderRadius: 12, padding: 14 }}>
-                {aiAns || "点击上方问题或输入你的问题，AI 将基于当前句子作答。"}
-              </div>
-            </div>
-            <div style={{ padding: "12px 16px", borderTop: "1px solid #f0f0f4", display: "flex", gap: 8 }}>
-              <input
-                value={aiQ}
-                onChange={(e) => setAiQ(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") askAi(); }}
-                placeholder="输入问题，回车发送…"
-                style={{ flex: 1, borderRadius: 10, border: "1px solid #e5e7eb", padding: "10px 14px", fontSize: 14, outline: "none" }}
-              />
-              <button onClick={() => askAi()} disabled={aiBusy} style={{ borderRadius: 10, border: "none", background: "#7C3AED", color: "#fff", padding: "0 20px", fontSize: 14, cursor: "pointer", fontWeight: 500 }}>发送</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 退出游戏确认弹窗（对标句乐部） */}
       <ExitConfirmModal
         open={showExit}
         onClose={() => setShowExit(false)}
         courseId={studyCourseId}
       />
+
+      {/* 悟空 AI 助手（右下角浮动孙悟空，点击弹出 AI 问答弹窗） */}
+      <WukongAiAssistant statement={current} modeLabel="听力" />
 
       <style>{`
         @keyframes listen-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }

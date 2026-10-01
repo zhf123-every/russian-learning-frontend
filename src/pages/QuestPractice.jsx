@@ -36,6 +36,7 @@ import { getPosColor } from "../constants/posColors";
 import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
+import WukongAiAssistant from "../components/quest/WukongAiAssistant";
 import SettingsModal from "../components/SettingsModal";
 import Icon from "../components/TopBarIcons";
 import LearningContentModal from "../components/LearningContentModal";
@@ -351,6 +352,12 @@ export default function QuestPractice() {
   // ---- 当前题目计算（双层索引）----
   const currentSequence = sequences[currentSequenceIndex];
   const currentStatement = currentSequence?.units?.[currentUnitIndex];
+
+  // ---- 悟空 AI 助手：模式中文名（按 URL mode 参数映射）----
+  const aiModeLabel = useMemo(() => {
+    const k = new URLSearchParams(window.location.search).get('mode') || 'chinese_to_english';
+    return ({ chinese_to_english: '中译俄', dictation: '听写', listening: '听力', speaking: '口语评测' })[k] || '练习';
+  }, []);
 
   // ---- 答对后按需精析：词典标注（词性颜色/重音/性数格，本地确定性） + AI 补充（成分/翻译/语法） ----
   const [analysisCache, setAnalysisCache] = useState({});
@@ -1365,6 +1372,9 @@ export default function QuestPractice() {
         onClose={() => setShowExit(false)}
         courseId={studyCourseId}
       />
+
+      {/* 悟空 AI 助手（右下角浮动孙悟空，点击弹出 AI 问答弹窗） */}
+      <WukongAiAssistant statement={currentStatement} modeLabel={aiModeLabel} />
     </div>
   );
 }
