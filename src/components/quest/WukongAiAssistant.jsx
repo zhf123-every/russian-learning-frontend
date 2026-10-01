@@ -57,7 +57,6 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
   // ---- 帧播放器：JS 驱动（tick 推进帧索引，单图切换） ----
   const [act, setAct] = useState('idle')      // 'idle' | 'prep' | 'flip' | 'wave'
   const [fi, setFi] = useState(0)             // 当前动作帧索引
-  const [shown, setShown] = useState(false)   // 当前帧加载完成后才显示（避免闪空白）
   const tickRef = useRef(0)
 
   // 预热全部帧到浏览器缓存
@@ -89,9 +88,6 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
   // 当前要显示的帧
   const currentSrc = act === 'flip' ? FLIP_FRAMES[fi] : act === 'wave' ? WAVE_FRAMES[fi] : WUKONG_IDLE
   const isPrep = act === 'prep'
-
-  // 帧切换时先隐藏，等新帧加载完成再显示
-  useEffect(() => { setShown(false) }, [currentSrc])
 
   // ---- AI 弹窗：可拖拽位置（打开时居中） ----
   const [modalPos, setModalPos] = useState(null)
@@ -243,12 +239,11 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
               key={currentSrc}
               src={currentSrc}
               alt=""
-              onLoad={() => setShown(true)}
+              loading="eager"
               className="wu-single-frame"
               style={{
-                opacity: shown ? 1 : 0,
                 transform: isPrep ? 'translateY(-7px) scale(1.05)' : 'translateY(0)',
-                transition: 'transform 0.18s ease, opacity 0.12s ease',
+                transition: 'transform 0.18s ease',
               }}
             />
           </div>
