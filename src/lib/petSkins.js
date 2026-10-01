@@ -61,6 +61,24 @@ export const PET_SKINS = {
       cloud: '/images/ai-assistant/skins/flame-cloud.webp',
     },
   },
+  shadow: {
+    id: 'shadow',
+    name: '墨影玄甲',
+    desc: '黑金暗夜战甲 · 墨玉玄云',
+    vip: true,
+    preview: '/images/ai-assistant/skins/shadow-stand.webp',
+    assets: {
+      stand: '/images/ai-assistant/skins/shadow-stand.webp',
+      hop: '/images/ai-assistant/skins/shadow-hop.webp',
+      waves: [
+        '/images/ai-assistant/skins/shadow-wave-1.webp',
+        '/images/ai-assistant/skins/shadow-wave-2.webp',
+        '/images/ai-assistant/skins/shadow-wave-3.webp',
+        '/images/ai-assistant/skins/shadow-wave-4.webp',
+      ],
+      cloud: '/images/ai-assistant/skins/shadow-cloud.webp',
+    },
+  },
 }
 
 export const PET_SKIN_LIST = Object.values(PET_SKINS)
