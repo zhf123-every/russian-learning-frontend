@@ -79,6 +79,24 @@ export const PET_SKINS = {
       cloud: '/images/ai-assistant/skins/shadow-cloud.webp',
     },
   },
+  dawang: {
+    id: 'dawang',
+    name: '齐天大圣',
+    desc: '金红正典战甲 · 七彩战云 · 变形形态',
+    vip: true,
+    preview: '/images/ai-assistant/skins/dawang-stand.webp',
+    assets: {
+      stand: '/images/ai-assistant/skins/dawang-stand.webp',
+      hop: '/images/ai-assistant/skins/dawang-hop.webp',
+      waves: [
+        '/images/ai-assistant/skins/dawang-wave-1.webp',
+        '/images/ai-assistant/skins/dawang-wave-2.webp',
+        '/images/ai-assistant/skins/dawang-wave-3.webp',
+        '/images/ai-assistant/skins/dawang-wave-4.webp',
+      ],
+      cloud: '/images/ai-assistant/skins/dawang-cloud.webp',
+    },
+  },
 }
 
 export const PET_SKIN_LIST = Object.values(PET_SKINS)
