@@ -19,11 +19,12 @@ import { RU_DICT } from "./lemma";
 export function ruPosToEn(p) {
   if (!p) return "default";
   if (p.includes("动")) return "verb";
+  // 注意顺序：'副/名'（时间词 сегодня/завтра 等）须判为副词（状语），不能先命中"名"
+  if (p.includes("副")) return "adverb";
   if (p.includes("名")) return "noun";
   if (p.includes("形")) return "adjective";
   if (p.includes("代") || p.includes("疑")) return "pronoun";
   if (p.includes("数")) return "numeral";
-  if (p.includes("副")) return "adverb";
   if (p.includes("连")) return "conjunction";
   if (p.includes("介")) return "preposition";
   if (p.includes("叹")) return "interjection";
@@ -114,6 +115,7 @@ function buildIndex() {
     const stressedLemma = toStress(e.s || lemma);
     if (e.p === "n") {
       const gender = SINGULAR_GENDERS[e.g] || "";
+      const zh = (RU_DICT[lemma] && RU_DICT[lemma].z) || ""; // 变形词回填中文释义（简版词典）
       ["sg", "pl"].forEach((num, ni) => {
         (f[num] || []).forEach((form, ci) => {
           if (form) idx.set(normForm(form), {
@@ -121,10 +123,12 @@ function buildIndex() {
             caseCode: CASE_CODES[ci] || "",
             number: ni === 0 ? "singular" : "plural",
             stressed: toStress(form),
+            chinese: zh,
           });
         });
       });
     } else if (e.p === "a") {
+      const zh = (RU_DICT[lemma] && RU_DICT[lemma].z) || "";
       ["m", "f", "n", "pl"].forEach((key, ki) => {
         const gender = ki === 0 ? "masculine" : ki === 1 ? "feminine" : ki === 2 ? "neuter" : "";
         const number = ki === 3 ? "plural" : "singular";
@@ -134,15 +138,18 @@ function buildIndex() {
             caseCode: CASE_CODES[ci] || "",
             number,
             stressed: toStress(form),
+            chinese: zh,
           });
         });
       });
     } else if (e.p === "v") {
+      const zh = (RU_DICT[lemma] && RU_DICT[lemma].z) || "";
       (f.pres || []).forEach((form, pi) => {
         if (form) idx.set(normForm(form), {
           lemma, pos: "verb",
           person: pi + 1, tense: "present",
           stressed: toStress(form),
+          chinese: zh,
         });
       });
       (f.past || []).forEach((form, ki) => {
@@ -151,6 +158,7 @@ function buildIndex() {
           gender: ki === 0 ? "masculine" : ki === 1 ? "feminine" : ki === 2 ? "neuter" : "",
           number: ki === 3 ? "plural" : "singular",
           stressed: toStress(form),
+          chinese: zh,
         });
       });
     } else {

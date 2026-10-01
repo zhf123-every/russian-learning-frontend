@@ -299,7 +299,7 @@ export default function AnswerPanel({
                             const plainWord = displayWord.replace(/\u0301/g, ""); // 大字不带重音，重音只保留在灰色小字
                             const posLabel = getPosLabel(w.pos);
                             const grammarLabel = w.grammarLabel || buildGrammarLabel(w);
-                            const chinese = w.chinese || w.meaning || w.translation || "";
+                            const chinese = w.chinese || w.zh || w.meaning || w.translation || "";
                             const cellStyle = {
                               display: "flex", flexDirection: "column", alignItems: "center",
                               padding: "0 14px", minWidth: 100, minHeight: 190, justifyContent: "flex-start",
