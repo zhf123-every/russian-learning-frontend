@@ -36,12 +36,11 @@ function loadTexWithRetry(loader, url, mat, tries) {
 }
 
 // 立像 plane（贴图原样显示：MeshBasicMaterial，保留 AI 渲染光影；贴图加载完成前透明，防止闪白）
-// alphaTest 硬裁剪半透明边缘，去掉透明卡片边框残影
+// 贴图已做边缘硬化（PIL 去除残影环），alphaTest=0 保留柔和毛发边缘，无边框切割痕
 function makeSprite(url, height, ratio) {
   const loader = new THREE.TextureLoader()
   const mat = new THREE.MeshBasicMaterial({
     map: null, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: 0,
-    alphaTest: 0.05,
   })
   loadTexWithRetry(loader, url, mat, 0)
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(height * ratio, height), mat)
@@ -80,18 +79,19 @@ export default function Wukong3D({ paused = false }) {
     dir.position.set(3, 5, 4)
     scene.add(dir)
 
-    // 精致筋斗云立像（AI 渲染毛绒蓬松质感）—— 云顶约 y=0.15，悟空踩云顶
+    // 精致筋斗云立像（AI 渲染毛绒蓬松质感）
+    // 悟空脚底对齐云图 30% 处（云的蓬松上表面内部）→ 脚"埋进"云里，视觉站在云上面而非云前面
     const CLOUD_TOP = 0.15
     const CLOUD_ASPECT = 1.565                // 云主体宽/高（抠图实测）
-    const CLOUD_TOP_RATIO = 0.215             // 云顶在贴图中距顶部的比例（抠图实测）
+    const CLOUD_STAND_RATIO = 0.30            // 悟空脚底对齐点在贴图中的比例（云上表面）
     const CLOUD_W = 2.0                       // 云宽（世界单位）
     const CLOUD_H = CLOUD_W / CLOUD_ASPECT    // 云高
     const cloud = makeSprite(CLOUD_URL, CLOUD_H, CLOUD_ASPECT)
-    // 云顶对齐 CLOUD_TOP：云中心 y = CLOUD_TOP + (0.5 - topRatio) * 高
-    cloud.mesh.position.y = CLOUD_TOP + (0.5 - CLOUD_TOP_RATIO) * CLOUD_H
+    // 脚底对齐点固定在 y=CLOUD_TOP：云中心 y = CLOUD_TOP + (0.5 - standRatio) * 高
+    cloud.mesh.position.y = CLOUD_TOP + (0.5 - CLOUD_STAND_RATIO) * CLOUD_H
     scene.add(cloud.mesh)
 
-    // 立像底部对齐云顶（云顶约 y=0.15），悟空/云整体构图居中
+    // 立像底部对齐云上表面（y=0.15），悟空/云整体构图居中
     const STAND_H = 2.8
     const HOP_H = 2.9
     const WAVE_H = 2.8
@@ -101,28 +101,11 @@ export default function Wukong3D({ paused = false }) {
 
     const wukong = new THREE.Group()
     wukong.add(stand.mesh, hop.mesh, ...waves.map((w) => w.mesh))
-    // 立像中心 = 云顶 + 半高（保证底部贴云顶）
+    // 立像中心 = 云上表面 + 半高（保证底部贴云）
     stand.mesh.position.y = CLOUD_TOP + STAND_H / 2
     hop.mesh.position.y = CLOUD_TOP + HOP_H / 2
     waves.forEach((w) => { w.mesh.position.y = CLOUD_TOP + WAVE_H / 2 })
     scene.add(wukong)
-
-    // 软阴影（云面上椭圆渐变，随立像腾跃同步缩小变淡 → 落地实物感）
-    const shadowCv = document.createElement('canvas')
-    shadowCv.width = 128
-    shadowCv.height = 64
-    const sctx = shadowCv.getContext('2d')
-    const sg = sctx.createRadialGradient(64, 32, 4, 64, 32, 60)
-    sg.addColorStop(0, 'rgba(0,0,0,0.36)')
-    sg.addColorStop(0.6, 'rgba(0,0,0,0.2)')
-    sg.addColorStop(1, 'rgba(0,0,0,0)')
-    sctx.fillStyle = sg
-    sctx.fillRect(0, 0, 128, 64)
-    const shadowTex = new THREE.CanvasTexture(shadowCv)
-    const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: 0.85 })
-    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.85), shadowMat)
-    shadow.position.set(0, CLOUD_TOP + 0.02, 0.18)
-    scene.add(shadow)
 
     // ---- 动画：setInterval 驱动（自维护时钟，暂停不累计） ----
     const STEP = 1 / 60
@@ -140,11 +123,6 @@ export default function Wukong3D({ paused = false }) {
       waves.forEach((w, i) => { w.mesh.visible = idx === 2 + i })
     }
 
-    const shadowReset = () => {
-      shadow.scale.set(1, 1, 1)
-      shadowMat.opacity = 0.85
-    }
-
     // 调试句柄（便于浏览器侧验证动画状态）
     window.__wukongDebug = {
       getState: () => ({
@@ -153,7 +131,6 @@ export default function Wukong3D({ paused = false }) {
         acc: Number(acc.toFixed(2)),
         stand: stand.mesh.visible,
         hop: hop.mesh.visible,
-        shadow: Number(shadowMat.opacity.toFixed(2)),
         waves: waves.map((w) => w.mesh.visible),
       }),
     }
@@ -169,7 +146,6 @@ export default function Wukong3D({ paused = false }) {
       // 贴图未就绪（网络加载中）：保持静态渲染，避免悟空透明/悬空/闪变
       if (stand.mat.opacity < 1 || cloud.mat.opacity < 1) {
         show(0)
-        shadowReset()
         wukong.rotation.x = 0
         wukong.position.y = 0
         stand.mesh.scale.set(1, 1, 1)
@@ -180,17 +156,15 @@ export default function Wukong3D({ paused = false }) {
       if (t < HOP_AT) {
         // ---- 待机：站立立像 + 呼吸浮动 ----
         show(0)
-        shadowReset()
         wukong.rotation.x = 0
         wukong.position.y = Math.sin(t * 2.1) * 0.06
         const breath = 1 + Math.sin(t * 3.2) * 0.015
         stand.mesh.scale.set(breath, breath, 1)
       } else if (t < HOP_AT + HOP_LEN) {
-        // ---- 蹬棒腾跃：蹬棒立像抛物线跳起-空中-落下，阴影同步缩小变淡 ----
+        // ---- 蹬棒腾跃：蹬棒立像抛物线跳起-空中-落下 ----
         if (hop.mat.opacity < 1) {
           // 蹬棒贴图未就绪：回退为站立待机
           show(0)
-          shadowReset()
           wukong.rotation.x = 0
           wukong.position.y = Math.sin(t * 2.1) * 0.06
           stand.mesh.scale.set(1, 1, 1)
@@ -203,12 +177,9 @@ export default function Wukong3D({ paused = false }) {
         wukong.rotation.x = -hv * 0.12        // 跳起微前倾（蹬棒跃姿）
         wukong.position.y = hv * 0.9          // 腾空高度
         hop.mesh.scale.set(1 + hv * 0.05, 1 - hv * 0.05, 1)
-        shadow.scale.set(1 - hv * 0.4, 1 - hv * 0.4, 1)
-        shadowMat.opacity = 0.85 - hv * 0.55
       } else if (t < HOP_AT + HOP_LEN + 1.5) {
         // ---- 落地待机 ----
         show(0)
-        shadowReset()
         wukong.rotation.x = 0
         wukong.position.y = Math.sin((t - HOP_AT - HOP_LEN) * 2.1) * 0.06
         stand.mesh.scale.set(1, 1, 1)
@@ -217,13 +188,11 @@ export default function Wukong3D({ paused = false }) {
         const wt = t - WAVE_AT
         const idx = Math.min(3, Math.floor(wt / 0.27))
         show(2 + idx)
-        shadowReset()
         wukong.rotation.x = 0
         wukong.position.y = Math.sin(t * 2.1) * 0.06
       } else {
         // ---- 待机收尾 ----
         show(0)
-        shadowReset()
         wukong.rotation.x = 0
         wukong.position.y = Math.sin(t * 2.1) * 0.06
         stand.mesh.scale.set(1, 1, 1)
