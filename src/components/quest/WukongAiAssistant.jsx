@@ -2,9 +2,10 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { callAI } from '../../lib/ai'
 import { toast } from '../../lib/toast'
 
-// 悟空 AI 助手：右下角浮动（踩筋斗云的孙悟空），点击弹出对标"句乐部"的深色 AI 问答弹窗
+// 悟空 AI 助手：右下角浮动（踩筋斗云的孙悟空，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
 // props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
 const WUKONG_IMG = '/images/ai-assistant/wukong-cloud.webp'
+const BTN_SIZE = 92
 
 const PRESET_QUESTIONS = [
   '这道题我应该从哪里入手？请先给一个提示，不要直接给完整答案。',
@@ -19,6 +20,30 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const scrollRef = useRef(null)
+
+  // ---- 孙悟空浮动按钮：可拖拽位置 ----
+  const [btnPos, setBtnPos] = useState(() => ({
+    x: (typeof window !== 'undefined' ? window.innerWidth : 1280) - BTN_SIZE - 16,
+    y: (typeof window !== 'undefined' ? window.innerHeight : 720) - BTN_SIZE - 96,
+  }))
+  const dragRef = useRef({ dragging: false, moved: false, sx: 0, sy: 0, ox: 0, oy: 0 })
+  const [btnDragging, setBtnDragging] = useState(false)
+
+  // ---- AI 弹窗：可拖拽位置（打开时居中） ----
+  const [modalPos, setModalPos] = useState(null)
+  const modalDragRef = useRef({ dragging: false, sx: 0, sy: 0, ox: 0, oy: 0 })
+
+  // 打开弹窗时初始化到屏幕居中
+  useEffect(() => {
+    if (open) {
+      const w = Math.min(560, (window.innerWidth || 1280) - 32)
+      const h = Math.min(560, (window.innerWidth || 1280) - 32)
+      setModalPos({
+        x: Math.max(8, ((window.innerWidth || 1280) - w) / 2),
+        y: Math.max(8, ((window.innerHeight || 720) - h) / 2),
+      })
+    }
+  }, [open])
 
   const scrollToBottom = useCallback(() => {
     const el = scrollRef.current
@@ -64,19 +89,87 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
     }
   }
 
+  // ---- 浮动按钮拖拽（拖动不触发点击） ----
+  const onBtnPointerDown = (e) => {
+    const d = dragRef.current
+    d.dragging = true
+    d.moved = false
+    d.sx = e.clientX
+    d.sy = e.clientY
+    d.ox = btnPos.x
+    d.oy = btnPos.y
+    setBtnDragging(true)
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onBtnPointerMove = (e) => {
+    const d = dragRef.current
+    if (!d.dragging) return
+    const dx = e.clientX - d.sx
+    const dy = e.clientY - d.sy
+    if (!d.moved && Math.abs(dx) + Math.abs(dy) < 6) return // 位移小于阈值视为点击
+    d.moved = true
+    const vw = window.innerWidth || 1280
+    const vh = window.innerHeight || 720
+    setBtnPos({
+      x: Math.max(0, Math.min(vw - BTN_SIZE, d.ox + dx)),
+      y: Math.max(0, Math.min(vh - BTN_SIZE, d.oy + dy)),
+    })
+  }
+  const onBtnPointerUp = (e) => {
+    const d = dragRef.current
+    d.dragging = false
+    setBtnDragging(false)
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch (err) { /* 忽略 */ }
+    if (!d.moved) setOpen(v => !v) // 未拖动 → 视为点击，切换弹窗
+    d.moved = false
+  }
+
+  // ---- 弹窗标题栏拖拽 ----
+  const onModalPointerDown = (e) => {
+    const d = modalDragRef.current
+    d.dragging = true
+    d.sx = e.clientX
+    d.sy = e.clientY
+    d.ox = modalPos?.x || 0
+    d.oy = modalPos?.y || 0
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onModalPointerMove = (e) => {
+    const d = modalDragRef.current
+    if (!d.dragging) return
+    const vw = window.innerWidth || 1280
+    const vh = window.innerHeight || 720
+    const mw = Math.min(560, vw - 32)
+    setModalPos({
+      x: Math.max(8, Math.min(vw - mw - 8, d.ox + (e.clientX - d.sx))),
+      y: Math.max(8, Math.min(vh - 60, d.oy + (e.clientY - d.sy))),
+    })
+  }
+  const onModalPointerUp = (e) => {
+    const d = modalDragRef.current
+    d.dragging = false
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch (err) { /* 忽略 */ }
+  }
+
+  const modalW = Math.min(560, (typeof window !== 'undefined' ? window.innerWidth : 1280) - 32)
+
   return (
     <>
-      {/* 右下角浮动孙悟空（踩筋斗云） */}
+      {/* 右下角浮动孙悟空（踩筋斗云，可拖拽） */}
       <button
         aria-label="悟空智能助手"
-        onClick={() => setOpen(v => !v)}
+        onPointerDown={onBtnPointerDown}
+        onPointerMove={onBtnPointerMove}
+        onPointerUp={onBtnPointerUp}
+        onPointerCancel={onBtnPointerUp}
         style={{
-          position: 'fixed', right: 16, bottom: 96, zIndex: 55,
-          width: 92, height: 92, padding: 0, border: 'none', background: 'transparent',
-          cursor: 'pointer', filter: 'drop-shadow(0 8px 20px rgba(255,170,60,0.35))',
+          position: 'fixed', left: btnPos.x, top: btnPos.y, zIndex: 55,
+          width: BTN_SIZE, height: BTN_SIZE, padding: 0, border: 'none', background: 'transparent',
+          cursor: 'grab', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none',
+          filter: 'drop-shadow(0 8px 20px rgba(255,170,60,0.35))',
           transition: 'transform 0.18s ease',
         }}
-        className="wukong-float-btn"
+        className={btnDragging ? "wukong-float-btn dragging" : "wukong-float-btn"}
       >
         <img
           src={WUKONG_IMG} alt="悟空"
@@ -93,27 +186,41 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
           .wukong-float-btn { animation: wukong-floatY 2.8s ease-in-out infinite; }
           .wukong-float-btn img { animation: wukong-sway 3.6s ease-in-out infinite; }
           .wukong-float-btn:hover { transform: scale(1.08); }
+          .wukong-float-btn.dragging { animation: none; cursor: grabbing; }
+          .wukong-float-btn.dragging img { animation: none; }
         `}</style>
       </button>
 
-      {/* AI 问答弹窗（句乐部式） */}
-      {open && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-          onClick={() => setOpen(false)}
-        >
+      {/* AI 问答弹窗（句乐部式，可拖拽移动） */}
+      {open && modalPos && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300 }}
+            onClick={() => setOpen(false)}
+          />
           <div
             style={{
-              width: 'min(560px, 94vw)', maxHeight: '82vh', borderRadius: 20, overflow: 'hidden',
+              position: 'fixed', left: modalPos.x, top: modalPos.y, width: modalW,
+              maxHeight: '82vh', borderRadius: 20, overflow: 'hidden',
               display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.45)',
               background: 'var(--qs-surface, #fff)', color: 'var(--qs-text, #111)',
-              border: '1px solid var(--qs-border, #e5e7eb)',
+              border: '1px solid var(--qs-border, #e5e7eb)', zIndex: 301,
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 顶栏 */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--qs-border, #eee)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* 顶栏（可拖动） */}
+            <div
+              onPointerDown={onModalPointerDown}
+              onPointerMove={onModalPointerMove}
+              onPointerUp={onModalPointerUp}
+              onPointerCancel={onModalPointerUp}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 18px', borderBottom: '1px solid var(--qs-border, #eee)',
+                cursor: 'grab', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
                 <img src={WUKONG_IMG} alt="" style={{ width: 34, height: 34, objectFit: 'contain' }} />
                 <div>
                   <h2 style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>悟空智能助手</h2>
@@ -125,7 +232,7 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
               </div>
               <button
                 onClick={() => setOpen(false)}
-                style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--qs-surface2, #f3f4f6)', color: 'var(--qs-text, #555)', cursor: 'pointer', fontSize: 15 }}
+                style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--qs-surface2, #f3f4f6)', color: 'var(--qs-text, #555)', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}
               >✕</button>
             </div>
 
@@ -199,7 +306,7 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
               >发送</button>
             </div>
           </div>
-        </div>
+        </>
       )}
     </>
   )
