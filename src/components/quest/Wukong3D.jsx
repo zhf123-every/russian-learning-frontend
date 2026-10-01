@@ -80,15 +80,17 @@ export default function Wukong3D({ paused = false }) {
     scene.add(dir)
 
     // 精致筋斗云立像（AI 渲染毛绒蓬松质感）
-    // 悟空脚底对齐云图 30% 处（云的蓬松上表面内部）→ 脚"埋进"云里，视觉站在云上面而非云前面
+    // 悟空脚底对齐云图 33% 处（云的蓬松上表面内部）+ 云前移到悟空脚前（z=0.2）
+    // → 云的上部凸起真实遮挡悟空脚部，视觉上"脚陷进云里、站在云上面"
     const CLOUD_TOP = 0.15
     const CLOUD_ASPECT = 1.565                // 云主体宽/高（抠图实测）
-    const CLOUD_STAND_RATIO = 0.30            // 悟空脚底对齐点在贴图中的比例（云上表面）
-    const CLOUD_W = 2.0                       // 云宽（世界单位）
+    const CLOUD_STAND_RATIO = 0.33            // 悟空脚底对齐点在贴图中的比例（云上表面内部）
+    const CLOUD_W = 2.1                       // 云宽（世界单位）
     const CLOUD_H = CLOUD_W / CLOUD_ASPECT    // 云高
     const cloud = makeSprite(CLOUD_URL, CLOUD_H, CLOUD_ASPECT)
     // 脚底对齐点固定在 y=CLOUD_TOP：云中心 y = CLOUD_TOP + (0.5 - standRatio) * 高
     cloud.mesh.position.y = CLOUD_TOP + (0.5 - CLOUD_STAND_RATIO) * CLOUD_H
+    cloud.mesh.position.z = 0.2               // 云前移：上部在悟空脚前，形成踩入遮挡
     scene.add(cloud.mesh)
 
     // 立像底部对齐云上表面（y=0.15），悟空/云整体构图居中
