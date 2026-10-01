@@ -2,40 +2,16 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { callAI } from '../../lib/ai'
 import { toast } from '../../lib/toast'
 
-// 悟空 AI 助手：右下角浮动（孙悟空踩在筋斗云上表演"逐帧动画"动作，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
-// 结构：筋斗云是独立底座（完全静止，只有悟空动）；悟空本体用 JS 帧播放器按序列切换图片（后空翻=24帧侧视标准翻越、招手=4帧）
+// 悟空 AI 助手：右下角浮动（孙悟空踩在筋斗云上表演动作，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
+// 结构：筋斗云是独立底座（完全静止，只有悟空动）；后空翻 = CSS 3D 变换（perspective + rotateX 绕水平轴整圈，真 3D 透视纵深：近大远小、翻过头顶变小）
 // 时间轴（每 tick=90ms，共 110 tick ≈ 10s 循环）：
-//   0-19 tick 待机（侧身站立） → 20-43 后空翻 24 帧（每帧 1 tick，侧身绕重心逆时针整圈：上→左→倒立→右→回正 = 从前往后翻）
+//   0-19 tick 待机（侧身站立） → 20-43 后空翻 3D 翻转（每 tick rotateX +15°，0→360°：后仰→团身翻过头顶→前倾回正；中段 90°-270° 切换团身图）
 //   44-58 待机 → 59-70 招手 4 帧（每帧 3 tick） → 71-109 待机 → 回绕
 // props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
 const WUKONG_CLOUD = '/images/ai-assistant/wukong-cloud.webp'    // 筋斗云底座（静止）
-const WUKONG_IDLE  = '/images/ai-assistant/side-stand.webp'      // 悟空待机：侧身站立（与后空翻序列同姿态基准）
-const FLIP_FRAMES = [                                            // 后空翻 24 帧侧视标准翻越（侧身图绕重心逆时针 360°，抛物线位移+空中收腿）
-  '/images/ai-assistant/anim/side-flip-00.webp',
-  '/images/ai-assistant/anim/side-flip-01.webp',
-  '/images/ai-assistant/anim/side-flip-02.webp',
-  '/images/ai-assistant/anim/side-flip-03.webp',
-  '/images/ai-assistant/anim/side-flip-04.webp',
-  '/images/ai-assistant/anim/side-flip-05.webp',
-  '/images/ai-assistant/anim/side-flip-06.webp',
-  '/images/ai-assistant/anim/side-flip-07.webp',
-  '/images/ai-assistant/anim/side-flip-08.webp',
-  '/images/ai-assistant/anim/side-flip-09.webp',
-  '/images/ai-assistant/anim/side-flip-10.webp',
-  '/images/ai-assistant/anim/side-flip-11.webp',
-  '/images/ai-assistant/anim/side-flip-12.webp',
-  '/images/ai-assistant/anim/side-flip-13.webp',
-  '/images/ai-assistant/anim/side-flip-14.webp',
-  '/images/ai-assistant/anim/side-flip-15.webp',
-  '/images/ai-assistant/anim/side-flip-16.webp',
-  '/images/ai-assistant/anim/side-flip-17.webp',
-  '/images/ai-assistant/anim/side-flip-18.webp',
-  '/images/ai-assistant/anim/side-flip-19.webp',
-  '/images/ai-assistant/anim/side-flip-20.webp',
-  '/images/ai-assistant/anim/side-flip-21.webp',
-  '/images/ai-assistant/anim/side-flip-22.webp',
-  '/images/ai-assistant/anim/side-flip-23.webp',
-]
+const WUKONG_IDLE  = '/images/ai-assistant/side-stand.webp'      // 悟空待机：侧身站立（与后空翻同姿态基准）
+const FLIP_STAND   = '/images/ai-assistant/side-stand.webp'      // 3D 翻转起跳/落地姿态（侧身站立）
+const FLIP_TUCK    = '/images/ai-assistant/side-tuck.webp'       // 3D 翻转空中团身姿态（抱膝蜷球，90°-270° 段）
 const WAVE_FRAMES = [                                            // 招手 4 帧（抬手→举高→大幅摆→胸前挥）
   '/images/ai-assistant/wave-1.webp',
   '/images/ai-assistant/wave-2.webp',
@@ -43,7 +19,7 @@ const WAVE_FRAMES = [                                            // 招手 4 帧
   '/images/ai-assistant/wave-4.webp',
 ]
 const BTN_SIZE = 92
-const ALL_FRAMES = [WUKONG_IDLE, ...FLIP_FRAMES, ...WAVE_FRAMES]
+const ALL_FRAMES = [WUKONG_IDLE, FLIP_STAND, FLIP_TUCK, ...WAVE_FRAMES]
 
 const PRESET_QUESTIONS = [
   '这道题我应该从哪里入手？请先给一个提示，不要直接给完整答案。',
@@ -67,9 +43,12 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
   const dragRef = useRef({ dragging: false, moved: false, sx: 0, sy: 0, ox: 0, oy: 0 })
   const [btnDragging, setBtnDragging] = useState(false)
 
-  // ---- 帧播放器：JS 驱动（tick 推进帧索引，单图切换） ----
+  // ---- 帧播放器：JS 驱动（tick 推进；后空翻为 3D 变换，招手为帧切换） ----
   const [act, setAct] = useState('idle')      // 'idle' | 'prep' | 'flip' | 'wave'
-  const [fi, setFi] = useState(0)             // 当前动作帧索引
+  const [fi, setFi] = useState(0)             // 当前动作帧索引（wave 用）
+  const [flipAngle, setFlipAngle] = useState(0)   // 3D 翻转角度（rotateX，0→360）
+  const [flipDy, setFlipDy] = useState(0)         // 3D 翻转抛物线位移（倒立点最高）
+  const [flipTuck, setFlipTuck] = useState(false) // 90°-270° 空中团身段
   const tickRef = useRef(0)
 
   // 预热全部帧到浏览器缓存
@@ -86,7 +65,16 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
       let nextAct = 'idle'
       let nextFi = 0
       if (t <= 19) { nextAct = 'idle' }
-      else if (t <= 43) { nextAct = 'flip'; nextFi = Math.min(23, t - 20) }
+      else if (t <= 43) {
+        nextAct = 'flip'
+        const k = t - 20                        // 0..23
+        const angle = Math.round(k * 15)        // 0..345，每 tick +15°（绕水平轴从前往后翻一整圈）
+        const rad = (angle * Math.PI) / 180
+        setFlipAngle(angle)
+        setFlipDy(Math.round(-60 * Math.sin(rad / 2)))  // 抛物线：180°（倒立点）最高
+        setFlipTuck(angle >= 90 && angle <= 270)        // 空中团身段
+        nextFi = 0
+      }
       else if (t <= 58) { nextAct = 'idle' }
       else if (t <= 70) { nextAct = 'wave'; nextFi = Math.min(3, Math.floor((t - 59) / 3)) }
       else if (t >= 71) { nextAct = 'idle'; if (t >= 109) tickRef.current = 0 }
@@ -242,18 +230,28 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
         }}
         className={btnDragging ? "wukong-float-btn dragging" : "wukong-float-btn"}
       >
-        {/* 双层结构：筋斗云底座（完全静止）+ 悟空在云上做 JS 帧动画 */}
+        {/* 双层结构：筋斗云底座（完全静止）+ 悟空在云上做 3D 动作 */}
         <div className="wukong-stage" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <img src={WUKONG_CLOUD} alt="" className="wukong-cloud-img" />
-          <div className="wukong-body-wrap" style={{ transform: isPrep ? 'translateY(-7px) scale(1.05)' : 'translateY(0)', transition: 'transform 0.18s ease' }}>
-            {/* 帧常驻层叠：所有帧一次加载常驻 DOM，JS 只切换 opacity（零网络零解码，绝不闪失） */}
-            <img src={WUKONG_IDLE} alt="" className="wu-frame wu-idle" style={{ opacity: (act === 'idle' || act === 'prep') ? 1 : 0 }} />
-            {FLIP_FRAMES.map((s, i) => (
-              <img key={s} src={s} alt="" className="wu-frame" style={{ opacity: (act === 'flip' && fi === i) ? 1 : 0 }} />
-            ))}
-            {WAVE_FRAMES.map((s, i) => (
-              <img key={s} src={s} alt="" className="wu-frame" style={{ opacity: (act === 'wave' && fi === i) ? 1 : 0 }} />
-            ))}
+          {/* 位移层：翻转时的抛物线升降（独立于 3D 旋转） */}
+          <div style={{ transform: `translateY(${act === 'flip' ? flipDy : 0}px)`, transition: 'transform 0.05s linear' }}>
+            {/* 3D 层：perspective 透视 + rotateX 绕水平轴翻转（从前往后翻一整圈，近大远小） */}
+            <div className="wukong-body-wrap" style={{
+              transform: act === 'flip'
+                ? `perspective(760px) rotateX(${flipAngle}deg) scale(1.5)`
+                : (isPrep ? 'translateY(-7px) scale(1.05)' : 'translateY(0) scale(1.5)'),
+              transformOrigin: act === 'flip' ? 'center' : 'bottom center',
+              transition: 'transform 0.05s linear',
+            }}>
+              {/* 待机帧 */}
+              <img src={WUKONG_IDLE} alt="" className="wu-frame wu-idle" style={{ opacity: (act === 'idle' || act === 'prep') ? 1 : 0 }} />
+              {/* 3D 翻转：起跳/落地用侧身站立图，90°-270° 用团身图（空中抱膝） */}
+              <img src={FLIP_STAND} alt="" className="wu-frame" style={{ opacity: (act === 'flip' && !flipTuck) ? 1 : 0 }} />
+              <img src={FLIP_TUCK} alt="" className="wu-frame" style={{ opacity: (act === 'flip' && flipTuck) ? 1 : 0 }} />
+              {WAVE_FRAMES.map((s, i) => (
+                <img key={s} src={s} alt="" className="wu-frame" style={{ opacity: (act === 'wave' && fi === i) ? 1 : 0 }} />
+              ))}
+            </div>
           </div>
         </div>
         {/* 状态小光点 */}
