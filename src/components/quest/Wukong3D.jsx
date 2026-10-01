@@ -2,17 +2,19 @@
 // 形象：AI 渲染的精致悟空立像（站立/蹬棒腾空/招手）+ 精致筋斗云，全抠图透明 webp
 // 场景：真 3D（Three.js）—— 精致云（静止底座）+ 立像在 3D 空间做动作
 // 动作：待机呼吸浮动 → 蹬棒腾跃（抛物线跳跃，棒随悟空一起）→ 落地待机 → 招手
-// 落地感：立像下方有软阴影，跳起时阴影同步缩小变淡（实物感，去"图片痕迹"）
+// 皮肤：props.skin 指定皮肤 id（默认 default），素材从 petSkins 注册表读取；
+//       仅皮肤切换才重建场景（useEffect 依赖 [skin]），拖拽 paused 只暂停动画不重建
 // 质感：RoomEnvironment 环境光照（立像图自带光影 + 环境氛围）
-// props: paused —— 拖拽期间暂停动画
+// props: paused —— 拖拽期间暂停动画；skin —— 皮肤 id
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { resolveSkin } from '../../lib/petSkins'
 
 const STAND_URL = '/images/ai-assistant/wukong-stand.webp'   // 精致站立立像
 const HOP_URL   = '/images/ai-assistant/wukong-hop.webp'     // 蹬棒腾空立像（金箍棒踩在脚下）
 const CLOUD_URL = '/images/ai-assistant/cloud-fine.webp'     // 精致筋斗云立像（毛绒蓬松质感）
-const WAVE_URLS = [
+const WAVE_BASE_URLS = [
   '/images/ai-assistant/wave-1.webp',
   '/images/ai-assistant/wave-2.webp',
   '/images/ai-assistant/wave-3.webp',
@@ -51,9 +53,9 @@ function makeSprite(url, height, ratio) {
   return { mesh, mat }
 }
 
-export default function Wukong3D({ paused = false }) {
+export default function Wukong3D({ paused = false, skin = 'default' }) {
   const mountRef = useRef(null)
-  // 场景只挂载一次（useEffect 依赖 []）；paused 用 ref 读取，
+  // 场景只在皮肤变化时重建；paused 用 ref 读取，
   // 拖拽时只暂停/恢复动画，绝不销毁重建场景（否则贴图重载期间悟空消失、多次拖拽叠加多份 canvas）
   const pausedRef = useRef(paused)
   useEffect(() => { pausedRef.current = paused }, [paused])
@@ -61,6 +63,12 @@ export default function Wukong3D({ paused = false }) {
   useEffect(() => {
     const mount = mountRef.current
     if (!mount) return undefined
+
+    const skinCfg = resolveSkin(skin)
+    const STAND_URL = skinCfg.assets.stand
+    const HOP_URL = skinCfg.assets.hop
+    const CLOUD_URL = skinCfg.assets.cloud
+    const WAVE_URLS = skinCfg.assets.waves || WAVE_BASE_URLS
 
     const W = 288
     const H = 288
@@ -225,7 +233,7 @@ export default function Wukong3D({ paused = false }) {
         }
       })
     }
-  }, [])
+  }, [skin])
 
   return <div ref={mountRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
 }

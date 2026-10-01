@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { callAI } from '../../lib/ai'
 import { toast } from '../../lib/toast'
+import { useQuestSettings } from '../../hooks/useQuestSettings'
+import { resolveSkin } from '../../lib/petSkins'
 import Wukong3D from './Wukong3D'
 
 // 悟空 AI 助手：答题页左下角背景角色（真 3D 悟空踩 3D 筋斗云，融入页面背景，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
@@ -24,6 +26,10 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const scrollRef = useRef(null)
+
+  // 与设置「宠物」面板逻辑关联：petShow 控制悟空助手显示/隐藏；petSkin 控制皮肤
+  const { ui } = useQuestSettings()
+  const skinCfg = resolveSkin(ui.petSkin)
 
   // ---- 孙悟空背景角色：可拖拽位置（默认答题页左下角，融入背景） ----
   const [btnPos, setBtnPos] = useState(() => ({
@@ -157,6 +163,9 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
 
   const modalW = Math.min(560, (typeof window !== 'undefined' ? window.innerWidth : 1280) - 32)
 
+  // 设置里关闭了宠物助手 → 悟空整体不显示（与旧版桌面宠物共用 petShow 开关）
+  if (ui.petShow === false) return null
+
   return (
     <>
       {/* 答题页左下角背景角色（踩筋斗云，可拖拽，融入页面背景） */}
@@ -176,7 +185,7 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
       >
         {/* 真 3D 场景：筋斗云底座（完全静止）+ 悟空在云上做 3D 动作；画布透明，直接透出答题页背景 */}
         <div className="wukong-stage" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-          <Wukong3D paused={btnDragging} />
+          <Wukong3D paused={btnDragging} skin={skinCfg.id} />
         </div>
         <style>{`
           /* 3D 悟空由 Wukong3D 组件渲染到 canvas；这里只保留按钮整体样式 */

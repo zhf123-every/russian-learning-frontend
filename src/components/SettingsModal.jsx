@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSettingsStore } from '../store/settingsStore'
 import { exportBackup, importBackup } from '../lib/backup'
 import { toast } from '../lib/toast'
+import { PET_SKIN_LIST, isVipUser } from '../lib/petSkins'
 
 /* ================= 快捷键定义（quest 俄语闯关页生效；设置弹窗全站可改） ================= */
 export const HOTKEY_DEFS = [
@@ -952,18 +953,18 @@ export default function SettingsModal({ onClose, defaultTab }) {
                 <>
                   <div className="qs-sec">
                     <div className="qs-sec-title">宠物设置</div>
-                    <div className="qs-sec-sub">练习页面右下角的宠物助手</div>
+                    <div className="qs-sec-sub">练习页面左下角的悟空智能助手（关联答题页显示/皮肤）</div>
                     <div className="qs-item">
                       <div className="qs-item-left">
                         <div className="qs-item-label">宠物助手</div>
-                        <div className="qs-item-desc">控制练习页面右下角的宠物显示</div>
+                        <div className="qs-item-desc">控制练习页面悟空的显示与隐藏</div>
                       </div>
                       <div className="qs-item-right"><Toggle on={ui.petShow !== false} onChange={v => patchUi({ petShow: v })} /></div>
                     </div>
                     <div className="qs-item">
                       <div className="qs-item-left">
                         <div className="qs-item-label">主动求助提示</div>
-                        <div className="qs-item-desc">连续答错时，宠物会询问是否请求 AI 帮助</div>
+                        <div className="qs-item-desc">连续答错时，悟空会询问是否请求 AI 帮助</div>
                       </div>
                       <div className="qs-item-right"><Toggle on={ui.petHelp !== false} onChange={v => patchUi({ petHelp: v })} /></div>
                     </div>
@@ -977,6 +978,51 @@ export default function SettingsModal({ onClose, defaultTab }) {
                           <option value="1">错误1次后</option><option value="2">错误2次后</option><option value="3">错误3次后</option><option value="5">错误5次后</option><option value="always">总是</option>
                         </select>
                       </div>
+                    </div>
+                  </div>
+                  <div className="qs-sec">
+                    <div className="qs-sec-title">悟空皮肤</div>
+                    <div className="qs-sec-sub">更换悟空的成套形象（角色 + 筋斗云），会员专属皮肤标有 💎</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginTop: 12 }}>
+                      {PET_SKIN_LIST.map((s) => {
+                        const locked = s.vip && !isVipUser()
+                        const active = (ui.petSkin || 'default') === s.id
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            disabled={locked}
+                            onClick={() => {
+                              if (locked) { toast('💎 会员专属皮肤，开通会员后即可使用'); return }
+                              patchUi({ petSkin: s.id })
+                            }}
+                            style={{
+                              position: 'relative', borderRadius: 14, padding: 10, cursor: locked ? 'not-allowed' : 'pointer',
+                              border: active ? '2px solid var(--qs-active, #7C3AED)' : '2px solid var(--qs-border, #e5e7eb)',
+                              background: 'var(--qs-surface2, #fafafa)', textAlign: 'left', transition: 'all 0.15s ease',
+                              opacity: locked ? 0.75 : 1,
+                            }}
+                          >
+                            <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', background: '#fff', aspectRatio: '1 / 0.85' }}>
+                              <img src={s.preview} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              {locked && (
+                                <span style={{ position: 'absolute', top: 6, right: 6, fontSize: 18, lineHeight: 1 }}>💎</span>
+                              )}
+                              {active && (
+                                <span style={{ position: 'absolute', top: 6, left: 6, fontSize: 11, fontWeight: 700, color: '#fff', background: 'var(--qs-active, #7C3AED)', borderRadius: 999, padding: '2px 8px' }}>使用中</span>
+                              )}
+                            </div>
+                            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--qs-text, #111)' }}>{s.name}</span>
+                              {s.vip && <span style={{ fontSize: 10.5, fontWeight: 600, color: '#b45309', background: '#fef3c7', borderRadius: 999, padding: '1px 7px' }}>会员</span>}
+                            </div>
+                            <div style={{ fontSize: 11.5, color: 'var(--qs-sub, #9ca3af)', marginTop: 3, lineHeight: 1.5 }}>{s.desc}</div>
+                            {locked && (
+                              <div style={{ fontSize: 11, color: '#b45309', marginTop: 6 }}>🔒 开通会员后解锁</div>
+                            )}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
                 </>
