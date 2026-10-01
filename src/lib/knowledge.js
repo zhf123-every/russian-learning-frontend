@@ -177,11 +177,12 @@ async function callAI(messages) {
   return j.content || '';
 }
 
-// 按句生成知识点（失败自动重试 2 次）
+// 按句生成知识点（失败自动重试：指数退避，容忍后端冷启动/瞬时重启）
+const RETRY_WAITS = [0, 4000, 12000, 25000]
 export async function generateKnowledge(ru) {
   let lastErr = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
+  for (let attempt = 0; attempt < RETRY_WAITS.length; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, RETRY_WAITS[attempt]));
     try {
       const content = await callAI([
         { role: 'system', content: KNOWLEDGE_PROMPT },
