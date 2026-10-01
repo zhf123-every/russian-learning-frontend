@@ -58,8 +58,8 @@ export default function Wukong3D({ paused = false }) {
     const mount = mountRef.current
     if (!mount) return undefined
 
-    const W = 184
-    const H = 184
+    const W = 288
+    const H = 288
 
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(34, W / H, 0.1, 100)

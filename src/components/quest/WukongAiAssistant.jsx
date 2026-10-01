@@ -3,12 +3,13 @@ import { callAI } from '../../lib/ai'
 import { toast } from '../../lib/toast'
 import Wukong3D from './Wukong3D'
 
-// 悟空 AI 助手：右下角浮动（真 3D 悟空踩 3D 筋斗云，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
-// 结构：3D 筋斗云（静止底座）+ 3D 悟空（Three.js 程序化建模），所有动作在 3D 空间完成（后空翻=绕X轴向后整圈+抛物线+空中团身）
-// 待机(呼吸浮动) → 后空翻 → 待机 → 招手 → 回绕（10s 循环）；拖拽时暂停动画
+// 悟空 AI 助手：答题页左下角背景角色（真 3D 悟空踩 3D 筋斗云，融入页面背景，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
+// 结构：3D 筋斗云（静止底座）+ 3D 悟空（Three.js 程序化建模），所有动作在 3D 空间完成
+// 待机(呼吸浮动) → 蹬棒腾跃 → 落地 → 招手（10s 循环）；拖拽时暂停动画
+// 融合设计：无投影光晕、无状态光点，透明画布直接透出答题页背景（白/深色都自然融入）
 // props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
 const WUKONG_IDLE  = '/images/ai-assistant/side-stand.webp'      // 弹窗头图用 2D 形象
-const BTN_SIZE = 92
+const BTN_SIZE = 240
 
 const PRESET_QUESTIONS = [
   '这道题我应该从哪里入手？请先给一个提示，不要直接给完整答案。',
@@ -24,10 +25,10 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
   const [loading, setLoading] = useState(false)
   const scrollRef = useRef(null)
 
-  // ---- 孙悟空浮动按钮：可拖拽位置（须在帧播放器之前声明，effect 依赖它） ----
+  // ---- 孙悟空背景角色：可拖拽位置（默认答题页左下角，融入背景） ----
   const [btnPos, setBtnPos] = useState(() => ({
-    x: (typeof window !== 'undefined' ? window.innerWidth : 1280) - BTN_SIZE - 16,
-    y: (typeof window !== 'undefined' ? window.innerHeight : 720) - BTN_SIZE - 96,
+    x: 20,
+    y: (typeof window !== 'undefined' ? window.innerHeight : 720) - BTN_SIZE - 40,
   }))
   const dragRef = useRef({ dragging: false, moved: false, sx: 0, sy: 0, ox: 0, oy: 0 })
   const [btnDragging, setBtnDragging] = useState(false)   // 拖拽期间 3D 动画暂停，松开继续
@@ -158,7 +159,7 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
 
   return (
     <>
-      {/* 右下角浮动孙悟空（踩筋斗云，可拖拽） */}
+      {/* 答题页左下角背景角色（踩筋斗云，可拖拽，融入页面背景） */}
       <button
         aria-label="悟空智能助手"
         onPointerDown={onBtnPointerDown}
@@ -169,24 +170,18 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
           position: 'fixed', left: btnPos.x, top: btnPos.y, zIndex: 55,
           width: BTN_SIZE, height: BTN_SIZE, padding: 0, border: 'none', background: 'transparent',
           cursor: 'grab', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none',
-          filter: 'drop-shadow(0 8px 20px rgba(255,170,60,0.35))',
           transition: 'transform 0.18s ease',
         }}
         className={btnDragging ? "wukong-float-btn dragging" : "wukong-float-btn"}
       >
-        {/* 双层结构：3D 筋斗云底座（完全静止）+ 3D 悟空在云上做 3D 动作 */}
+        {/* 真 3D 场景：筋斗云底座（完全静止）+ 悟空在云上做 3D 动作；画布透明，直接透出答题页背景 */}
         <div className="wukong-stage" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <Wukong3D paused={btnDragging} />
         </div>
-        {/* 状态小光点 */}
-        <span style={{
-          position: 'absolute', right: 2, bottom: 6, width: 12, height: 12, borderRadius: '50%',
-          background: '#22c55e', border: '2px solid #fff', boxShadow: '0 0 8px rgba(34,197,94,0.8)',
-        }} />
         <style>{`
           /* 3D 悟空由 Wukong3D 组件渲染到 canvas；这里只保留按钮整体样式 */
           .wukong-float-btn { transition: transform 0.18s ease; }
-          .wukong-float-btn:hover { transform: scale(1.08); }
+          .wukong-float-btn:hover { transform: scale(1.05); }
           .wukong-float-btn.dragging { cursor: grabbing; }
         `}</style>
       </button>
