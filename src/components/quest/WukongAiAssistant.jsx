@@ -253,7 +253,11 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习', wro
               </div>
               <button
                 onClick={() => setOpen(false)}
-                style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--qs-surface2, #f3f4f6)', color: 'var(--qs-text, #555)', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerMove={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+                aria-label="关闭"
+                style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--qs-surface2, #f3f4f6)', color: 'var(--qs-text, #555)', cursor: 'pointer', fontSize: 15, flexShrink: 0, zIndex: 2, position: 'relative' }}
               >✕</button>
             </div>
 
