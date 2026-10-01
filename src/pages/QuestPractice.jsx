@@ -553,6 +553,8 @@ export default function QuestPractice() {
             const adapted = adaptLocalLesson(pre);
             if (!cancelled) {
               setLocalLesson(pre); setIsLocalMode(true);
+              window.__unitKnowledge = window.__unitKnowledge || {};
+              window.__unitKnowledge[effectiveCourseId] = (pre && pre.knowledge) || {};
               setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
               const seqs = expandSequencesWithChunks(adapted, pre?.words);
               setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
@@ -579,6 +581,8 @@ export default function QuestPractice() {
             if (!cancelled) {
               setLocalLesson(stored);
               setIsLocalMode(true);
+              window.__unitKnowledge = window.__unitKnowledge || {};
+              window.__unitKnowledge[effectiveCourseId] = (stored && stored.knowledge) || {};
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
               const seqs = expandSequencesWithChunks(adapted, stored?.words);
               setSequences(applyDiff(seqs));

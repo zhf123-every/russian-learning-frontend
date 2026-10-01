@@ -464,6 +464,8 @@ export default function QuestDictation() {
             const items = scaffoldingToItems(stored.scaffoldingPaths);
             if (!cancelled) {
               setLocalLesson(stored); setIsLocalMode(true);
+              window.__unitKnowledge = window.__unitKnowledge || {};
+              window.__unitKnowledge[effectiveCourseId] = (stored && stored.knowledge) || {};
               const stmts = expandStatements(items, stored.words);
               setStatements(applyDiffItems(stmts));
               setLoading(false);
@@ -480,6 +482,8 @@ export default function QuestDictation() {
             if (!cancelled) {
               setLocalLesson(stored);
               setIsLocalMode(true);
+              window.__unitKnowledge = window.__unitKnowledge || {};
+              window.__unitKnowledge[effectiveCourseId] = (stored && stored.knowledge) || {};
               const stmts = expandStatements(items, stored.words);
               setStatements(applyDiffItems(stmts));
               if (!cancelled) setLoading(false);

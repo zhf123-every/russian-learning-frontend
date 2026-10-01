@@ -208,8 +208,13 @@ export function readKnowledgeCache(unitId) {
   }
 }
 
-// 获取某句知识点（缓存命中直接返回；未命中生成并写缓存）
+// 获取某句知识点（命中顺序：课时内嵌 → localStorage 缓存 → AI 生成并写缓存）
+// 课时内嵌 = 后台「一键生成本课知识点」写入 unit.knowledge，随课程保存/同步 → 永久缓存、零请求
 export async function getKnowledge(unitId, ru) {
+  try {
+    const embedded = window.__unitKnowledge && window.__unitKnowledge[unitId];
+    if (embedded && embedded[ru] && embedded[ru]._ru) return embedded[ru];
+  } catch (e) { /* 忽略 */ }
   const cache = readKnowledgeCache(unitId);
   if (cache[ru] && cache[ru]._ru) return cache[ru];
   const k = await generateKnowledge(ru);

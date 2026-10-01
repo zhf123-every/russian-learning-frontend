@@ -4,6 +4,7 @@ import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { API_BASE, apiFetch } from '../lib/api'
 import { parseAIJSON, chat } from '../lib/ai'
+import { generateKnowledge } from '../lib/knowledge'
 import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps, russianizeNumbers } from '../lib/snowballEngine'
 import { useAdminStore } from '../store/adminStore'
 
@@ -53,6 +54,7 @@ export default function AdminDashboard() {
   const [courses, setCourses] = useState([])
   const [toast, setToast] = useState('')
   const [saveBanner, setSaveBanner] = useState(null) // 保存课时后的成功横幅 + 下一步引导
+  const [kpState, setKpState] = useState(null)       // 一键生成本课知识点进度 { done, total, cur }
   // —— 连词成句课程生成器：单词 → 提示词 ——
   const [genWords, setGenWords] = useState('')
   const [sentencesInput, setSentencesInput] = useState('')
@@ -934,6 +936,55 @@ export default function AdminDashboard() {
     (u.scaffoldingPaths && u.scaffoldingPaths.length) ||
     (u.materials && u.materials.length)
 
+  // ✨ 一键生成本课知识点：收集本课所有句子（例句 + 滚动路径完整句）→ AI 逐句生成 → 内嵌 unit.knowledge
+  // 内嵌后随课时保存/同步云端 → 前端学习内容弹窗 100% 命中、零请求、永久缓存（后端再休眠也不失败）
+  const collectUnitSentences = (u) => {
+    const seen = new Set()
+    const out = []
+    const push = (ru) => {
+      if (!ru) return
+      const k = String(ru).trim()
+      if (!k || seen.has(k)) return
+      seen.add(k)
+      out.push(k)
+    }
+    ;(u.sentences || []).forEach((s) => push(s && (s.ru || s.russian || s.text)))
+    ;(u.scaffoldingPaths || []).forEach((p) => {
+      const steps = Array.isArray(p.steps) ? p.steps : []
+      const last = steps[steps.length - 1]
+      push(last && (last.russian || last.ru || last.text))
+    })
+    return out
+  }
+
+  const genUnitKnowledge = async () => {
+    if (!activeUnit) return
+    const sents = collectUnitSentences(activeUnit)
+    if (!sents.length) { flash('本课时还没有例句或滚动路径，先挂内容再生成知识点'); return }
+    const existing = (activeUnit.knowledge && typeof activeUnit.knowledge === 'object') ? activeUnit.knowledge : {}
+    const todo = sents.filter((ru) => !(existing[ru] && existing[ru]._ru))
+    if (!todo.length) { flash('本课所有句子都已有知识点，无需再生成'); return }
+    setKpState({ done: 0, total: todo.length, cur: '' })
+    let done = 0
+    const errors = []
+    for (const ru of todo) {
+      setKpState({ done, total: todo.length, cur: ru })
+      try {
+        const k = await generateKnowledge(ru)
+        if (k && k._ru) existing[ru] = k
+      } catch (e) { errors.push(ru) }
+      done++
+      setKpState({ done, total: todo.length, cur: ru })
+    }
+    patchUnit({ knowledge: existing })
+    setKpState(null)
+    if (errors.length) {
+      flash(`⚠️ 生成 ${todo.length - errors.length}/${todo.length} 句，失败 ${errors.length} 句（如「${errors[0]?.slice(0, 30)}…」）可再点重试；已成功的知识点已内嵌课时，点「保存课时内容」固定入库`)
+    } else {
+      flash(`✅ 已为 ${todo.length} 句生成知识点并内嵌课时（前端 100% 命中、永久秒开），点「保存课时内容」固定入库`)
+    }
+  }
+
   // 保存课时内容（写回课程 units）
   const saveUnit = () => {
     if (!activeUnit) return
@@ -1166,7 +1217,22 @@ export default function AdminDashboard() {
               <h1 className="text-xl font-extrabold text-gray-900 mt-1">{active.title} · {activeUnit.title}</h1>
               <p className="text-xs text-gray-400 mt-0.5">第三步 · 挂内容：例句 + 滚动路径 + 素材</p>
             </div>
-            <button className="btn btn-primary btn-sm" onClick={saveUnit}>💾 保存课时内容</button>
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col items-end gap-1">
+                <button
+                  className="btn btn-secondary btn-sm whitespace-nowrap"
+                  onClick={genUnitKnowledge}
+                  disabled={!!kpState}
+                  title="为本课所有句子批量生成 AI 知识点并内嵌课时：前端学习内容弹窗 100% 命中、零请求、永久缓存"
+                >
+                  {kpState ? `✨ 生成中 ${kpState.done}/${kpState.total}` : '✨ 生成本课知识点'}
+                </button>
+                {kpState && kpState.cur && (
+                  <span className="text-[11px] text-gray-400 max-w-[260px] truncate">正在解析：{kpState.cur}</span>
+                )}
+              </div>
+              <button className="btn btn-primary btn-sm" onClick={saveUnit}>💾 保存课时内容</button>
+            </div>
           </div>
 
           {/* ① 例句 */}
