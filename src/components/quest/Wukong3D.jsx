@@ -1,9 +1,9 @@
 // Wukong3D.jsx —— 悟空 AI 助手的"精致 3D"版
-// 形象：AI 渲染的精致悟空立像（站立/蹬棒腾空/招手，抠图透明 webp）
-// 场景：真 3D（Three.js）—— 3D 筋斗云（静止底座）+ 立像在 3D 空间做动作
+// 形象：AI 渲染的精致悟空立像（站立/蹬棒腾空/招手）+ 精致筋斗云，全抠图透明 webp
+// 场景：真 3D（Three.js）—— 精致云（静止底座）+ 立像在 3D 空间做动作
 // 动作：待机呼吸浮动 → 蹬棒腾跃（抛物线跳跃，棒随悟空一起）→ 落地待机 → 招手
 // 落地感：立像下方有软阴影，跳起时阴影同步缩小变淡（实物感，去"图片痕迹"）
-// 质感：RoomEnvironment 环境光照（立像图自带光影 + 3D 云有体积光泽）
+// 质感：RoomEnvironment 环境光照（立像图自带光影 + 环境氛围）
 // props: paused —— 拖拽期间暂停动画
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
@@ -11,34 +11,13 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 
 const STAND_URL = '/images/ai-assistant/wukong-stand.webp'   // 精致站立立像
 const HOP_URL   = '/images/ai-assistant/wukong-hop.webp'     // 蹬棒腾空立像（金箍棒踩在脚下）
+const CLOUD_URL = '/images/ai-assistant/cloud-fine.webp'     // 精致筋斗云立像（毛绒蓬松质感）
 const WAVE_URLS = [
   '/images/ai-assistant/wave-1.webp',
   '/images/ai-assistant/wave-2.webp',
   '/images/ai-assistant/wave-3.webp',
   '/images/ai-assistant/wave-4.webp',
 ]
-
-// 3D 筋斗云（静止底座，多层云瓣）
-function buildCloud() {
-  const cloud = new THREE.Group()
-  const mat = new THREE.MeshStandardMaterial({
-    color: 0xffffff, transparent: true, opacity: 0.92, roughness: 0.8, metalness: 0,
-  })
-  const blob = (x, y, z, sx, sy, sz) => {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(0.5, 28, 20), mat)
-    m.scale.set(sx, sy, sz)
-    m.position.set(x, y, z)
-    cloud.add(m)
-  }
-  blob(0, 0, 0, 1.2, 0.34, 0.76)
-  blob(-0.76, -0.07, 0.06, 0.6, 0.26, 0.52)
-  blob(0.76, -0.07, -0.02, 0.6, 0.26, 0.52)
-  blob(0, 0.06, -0.26, 0.78, 0.22, 0.44)
-  blob(-0.34, 0.1, 0.22, 0.5, 0.2, 0.4)
-  blob(0.36, 0.09, 0.2, 0.46, 0.19, 0.36)
-  blob(-0.15, 0.12, -0.05, 0.55, 0.18, 0.3)
-  return cloud
-}
 
 // 贴图加载（带失败重试：网络抖动时回调不触发，opacity 卡 0 会导致立像/球不可见）
 function loadTexWithRetry(loader, url, mat, tries) {
@@ -101,12 +80,18 @@ export default function Wukong3D({ paused = false }) {
     dir.position.set(3, 5, 4)
     scene.add(dir)
 
-    // 3D 云 + 悟空（站立立像/蹬棒立像/招手立像）
-    const cloud = buildCloud()
-    scene.add(cloud)
+    // 精致筋斗云立像（AI 渲染毛绒蓬松质感）—— 云顶约 y=0.15，悟空踩云顶
+    const CLOUD_TOP = 0.15
+    const CLOUD_ASPECT = 1.565                // 云主体宽/高（抠图实测）
+    const CLOUD_TOP_RATIO = 0.215             // 云顶在贴图中距顶部的比例（抠图实测）
+    const CLOUD_W = 2.0                       // 云宽（世界单位）
+    const CLOUD_H = CLOUD_W / CLOUD_ASPECT    // 云高
+    const cloud = makeSprite(CLOUD_URL, CLOUD_H, CLOUD_ASPECT)
+    // 云顶对齐 CLOUD_TOP：云中心 y = CLOUD_TOP + (0.5 - topRatio) * 高
+    cloud.mesh.position.y = CLOUD_TOP + (0.5 - CLOUD_TOP_RATIO) * CLOUD_H
+    scene.add(cloud.mesh)
 
     // 立像底部对齐云顶（云顶约 y=0.15），悟空/云整体构图居中
-    const CLOUD_TOP = 0.15
     const STAND_H = 2.8
     const HOP_H = 2.9
     const WAVE_H = 2.8
@@ -181,8 +166,8 @@ export default function Wukong3D({ paused = false }) {
       acc += STEP
       const t = acc % CYCLE
 
-      // 贴图未就绪（网络加载中）：保持静态渲染，避免悟空透明/闪变
-      if (stand.mat.opacity < 1) {
+      // 贴图未就绪（网络加载中）：保持静态渲染，避免悟空透明/悬空/闪变
+      if (stand.mat.opacity < 1 || cloud.mat.opacity < 1) {
         show(0)
         shadowReset()
         wukong.rotation.x = 0
