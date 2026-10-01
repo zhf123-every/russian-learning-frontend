@@ -85,8 +85,7 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [btnDragging])
 
-  // 当前要显示的帧
-  const currentSrc = act === 'flip' ? FLIP_FRAMES[fi] : act === 'wave' ? WAVE_FRAMES[fi] : WUKONG_IDLE
+  // 当前动作帧的可见性由 act/fi 控制（帧图全部常驻，只切 opacity）
   const isPrep = act === 'prep'
 
   // ---- AI 弹窗：可拖拽位置（打开时居中） ----
@@ -234,18 +233,15 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
         {/* 双层结构：筋斗云底座（完全静止）+ 悟空在云上做 JS 帧动画 */}
         <div className="wukong-stage" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <img src={WUKONG_CLOUD} alt="" className="wukong-cloud-img" />
-          <div className="wukong-body-wrap">
-            <img
-              key={currentSrc}
-              src={currentSrc}
-              alt=""
-              loading="eager"
-              className="wu-single-frame"
-              style={{
-                transform: isPrep ? 'translateY(-7px) scale(1.05)' : 'translateY(0)',
-                transition: 'transform 0.18s ease',
-              }}
-            />
+          <div className="wukong-body-wrap" style={{ transform: isPrep ? 'translateY(-7px) scale(1.05)' : 'translateY(0)', transition: 'transform 0.18s ease' }}>
+            {/* 帧常驻层叠：所有帧一次加载常驻 DOM，JS 只切换 opacity（零网络零解码，绝不闪失） */}
+            <img src={WUKONG_IDLE} alt="" className="wu-frame wu-idle" style={{ opacity: (act === 'idle' || act === 'prep') ? 1 : 0 }} />
+            {FLIP_FRAMES.map((s, i) => (
+              <img key={s} src={s} alt="" className="wu-frame" style={{ opacity: (act === 'flip' && fi === i) ? 1 : 0 }} />
+            ))}
+            {WAVE_FRAMES.map((s, i) => (
+              <img key={s} src={s} alt="" className="wu-frame" style={{ opacity: (act === 'wave' && fi === i) ? 1 : 0 }} />
+            ))}
           </div>
         </div>
         {/* 状态小光点 */}
@@ -264,8 +260,9 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
             position: absolute; left: 0; right: 0; bottom: 24%; width: 100%; height: 62%;
             transform: scale(1.5); transform-origin: bottom center;
           }
-          .wu-single-frame {
+          .wu-frame {
             position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+            transition: opacity 0.04s linear;
           }
           .wukong-float-btn { transition: transform 0.18s ease; }
           .wukong-float-btn:hover { transform: scale(1.08); }
