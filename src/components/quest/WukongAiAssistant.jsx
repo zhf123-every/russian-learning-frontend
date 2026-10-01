@@ -1,25 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { callAI } from '../../lib/ai'
 import { toast } from '../../lib/toast'
+import Wukong3D from './Wukong3D'
 
-// 悟空 AI 助手：右下角浮动（孙悟空踩在筋斗云上表演动作，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
-// 结构：筋斗云是独立底座（完全静止，只有悟空动）；后空翻 = CSS 3D 变换（perspective + rotateX 绕水平轴整圈，真 3D 透视纵深：近大远小、翻过头顶变小）
-// 时间轴（每 tick=90ms，共 110 tick ≈ 10s 循环）：
-//   0-19 tick 待机（侧身站立） → 20-43 后空翻 3D 翻转（每 tick rotateX +15°，0→360°：后仰→团身翻过头顶→前倾回正；中段 90°-270° 切换团身图）
-//   44-58 待机 → 59-70 招手 4 帧（每帧 3 tick） → 71-109 待机 → 回绕
+// 悟空 AI 助手：右下角浮动（真 3D 悟空踩 3D 筋斗云，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
+// 结构：3D 筋斗云（静止底座）+ 3D 悟空（Three.js 程序化建模），所有动作在 3D 空间完成（后空翻=绕X轴向后整圈+抛物线+空中团身）
+// 待机(呼吸浮动) → 后空翻 → 待机 → 招手 → 回绕（10s 循环）；拖拽时暂停动画
 // props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
-const WUKONG_CLOUD = '/images/ai-assistant/wukong-cloud.webp'    // 筋斗云底座（静止）
-const WUKONG_IDLE  = '/images/ai-assistant/side-stand.webp'      // 悟空待机：侧身站立（与后空翻同姿态基准）
-const FLIP_STAND   = '/images/ai-assistant/side-stand.webp'      // 3D 翻转起跳/落地姿态（侧身站立）
-const FLIP_TUCK    = '/images/ai-assistant/side-tuck.webp'       // 3D 翻转空中团身姿态（抱膝蜷球，90°-270° 段）
-const WAVE_FRAMES = [                                            // 招手 4 帧（抬手→举高→大幅摆→胸前挥）
-  '/images/ai-assistant/wave-1.webp',
-  '/images/ai-assistant/wave-2.webp',
-  '/images/ai-assistant/wave-3.webp',
-  '/images/ai-assistant/wave-4.webp',
-]
+const WUKONG_IDLE  = '/images/ai-assistant/side-stand.webp'      // 弹窗头图用 2D 形象
 const BTN_SIZE = 92
-const ALL_FRAMES = [WUKONG_IDLE, FLIP_STAND, FLIP_TUCK, ...WAVE_FRAMES]
 
 const PRESET_QUESTIONS = [
   '这道题我应该从哪里入手？请先给一个提示，不要直接给完整答案。',
@@ -41,52 +30,7 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
     y: (typeof window !== 'undefined' ? window.innerHeight : 720) - BTN_SIZE - 96,
   }))
   const dragRef = useRef({ dragging: false, moved: false, sx: 0, sy: 0, ox: 0, oy: 0 })
-  const [btnDragging, setBtnDragging] = useState(false)
-
-  // ---- 帧播放器：JS 驱动（tick 推进；后空翻为 3D 变换，招手为帧切换） ----
-  const [act, setAct] = useState('idle')      // 'idle' | 'prep' | 'flip' | 'wave'
-  const [fi, setFi] = useState(0)             // 当前动作帧索引（wave 用）
-  const [flipAngle, setFlipAngle] = useState(0)   // 3D 翻转角度（rotateX，0→360）
-  const [flipDy, setFlipDy] = useState(0)         // 3D 翻转抛物线位移（倒立点最高）
-  const [flipTuck, setFlipTuck] = useState(false) // 90°-270° 空中团身段
-  const tickRef = useRef(0)
-
-  // 预热全部帧到浏览器缓存
-  useEffect(() => {
-    ALL_FRAMES.forEach((src) => { const im = new Image(); im.src = src })
-  }, [])
-
-  // 帧播放主循环：拖拽时暂停，松开继续
-  useEffect(() => {
-    if (btnDragging) return
-    const iv = setInterval(() => {
-      tickRef.current += 1
-      const t = tickRef.current
-      let nextAct = 'idle'
-      let nextFi = 0
-      if (t <= 19) { nextAct = 'idle' }
-      else if (t <= 43) {
-        nextAct = 'flip'
-        const k = t - 20                        // 0..23
-        const angle = Math.round(k * 15)        // 0..345，每 tick +15°（绕水平轴从前往后翻一整圈）
-        const rad = (angle * Math.PI) / 180
-        setFlipAngle(angle)
-        setFlipDy(Math.round(-60 * Math.sin(rad / 2)))  // 抛物线：180°（倒立点）最高
-        setFlipTuck(angle >= 90 && angle <= 270)        // 空中团身段
-        nextFi = 0
-      }
-      else if (t <= 58) { nextAct = 'idle' }
-      else if (t <= 70) { nextAct = 'wave'; nextFi = Math.min(3, Math.floor((t - 59) / 3)) }
-      else if (t >= 71) { nextAct = 'idle'; if (t >= 109) tickRef.current = 0 }
-      setAct(nextAct)
-      setFi(nextFi)
-    }, 90)
-    return () => clearInterval(iv)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [btnDragging])
-
-  // 当前动作帧的可见性由 act/fi 控制（帧图全部常驻，只切 opacity）
-  const isPrep = act === 'prep'
+  const [btnDragging, setBtnDragging] = useState(false)   // 拖拽期间 3D 动画暂停，松开继续
 
   // ---- AI 弹窗：可拖拽位置（打开时居中） ----
   const [modalPos, setModalPos] = useState(null)
@@ -230,29 +174,9 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
         }}
         className={btnDragging ? "wukong-float-btn dragging" : "wukong-float-btn"}
       >
-        {/* 双层结构：筋斗云底座（完全静止）+ 悟空在云上做 3D 动作 */}
+        {/* 双层结构：3D 筋斗云底座（完全静止）+ 3D 悟空在云上做 3D 动作 */}
         <div className="wukong-stage" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-          <img src={WUKONG_CLOUD} alt="" className="wukong-cloud-img" />
-          {/* 位移层：翻转时的抛物线升降（独立于 3D 旋转） */}
-          <div style={{ transform: `translateY(${act === 'flip' ? flipDy : 0}px)`, transition: 'transform 0.05s linear' }}>
-            {/* 3D 层：perspective 透视 + rotateX 绕水平轴翻转（从前往后翻一整圈，近大远小） */}
-            <div className="wukong-body-wrap" style={{
-              transform: act === 'flip'
-                ? `perspective(760px) rotateX(${flipAngle}deg) scale(1.5)`
-                : (isPrep ? 'translateY(-7px) scale(1.05)' : 'translateY(0) scale(1.5)'),
-              transformOrigin: act === 'flip' ? 'center' : 'bottom center',
-              transition: 'transform 0.05s linear',
-            }}>
-              {/* 待机帧 */}
-              <img src={WUKONG_IDLE} alt="" className="wu-frame wu-idle" style={{ opacity: (act === 'idle' || act === 'prep') ? 1 : 0 }} />
-              {/* 3D 翻转：起跳/落地用侧身站立图，90°-270° 用团身图（空中抱膝） */}
-              <img src={FLIP_STAND} alt="" className="wu-frame" style={{ opacity: (act === 'flip' && !flipTuck) ? 1 : 0 }} />
-              <img src={FLIP_TUCK} alt="" className="wu-frame" style={{ opacity: (act === 'flip' && flipTuck) ? 1 : 0 }} />
-              {WAVE_FRAMES.map((s, i) => (
-                <img key={s} src={s} alt="" className="wu-frame" style={{ opacity: (act === 'wave' && fi === i) ? 1 : 0 }} />
-              ))}
-            </div>
-          </div>
+          <Wukong3D paused={btnDragging} />
         </div>
         {/* 状态小光点 */}
         <span style={{
@@ -260,20 +184,7 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
           background: '#22c55e', border: '2px solid #fff', boxShadow: '0 0 8px rgba(34,197,94,0.8)',
         }} />
         <style>{`
-          /* 筋斗云：独立底座，完全静止（用户要求：云不动，只有悟空动） */
-          .wukong-cloud-img {
-            position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 56%;
-            object-fit: contain;
-          }
-          /* 悟空层：放大主体，位于云上方 */
-          .wukong-body-wrap {
-            position: absolute; left: 0; right: 0; bottom: 24%; width: 100%; height: 62%;
-            transform: scale(1.5); transform-origin: bottom center;
-          }
-          .wu-frame {
-            position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
-            transition: opacity 0.04s linear;
-          }
+          /* 3D 悟空由 Wukong3D 组件渲染到 canvas；这里只保留按钮整体样式 */
           .wukong-float-btn { transition: transform 0.18s ease; }
           .wukong-float-btn:hover { transform: scale(1.08); }
           .wukong-float-btn.dragging { cursor: grabbing; }
