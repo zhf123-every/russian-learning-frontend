@@ -738,7 +738,7 @@ export default function QuestDictation() {
   const seqsNow = () => statements;
   const setSeqsNow = (arr) => setStatements(arr);
   const resetIndexNow = () => setQuestionIndex(0);
-  const bookSentences = (localLesson?.sentences || []).filter((x) => x && x.ru);
+  const bookSentences = (localLesson?.sentences || []).filter((x) => x && (x.ru || x.russian || x.text));
 
   // ---- 补全图标逻辑：教材 / 笔记 / 大纲 / 乱序 / 陌生句 ----
   const showHint = (text) => {

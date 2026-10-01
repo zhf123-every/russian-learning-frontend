@@ -41,8 +41,9 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
   const chunkItems = useMemo(() => {
     const items = []
     ;(Array.isArray(sentences) ? sentences : []).forEach((s) => {
-      if (!s || !s.ru) return
-      const chunks = splitSentenceToChunks(s.ru)
+      const ru = typeof s === 'string' ? s : (s && (s.ru || s.russian || s.text))
+      if (!ru) return
+      const chunks = splitSentenceToChunks(ru)
       let acc = ''
       chunks.forEach((c, k) => {
         acc = k === 0 ? c : acc + ' ' + c
@@ -63,7 +64,7 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
   // 选中块变化 → 加载该句 AI 知识点
   useEffect(() => {
     if (!s) { setK(null); return }
-    const ru = s.ru
+    const ru = typeof s === 'string' ? s : (s.ru || s.russian || s.text || '')
     let alive = true
     setLoading(true)
     setError('')
@@ -78,7 +79,7 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
       .then((kk) => { if (alive) { setK(kk); setLoading(false) } })
       .catch((e) => { if (alive) { setError(String((e && e.message) || e)); setLoading(false) } })
     return () => { alive = false }
-  }, [s && s.ru, unitId, activeIdx])
+  }, [s && (s.ru || s.russian || s.text), unitId, activeIdx])
 
   // 当前块内词的注解（AI words 过滤块内词；未命中用整句 words）
   const kWords = useMemo(() => {
@@ -93,7 +94,8 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
 
   // 左栏块的 AI 中文副标题（块内词中文拼接；缓存有 AI 词条才显示）
   const chunkSubZh = (it) => {
-    const cw = cacheMap[it.sentence.ru]
+    const ru = typeof it.sentence === 'string' ? it.sentence : (it.sentence.ru || it.sentence.russian || it.sentence.text || '')
+    const cw = cacheMap[ru]
     if (!cw || !Array.isArray(cw.words) || cw.words.length === 0) return ''
     const ws = (it.text || '').match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?/g) || []
     const zhs = ws.map((w) => {
@@ -106,7 +108,7 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
   // 块中文（渐进块 = 块内词中文拼接；完整句 = 句翻译）
   const blockZh = useMemo(() => {
     if (!item) return ''
-    if (isFinal) return s?.zh || ''
+    if (isFinal) return s?.zh || s?.chinese || ''
     if (displayWords) {
       const zh = displayWords.map((w) => w.chinese || w.word).filter(Boolean).join(' ')
       return zh
@@ -116,9 +118,10 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
 
   const retry = () => {
     if (!s) return
+    const ru = typeof s === 'string' ? s : (s.ru || s.russian || s.text || '')
     setLoading(true)
     setError('')
-    getKnowledge(unitId, s.ru)
+    getKnowledge(unitId, ru)
       .then((kk) => { setK(kk); setLoading(false) })
       .catch((e) => { setError(String((e && e.message) || e)); setLoading(false) })
   }
@@ -225,7 +228,7 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
                     <div className={card}>
                       <h4 className={h4}>中文翻译</h4>
                       <p className="text-sm text-gray-800 leading-relaxed">
-                        {blockZh || (loading ? 'AI 生成中…' : s?.zh || '—')}
+                        {blockZh || (loading ? 'AI 生成中…' : s?.zh || s?.chinese || '—')}
                       </p>
                     </div>
 

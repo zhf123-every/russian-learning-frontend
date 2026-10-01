@@ -42,6 +42,7 @@ function ruGender(p) {
 function normForm(word) {
   return (word || "")
     .replace(/'/g, "") // 去重音撇号（词典变格表带 '，句中原文不带，统一用无重音形式匹配）
+    .replace(/\u0301/g, "") // 去 Unicode 组合重音符（句中原文 é 的真实重音，如 "Э́то"）
     .replace(/^[«"'(]+|[»"').,;:!?…]+$/g, "")
     .toLowerCase()
     .trim();

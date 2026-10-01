@@ -9,10 +9,15 @@ export default function ReportErrorModal({ sentence, onClose }) {
   const [desc, setDesc] = useState('')
   const [done, setDone] = useState(false)
 
+  // 句子可能是对象（含 russian/stressMarked 等字段）或旧版字符串，统一转显示文本
+  const sentenceText = typeof sentence === 'string'
+    ? sentence
+    : (sentence?.stressMarked || sentence?.russian || sentence?.ru || sentence?.text || '——')
+
   const submit = () => {
     try {
       const list = JSON.parse(localStorage.getItem('rlearn_error_reports') || '[]')
-      list.push({ type, desc: desc.trim(), sentence, time: Date.now() })
+      list.push({ type, desc: desc.trim(), sentence: sentenceText, sentenceRaw: sentence, time: Date.now() })
       localStorage.setItem('rlearn_error_reports', JSON.stringify(list))
       setDone(true)
     } catch (e) {
@@ -43,7 +48,7 @@ export default function ReportErrorModal({ sentence, onClose }) {
           <>
             <div style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>当前句子</div>
             <div style={{ padding: '10px 12px', background: '#F7F5F2', borderRadius: 8, fontSize: 15, fontFamily: '"PT Serif",Georgia,serif', marginBottom: 16 }}>
-              {sentence || '——'}
+              {sentenceText}
             </div>
             <div style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>问题类型</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>

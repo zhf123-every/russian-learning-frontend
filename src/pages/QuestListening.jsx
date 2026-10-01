@@ -1087,7 +1087,7 @@ export default function QuestListening() {
       )}
       {showReport && current && (
         <ReportErrorModal
-          content={current.russian}
+          sentence={current.russian}
           context={`${title} 听力题`}
           onClose={() => setShowReport(false)}
         />
