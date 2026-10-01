@@ -1,13 +1,46 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { splitSentenceToChunks } from '../lib/chunking'
 import { getKnowledge, readKnowledgeCache } from '../lib/knowledge'
+import { annotateWords, ensureDictFull } from '../lib/wordAnnotate'
+import { inferRoles } from '../lib/roleRules'
+import { getPosLabel } from '../constants/posColors'
 import { playGlobalAudio } from '../utils/audioService'
 
 
 // 学习内容弹窗 —— 对标句乐部「查看课程学习内容 Ctrl+1」
 // 左栏：chunking 渐进块列表（Это → дом → Это дом.）
 // 右栏：知识点解析（主句/中文翻译/俄语释义/单词短语注解/语法分析/文化与实用知识/功能和使用场景/相关例句）
-// 数据：全部内容由 AI 按完整句生成（缓存 localStorage），不依赖词典兜底
+// 数据：优先 AI 按完整句生成（缓存 localStorage）；AI 失败时本地词典+语法引擎兜底（逐词词性/成分/中文），保证弹窗始终可用
+
+// 本地兜底：AI 不可用时，用词典标注 + 形态规则引擎生成逐词注解
+function buildLocalKnowledge(ru) {
+  const withRoles = inferRoles(ru, annotateWords(ru))
+  return {
+    ru_def: '',
+    words: withRoles.map((w) => ({
+      word: w.form || '',
+      stress: w.stressed || w.form || '',
+      chinese: w.chinese || '',
+      pos: getPosLabel(w.pos),
+      basic: w.chinese || '',
+      context: '',
+      synonyms: [], antonyms: [], phrases: [],
+      example: '', memory: '',
+    })).filter((w) => w.word),
+    grammar: {
+      word_explains: withRoles.map((w) => ({
+        word: w.form || '',
+        translation: w.chinese || '',
+        explanation: [w.pos ? getPosLabel(w.pos) : '', w.roleLabel || ''].filter(Boolean).join('，') || '',
+      })).filter((x) => x.word),
+      pattern: '', tense: '', key: '', mistakes: '', order: '', rules: '',
+    },
+    culture: { elements: '', usage: '', background: '' },
+    function: '',
+    examples: [],
+    _ru: ru, _ts: Date.now(), _local: true,
+  }
+}
 
 // 音频播放（后端 /api/tts；相对路径音频：dev 走 vite 代理，生产拼线上后端）
 function playTTS(text) {
@@ -77,7 +110,22 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
     }
     getKnowledge(unitId, ru)
       .then((kk) => { if (alive) { setK(kk); setLoading(false) } })
-      .catch((e) => { if (alive) { setError(String((e && e.message) || e)); setLoading(false) } })
+      .catch((e) => {
+        if (!alive) return
+        const msg = String((e && e.message) || e)
+        // 本地兜底：词典就位后生成逐词注解，保证弹窗不白屏
+        ensureDictFull().then(() => {
+          if (!alive) return
+          setK(buildLocalKnowledge(ru))
+          setError('AI 生成失败（' + msg + '），已显示本地词典注解')
+          setLoading(false)
+        }).catch(() => {
+          if (!alive) return
+          setK(buildLocalKnowledge(ru))
+          setError('AI 生成失败（' + msg + '），已显示本地词典注解')
+          setLoading(false)
+        })
+      })
     return () => { alive = false }
   }, [s && (s.ru || s.russian || s.text), unitId, activeIdx])
 
@@ -123,7 +171,18 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
     setError('')
     getKnowledge(unitId, ru)
       .then((kk) => { setK(kk); setLoading(false) })
-      .catch((e) => { setError(String((e && e.message) || e)); setLoading(false) })
+      .catch((e) => {
+        const msg = String((e && e.message) || e)
+        ensureDictFull().then(() => {
+          setK(buildLocalKnowledge(ru))
+          setError('AI 生成失败（' + msg + '），已显示本地词典注解')
+          setLoading(false)
+        }).catch(() => {
+          setK(buildLocalKnowledge(ru))
+          setError('AI 生成失败（' + msg + '），已显示本地词典注解')
+          setLoading(false)
+        })
+      })
   }
 
   // 句子播放
