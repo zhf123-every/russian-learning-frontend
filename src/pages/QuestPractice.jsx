@@ -1039,7 +1039,21 @@ export default function QuestPractice() {
   const seqsNow = () => sequences;
   const setSeqsNow = (arr) => setSequences(arr);
   const resetIndexNow = () => setCurrentSequenceIndex(0);
-  const bookSentences = (localLesson?.sentences || []).filter((x) => x && (x.ru || x.russian || x.text));
+  // 学习内容句子源：优先顶层 sentences；滚雪球课程无 sentences 时，从每条路径提取完整句（最后一步）
+  const bookSentences = (() => {
+    const ls = localLesson
+    if (!ls) return []
+    const sents = (ls.sentences || []).filter((x) => x && (x.ru || x.russian || x.text))
+    if (sents.length) return sents
+    return (ls.scaffoldingPaths || [])
+      .map((p) => {
+        const steps = Array.isArray(p.steps) ? p.steps : []
+        const last = steps[steps.length - 1]
+        if (!last) return null
+        return { ...last, russian: last.russian, chinese: last.chinese, pathId: p.pathId }
+      })
+      .filter(Boolean)
+  })()
 
   // ---- 补全图标逻辑：教材 / 笔记 / 大纲 / 乱序 / 陌生句 ----
   const showHint = (text) => {
