@@ -63,8 +63,8 @@ export default function Wukong3D({ paused = false }) {
 
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(34, W / H, 0.1, 100)
-    camera.position.set(0, 1.0, 5.8)
-    camera.lookAt(0, 0.9, 0)
+    camera.position.set(0, 1.1, 6.0)
+    camera.lookAt(0, 1.0, 0)
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
     renderer.setSize(W, H)
@@ -86,7 +86,7 @@ export default function Wukong3D({ paused = false }) {
     // 精致筋斗云立像（AI 渲染毛绒蓬松质感）
     // 悟空脚底对齐云图 33% 处（云的蓬松上表面内部）+ 云前移到悟空脚前（z=0.2）
     // → 云的上部凸起真实遮挡悟空脚部，视觉上"脚陷进云里、站在云上面"
-    const CLOUD_TOP = 0.15
+    const CLOUD_TOP = 0.10
     const CLOUD_ASPECT = 1.565                // 云主体宽/高（抠图实测）
     const CLOUD_STAND_RATIO = 0.33            // 悟空脚底对齐点在贴图中的比例（云上表面内部）
     const CLOUD_W = 2.1                       // 云宽（世界单位）
@@ -97,10 +97,10 @@ export default function Wukong3D({ paused = false }) {
     cloud.mesh.position.z = 0.2               // 云前移：上部在悟空脚前，形成踩入遮挡
     scene.add(cloud.mesh)
 
-    // 立像底部对齐云上表面（y=0.15），悟空/云整体构图居中
-    const STAND_H = 2.8
-    const HOP_H = 2.9
-    const WAVE_H = 2.8
+    // 立像底部对齐云上表面（y=CLOUD_TOP），悟空/云整体构图居中（头顶完整展示，不裁切）
+    const STAND_H = 2.5
+    const HOP_H = 2.55
+    const WAVE_H = 2.5
     const stand = makeSprite(STAND_URL, STAND_H, 0.62)
     const hop = makeSprite(HOP_URL, HOP_H, 0.54)
     const waves = WAVE_URLS.map((u) => makeSprite(u, WAVE_H, 0.62))
@@ -181,8 +181,8 @@ export default function Wukong3D({ paused = false }) {
         const hv = Math.sin(k * Math.PI)      // 0→1→0 抛物线
         show(1)
         wukong.rotation.x = -hv * 0.12        // 跳起微前倾（蹬棒跃姿）
-        wukong.position.y = hv * 0.9          // 腾空高度
-        hop.mesh.scale.set(1 + hv * 0.05, 1 - hv * 0.05, 1)
+        wukong.position.y = hv * 0.45         // 腾空高度（压低，保证头顶完整展示）
+        hop.mesh.scale.set(1 - hv * 0.15, 1 - hv * 0.15, 1)  // 跳起缩小（透视远+防裁切），落地恢复
       } else if (t < HOP_AT + HOP_LEN + 1.5) {
         // ---- 落地待机 ----
         show(0)
