@@ -3,34 +3,38 @@ import { callAI } from '../../lib/ai'
 import { toast } from '../../lib/toast'
 
 // 悟空 AI 助手：右下角浮动（孙悟空踩在筋斗云上表演"逐帧动画"动作，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
-// 结构：筋斗云是独立底座（完全静止，只有悟空动）；悟空本体用 JS 帧播放器按序列切换图片（后空翻=20帧补间序列、招手=4帧）
-// 时间轴（每 tick=90ms，共 178 tick ≈ 16s 循环）：
-//   0-29 tick 待机（直立站立） → 30-49 后空翻 20 帧（每帧 1 tick：站立→屈膝蓄力→蹬地跳起→腾空→蜷缩→倒立→翻越下落→落地站稳）
-//   50-69 待机 → 70-81 招手 4 帧（每帧 3 tick） → 82-177 待机 → 回绕
+// 结构：筋斗云是独立底座（完全静止，只有悟空动）；悟空本体用 JS 帧播放器按序列切换图片（后空翻=24帧侧视标准翻越、招手=4帧）
+// 时间轴（每 tick=90ms，共 110 tick ≈ 10s 循环）：
+//   0-19 tick 待机（侧身站立） → 20-43 后空翻 24 帧（每帧 1 tick，侧身绕重心逆时针整圈：上→左→倒立→右→回正 = 从前往后翻）
+//   44-58 待机 → 59-70 招手 4 帧（每帧 3 tick） → 71-109 待机 → 回绕
 // props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
 const WUKONG_CLOUD = '/images/ai-assistant/wukong-cloud.webp'    // 筋斗云底座（静止）
-const WUKONG_IDLE  = '/images/ai-assistant/anim/flip-00.webp'    // 悟空待机：直立站立（与后空翻序列首帧共用）
-const FLIP_FRAMES = [                                            // 后空翻 20 帧连续补间（AI 真实关键姿态：站立→半蹲→屈膝蓄力→蹬地→腾空→蜷缩→倒立→翻越→落地→站稳）
-  '/images/ai-assistant/anim/flip-00.webp',
-  '/images/ai-assistant/anim/flip-01.webp',
-  '/images/ai-assistant/anim/flip-02.webp',
-  '/images/ai-assistant/anim/flip-03.webp',
-  '/images/ai-assistant/anim/flip-04.webp',
-  '/images/ai-assistant/anim/flip-05.webp',
-  '/images/ai-assistant/anim/flip-06.webp',
-  '/images/ai-assistant/anim/flip-07.webp',
-  '/images/ai-assistant/anim/flip-08.webp',
-  '/images/ai-assistant/anim/flip-09.webp',
-  '/images/ai-assistant/anim/flip-10.webp',
-  '/images/ai-assistant/anim/flip-11.webp',
-  '/images/ai-assistant/anim/flip-12.webp',
-  '/images/ai-assistant/anim/flip-13.webp',
-  '/images/ai-assistant/anim/flip-14.webp',
-  '/images/ai-assistant/anim/flip-15.webp',
-  '/images/ai-assistant/anim/flip-16.webp',
-  '/images/ai-assistant/anim/flip-17.webp',
-  '/images/ai-assistant/anim/flip-18.webp',
-  '/images/ai-assistant/anim/flip-19.webp',
+const WUKONG_IDLE  = '/images/ai-assistant/side-stand.webp'      // 悟空待机：侧身站立（与后空翻序列同姿态基准）
+const FLIP_FRAMES = [                                            // 后空翻 24 帧侧视标准翻越（侧身图绕重心逆时针 360°，抛物线位移+空中收腿）
+  '/images/ai-assistant/anim/side-flip-00.webp',
+  '/images/ai-assistant/anim/side-flip-01.webp',
+  '/images/ai-assistant/anim/side-flip-02.webp',
+  '/images/ai-assistant/anim/side-flip-03.webp',
+  '/images/ai-assistant/anim/side-flip-04.webp',
+  '/images/ai-assistant/anim/side-flip-05.webp',
+  '/images/ai-assistant/anim/side-flip-06.webp',
+  '/images/ai-assistant/anim/side-flip-07.webp',
+  '/images/ai-assistant/anim/side-flip-08.webp',
+  '/images/ai-assistant/anim/side-flip-09.webp',
+  '/images/ai-assistant/anim/side-flip-10.webp',
+  '/images/ai-assistant/anim/side-flip-11.webp',
+  '/images/ai-assistant/anim/side-flip-12.webp',
+  '/images/ai-assistant/anim/side-flip-13.webp',
+  '/images/ai-assistant/anim/side-flip-14.webp',
+  '/images/ai-assistant/anim/side-flip-15.webp',
+  '/images/ai-assistant/anim/side-flip-16.webp',
+  '/images/ai-assistant/anim/side-flip-17.webp',
+  '/images/ai-assistant/anim/side-flip-18.webp',
+  '/images/ai-assistant/anim/side-flip-19.webp',
+  '/images/ai-assistant/anim/side-flip-20.webp',
+  '/images/ai-assistant/anim/side-flip-21.webp',
+  '/images/ai-assistant/anim/side-flip-22.webp',
+  '/images/ai-assistant/anim/side-flip-23.webp',
 ]
 const WAVE_FRAMES = [                                            // 招手 4 帧（抬手→举高→大幅摆→胸前挥）
   '/images/ai-assistant/wave-1.webp',
@@ -82,10 +86,10 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
       let nextAct = 'idle'
       let nextFi = 0
       if (t <= 19) { nextAct = 'idle' }
-      else if (t <= 39) { nextAct = 'flip'; nextFi = Math.min(19, t - 20) }
-      else if (t <= 54) { nextAct = 'idle' }
-      else if (t <= 66) { nextAct = 'wave'; nextFi = Math.min(3, Math.floor((t - 55) / 3)) }
-      else if (t >= 67) { nextAct = 'idle'; if (t >= 109) tickRef.current = 0 }
+      else if (t <= 43) { nextAct = 'flip'; nextFi = Math.min(23, t - 20) }
+      else if (t <= 58) { nextAct = 'idle' }
+      else if (t <= 70) { nextAct = 'wave'; nextFi = Math.min(3, Math.floor((t - 59) / 3)) }
+      else if (t >= 71) { nextAct = 'idle'; if (t >= 109) tickRef.current = 0 }
       setAct(nextAct)
       setFi(nextFi)
     }, 90)
