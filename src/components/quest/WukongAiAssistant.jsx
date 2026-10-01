@@ -2,11 +2,13 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { callAI } from '../../lib/ai'
 import { toast } from '../../lib/toast'
 
-// 悟空 AI 助手：右下角浮动（踩筋斗云的孙悟空，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
+// 悟空 AI 助手：右下角浮动（孙悟空踩在筋斗云上表演动作，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
+// 结构：筋斗云是独立底座（只浮动不旋转），悟空本体在云上做动作（后空翻只转悟空，云不动）
 // props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
-const WUKONG_IMG = '/images/ai-assistant/wukong-cloud.webp' // 动作1：站立握棒
-const WUKONG_IMG2 = '/images/ai-assistant/wukong-2.webp'    // 动作2：翻筋斗
-const WUKONG_IMG3 = '/images/ai-assistant/wukong-3.webp'    // 动作3：招手
+const WUKONG_CLOUD = '/images/ai-assistant/wukong-cloud.webp'    // 筋斗云底座
+const WUKONG_BODY1 = '/images/ai-assistant/wukong-body-1.webp'   // 悟空动作1：站立瞭望
+const WUKONG_BODY2 = '/images/ai-assistant/wukong-body-2.webp'   // 悟空动作2：后空翻
+const WUKONG_BODY3 = '/images/ai-assistant/wukong-body-3.webp'   // 悟空动作3：招手
 const BTN_SIZE = 92
 
 const PRESET_QUESTIONS = [
@@ -173,11 +175,16 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
         }}
         className={btnDragging ? "wukong-float-btn dragging" : "wukong-float-btn"}
       >
-        {/* 三动作循环表演（动作间交叉淡化+位移动势衔接） */}
-        <div className="wukong-stack" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-          <img src={WUKONG_IMG} alt="" className="wukong-act-img wukong-act1" />
-          <img src={WUKONG_IMG2} alt="" className="wukong-act-img wukong-act2" />
-          <img src={WUKONG_IMG3} alt="" className="wukong-act-img wukong-act3" />
+        {/* 双层结构：筋斗云底座 + 悟空在云上表演 */}
+        <div className="wukong-stage" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          {/* 筋斗云：独立底座，只轻微浮动，不参与旋转 */}
+          <img src={WUKONG_CLOUD} alt="" className="wukong-cloud-img" />
+          {/* 悟空本体：在云上方做三动作（旋转/位移只作用于悟空） */}
+          <div className="wukong-body-wrap">
+            <img src={WUKONG_BODY1} alt="" className="wukong-act-img wukong-b1" />
+            <img src={WUKONG_BODY2} alt="" className="wukong-act-img wukong-b2" />
+            <img src={WUKONG_BODY3} alt="" className="wukong-act-img wukong-b3" />
+          </div>
         </div>
         {/* 状态小光点 */}
         <span style={{
@@ -185,49 +192,65 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
           background: '#22c55e', border: '2px solid #fff', boxShadow: '0 0 8px rgba(34,197,94,0.8)',
         }} />
         <style>{`
-          @keyframes wukong-act1 {
-            0%   { opacity: 0; transform: translateY(10px) rotate(0deg); }
+          /* 筋斗云：只浮动，始终在底部 */
+          @keyframes wukong-cloud-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+          .wukong-cloud-img {
+            position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 56%;
+            object-fit: contain; animation: wukong-cloud-float 3.2s ease-in-out infinite;
+          }
+          /* 悟空层：放大主体，位于云上方 */
+          .wukong-body-wrap {
+            position: absolute; left: 0; right: 0; bottom: 24%; width: 100%; height: 62%;
+            transform: scale(1.5); transform-origin: bottom center;
+          }
+          /* 动作1：站立瞭望（0-33%），上抛衔接后空翻 */
+          @keyframes wukong-b1 {
+            0%   { opacity: 0; transform: translateY(8px) rotate(0deg); }
             3%   { opacity: 1; transform: translateY(0) rotate(0deg); }
-            8%   { opacity: 1; transform: translateY(-7px) rotate(-2deg); }
+            8%   { opacity: 1; transform: translateY(-6px) rotate(-2deg); }
             13%  { opacity: 1; transform: translateY(0) rotate(0deg); }
-            18%  { opacity: 1; transform: translateY(-7px) rotate(2deg); }
+            18%  { opacity: 1; transform: translateY(-6px) rotate(2deg); }
             24%  { opacity: 1; transform: translateY(0) rotate(0deg); }
-            29%  { opacity: 0; transform: translateY(-26px) rotate(8deg); }
-            100% { opacity: 0; transform: translateY(-26px) rotate(8deg); }
+            29%  { opacity: 1; transform: translateY(-4px) rotate(0deg); }
+            32%  { opacity: 0; transform: translateY(-18px) rotate(6deg); }
+            100% { opacity: 0; transform: translateY(-18px) rotate(6deg); }
           }
-          @keyframes wukong-act2 {
-            0%   { opacity: 0; transform: translateY(-26px) rotate(8deg); }
-            31%  { opacity: 0; transform: translateY(-26px) rotate(8deg); }
-            34%  { opacity: 1; transform: translateY(-14px) rotate(-24deg); }
-            43%  { opacity: 1; transform: translateY(4px) rotate(120deg); }
-            52%  { opacity: 1; transform: translateY(-9px) rotate(260deg); }
-            60%  { opacity: 1; transform: translateY(0) rotate(360deg); }
-            63%  { opacity: 0; transform: translateY(24px) rotate(392deg); }
-            100% { opacity: 0; transform: translateY(24px) rotate(392deg); }
+          /* 动作2：后空翻（33-66%），悟空原地翻360°落回云上，云不动 */
+          @keyframes wukong-b2 {
+            0%   { opacity: 0; transform: translateY(-18px) rotate(6deg); }
+            33%  { opacity: 0; transform: translateY(-18px) rotate(6deg); }
+            36%  { opacity: 1; transform: translateY(-12px) rotate(-30deg); }
+            45%  { opacity: 1; transform: translateY(-2px) rotate(120deg); }
+            54%  { opacity: 1; transform: translateY(-6px) rotate(240deg); }
+            61%  { opacity: 1; transform: translateY(0) rotate(360deg); }
+            64%  { opacity: 0; transform: translateY(14px) rotate(392deg); }
+            100% { opacity: 0; transform: translateY(14px) rotate(392deg); }
           }
-          @keyframes wukong-act3 {
-            0%   { opacity: 0; transform: translateY(24px) rotate(0deg); }
-            64%  { opacity: 0; transform: translateY(24px) rotate(0deg); }
-            67%  { opacity: 1; transform: translateY(9px) rotate(-4deg); }
-            71%  { opacity: 1; transform: translateY(-4px) rotate(4deg); }
-            75%  { opacity: 1; transform: translateY(0) rotate(-5deg); }
-            79%  { opacity: 1; transform: translateY(-5px) rotate(5deg); }
-            83%  { opacity: 1; transform: translateY(0) rotate(-3deg); }
-            87%  { opacity: 1; transform: translateY(-4px) rotate(3deg); }
-            91%  { opacity: 0; transform: translateY(-12px) rotate(0deg); }
-            100% { opacity: 0; transform: translateY(-12px) rotate(0deg); }
+          /* 动作3：招手摇摆（66-100%），下沉探入后左右摇摆 */
+          @keyframes wukong-b3 {
+            0%   { opacity: 0; transform: translateY(14px) rotate(0deg); }
+            66%  { opacity: 0; transform: translateY(14px) rotate(0deg); }
+            69%  { opacity: 1; transform: translateY(5px) rotate(-4deg); }
+            73%  { opacity: 1; transform: translateY(-3px) rotate(4deg); }
+            77%  { opacity: 1; transform: translateY(0) rotate(-5deg); }
+            81%  { opacity: 1; transform: translateY(-3px) rotate(5deg); }
+            85%  { opacity: 1; transform: translateY(0) rotate(-3deg); }
+            89%  { opacity: 1; transform: translateY(-3px) rotate(3deg); }
+            93%  { opacity: 0; transform: translateY(-13px) rotate(0deg); }
+            100% { opacity: 0; transform: translateY(-13px) rotate(0deg); }
           }
-          .wukong-stack img {
+          .wukong-act-img {
             position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
-            opacity: 0; pointer-events: none; will-change: transform, opacity;
+            opacity: 0; will-change: transform, opacity;
           }
-          .wukong-act1 { animation: wukong-act1 12s infinite; }
-          .wukong-act2 { animation: wukong-act2 12s infinite; }
-          .wukong-act3 { animation: wukong-act3 12s infinite; }
+          .wukong-b1 { animation: wukong-b1 12s infinite; }
+          .wukong-b2 { animation: wukong-b2 12s infinite; }
+          .wukong-b3 { animation: wukong-b3 12s infinite; }
           .wukong-float-btn { transition: transform 0.18s ease; }
           .wukong-float-btn:hover { transform: scale(1.08); }
           .wukong-float-btn.dragging { cursor: grabbing; }
-          .wukong-float-btn.dragging .wukong-act-img { animation: none; }
+          .wukong-float-btn.dragging .wukong-act-img,
+          .wukong-float-btn.dragging .wukong-cloud-img { animation: none; }
         `}</style>
       </button>
 
@@ -261,7 +284,7 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
-                <img src={WUKONG_IMG} alt="" style={{ width: 34, height: 34, objectFit: 'contain' }} />
+                <img src={WUKONG_BODY1} alt="" style={{ width: 34, height: 34, objectFit: 'contain' }} />
                 <div>
                   <h2 style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>悟空智能助手</h2>
                   <span style={{ fontSize: 11, color: 'var(--qs-sub, #6b7280)', display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
