@@ -4,7 +4,9 @@ import { toast } from '../../lib/toast'
 
 // 悟空 AI 助手：右下角浮动（踩筋斗云的孙悟空，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
 // props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
-const WUKONG_IMG = '/images/ai-assistant/wukong-cloud.webp'
+const WUKONG_IMG = '/images/ai-assistant/wukong-cloud.webp' // 动作1：站立握棒
+const WUKONG_IMG2 = '/images/ai-assistant/wukong-2.webp'    // 动作2：翻筋斗
+const WUKONG_IMG3 = '/images/ai-assistant/wukong-3.webp'    // 动作3：招手
 const BTN_SIZE = 92
 
 const PRESET_QUESTIONS = [
@@ -171,23 +173,61 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
         }}
         className={btnDragging ? "wukong-float-btn dragging" : "wukong-float-btn"}
       >
-        <img
-          src={WUKONG_IMG} alt="悟空"
-          style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
-        />
+        {/* 三动作循环表演（动作间交叉淡化+位移动势衔接） */}
+        <div className="wukong-stack" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          <img src={WUKONG_IMG} alt="" className="wukong-act-img wukong-act1" />
+          <img src={WUKONG_IMG2} alt="" className="wukong-act-img wukong-act2" />
+          <img src={WUKONG_IMG3} alt="" className="wukong-act-img wukong-act3" />
+        </div>
         {/* 状态小光点 */}
         <span style={{
           position: 'absolute', right: 2, bottom: 6, width: 12, height: 12, borderRadius: '50%',
           background: '#22c55e', border: '2px solid #fff', boxShadow: '0 0 8px rgba(34,197,94,0.8)',
         }} />
         <style>{`
-          @keyframes wukong-floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-          @keyframes wukong-sway { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
-          .wukong-float-btn { animation: wukong-floatY 2.8s ease-in-out infinite; }
-          .wukong-float-btn img { animation: wukong-sway 3.6s ease-in-out infinite; }
+          @keyframes wukong-act1 {
+            0%   { opacity: 0; transform: translateY(10px) rotate(0deg); }
+            3%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+            8%   { opacity: 1; transform: translateY(-7px) rotate(-2deg); }
+            13%  { opacity: 1; transform: translateY(0) rotate(0deg); }
+            18%  { opacity: 1; transform: translateY(-7px) rotate(2deg); }
+            24%  { opacity: 1; transform: translateY(0) rotate(0deg); }
+            29%  { opacity: 0; transform: translateY(-26px) rotate(8deg); }
+            100% { opacity: 0; transform: translateY(-26px) rotate(8deg); }
+          }
+          @keyframes wukong-act2 {
+            0%   { opacity: 0; transform: translateY(-26px) rotate(8deg); }
+            31%  { opacity: 0; transform: translateY(-26px) rotate(8deg); }
+            34%  { opacity: 1; transform: translateY(-14px) rotate(-24deg); }
+            43%  { opacity: 1; transform: translateY(4px) rotate(120deg); }
+            52%  { opacity: 1; transform: translateY(-9px) rotate(260deg); }
+            60%  { opacity: 1; transform: translateY(0) rotate(360deg); }
+            63%  { opacity: 0; transform: translateY(24px) rotate(392deg); }
+            100% { opacity: 0; transform: translateY(24px) rotate(392deg); }
+          }
+          @keyframes wukong-act3 {
+            0%   { opacity: 0; transform: translateY(24px) rotate(0deg); }
+            64%  { opacity: 0; transform: translateY(24px) rotate(0deg); }
+            67%  { opacity: 1; transform: translateY(9px) rotate(-4deg); }
+            71%  { opacity: 1; transform: translateY(-4px) rotate(4deg); }
+            75%  { opacity: 1; transform: translateY(0) rotate(-5deg); }
+            79%  { opacity: 1; transform: translateY(-5px) rotate(5deg); }
+            83%  { opacity: 1; transform: translateY(0) rotate(-3deg); }
+            87%  { opacity: 1; transform: translateY(-4px) rotate(3deg); }
+            91%  { opacity: 0; transform: translateY(-12px) rotate(0deg); }
+            100% { opacity: 0; transform: translateY(-12px) rotate(0deg); }
+          }
+          .wukong-stack img {
+            position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+            opacity: 0; pointer-events: none; will-change: transform, opacity;
+          }
+          .wukong-act1 { animation: wukong-act1 12s infinite; }
+          .wukong-act2 { animation: wukong-act2 12s infinite; }
+          .wukong-act3 { animation: wukong-act3 12s infinite; }
+          .wukong-float-btn { transition: transform 0.18s ease; }
           .wukong-float-btn:hover { transform: scale(1.08); }
-          .wukong-float-btn.dragging { animation: none; cursor: grabbing; }
-          .wukong-float-btn.dragging img { animation: none; }
+          .wukong-float-btn.dragging { cursor: grabbing; }
+          .wukong-float-btn.dragging .wukong-act-img { animation: none; }
         `}</style>
       </button>
 
