@@ -282,6 +282,7 @@ export default function QuestPractice() {
   const [showSummary, setShowSummary] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackKey, setFeedbackKey] = useState(0); // 每次答对递增，强制触发音效
+  const [wrongStreak, setWrongStreak] = useState(0); // 连续答错次数（悟空主动求助）
 
   // ---- 难度（URL 传入；切换模式时经预加载页透传） = 出题粒度过滤 ----
   const [diffKey, setDiffKey] = useState(() => {
@@ -451,6 +452,7 @@ export default function QuestPractice() {
     isComposingRef,
     onCorrect: (result, resultType) => {
       setCurrentErrors([]);
+      setWrongStreak(0); // 答对清零连续答错计数（悟空主动求助逻辑）
       // Chunking：每一步答对都显示答对面板（含中间步），用户点「下一题」进入下一步
       setShowAnswerPanel(true);
       recordCorrect();
@@ -463,6 +465,7 @@ export default function QuestPractice() {
     },
     onWrong: (result) => {
       setCurrentErrors(result.errors || []);
+      setWrongStreak((s) => s + 1); // 答错累计连续答错（悟空主动求助逻辑）
       recordWrong();
       if (sfx.answerOn !== false) playErrorSound();
       // 通关之路：六格天赋树（答错 → 该句各词格的答题数+1，不计正确）
@@ -1374,7 +1377,7 @@ export default function QuestPractice() {
       />
 
       {/* 悟空 AI 助手（右下角浮动孙悟空，点击弹出 AI 问答弹窗） */}
-      <WukongAiAssistant statement={currentStatement} modeLabel={aiModeLabel} />
+      <WukongAiAssistant statement={currentStatement} modeLabel={aiModeLabel} wrongStreak={wrongStreak} />
     </div>
   );
 }

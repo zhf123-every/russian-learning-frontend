@@ -153,6 +153,7 @@ export default function QuestDictation() {
 
   // ---- 后端返回的错误详情 ----
   const [currentErrors, setCurrentErrors] = useState([]);
+  const [wrongStreak, setWrongStreak] = useState(0); // 连续答错次数（悟空主动求助）
 
   // ---- 页面状态 ----
   const [showAnswerPanel, setShowAnswerPanel] = useState(false);
@@ -323,6 +324,7 @@ export default function QuestDictation() {
     isComposingRef,
     onCorrect: (result) => {
       setCurrentErrors([]);
+      setWrongStreak(0); // 答对清零连续答错计数（悟空主动求助逻辑）
       // Chunking：每一步答对都显示答对面板（含中间步），用户点「下一题」进入下一步
       setShowAnswerPanel(true);
       recordCorrect();
@@ -336,6 +338,7 @@ export default function QuestDictation() {
     },
     onWrong: (result) => {
       setCurrentErrors(result.errors || []);
+      setWrongStreak((s) => s + 1); // 答错累计连续答错（悟空主动求助逻辑）
       recordWrong();
       if (sfx.answerOn !== false) playErrorSound();
       // 通关之路：六格天赋树（答错 → 该句各词格的答题数+1，不计正确）
@@ -1076,7 +1079,7 @@ export default function QuestDictation() {
       />
 
       {/* 悟空 AI 助手（右下角浮动孙悟空，点击弹出 AI 问答弹窗） */}
-      <WukongAiAssistant statement={currentStatement} modeLabel="听写" />
+      <WukongAiAssistant statement={currentStatement} modeLabel="听写" wrongStreak={wrongStreak} />
     </div>
   );
 }

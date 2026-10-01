@@ -20,7 +20,7 @@ const PRESET_QUESTIONS = [
   '请讲解这道题里的重点单词和短语，说明它们在上下文里的意思。',
 ]
 
-export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
+export default function WukongAiAssistant({ statement, modeLabel = '练习', wrongStreak = 0 }) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -61,6 +61,19 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
   }, [])
 
   useEffect(() => { scrollToBottom() }, [messages, loading, scrollToBottom])
+
+  // 连续答错主动求助（打通设置「宠物」面板 petHelp + petHint）：
+  // 达到设定次数后，悟空自动打开 AI 弹窗并主动询问是否需要帮助（对标旧桌面宠物 petSpeak('help')）
+  const askRef = useRef(null)
+  useEffect(() => { askRef.current = ask }, [ask])
+  useEffect(() => {
+    if (ui.petHelp === false) return          // 设置里关闭了主动求助
+    if (wrongStreak <= 0) return
+    const hint = ui.petHint === 'always' ? 1 : (parseInt(ui.petHint || '3', 10) || 3)
+    if (wrongStreak % hint !== 0) return      // 未到提示时机（每次 / 错误N次后）
+    setOpen(true)
+    askRef.current(`我连续答错 ${wrongStreak} 次了，能帮我讲讲这道题怎么入手吗？先给思路提示，不要直接给完整答案。`)
+  }, [wrongStreak, ui.petHelp, ui.petHint])
 
   // 发送一条问题（预设按钮或输入框共用）
   const ask = useCallback(async (question) => {
