@@ -4,7 +4,7 @@ import React from 'react'
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
-    this.state = { hasError: false, error: null }
+    this.state = { hasError: false, error: null, errorInfo: null }
   }
 
   static getDerivedStateFromError(error) {
@@ -13,6 +13,7 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('应用渲染错误:', error, errorInfo)
+    this.setState({ errorInfo })
   }
 
   render() {
@@ -53,8 +54,10 @@ export default class ErrorBoundary extends React.Component {
           {this.state.error && (
             <details style={{ marginTop: '20px', fontSize: '12px', color: '#86796D', maxWidth: '100%', textAlign: 'left' }}>
               <summary>错误详情</summary>
-              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: '8px', padding: '12px', background: '#fff', borderRadius: '8px', overflow: 'auto', maxHeight: '200px' }}>
+              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: '8px', padding: '12px', background: '#fff', borderRadius: '8px', overflow: 'auto', maxHeight: '400px' }}>
                 {this.state.error.toString()}
+                {this.state.error.stack ? '\n\n--- 堆栈 ---\n' + this.state.error.stack : ''}
+                {this.state.errorInfo?.componentStack ? '\n\n--- 组件栈 ---\n' + this.state.errorInfo.componentStack : ''}
               </pre>
             </details>
           )}

@@ -64,8 +64,9 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习', wro
 
   // 连续答错主动求助（打通设置「宠物」面板 petHelp + petHint）：
   // 达到设定次数后，悟空自动打开 AI 弹窗并主动询问是否需要帮助（对标旧桌面宠物 petSpeak('help')）
+  // 注意：ask 定义在其后，这里不能在任何同步位置引用 ask（deps 数组也不行，会 TDZ），
+  // 只通过 askRef 间接调用；askRef 在 ask 定义后同步赋值。
   const askRef = useRef(null)
-  useEffect(() => { askRef.current = ask }, [ask])
   useEffect(() => {
     if (ui.petHelp === false) return          // 设置里关闭了主动求助
     if (wrongStreak <= 0) return
@@ -104,6 +105,9 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习', wro
       setLoading(false)
     }
   }, [loading, statement, modeLabel])
+
+  // 渲染期同步指向最新 ask（ask 已定义，此处赋值安全；供连错求助 effect 经 askRef 间接调用）
+  askRef.current = ask
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.nativeEvent.isComposing) {

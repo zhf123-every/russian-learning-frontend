@@ -5,6 +5,14 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: '/',
+  // 显式预构建 three 主包 + examples 子模块为单一共享实例，
+  // 避免 dev 模式下双实例循环引用导致 TDZ 报错（Cannot access 'X' before initialization）
+  optimizeDeps: {
+    include: [
+      'three',
+      'three/examples/jsm/environments/RoomEnvironment.js',
+    ],
+  },
   server: {
     host: '0.0.0.0',
     port: 5173,
