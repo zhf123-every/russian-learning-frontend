@@ -2,14 +2,30 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { callAI } from '../../lib/ai'
 import { toast } from '../../lib/toast'
 
-// 悟空 AI 助手：右下角浮动（孙悟空踩在筋斗云上表演动作，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
-// 结构：筋斗云是独立底座（只浮动不旋转），悟空本体在云上做动作（后空翻只转悟空，云不动）
+// 悟空 AI 助手：右下角浮动（孙悟空踩在筋斗云上表演"逐帧动画"动作，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
+// 结构：筋斗云是独立底座（只轻微浮动、始终不动位置）；悟空本体在云上按帧序列播放动作（后空翻=6帧逐帧、招手=4帧逐帧，云不参与）
+// 动画编排（16s 循环，动作间用"待机站姿"衔接）：
+//   0-21% 待机(站姿瞭望) → 21-22% 蓄力上抛 → 22-51% 后空翻6帧(翻腾+落地)
+//   52-57% 待机 → 58-87% 招手4帧(左右摇摆) → 88-100% 待机
 // props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
-const WUKONG_CLOUD = '/images/ai-assistant/wukong-cloud.webp'    // 筋斗云底座
-const WUKONG_BODY1 = '/images/ai-assistant/wukong-body-1.webp'   // 悟空动作1：站立瞭望
-const WUKONG_BODY2 = '/images/ai-assistant/wukong-body-2.webp'   // 悟空动作2：后空翻
-const WUKONG_BODY3 = '/images/ai-assistant/wukong-body-3.webp'   // 悟空动作3：招手
+const WUKONG_CLOUD = '/images/ai-assistant/wukong-cloud.webp'    // 筋斗云底座（只浮动）
+const WUKONG_IDLE  = '/images/ai-assistant/wukong-body-1.webp'   // 悟空待机：站立瞭望
+const FLIP_FRAMES = [                                            // 后空翻 6 帧（起跳→60°→120°→倒立→240°→落地）
+  '/images/ai-assistant/flip-1.webp',
+  '/images/ai-assistant/flip-2.webp',
+  '/images/ai-assistant/flip-3.webp',
+  '/images/ai-assistant/flip-4.webp',
+  '/images/ai-assistant/flip-5.webp',
+  '/images/ai-assistant/flip-6.webp',
+]
+const WAVE_FRAMES = [                                            // 招手 4 帧（抬手→举高→大幅摆→胸前挥）
+  '/images/ai-assistant/wave-1.webp',
+  '/images/ai-assistant/wave-2.webp',
+  '/images/ai-assistant/wave-3.webp',
+  '/images/ai-assistant/wave-4.webp',
+]
 const BTN_SIZE = 92
+const ALL_ASSETS = [WUKONG_CLOUD, WUKONG_IDLE, ...FLIP_FRAMES, ...WAVE_FRAMES]
 
 const PRESET_QUESTIONS = [
   '这道题我应该从哪里入手？请先给一个提示，不要直接给完整答案。',
@@ -24,6 +40,20 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const scrollRef = useRef(null)
+  const [assetsReady, setAssetsReady] = useState(false)
+
+  // 逐帧素材预加载：全部就绪后再启动帧动画，避免首轮播放闪空白
+  useEffect(() => {
+    let done = 0
+    ALL_ASSETS.forEach((src) => {
+      const im = new Image()
+      im.onload = im.onerror = () => {
+        done += 1
+        if (done >= ALL_ASSETS.length) setAssetsReady(true)
+      }
+      im.src = src
+    })
+  }, [])
 
   // ---- 孙悟空浮动按钮：可拖拽位置 ----
   const [btnPos, setBtnPos] = useState(() => ({
@@ -175,15 +205,23 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
         }}
         className={btnDragging ? "wukong-float-btn dragging" : "wukong-float-btn"}
       >
-        {/* 双层结构：筋斗云底座 + 悟空在云上表演 */}
+        {/* 双层结构：筋斗云底座 + 悟空在云上做逐帧动作 */}
         <div className="wukong-stage" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-          {/* 筋斗云：独立底座，只轻微浮动，不参与旋转 */}
+          {/* 筋斗云：独立底座，只轻微浮动，不参与任何动作 */}
           <img src={WUKONG_CLOUD} alt="" className="wukong-cloud-img" />
-          {/* 悟空本体：在云上方做三动作（旋转/位移只作用于悟空） */}
-          <div className="wukong-body-wrap">
-            <img src={WUKONG_BODY1} alt="" className="wukong-act-img wukong-b1" />
-            <img src={WUKONG_BODY2} alt="" className="wukong-act-img wukong-b2" />
-            <img src={WUKONG_BODY3} alt="" className="wukong-act-img wukong-b3" />
+          {/* 悟空本体：帧序列动画层（待机/后空翻/招手 交替循环） */}
+          <div className={'wukong-body-wrap' + (assetsReady ? ' wu-anim-ready' : '')}>
+            <div className="wu-flip-seq">
+              {FLIP_FRAMES.map((src, i) => (
+                <img key={src} src={src} alt="" className="wu-frame wu-flip" data-idx={i} />
+              ))}
+            </div>
+            <div className="wu-wave-seq">
+              {WAVE_FRAMES.map((src, i) => (
+                <img key={src} src={src} alt="" className="wu-frame wu-wave" data-idx={i} />
+              ))}
+            </div>
+            <img src={WUKONG_IDLE} alt="" className="wu-frame wu-idle" />
           </div>
         </div>
         {/* 状态小光点 */}
@@ -192,65 +230,84 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
           background: '#22c55e', border: '2px solid #fff', boxShadow: '0 0 8px rgba(34,197,94,0.8)',
         }} />
         <style>{`
-          /* 筋斗云：只浮动，始终在底部 */
+          /* 筋斗云：只浮动，始终在底部，不参与任何动作 */
           @keyframes wukong-cloud-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
           .wukong-cloud-img {
             position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 56%;
-            object-fit: contain; animation: wukong-cloud-float 3.2s ease-in-out infinite;
+            object-fit: contain; animation: wukong-cloud-float 3.6s ease-in-out infinite;
           }
-          /* 悟空层：放大主体，位于云上方 */
+          /* 悟空层：放大主体，位于云上方；帧全部叠放 */
           .wukong-body-wrap {
             position: absolute; left: 0; right: 0; bottom: 24%; width: 100%; height: 62%;
             transform: scale(1.5); transform-origin: bottom center;
           }
-          /* 动作1：站立瞭望（0-33%），上抛衔接后空翻 */
-          @keyframes wukong-b1 {
-            0%   { opacity: 0; transform: translateY(8px) rotate(0deg); }
-            3%   { opacity: 1; transform: translateY(0) rotate(0deg); }
-            8%   { opacity: 1; transform: translateY(-6px) rotate(-2deg); }
-            13%  { opacity: 1; transform: translateY(0) rotate(0deg); }
-            18%  { opacity: 1; transform: translateY(-6px) rotate(2deg); }
-            24%  { opacity: 1; transform: translateY(0) rotate(0deg); }
-            29%  { opacity: 1; transform: translateY(-4px) rotate(0deg); }
-            32%  { opacity: 0; transform: translateY(-18px) rotate(6deg); }
-            100% { opacity: 0; transform: translateY(-18px) rotate(6deg); }
-          }
-          /* 动作2：后空翻（33-66%），悟空原地翻360°落回云上，云不动 */
-          @keyframes wukong-b2 {
-            0%   { opacity: 0; transform: translateY(-18px) rotate(6deg); }
-            33%  { opacity: 0; transform: translateY(-18px) rotate(6deg); }
-            36%  { opacity: 1; transform: translateY(-12px) rotate(-30deg); }
-            45%  { opacity: 1; transform: translateY(-2px) rotate(120deg); }
-            54%  { opacity: 1; transform: translateY(-6px) rotate(240deg); }
-            61%  { opacity: 1; transform: translateY(0) rotate(360deg); }
-            64%  { opacity: 0; transform: translateY(14px) rotate(392deg); }
-            100% { opacity: 0; transform: translateY(14px) rotate(392deg); }
-          }
-          /* 动作3：招手摇摆（66-100%），下沉探入后左右摇摆 */
-          @keyframes wukong-b3 {
-            0%   { opacity: 0; transform: translateY(14px) rotate(0deg); }
-            66%  { opacity: 0; transform: translateY(14px) rotate(0deg); }
-            69%  { opacity: 1; transform: translateY(5px) rotate(-4deg); }
-            73%  { opacity: 1; transform: translateY(-3px) rotate(4deg); }
-            77%  { opacity: 1; transform: translateY(0) rotate(-5deg); }
-            81%  { opacity: 1; transform: translateY(-3px) rotate(5deg); }
-            85%  { opacity: 1; transform: translateY(0) rotate(-3deg); }
-            89%  { opacity: 1; transform: translateY(-3px) rotate(3deg); }
-            93%  { opacity: 0; transform: translateY(-13px) rotate(0deg); }
-            100% { opacity: 0; transform: translateY(-13px) rotate(0deg); }
-          }
-          .wukong-act-img {
+          .wu-frame {
             position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
-            opacity: 0; will-change: transform, opacity;
+            opacity: 0; will-change: opacity, transform;
           }
-          .wukong-b1 { animation: wukong-b1 12s infinite; }
-          .wukong-b2 { animation: wukong-b2 12s infinite; }
-          .wukong-b3 { animation: wukong-b3 12s infinite; }
+          /* 素材未就绪前：只显示待机站姿（静态），帧动画就绪后再启动 */
+          .wu-idle { opacity: 1; }
+
+          /* ============ 帧动画（仅 assetsReady 后启用） ============ */
+          /* 待机站姿：0-20% / 52-57% / 88-100% 三段出现，动作间隙用站姿衔接 */
+          @keyframes wu-idle-anim {
+            0%, 20%  { opacity: 1; transform: translateY(0); }
+            21%      { opacity: 1; transform: translateY(-6px) scale(1.04); } /* 蓄力上抛，衔接后空翻 */
+            22%, 51% { opacity: 0; transform: translateY(-6px) scale(1.04); }
+            52%, 57% { opacity: 1; transform: translateY(0); }
+            58%, 87% { opacity: 0; }
+            88%, 100%{ opacity: 1; transform: translateY(0); }
+          }
+          /* 后空翻 6 帧：22%-51% 硬切逐帧（起跳→60°→120°→倒立→240°→落地） */
+          @keyframes wu-flip-0 { 0%,21% {opacity:0} 22%,26% {opacity:1} 27%,100% {opacity:0} }
+          @keyframes wu-flip-1 { 0%,26% {opacity:0} 27%,31% {opacity:1} 32%,100% {opacity:0} }
+          @keyframes wu-flip-2 { 0%,31% {opacity:0} 32%,36% {opacity:1} 37%,100% {opacity:0} }
+          @keyframes wu-flip-3 { 0%,36% {opacity:0} 37%,41% {opacity:1} 42%,100% {opacity:0} }
+          @keyframes wu-flip-4 { 0%,41% {opacity:0} 42%,46% {opacity:1} 47%,100% {opacity:0} }
+          @keyframes wu-flip-5 { 0%,46% {opacity:0} 47%,51% {opacity:1} 52%,100% {opacity:0} }
+          /* 后空翻容器：整体弹跳（起跳腾空→落地），只有位移，绝不旋转 */
+          @keyframes wu-flip-bounce {
+            0%, 21% { transform: translateY(0); }
+            24%     { transform: translateY(-12px); }
+            45%     { transform: translateY(-6px); }
+            51%, 100% { transform: translateY(0); }
+          }
+          /* 招手 4 帧：58%-87% 硬切逐帧（抬手→举高→大幅摆→胸前挥） */
+          @keyframes wu-wave-0 { 0%,57% {opacity:0} 58%,65% {opacity:1} 66%,100% {opacity:0} }
+          @keyframes wu-wave-1 { 0%,65% {opacity:0} 66%,73% {opacity:1} 74%,100% {opacity:0} }
+          @keyframes wu-wave-2 { 0%,73% {opacity:0} 74%,81% {opacity:1} 82%,100% {opacity:0} }
+          @keyframes wu-wave-3 { 0%,81% {opacity:0} 82%,87% {opacity:1} 88%,100% {opacity:0} }
+          /* 招手容器：轻微左右摇摆，增加生动感（±3° 摇摆，非旋转） */
+          @keyframes wu-wave-sway {
+            0%, 57% { transform: translateY(0) rotate(0deg); }
+            62%     { transform: translateY(-4px) rotate(-3deg); }
+            70%     { transform: translateY(0) rotate(2deg); }
+            78%     { transform: translateY(-2px) rotate(-2deg); }
+            87%, 100% { transform: translateY(0) rotate(0deg); }
+          }
+
+          .wu-anim-ready .wu-idle  { animation: wu-idle-anim 16s ease-in-out infinite; }
+          .wu-anim-ready .wu-flip  { animation: wu-flip-0 16s steps(1,end) infinite; }
+          .wu-anim-ready .wu-flip[data-idx="1"] { animation-name: wu-flip-1; }
+          .wu-anim-ready .wu-flip[data-idx="2"] { animation-name: wu-flip-2; }
+          .wu-anim-ready .wu-flip[data-idx="3"] { animation-name: wu-flip-3; }
+          .wu-anim-ready .wu-flip[data-idx="4"] { animation-name: wu-flip-4; }
+          .wu-anim-ready .wu-flip[data-idx="5"] { animation-name: wu-flip-5; }
+          .wu-anim-ready .wu-wave  { animation: wu-wave-0 16s steps(1,end) infinite; }
+          .wu-anim-ready .wu-wave[data-idx="1"] { animation-name: wu-wave-1; }
+          .wu-anim-ready .wu-wave[data-idx="2"] { animation-name: wu-wave-2; }
+          .wu-anim-ready .wu-wave[data-idx="3"] { animation-name: wu-wave-3; }
+          .wu-anim-ready .wu-flip-seq { animation: wu-flip-bounce 16s ease-in-out infinite; }
+          .wu-anim-ready .wu-wave-seq { animation: wu-wave-sway 16s ease-in-out infinite; }
+
           .wukong-float-btn { transition: transform 0.18s ease; }
           .wukong-float-btn:hover { transform: scale(1.08); }
           .wukong-float-btn.dragging { cursor: grabbing; }
-          .wukong-float-btn.dragging .wukong-act-img,
-          .wukong-float-btn.dragging .wukong-cloud-img { animation: none; }
+          /* 拖拽时暂停帧动画（停在当前帧，不跳回第一帧） */
+          .wukong-float-btn.dragging .wukong-cloud-img,
+          .wukong-float-btn.dragging .wu-frame,
+          .wukong-float-btn.dragging .wu-flip-seq,
+          .wukong-float-btn.dragging .wu-wave-seq { animation-play-state: paused; }
         `}</style>
       </button>
 
@@ -284,7 +341,7 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
-                <img src={WUKONG_BODY1} alt="" style={{ width: 34, height: 34, objectFit: 'contain' }} />
+                <img src={WUKONG_IDLE} alt="" style={{ width: 34, height: 34, objectFit: 'contain' }} />
                 <div>
                   <h2 style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>悟空智能助手</h2>
                   <span style={{ fontSize: 11, color: 'var(--qs-sub, #6b7280)', display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
