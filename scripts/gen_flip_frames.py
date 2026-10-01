@@ -46,27 +46,29 @@ def norm(im):
     return canvas
 
 # 关键帧表: (源图, 渐入旋转角(往回转), 垂直位移dy)
+# 动作链：站立→半蹲→屈膝蓄力→蹬地跳起→腾空→弓身横转→弓身下翻→蜷缩倒立→
+#         斜倒立→竖直倒立→蜷曲翻越→屈膝落地→站稳（全程身体姿态变化，无"站立姿态旋转"帧）
 FRAMES = [
-    ('stand', 0, 0),
-    ('blend', 0, 0),
-    ('squat', 0, 0),
-    ('flip1', 0, -30),
-    ('flip2', 0, -80),
-    ('flip3', -18, -108),
-    ('flip3', -9, -112),
-    ('flip3', 0, -112),
-    ('flip4', -10, -104),
-    ('flip4', 0, -98),
-    ('flip5', -8, -96),
-    ('flip5', 0, -92),
-    ('flip6', -16, -78),
-    ('flip6', -8, -62),
-    ('flip6', 0, -48),
-    ('flip7', -12, -36),
-    ('flip7', 0, -24),
-    ('flip8', -10, -14),
-    ('flip8', 0, -5),
-    ('stand', 0, 0),
+    ('stand', 0, 0),        # 0 直立站立
+    ('blend', 0, 0),        # 1 半蹲（混合）
+    ('squat', 0, 0),        # 2 屈膝蓄力
+    ('flip1', 0, -30),      # 3 蹬地跳起
+    ('flip2', 0, -80),      # 4 腾空
+    ('flip3', -60, -108),   # 5 弓身横转（蜷缩转回60°，身体横躺）
+    ('flip3', -30, -112),   # 6 弓身下翻（蜷缩转回30°）
+    ('flip3', 0, -112),     # 7 蜷缩倒立
+    ('flip4', -10, -104),   # 8 斜倒立渐入
+    ('flip4', 0, -98),      # 9 斜倒立
+    ('flip5', -8, -96),     # 10 竖直倒立渐入
+    ('flip5', 0, -92),      # 11 完全倒立
+    ('flip3', 45, -80),     # 12 蜷曲翻越（倒立继续翻，头朝左下）
+    ('flip3', 30, -64),     # 13 蜷曲翻越（继续翻越）
+    ('flip3', 15, -48),     # 14 蜷曲翻越（接近横躺回正）
+    ('flip3', 5, -34),      # 15 蜷曲翻越（回正前）
+    ('flip8', -10, -20),    # 16 屈膝落地渐入
+    ('flip8', 0, -8),       # 17 屈膝落地
+    ('blend2', 0, 0),       # 18 落地站稳（屈膝→直立的过渡）
+    ('stand', 0, 0),        # 19 直立站稳
 ]
 
 def render(src, angle, dy):
@@ -74,11 +76,24 @@ def render(src, angle, dy):
         a = norm(stand)
         b = norm(squat)
         out = Image.blend(a, b, 0.5)
+    elif src == 'blend2':
+        a = norm(S['flip8'])
+        b = norm(stand)
+        out = Image.blend(a, b, 0.45)
     else:
-        im = norm(S[src])
-        out = im
+        out = norm(S[src])
     if angle:
         out = out.rotate(angle, center=(256, 256), resample=Image.BICUBIC)
+        bbox2 = out.getbbox()
+        if bbox2:
+            c = out.crop(bbox2)
+            w2, h2 = c.size
+            sc = TARGET_H / h2
+            c = c.resize((max(1, int(w2 * sc)), TARGET_H), Image.LANCZOS)
+            tmp = Image.new('RGBA', (512, 512), (0, 0, 0, 0))
+            tmp.paste(c, ((512 - c.size[0]) // 2, (512 - TARGET_H) // 2 + dy), c)
+            out = tmp
+        return out
     if dy:
         tmp = Image.new('RGBA', (512, 512), (0, 0, 0, 0))
         tmp.paste(out, (0, dy), out)
