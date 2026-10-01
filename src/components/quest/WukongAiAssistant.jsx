@@ -3,20 +3,25 @@ import { callAI } from '../../lib/ai'
 import { toast } from '../../lib/toast'
 
 // 悟空 AI 助手：右下角浮动（孙悟空踩在筋斗云上表演"逐帧动画"动作，可鼠标拖拽移动），点击弹出对标"句乐部"的深色 AI 问答弹窗（弹窗可拖动）
-// 结构：筋斗云是独立底座（只轻微浮动、始终不动位置）；悟空本体在云上按帧序列播放动作（后空翻=6帧逐帧、招手=4帧逐帧，云不参与）
-// 动画编排（16s 循环，动作间用"待机站姿"衔接）：
-//   0-21% 待机(站姿瞭望) → 21-22% 蓄力上抛 → 22-51% 后空翻6帧(翻腾+落地)
-//   52-57% 待机 → 58-87% 招手4帧(左右摇摆) → 88-100% 待机
+// 结构：筋斗云是独立底座（完全静止，只有悟空动）；悟空本体用 JS 帧播放器按序列切换图片（后空翻=11帧、招手=4帧）
+// 时间轴（每 tick=180ms，共 89 tick ≈ 16s 循环）：
+//   0-18 tick 待机站姿 → 19-20 蓄力上抛 → 21-53 后空翻 11 帧（每帧 3 tick，0°→180°倒立→360°）
+//   54-59 待机 → 60-71 招手 4 帧 → 72-88 待机 → 回绕
 // props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
-const WUKONG_CLOUD = '/images/ai-assistant/wukong-cloud.webp'    // 筋斗云底座（只浮动）
+const WUKONG_CLOUD = '/images/ai-assistant/wukong-cloud.webp'    // 筋斗云底座（静止）
 const WUKONG_IDLE  = '/images/ai-assistant/wukong-body-1.webp'   // 悟空待机：站立瞭望
-const FLIP_FRAMES = [                                            // 后空翻 6 帧（起跳→60°→120°→倒立→240°→落地）
+const FLIP_FRAMES = [                                            // 后空翻 11 帧（36°步进：起跳0°→36°→72°→108°→144°→180°倒立→216°→252°→288°→324°→360°落地）
   '/images/ai-assistant/flip-1.webp',
   '/images/ai-assistant/flip-2.webp',
   '/images/ai-assistant/flip-3.webp',
   '/images/ai-assistant/flip-4.webp',
   '/images/ai-assistant/flip-5.webp',
   '/images/ai-assistant/flip-6.webp',
+  '/images/ai-assistant/flip-7.webp',
+  '/images/ai-assistant/flip-8.webp',
+  '/images/ai-assistant/flip-9.webp',
+  '/images/ai-assistant/flip-10.webp',
+  '/images/ai-assistant/flip-11.webp',
 ]
 const WAVE_FRAMES = [                                            // 招手 4 帧（抬手→举高→大幅摆→胸前挥）
   '/images/ai-assistant/wave-1.webp',
@@ -25,7 +30,7 @@ const WAVE_FRAMES = [                                            // 招手 4 帧
   '/images/ai-assistant/wave-4.webp',
 ]
 const BTN_SIZE = 92
-const ALL_ASSETS = [WUKONG_CLOUD, WUKONG_IDLE, ...FLIP_FRAMES, ...WAVE_FRAMES]
+const ALL_FRAMES = [WUKONG_IDLE, ...FLIP_FRAMES, ...WAVE_FRAMES]
 
 const PRESET_QUESTIONS = [
   '这道题我应该从哪里入手？请先给一个提示，不要直接给完整答案。',
@@ -40,28 +45,53 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const scrollRef = useRef(null)
-  const [assetsReady, setAssetsReady] = useState(false)
 
-  // 逐帧素材预加载：全部就绪后再启动帧动画，避免首轮播放闪空白
-  useEffect(() => {
-    let done = 0
-    ALL_ASSETS.forEach((src) => {
-      const im = new Image()
-      im.onload = im.onerror = () => {
-        done += 1
-        if (done >= ALL_ASSETS.length) setAssetsReady(true)
-      }
-      im.src = src
-    })
-  }, [])
-
-  // ---- 孙悟空浮动按钮：可拖拽位置 ----
+  // ---- 孙悟空浮动按钮：可拖拽位置（须在帧播放器之前声明，effect 依赖它） ----
   const [btnPos, setBtnPos] = useState(() => ({
     x: (typeof window !== 'undefined' ? window.innerWidth : 1280) - BTN_SIZE - 16,
     y: (typeof window !== 'undefined' ? window.innerHeight : 720) - BTN_SIZE - 96,
   }))
   const dragRef = useRef({ dragging: false, moved: false, sx: 0, sy: 0, ox: 0, oy: 0 })
   const [btnDragging, setBtnDragging] = useState(false)
+
+  // ---- 帧播放器：JS 驱动（tick 推进帧索引，单图切换） ----
+  const [act, setAct] = useState('idle')      // 'idle' | 'prep' | 'flip' | 'wave'
+  const [fi, setFi] = useState(0)             // 当前动作帧索引
+  const [shown, setShown] = useState(false)   // 当前帧加载完成后才显示（避免闪空白）
+  const tickRef = useRef(0)
+
+  // 预热全部帧到浏览器缓存
+  useEffect(() => {
+    ALL_FRAMES.forEach((src) => { const im = new Image(); im.src = src })
+  }, [])
+
+  // 帧播放主循环：拖拽时暂停，松开继续
+  useEffect(() => {
+    if (btnDragging) return
+    const iv = setInterval(() => {
+      tickRef.current += 1
+      const t = tickRef.current
+      let nextAct = 'idle'
+      let nextFi = 0
+      if (t <= 18) { nextAct = 'idle' }
+      else if (t <= 20) { nextAct = 'prep' }
+      else if (t <= 53) { nextAct = 'flip'; nextFi = Math.min(10, Math.floor((t - 21) / 3)) }
+      else if (t <= 59) { nextAct = 'idle' }
+      else if (t <= 71) { nextAct = 'wave'; nextFi = Math.min(3, Math.floor((t - 60) / 3)) }
+      else if (t >= 88) { nextAct = 'idle'; tickRef.current = 0 }
+      setAct(nextAct)
+      setFi(nextFi)
+    }, 180)
+    return () => clearInterval(iv)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [btnDragging])
+
+  // 当前要显示的帧
+  const currentSrc = act === 'flip' ? FLIP_FRAMES[fi] : act === 'wave' ? WAVE_FRAMES[fi] : WUKONG_IDLE
+  const isPrep = act === 'prep'
+
+  // 帧切换时先隐藏，等新帧加载完成再显示
+  useEffect(() => { setShown(false) }, [currentSrc])
 
   // ---- AI 弹窗：可拖拽位置（打开时居中） ----
   const [modalPos, setModalPos] = useState(null)
@@ -205,23 +235,22 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
         }}
         className={btnDragging ? "wukong-float-btn dragging" : "wukong-float-btn"}
       >
-        {/* 双层结构：筋斗云底座 + 悟空在云上做逐帧动作 */}
+        {/* 双层结构：筋斗云底座（完全静止）+ 悟空在云上做 JS 帧动画 */}
         <div className="wukong-stage" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-          {/* 筋斗云：独立底座，只轻微浮动，不参与任何动作 */}
           <img src={WUKONG_CLOUD} alt="" className="wukong-cloud-img" />
-          {/* 悟空本体：帧序列动画层（待机/后空翻/招手 交替循环） */}
-          <div className={'wukong-body-wrap' + (assetsReady ? ' wu-anim-ready' : '')}>
-            <div className="wu-flip-seq">
-              {FLIP_FRAMES.map((src, i) => (
-                <img key={src} src={src} alt="" className="wu-frame wu-flip" data-idx={i} />
-              ))}
-            </div>
-            <div className="wu-wave-seq">
-              {WAVE_FRAMES.map((src, i) => (
-                <img key={src} src={src} alt="" className="wu-frame wu-wave" data-idx={i} />
-              ))}
-            </div>
-            <img src={WUKONG_IDLE} alt="" className="wu-frame wu-idle" />
+          <div className="wukong-body-wrap">
+            <img
+              key={currentSrc}
+              src={currentSrc}
+              alt=""
+              onLoad={() => setShown(true)}
+              className="wu-single-frame"
+              style={{
+                opacity: shown ? 1 : 0,
+                transform: isPrep ? 'translateY(-7px) scale(1.05)' : 'translateY(0)',
+                transition: 'transform 0.18s ease, opacity 0.12s ease',
+              }}
+            />
           </div>
         </div>
         {/* 状态小光点 */}
@@ -230,84 +259,22 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
           background: '#22c55e', border: '2px solid #fff', boxShadow: '0 0 8px rgba(34,197,94,0.8)',
         }} />
         <style>{`
-          /* 筋斗云：只浮动，始终在底部，不参与任何动作 */
-          @keyframes wukong-cloud-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+          /* 筋斗云：独立底座，完全静止（用户要求：云不动，只有悟空动） */
           .wukong-cloud-img {
             position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 56%;
-            object-fit: contain; animation: wukong-cloud-float 3.6s ease-in-out infinite;
+            object-fit: contain;
           }
-          /* 悟空层：放大主体，位于云上方；帧全部叠放 */
+          /* 悟空层：放大主体，位于云上方 */
           .wukong-body-wrap {
             position: absolute; left: 0; right: 0; bottom: 24%; width: 100%; height: 62%;
             transform: scale(1.5); transform-origin: bottom center;
           }
-          .wu-frame {
+          .wu-single-frame {
             position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
-            opacity: 0; will-change: opacity, transform;
           }
-          /* 素材未就绪前：只显示待机站姿（静态），帧动画就绪后再启动 */
-          .wu-idle { opacity: 1; }
-
-          /* ============ 帧动画（仅 assetsReady 后启用） ============ */
-          /* 待机站姿：0-20% / 52-57% / 88-100% 三段出现，动作间隙用站姿衔接 */
-          @keyframes wu-idle-anim {
-            0%, 20%  { opacity: 1; transform: translateY(0); }
-            21%      { opacity: 1; transform: translateY(-6px) scale(1.04); } /* 蓄力上抛，衔接后空翻 */
-            22%, 51% { opacity: 0; transform: translateY(-6px) scale(1.04); }
-            52%, 57% { opacity: 1; transform: translateY(0); }
-            58%, 87% { opacity: 0; }
-            88%, 100%{ opacity: 1; transform: translateY(0); }
-          }
-          /* 后空翻 6 帧：22%-51% 硬切逐帧（起跳→60°→120°→倒立→240°→落地） */
-          @keyframes wu-flip-0 { 0%,21% {opacity:0} 22%,26% {opacity:1} 27%,100% {opacity:0} }
-          @keyframes wu-flip-1 { 0%,26% {opacity:0} 27%,31% {opacity:1} 32%,100% {opacity:0} }
-          @keyframes wu-flip-2 { 0%,31% {opacity:0} 32%,36% {opacity:1} 37%,100% {opacity:0} }
-          @keyframes wu-flip-3 { 0%,36% {opacity:0} 37%,41% {opacity:1} 42%,100% {opacity:0} }
-          @keyframes wu-flip-4 { 0%,41% {opacity:0} 42%,46% {opacity:1} 47%,100% {opacity:0} }
-          @keyframes wu-flip-5 { 0%,46% {opacity:0} 47%,51% {opacity:1} 52%,100% {opacity:0} }
-          /* 后空翻容器：整体弹跳（起跳腾空→落地），只有位移，绝不旋转 */
-          @keyframes wu-flip-bounce {
-            0%, 21% { transform: translateY(0); }
-            24%     { transform: translateY(-12px); }
-            45%     { transform: translateY(-6px); }
-            51%, 100% { transform: translateY(0); }
-          }
-          /* 招手 4 帧：58%-87% 硬切逐帧（抬手→举高→大幅摆→胸前挥） */
-          @keyframes wu-wave-0 { 0%,57% {opacity:0} 58%,65% {opacity:1} 66%,100% {opacity:0} }
-          @keyframes wu-wave-1 { 0%,65% {opacity:0} 66%,73% {opacity:1} 74%,100% {opacity:0} }
-          @keyframes wu-wave-2 { 0%,73% {opacity:0} 74%,81% {opacity:1} 82%,100% {opacity:0} }
-          @keyframes wu-wave-3 { 0%,81% {opacity:0} 82%,87% {opacity:1} 88%,100% {opacity:0} }
-          /* 招手容器：轻微左右摇摆，增加生动感（±3° 摇摆，非旋转） */
-          @keyframes wu-wave-sway {
-            0%, 57% { transform: translateY(0) rotate(0deg); }
-            62%     { transform: translateY(-4px) rotate(-3deg); }
-            70%     { transform: translateY(0) rotate(2deg); }
-            78%     { transform: translateY(-2px) rotate(-2deg); }
-            87%, 100% { transform: translateY(0) rotate(0deg); }
-          }
-
-          .wu-anim-ready .wu-idle  { animation: wu-idle-anim 16s ease-in-out infinite; }
-          .wu-anim-ready .wu-flip  { animation: wu-flip-0 16s steps(1,end) infinite; }
-          .wu-anim-ready .wu-flip[data-idx="1"] { animation-name: wu-flip-1; }
-          .wu-anim-ready .wu-flip[data-idx="2"] { animation-name: wu-flip-2; }
-          .wu-anim-ready .wu-flip[data-idx="3"] { animation-name: wu-flip-3; }
-          .wu-anim-ready .wu-flip[data-idx="4"] { animation-name: wu-flip-4; }
-          .wu-anim-ready .wu-flip[data-idx="5"] { animation-name: wu-flip-5; }
-          .wu-anim-ready .wu-wave  { animation: wu-wave-0 16s steps(1,end) infinite; }
-          .wu-anim-ready .wu-wave[data-idx="1"] { animation-name: wu-wave-1; }
-          .wu-anim-ready .wu-wave[data-idx="2"] { animation-name: wu-wave-2; }
-          .wu-anim-ready .wu-wave[data-idx="3"] { animation-name: wu-wave-3; }
-          .wu-anim-ready .wu-flip-seq { animation: wu-flip-bounce 16s ease-in-out infinite; }
-          .wu-anim-ready .wu-wave-seq { animation: wu-wave-sway 16s ease-in-out infinite; }
-
           .wukong-float-btn { transition: transform 0.18s ease; }
           .wukong-float-btn:hover { transform: scale(1.08); }
           .wukong-float-btn.dragging { cursor: grabbing; }
-          /* 拖拽时暂停帧动画（停在当前帧，不跳回第一帧） */
-          .wukong-float-btn.dragging .wukong-cloud-img,
-          .wukong-float-btn.dragging .wu-frame,
-          .wukong-float-btn.dragging .wu-flip-seq,
-          .wukong-float-btn.dragging .wu-wave-seq { animation-play-state: paused; }
         `}</style>
       </button>
 
