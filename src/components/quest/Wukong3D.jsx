@@ -9,7 +9,6 @@ import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 
 const STAND_URL = '/images/ai-assistant/wukong-stand.webp'   // 精致站立立像
-const TUCK_URL  = '/images/ai-assistant/wukong-tuck.webp'    // 精致空中团身立像
 const WAVE_URLS = [
   '/images/ai-assistant/wave-1.webp',
   '/images/ai-assistant/wave-2.webp',
@@ -56,10 +55,12 @@ function loadTexWithRetry(loader, url, mat, tries) {
 }
 
 // 立像 plane（贴图原样显示：MeshBasicMaterial，保留 AI 渲染光影；贴图加载完成前透明，防止闪白）
+// alphaTest 硬裁剪半透明边缘，去掉透明卡片边框残影
 function makeSprite(url, height, ratio) {
   const loader = new THREE.TextureLoader()
   const mat = new THREE.MeshBasicMaterial({
     map: null, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: 0,
+    alphaTest: 0.05,
   })
   loadTexWithRetry(loader, url, mat, 0)
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(height * ratio, height), mat)
@@ -98,33 +99,21 @@ export default function Wukong3D({ paused = false }) {
     dir.position.set(3, 5, 4)
     scene.add(dir)
 
-    // 3D 云 + 悟空（站立立像/团身3D球/招手立像）
+    // 3D 云 + 悟空（站立立像/招手立像）
     const cloud = buildCloud()
     scene.add(cloud)
 
     // 立像底部对齐云顶（云顶约 y=0.15），悟空/云整体构图居中
     const CLOUD_TOP = 0.15
     const STAND_H = 2.8
-    const TUCK_R = 0.85
     const WAVE_H = 2.8
     const stand = makeSprite(STAND_URL, STAND_H, 0.62)
     const waves = WAVE_URLS.map((u) => makeSprite(u, WAVE_H, 0.62))
 
-    // 团身 = 真 3D 球体（tuck 立像贴球面）：球任意角度投影都是圆 + 受光有明暗 → 彻底消除纸片感
-    // envMapIntensity=0 关闭环境反射（RoomEnvironment 反射会把透明区域渲染成白雾）；alphaTest 硬裁剪透明边缘
-    const tuckLoader = new THREE.TextureLoader()
-    const tuckMat = new THREE.MeshStandardMaterial({
-      map: null, transparent: true, roughness: 0.6, metalness: 0.05, opacity: 0,
-      envMapIntensity: 0, alphaTest: 0.05,
-    })
-    loadTexWithRetry(tuckLoader, TUCK_URL, tuckMat, 0)
-    const tuckBall = new THREE.Mesh(new THREE.SphereGeometry(TUCK_R, 48, 32), tuckMat)
-
     const wukong = new THREE.Group()
-    wukong.add(stand.mesh, tuckBall, ...waves.map((w) => w.mesh))
-    // 立像中心 = 云顶 + 半高（保证底部贴云顶）；团身球中心 = 云顶 + 半径
+    wukong.add(stand.mesh, ...waves.map((w) => w.mesh))
+    // 立像中心 = 云顶 + 半高（保证底部贴云顶）
     stand.mesh.position.y = CLOUD_TOP + STAND_H / 2
-    tuckBall.position.y = CLOUD_TOP + TUCK_R
     waves.forEach((w) => { w.mesh.position.y = CLOUD_TOP + WAVE_H / 2 })
     scene.add(wukong)
 
@@ -132,16 +121,15 @@ export default function Wukong3D({ paused = false }) {
     const STEP = 1 / 60
     let acc = 0
     const CYCLE = 10.0
-    const FLIP_AT = 1.8
-    const FLIP_LEN = 2.16
+    const HOP_AT = 1.8
+    const HOP_LEN = 2.16
     const WAVE_AT = 5.4
     const WAVE_LEN = 1.08
 
     const show = (idx) => {
-      // 0=stand 1=tuckBall 2..5=wave
+      // 0=stand 1..4=wave
       stand.mesh.visible = idx === 0
-      tuckBall.visible = idx === 1
-      waves.forEach((w, i) => { w.mesh.visible = idx === 2 + i })
+      waves.forEach((w, i) => { w.mesh.visible = idx === 1 + i })
     }
 
     // 调试句柄（便于浏览器侧验证动画状态）
@@ -151,10 +139,6 @@ export default function Wukong3D({ paused = false }) {
         y: Number(wukong.position.y.toFixed(3)),
         acc: Number(acc.toFixed(2)),
         stand: stand.mesh.visible,
-        tuckBall: tuckBall.visible,
-        ballRx: Number(tuckBall.rotation.x.toFixed(3)),
-        tuckLoaded: !!(tuckMat.map && tuckMat.map.image),
-        tuckOpacity: Number(tuckMat.opacity.toFixed(2)),
         waves: waves.map((w) => w.mesh.visible),
       }),
     }
@@ -167,42 +151,42 @@ export default function Wukong3D({ paused = false }) {
       acc += STEP
       const t = acc % CYCLE
 
-      if (t < FLIP_AT) {
+      // 贴图未就绪（网络加载中）：保持静态渲染，避免悟空透明/闪变
+      if (stand.mat.opacity < 1) {
+        show(0)
+        wukong.rotation.x = 0
+        wukong.position.y = 0
+        stand.mesh.scale.set(1, 1, 1)
+        renderer.render(scene, camera)
+        return
+      }
+
+      if (t < HOP_AT) {
         // ---- 待机：站立立像 + 呼吸浮动 ----
         show(0)
         wukong.rotation.x = 0
         wukong.position.y = Math.sin(t * 2.1) * 0.06
         const breath = 1 + Math.sin(t * 3.2) * 0.015
         stand.mesh.scale.set(breath, breath, 1)
-      } else if (t < FLIP_AT + FLIP_LEN) {
-        // ---- 后空翻：起跳即团身成 3D 球 → 球向后翻滚整圈（真3D体积，无纸片感）+ 抛物线 ----
-        if (tuckMat.opacity < 1) {
-          // 团身贴图未就绪（网络加载中）：保持站立等待，就绪后的周期再翻
-          show(0)
-          wukong.rotation.x = 0
-          wukong.position.y = Math.sin(t * 2.1) * 0.06
-          stand.mesh.scale.set(1, 1, 1)
-          renderer.render(scene, camera)
-          return
-        }
-        const k = (t - FLIP_AT) / FLIP_LEN
-        const angle = k * Math.PI * 2
-        show(1)
-        tuckBall.rotation.x = -angle
-        tuckBall.rotation.z = -angle * 0.18
-        wukong.rotation.x = 0
-        wukong.position.y = Math.sin(angle / 2) * 1.5
-      } else if (t < FLIP_AT + FLIP_LEN + 1.5) {
+      } else if (t < HOP_AT + HOP_LEN) {
+        // ---- 腾跃：立像在云上跳起-空中-落下（纯上下运动，无纸片感） ----
+        const k = (t - HOP_AT) / HOP_LEN
+        const hop = Math.sin(k * Math.PI)      // 0→1→0 抛物线
+        show(0)
+        wukong.rotation.x = -hop * 0.16        // 跳起微后仰，落地回正
+        wukong.position.y = hop * 0.85         // 腾空高度
+        stand.mesh.scale.set(1 + hop * 0.05, 1 - hop * 0.05, 1)  // 跳起微缩（透视远），落地恢复
+      } else if (t < HOP_AT + HOP_LEN + 1.5) {
         // ---- 落地待机 ----
         show(0)
         wukong.rotation.x = 0
-        wukong.position.y = Math.sin((t - FLIP_AT - FLIP_LEN) * 2.1) * 0.06
+        wukong.position.y = Math.sin((t - HOP_AT - HOP_LEN) * 2.1) * 0.06
         stand.mesh.scale.set(1, 1, 1)
       } else if (t < WAVE_AT + WAVE_LEN) {
         // ---- 招手：依次切招手帧 ----
         const wt = t - WAVE_AT
         const idx = Math.min(3, Math.floor(wt / 0.27))
-        show(2 + idx)
+        show(1 + idx)
         wukong.rotation.x = 0
         wukong.position.y = Math.sin(t * 2.1) * 0.06
       } else {
