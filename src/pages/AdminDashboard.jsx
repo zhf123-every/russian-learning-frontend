@@ -807,7 +807,8 @@ export default function AdminDashboard() {
       // 1) 现有云端名单（含投稿视频/投稿课程）
       let cloud = []
       try {
-        const r = await apiFetch('/api/videos/list')
+        // 读名单放宽到 60s（后端 Render 免费实例冷启动可能 30-60s）
+        const r = await apiFetch('/api/videos/list', { timeout: 60000 })
         const j = await r.json()
         if (j.ok && Array.isArray(j.videos)) cloud = j.videos
       } catch (e) { /* 读不到就当空 */ }
@@ -834,9 +835,10 @@ export default function AdminDashboard() {
       const mineIds = new Set(localObj.map(x => x.id))
       const keep = cloud.filter(v => !(v.kind === 'course' && mineIds.has(v.id)))
       const merged = [...keep, ...localObj]
-      // 4) 全量写回 B2
+      // 4) 全量写回 B2（数据量大 + 冷启动，放宽到 120s，避免 12s 默认超时被 abort）
       const sr = await apiFetch('/api/videos/sync', {
         method: 'POST',
+        timeout: 120000,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ videos: merged, adminKey }),
       })
@@ -852,7 +854,11 @@ export default function AdminDashboard() {
         setCloudMsg('同步失败：' + (sj.error || '未知错误'))
       }
     } catch (e) {
-      setCloudMsg('同步失败：' + (e.message || '网络错误'))
+      if (e && e.name === 'AbortError') {
+        setCloudMsg('⚠️ 同步超时被中止：后端冷启动或数据量较大，请稍等 1 分钟后重试')
+      } else {
+        setCloudMsg('同步失败：' + ((e && e.message) || '网络错误'))
+      }
     }
     setCloudBusy(false)
   }

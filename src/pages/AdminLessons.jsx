@@ -95,13 +95,14 @@ export default function AdminLessons() {
       const mine = new Set([obj.id])
       const merged = [...cloud.filter(v => !(v.kind === 'course' && mine.has(v.id))), obj]
       const sr = await apiFetch('/api/videos/sync', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', timeout: 120000, headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ videos: merged, adminKey }),
       })
       const sj = await sr.json()
       setMsg(sj.ok ? '✅ 大纲已保存并同步到云端，前台可读' : '⚠️ 同步失败：' + (sj.error || '未知错误'))
     } catch (e) {
-      setMsg('⚠️ 同步异常：' + (e.message || '网络错误'))
+      if (e && e.name === 'AbortError') setMsg('⚠️ 同步超时被中止：后端冷启动或数据量大，请稍等 1 分钟后重试')
+      else setMsg('⚠️ 同步异常：' + ((e && e.message) || '网络错误'))
     }
     setSaving(false)
   }
