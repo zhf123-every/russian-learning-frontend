@@ -25,6 +25,10 @@ function loadTexWithRetry(loader, url, mat, tries) {
     url,
     (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace
+      // 贴图 alpha 已二值化（无半透明边缘）；禁用 mipmap 缩小采样，
+      // 防止小画布缩放时边缘像素与透明区重新混合泛黄/切割
+      tex.generateMipmaps = false
+      tex.minFilter = THREE.LinearFilter
       mat.map = tex
       mat.opacity = 1
     },
