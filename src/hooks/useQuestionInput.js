@@ -412,8 +412,10 @@ export function useQuestionInput({
       setUserInputWords((prevWords) => prevWords.map((w) => ({ ...w, incorrect: true })));
       enteredFixModeRef.current = true;
       setMode(MODES.FIX);
+      // 前端已判定错误 → 同步触发 onWrong（不依赖后端），后端返回仅补充精确错误词标注
+      onWrong?.({ correct: false, errors: [], wordAnalysis: [] });
       submitToBackend(inputValue).then((result) => {
-        if (result && result.errors) { markIncorrectFromErrors(result.errors); onWrong?.(result); }
+        if (result && result.errors) markIncorrectFromErrors(result.errors);
       });
       return;
     }
@@ -447,8 +449,10 @@ export function useQuestionInput({
     });
     enteredFixModeRef.current = true;
     setMode(MODES.FIX);
+    // 前端已判定错误 → 同步触发 onWrong（不依赖后端），后端返回仅补充精确错误词标注
+    onWrong?.({ correct: false, errors: [], wordAnalysis: [] });
     submitToBackend(inputValue).then((result) => {
-      if (result && result.errors) { markIncorrectFromErrors(result.errors); onWrong?.(result); }
+      if (result && result.errors) markIncorrectFromErrors(result.errors);
     });
   }, [mode, inputValue, answerText, isJudging, submitToBackend, markIncorrectFromErrors, onCorrect, onWrong, computeResultType]);
 

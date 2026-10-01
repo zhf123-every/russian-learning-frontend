@@ -238,6 +238,7 @@ export default function QuestSpeaking() {
   const [hoverMic, setHoverMic] = useState(false);
   const [recState, setRecState] = useState("idle"); // idle/recording/scored
   const [score, setScore] = useState({ total: 0, accuracy: 0, fluency: 0, completeness: 0 });
+  const [wrongStreak, setWrongStreak] = useState(0); // 连续评分不达标次数（悟空主动求助）
   const recRef = useRef(null);
   const recStartRef = useRef(0);
   const asrRef = useRef(null);
@@ -642,6 +643,8 @@ export default function QuestSpeaking() {
             const sc = computeScores(out, current ? (current.russian || "") : "", dur);
             setScore(sc);
             setRecState("scored");
+            // 评分不达标（<60 分）计一次连续答错，达标清零 → 悟空连续答错主动求助逻辑
+            setWrongStreak((s) => (sc.total < 60 ? s + 1 : 0));
           } catch (err) {
             console.error("ASR error", err);
             setScore({ total: 0, accuracy: 0, fluency: 0, completeness: 0 });
@@ -1173,7 +1176,7 @@ export default function QuestSpeaking() {
       />
 
       {/* 悟空 AI 助手（右下角浮动孙悟空，点击弹出 AI 问答弹窗） */}
-      <WukongAiAssistant statement={current} modeLabel="口语评测" />
+      <WukongAiAssistant statement={current} modeLabel="口语评测" wrongStreak={wrongStreak} />
 
       <style>{`
         @keyframes listen-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
