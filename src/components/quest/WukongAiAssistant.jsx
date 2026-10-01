@@ -10,7 +10,7 @@ import { toast } from '../../lib/toast'
 // props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
 const WUKONG_CLOUD = '/images/ai-assistant/wukong-cloud.webp'    // 筋斗云底座（静止）
 const WUKONG_IDLE  = '/images/ai-assistant/wukong-body-1.webp'   // 悟空待机：站立瞭望
-const FLIP_FRAMES = [                                            // 后空翻 11 帧（36°步进：起跳0°→36°→72°→108°→144°→180°倒立→216°→252°→288°→324°→360°落地）
+const FLIP_FRAMES = [                                            // 后空翻 8 帧（AI 真实姿态分解：起跳腾空→蜷缩翻滚→倒立→翻越倾斜下落→落地站稳）
   '/images/ai-assistant/flip-1.webp',
   '/images/ai-assistant/flip-2.webp',
   '/images/ai-assistant/flip-3.webp',
@@ -19,9 +19,6 @@ const FLIP_FRAMES = [                                            // 后空翻 11
   '/images/ai-assistant/flip-6.webp',
   '/images/ai-assistant/flip-7.webp',
   '/images/ai-assistant/flip-8.webp',
-  '/images/ai-assistant/flip-9.webp',
-  '/images/ai-assistant/flip-10.webp',
-  '/images/ai-assistant/flip-11.webp',
 ]
 const WAVE_FRAMES = [                                            // 招手 4 帧（抬手→举高→大幅摆→胸前挥）
   '/images/ai-assistant/wave-1.webp',
@@ -74,7 +71,7 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习' }) {
       let nextFi = 0
       if (t <= 18) { nextAct = 'idle' }
       else if (t <= 20) { nextAct = 'prep' }
-      else if (t <= 53) { nextAct = 'flip'; nextFi = Math.min(10, Math.floor((t - 21) / 3)) }
+      else if (t <= 53) { nextAct = 'flip'; nextFi = Math.min(7, Math.floor((t - 21) / 4)) }
       else if (t <= 59) { nextAct = 'idle' }
       else if (t <= 71) { nextAct = 'wave'; nextFi = Math.min(3, Math.floor((t - 60) / 3)) }
       else if (t >= 88) { nextAct = 'idle'; tickRef.current = 0 }
