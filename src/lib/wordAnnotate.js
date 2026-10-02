@@ -206,9 +206,36 @@ const SINGULAR_GENDERS = { m: "masculine", f: "feminine", n: "neuter" };
 let dictFullLoaded = false;
 let formIndex = null;
 
+/** 懒加载 dict-zh.js（БКРС 俄汉词典，7.9MB，中文释义补全） */
+let dictZhLoaded = false;
+export function ensureDictZh() {
+  if (dictZhLoaded) return Promise.resolve(true);
+  if (typeof window === "undefined") return Promise.resolve(false);
+  if (window.RU_DICT_ZH) {
+    dictZhLoaded = true;
+    return Promise.resolve(true);
+  }
+  return new Promise((resolve) => {
+    const s = document.createElement("script");
+    s.src = "/dict-zh.js";
+    s.onload = () => { dictZhLoaded = true; resolve(true); };
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+}
+
+/** 中文释义查询链：词形直查 → 原形查询（БКРС 含变形词，先直查词形再查原形） */
+function zhOf(form, lemma) {
+  const D = (typeof window !== "undefined" && window.RU_DICT_ZH) || {};
+  const n = normForm(form);
+  const l = normForm(lemma);
+  return D[n] || (l && l !== n ? D[l] : "") || "";
+}
+
 /** 懒加载 dict-full.js（25MB，仅首次答对时加载一次） */
 export function ensureDictFull() {
   if (dictFullLoaded) return Promise.resolve(true);
+  ensureDictZh(); // 顺带并行预热中文释义词典
   if (typeof window === "undefined") return Promise.resolve(false);
   if (window.RU_DICT_FULL) {
     dictFullLoaded = true;
@@ -362,7 +389,7 @@ export function annotateWords(sentence) {
         gender: hit.gender || "",
         grammarCase: hit.caseCode || "",
         number: hit.number || "",
-        chinese: hit.chinese || "",
+        chinese: hit.chinese || zhOf(n, hit.lemma) || "",
         roleLabel: "",
         person: hit.person || "",
         tense: hit.tense || "",
@@ -376,7 +403,7 @@ export function annotateWords(sentence) {
         form: w, lemma: n, pos,
         posColor: getPosColor(pos),
         gender: ruGender(base.p),
-        chinese: base.z || "",
+        chinese: base.z || zhOf(n, n) || "",
         roleLabel: "",
       };
     }
@@ -390,6 +417,6 @@ export function annotateWords(sentence) {
         roleLabel: "",
       };
     }
-    return { form: w, lemma: n, pos: "", posColor: "", chinese: "", roleLabel: "" };
+    return { form: w, lemma: n, pos: "", posColor: "", chinese: zhOf(n, n) || "", roleLabel: "" };
   });
 }
