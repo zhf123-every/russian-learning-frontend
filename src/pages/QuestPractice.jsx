@@ -387,7 +387,7 @@ export default function QuestPractice() {
       const roleWords = inferRoles(stmt.russian, dictWords);
       patchWords(key, (oldWs) => roleWords.map((w, i) => {
         const oldW = oldWs[i] || {};
-        return { ...oldW, ...w, order: i, roleLabel: w.roleLabel || oldW.roleLabel || "" };
+        return { ...oldW, ...w, order: i, roleLabel: w.roleLabel || oldW.roleLabel || "", chinese: w.chinese || oldW.chinese || oldW.zh || "" };
       }));
     }
   }, [patchWords]);

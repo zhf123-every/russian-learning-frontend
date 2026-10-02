@@ -184,6 +184,8 @@ export default function AnswerPanel({
           const single = !rw.pos ? (annotateWords(w.lemma || w.word || w.ru || w.text || "")[0] || {}) : {};
           return {
             ...w, ...rw, ...single,
+            // 中文释义优先保留课程数据原值（词典未命中时不得用空值覆盖）
+            chinese: w.chinese || w.zh || w.meaning || w.translation || rw.chinese || single.chinese || "",
             order: i,
             roleLabel: rw.roleLabel || "",
             syntacticRole: rw.syntacticRole || "default",
