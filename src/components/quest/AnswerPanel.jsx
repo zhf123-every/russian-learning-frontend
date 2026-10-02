@@ -173,7 +173,7 @@ export default function AnswerPanel({
   // 覆盖课程数据里残留的无效标签（default 等），答对瞬间成分/重音即完整，无闪烁无延迟
   const words = useMemo(() => {
     const raw = statement?.words || [];
-    const needRules = raw.some((w) => !w.roleLabel || w.roleLabel === "default" || !w.syntacticRole || w.syntacticRole === "default");
+    const needRules = raw.some((w) => !w.pos || w.pos === "default" || !w.roleLabel || w.roleLabel === "default" || !w.syntacticRole || w.syntacticRole === "default");
     if (needRules && statement?.russian) {
       const dictWords = annotateWords(statement.russian);
       if (dictWords.length) {

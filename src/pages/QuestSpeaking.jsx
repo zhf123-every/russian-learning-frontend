@@ -806,7 +806,7 @@ export default function QuestSpeaking() {
   useEffect(() => {
     if (!current) { setAnnot([]); return; }
     const ws = (Array.isArray(current.words) && current.words.length) ? current.words : [];
-    const hasMark = ws.some(w => w.pos || w.grammarLabel || (w.form && w.form !== w.lemma));
+    const hasMark = ws.some(w => (w.pos && w.pos !== "default") || w.grammarLabel || (w.form && w.form !== w.lemma));
     const toAnnot = (arr) => arr.map((w) => ({
       ...w,
       posColor: w.posColor || (w.pos ? getPosColor(w.pos) : ""),

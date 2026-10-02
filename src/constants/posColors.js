@@ -99,8 +99,10 @@ export function getPosColor(pos) {
 
 /**
  * 根据词性获取中文标签
+ * default / 空值不显示标签（未标注词不暴露 "default" 字样）
  */
 export function getPosLabel(pos) {
+  if (!pos || pos === "default") return "";
   return POS_LABELS[pos] || pos || "其他";
 }
 
