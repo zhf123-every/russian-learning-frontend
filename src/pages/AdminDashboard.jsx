@@ -10,6 +10,105 @@ import { useAdminStore } from '../store/adminStore'
 
 // ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
 
+// —— P0 登录门禁：未登录（无账号 token、无旧密钥）时显示登录/注册卡片 ——
+function AdminLoginGate() {
+  const { loginPassword, register, login } = useAdminStore()
+  const [tab, setTab] = useState('login')        // login | register
+  const [showKey, setShowKey] = useState(false)  // 折叠区：旧密钥登录
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [nickname, setNickname] = useState('')
+  const [key, setKey] = useState('')
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const submit = async () => {
+    if (busy) return
+    setBusy(true)
+    setMsg('')
+    const res = tab === 'login'
+      ? await loginPassword(username, password)
+      : await register(username, password, nickname)
+    setBusy(false)
+    if (!res.ok) { setMsg(res.error || '操作失败'); return }
+    if (res.isFirstAdmin) setMsg('🎉 你是第一个注册的用户，已自动设为管理员！')
+    // 成功后 isLoggedIn 变 true，父组件自动进入后台
+  }
+
+  const submitKey = async () => {
+    if (busy) return
+    setBusy(true)
+    setMsg('')
+    const ok = await login(key)
+    setBusy(false)
+    if (!ok) setMsg('密钥无效，请检查')
+  }
+
+  return (
+    <main className="min-h-full bg-base-100 flex items-center justify-center px-6 py-16">
+      <div className="w-full max-w-[420px]">
+        <div className="card border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 20 }}>
+          <div className="card-body p-8">
+            <h1 className="text-xl font-extrabold text-gray-900">课程包管理后台</h1>
+            <p className="mt-1 text-sm text-gray-400">登录后管理课程档案、课时内容与云端发布</p>
+
+            <div className="mt-5 tabs tabs-boxed justify-start">
+              <button className={`tab ${tab === 'login' ? 'tab-active' : ''}`} onClick={() => { setTab('login'); setMsg('') }}>登录</button>
+              <button className={`tab ${tab === 'register' ? 'tab-active' : ''}`} onClick={() => { setTab('register'); setMsg('') }}>注册</button>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3">
+              <input
+                className="input input-bordered"
+                placeholder="用户名"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+              />
+              <input
+                type="password"
+                className="input input-bordered"
+                placeholder="密码（至少 6 位）"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+              {tab === 'register' && (
+                <input
+                  className="input input-bordered"
+                  placeholder="昵称（可选）"
+                  value={nickname}
+                  onChange={e => setNickname(e.target.value)}
+                />
+              )}
+              <button className="btn btn-primary" onClick={submit} disabled={busy}>
+                {busy ? '处理中…' : (tab === 'login' ? '登录' : '注册并登录')}
+              </button>
+              {msg && <div className="text-sm text-gray-600">{msg}</div>}
+            </div>
+
+            <div className="mt-5 border-t border-gray-100 pt-4">
+              <button className="text-xs text-gray-400 underline" onClick={() => setShowKey(v => !v)}>
+                {showKey ? '收起' : '使用旧管理员密钥登录'}
+              </button>
+              {showKey && (
+                <div className="mt-3 flex flex-col gap-2">
+                  <input
+                    type="password"
+                    className="input input-bordered input-sm"
+                    placeholder="管理员密钥（ADMIN_KEY）"
+                    value={key}
+                    onChange={e => setKey(e.target.value)}
+                  />
+                  <button className="btn btn-sm btn-outline" onClick={submitKey} disabled={busy}>密钥登录</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  )
+}
+
 // 一级分类（与商城/投稿分类体系一致）
 const CATS = ['教材同步', '考试备考', '少儿俄语', '基础俄语', '语法专项', '场景俄语', '阅读听力', '影视俄语', '音乐俄语']
 // 角标选项
@@ -390,8 +489,7 @@ export default function AdminDashboard() {
     setToast('提示词已复制，请粘贴给 AI 生成 JSON')
   }
   // —— 云端同步状态 ——
-  const { adminKey, login, logout } = useAdminStore()
-  const [adminInput, setAdminInput] = useState(adminKey || '')
+  const { adminKey, token, user, isLoggedIn, loginPassword, register, logout, authBody } = useAdminStore()
   const [cloudBusy, setCloudBusy] = useState(false)
   const [cloudMsg, setCloudMsg] = useState('')
   const [cloudCount, setCloudCount] = useState(-1)
@@ -543,11 +641,11 @@ export default function AdminDashboard() {
   // 封面 dataURL → 上传 B2（thumbs 目录）→ 返回 b2:// URL；失败返回 ''（用占位图兜底）
   const uploadCoverToB2 = async (dataUrl) => {
     try {
-      if (!adminKey) return ''
+      if (!isLoggedIn) return ''
       const pr = await apiFetch('/api/upload/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: 'cover_' + Date.now() + '.jpg', kind: 'image', contentType: 'image/jpeg', adminKey })
+        body: JSON.stringify(authBody({ filename: 'cover_' + Date.now() + '.jpg', kind: 'image', contentType: 'image/jpeg' }))
       })
       const pj = await pr.json()
       if (!pj.ok || !pj.uploadUrl) return ''
@@ -688,7 +786,7 @@ export default function AdminDashboard() {
 
   // 从云端删除该课程（商城/前端读云端名单，删除必须同步云端才会生效）
   const removeFromCloud = async (id) => {
-    if (!adminKey) { flash('请先输入管理员密钥并登录，才能删除云端课程'); return false }
+    if (!isLoggedIn) { flash('请先登录后台，才能删除云端课程'); return false }
     setCloudBusy(true)
     setCloudMsg('正在从云端删除…')
     try {
@@ -699,7 +797,7 @@ export default function AdminDashboard() {
       const sr = await apiFetch('/api/videos/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videos: next, adminKey }),
+        body: JSON.stringify(authBody({ videos: next })),
       })
       const sj = await sr.json()
       if (sj.ok) {
@@ -725,8 +823,8 @@ export default function AdminDashboard() {
     const cloudNote = c.status !== 'draft' ? '（已发布课程会同时从云端/商城移除）' : ''
     if (!window.confirm(`确定删除课程《${c.title}》吗？${cloudNote}此操作不可恢复。`)) return
     if (c.status !== 'draft') {
-      if (!adminKey) {
-        flash('⚠️ 该课程已发布到云端：请先输入管理员密钥并登录，删除后商城才会同步')
+      if (!isLoggedIn) {
+        flash('⚠️ 该课程已发布到云端：请先登录后台，删除后商城才会同步')
         return
       }
       const ok = await removeFromCloud(id)
@@ -739,7 +837,7 @@ export default function AdminDashboard() {
 
   // 清空商城课程：移除云端名单中所有 kind='course'（投稿视频等非课程项保留）
   const clearStoreCourses = async () => {
-    if (!adminKey) { setCloudMsg('请先输入管理员密钥并登录'); return }
+    if (!isLoggedIn) { setCloudMsg('请先登录后台'); return }
     if (!window.confirm('确定清空游戏商城里的所有课程吗？\n云端课程将全部移除（投稿视频/非课程内容保留），此操作不可恢复。')) return
     setCloudBusy(true)
     setCloudMsg('正在清空商城课程…')
@@ -751,7 +849,7 @@ export default function AdminDashboard() {
       const sr = await apiFetch('/api/videos/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videos: keep, adminKey }),
+        body: JSON.stringify(authBody({ videos: keep })),
       })
       const sj = await sr.json()
       if (sj.ok) {
@@ -800,7 +898,7 @@ export default function AdminDashboard() {
   // ========== 全网可见：后台课程同步到云端（B2 videos/index.json，访客 GET /api/videos/list 可读） ==========
   const syncToCloud = async () => {
     if (cloudBusy) return
-    if (!adminKey) { setCloudMsg('请先输入管理员密钥并登录'); return }
+    if (!isLoggedIn) { setCloudMsg('请先登录后台'); return }
     const localPub = getCourses().filter(c => c.status !== 'draft')
     if (!localPub.length) { setCloudMsg('没有已发布的课程可同步'); return }
     setCloudBusy(true)
@@ -842,7 +940,7 @@ export default function AdminDashboard() {
         method: 'POST',
         timeout: 120000,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videos: merged, adminKey }),
+        body: JSON.stringify(authBody({ videos: merged })),
       })
       const sj = await sr.json()
       if (sj.ok) {
@@ -863,11 +961,6 @@ export default function AdminDashboard() {
       }
     }
     setCloudBusy(false)
-  }
-
-  const doAdminLogin = async () => {
-    const ok = await login(adminInput)
-    setCloudMsg(ok ? '✅ 管理员已登录，可以同步到云端' : '密钥无效，请检查')
   }
 
   // ========== 第二步：课程序管理 ==========
@@ -1581,6 +1674,8 @@ export default function AdminDashboard() {
   }
 
   // —— 视图一：档案表单 + 课程列表 ——
+  if (!isLoggedIn) return <AdminLoginGate />
+
   return (
     <main className="min-h-full bg-base-100 px-6 py-7">
       <div className="mx-auto max-w-[1100px]">
@@ -1727,19 +1822,17 @@ export default function AdminDashboard() {
               <span className="text-xs text-gray-400">后台课程目前只存在你的浏览器；同步后所有访客可见、可学</span>
             </div>
             <div className="mt-3 flex flex-col sm:flex-row items-center gap-2">
-              <input
-                type="password"
-                className="input input-bordered input-sm flex-1"
-                placeholder="管理员密钥（与投稿弹窗同一把密钥）"
-                value={adminInput}
-                onChange={e => setAdminInput(e.target.value)}
-              />
+              <span className="text-sm text-gray-600">
+                当前登录：<b>{user?.username || '旧密钥模式'}</b>
+                <span className="ml-2 badge badge-ghost badge-sm">
+                  {user?.role === 'admin' ? '管理员' : user?.role === 'editor' ? '编辑' : user?.role === 'viewer' ? '只读' : '旧密钥'}
+                </span>
+              </span>
               <div className="flex gap-2">
-                <button className="btn btn-sm btn-outline" onClick={doAdminLogin} disabled={cloudBusy}>{adminKey ? '已登录 ✓' : '登录'}</button>
-                <button className="btn btn-sm btn-primary" onClick={syncToCloud} disabled={cloudBusy || !adminKey}>
+                <button className="btn btn-sm btn-primary" onClick={syncToCloud} disabled={cloudBusy || !isLoggedIn}>
                   {cloudBusy ? '同步中…' : '🚀 同步到云端'}
                 </button>
-                {adminKey && <button className="btn btn-sm btn-ghost" onClick={() => { logout(); setAdminInput(''); setCloudMsg('已退出管理员') }}>退出</button>}
+                <button className="btn btn-sm btn-ghost" onClick={() => { logout(); setCloudMsg('已退出登录') }}>退出</button>
               </div>
             </div>
             {cloudMsg && <div className="mt-3 text-sm text-gray-600">{cloudMsg}</div>}
@@ -1753,13 +1846,13 @@ export default function AdminDashboard() {
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
               <span className="text-xs text-gray-500 text-error">危险操作：</span>
-              <button className="btn btn-xs btn-error btn-outline" onClick={clearStoreCourses} disabled={cloudBusy || !adminKey}>
+              <button className="btn btn-xs btn-error btn-outline" onClick={clearStoreCourses} disabled={cloudBusy || !isLoggedIn}>
                 🗑️ 清空商城课程
               </button>
             </div>
             {cloudCount >= 0 && <div className="mt-2 text-xs text-gray-400">云端名单共 {cloudCount} 项（视频 + 课程）</div>}
             <div className="mt-3 text-xs text-gray-400">
-              提示：只有「已发布」状态的课程会同步；草稿不会上云。同步前请确保密钥与后端 ADMIN_KEY 一致。
+              提示：只有「已发布」状态的课程会同步；草稿不会上云。同步后所有访客可见、可学。
             </div>
           </div>
         </div>

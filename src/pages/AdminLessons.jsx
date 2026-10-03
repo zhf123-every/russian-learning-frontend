@@ -2,7 +2,7 @@
 // 路由：/admin/lessons/:id —— 管理某门课程的 lessonsList（大纲 + 试学标记）
 // 行内编辑，支持：添加 / 编辑 / 删除 / 上移 / 下移；保存后写 localStorage 并同步云端
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { getCourses, saveCourses } from '../utils/storage'
 import { apiFetch } from '../lib/api'
 import { useAdminStore } from '../store/adminStore'
@@ -12,7 +12,7 @@ const TYPES = ['单词', '例句', '单词 · 例句']
 export default function AdminLessons() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { adminKey } = useAdminStore()
+  const { isLoggedIn, authBody } = useAdminStore()
   const [course, setCourse] = useState(null)
   const [rows, setRows] = useState([])
   const [toast, setToast] = useState('')
@@ -38,6 +38,9 @@ export default function AdminLessons() {
       setRows([])
     }
   }, [id])
+
+  // P0 守卫：未登录后台（无账号 token、无旧密钥）跳回 /admin 登录
+  if (!isLoggedIn) return <Navigate to="/admin" replace />
 
   const flash = (m) => { setToast(m); setTimeout(() => setToast(''), 2500) }
 
@@ -76,7 +79,7 @@ export default function AdminLessons() {
     setCourse(list[idx])
     flash('大纲已保存（' + finalRows.length + ' 课，试学 ' + freeCount + ' 课）')
 
-    if (!adminKey) { setMsg('已保存到本地（未登录管理员，未同步云端）'); return }
+    if (!isLoggedIn) { setMsg('已保存到本地（未登录管理员，未同步云端）'); return }
     setSaving(true)
     try {
       const cur = await apiFetch('/api/videos/list').then(r => r.json())
@@ -96,7 +99,7 @@ export default function AdminLessons() {
       const merged = [...cloud.filter(v => !(v.kind === 'course' && mine.has(v.id))), obj]
       const sr = await apiFetch('/api/videos/sync', {
         method: 'POST', timeout: 120000, headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videos: merged, adminKey }),
+        body: JSON.stringify(authBody({ videos: merged })),
       })
       const sj = await sr.json()
       setMsg(sj.ok ? '✅ 大纲已保存并同步到云端，前台可读' : '⚠️ 同步失败：' + (sj.error || '未知错误'))
