@@ -1457,6 +1457,11 @@ export default function AdminDashboard() {
                 )}
               </div>
               <button className="btn btn-primary btn-sm" onClick={saveUnit}>💾 保存课时内容</button>
+              {active && (
+                <button className="btn btn-outline btn-sm" onClick={() => navigate(`/admin/segments?course=${encodeURIComponent(active.id)}&unit=${encodeURIComponent(activeUnit.id)}`)}>
+                  📑 语块管理
+                </button>
+              )}
             </div>
           </div>
 
