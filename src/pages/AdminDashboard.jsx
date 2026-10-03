@@ -1153,6 +1153,36 @@ export default function AdminDashboard() {
     }
   }
 
+  // P2-C：批量回填语块（老课时一次性补全；600ms 间隔 + 单次 ≤10 课时；中断恢复=幂等重跑，从第 1 课重新遍历）
+  const [fillBusy, setFillBusy] = useState(false)
+  const [fillProgress, setFillProgress] = useState(null) // {done, total, okUnits, failUnits, cur}
+  const batchFillSegments = async () => {
+    if (fillBusy || !active) return
+    const withSent = units.filter(u => (u.sentences || []).some(s => String((s && (s.ru || s.russian || s.text)) || '').trim()))
+    if (!withSent.length) { flash('本课程没有含句子的课时，无需回填语块'); return }
+    const total = Math.min(withSent.length, 10)
+    if (withSent.length > 10 && !window.confirm(`共 ${withSent.length} 个课时含句子，单次最多回填 ${total} 个，完成后可再次点击继续回填。继续？`)) return
+    setFillBusy(true)
+    setFillProgress({ done: 0, total, okUnits: 0, failUnits: 0, cur: '' })
+    let okUnits = 0, failUnits = 0
+    for (let i = 0; i < total; i++) {
+      const u = withSent[i]
+      setFillProgress({ done: i + 1, total, okUnits, failUnits, cur: u.title })
+      try {
+        const r = await triggerUnitSegments({ courseId: active.id, unitId: u.id, sentences: u.sentences, deps: { httpPost: segHttpPost } })
+        if (r && (r.skipped || (r.failed || []).length)) failUnits++
+        else okUnits++
+      } catch (e) {
+        failUnits++
+        console.warn('[segments] 回填失败：', u.title, e && e.message)
+      }
+      if (i < total - 1) await new Promise(res => setTimeout(res, 600))
+    }
+    setFillBusy(false)
+    setFillProgress(null)
+    flash(`批量回填完成：成功 ${okUnits} 课，失败 ${failUnits} 课（失败已记录，打开对应课时自动重试）`)
+  }
+
   // 保存课时内容（写回课程 units）
   const saveUnit = () => {
     if (!activeUnit) return
@@ -1802,6 +1832,9 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2">
               <button className="btn btn-outline btn-sm" onClick={() => openVersions(active)}>🕘 版本历史</button>
               <button className="btn btn-outline btn-sm" onClick={() => navigate('/game-mall')}>去商城查看 →</button>
+              <button className="btn btn-sm" onClick={batchFillSegments} disabled={fillBusy}>
+                {fillBusy ? `回填中 ${fillProgress.done}/${fillProgress.total}…` : '⟳ 批量回填语块'}
+              </button>
             </div>
           </div>
 
