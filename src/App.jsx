@@ -32,6 +32,7 @@ import SaveProficiency from './pages/SaveProficiency'
 import SaveUnknown from './pages/SaveUnknown'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminLessons from './pages/AdminLessons'
+import AdminUsers from './pages/AdminUsers'
 import { useEffect } from 'react'
 import { prefetchCloudList } from './lib/cloudPrefetch'
 
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="/unlocked-games" element={<GameStore />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/lessons/:id" element={<AdminLessons />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/my-games" element={<MyGames />} />
         <Route path="/game/:id" element={<GameDetail />} />
         <Route path="/preload/:mode/:unitId" element={<Preloader />} />
