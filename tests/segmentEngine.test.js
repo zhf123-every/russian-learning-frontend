@@ -24,6 +24,7 @@ import {
   generateUnitSegmentsAsync,
   checkCache,
   saveSegments,
+  withRetry403,
 } from '../src/lib/segmentEngine.js'
 
 // ---------- mock 工具 ----------
@@ -307,5 +308,40 @@ describe('场景7 批量生成与缓存读取（并发上限、单句失败不�
     const r = await saveSegments({ courseId: 'c', unitId: 'u', items: [{ sentence_hash: sentenceHash(S1, 'easy'), difficulty: 'easy', segments: [{ sort_order: 0, text: 'Я люблю', type: 'phrase', chinese: '我爱' }], status: 'ok', translation: '我爱书。' }] }, { httpPost: post })
     assert.equal(r.ok, true)
     assert.equal(calls[0].path, '/api/admin/segments/save')
+  })
+})
+
+describe('场景8 withRetry403（TiDB 冷启动 403 自动重试 1 次）', () => {
+  test('403 → 自动重试 1 次 → 第二次成功', async () => {
+    let calls = 0
+    const post = async () => { calls++; if (calls === 1) throw Object.assign(new Error('403'), { status: 403 }); return { ok: true } }
+    const wrapped = await withRetry403(post)
+    const r = await wrapped('/api/admin/segments/check', {})
+    assert.deepEqual(r, { ok: true })
+    assert.equal(calls, 2)
+  })
+  test('连续 403 → 重试后仍抛出（调用 2 次）', async () => {
+    let calls = 0
+    const post = async () => { calls++; throw Object.assign(new Error('403'), { status: 403 }) }
+    const wrapped = await withRetry403(post)
+    await assert.rejects(() => wrapped('/api/x', {}), (e) => e.status === 403)
+    assert.equal(calls, 2)
+  })
+  test('网络错误（无 status）→ 不重试，直接抛', async () => {
+    let calls = 0
+    const post = async () => { calls++; throw new Error('network') }
+    const wrapped = await withRetry403(post)
+    await assert.rejects(() => wrapped('/api/x', {}), /network/)
+    assert.equal(calls, 1)
+  })
+  test('非 403（如 500）→ 不重试，直接抛', async () => {
+    let calls = 0
+    const post = async () => { calls++; throw Object.assign(new Error('500'), { status: 500 }) }
+    const wrapped = await withRetry403(post)
+    await assert.rejects(() => wrapped('/api/x', {}), (e) => e.status === 500)
+    assert.equal(calls, 1)
+  })
+  test('httpPost 非函数 → 构造时抛错', async () => {
+    await assert.rejects(() => withRetry403(null), /httpPost 必须为函数/)
   })
 })
