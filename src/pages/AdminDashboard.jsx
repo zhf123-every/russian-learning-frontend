@@ -9,6 +9,8 @@ import { runQc, qcSummary } from '../utils/importQc'
 import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
 import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps, russianizeNumbers } from '../lib/snowballEngine'
+import { withRetry403 } from '../lib/segmentEngine'
+import { triggerUnitSegments, retryPendingSegments } from '../lib/segmentTrigger'
 import { useAdminStore } from '../store/adminStore'
 
 // ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
@@ -520,6 +522,11 @@ export default function AdminDashboard() {
   const [cloudBusy, setCloudBusy] = useState(false)
   const [cloudMsg, setCloudMsg] = useState('')
   const [cloudCount, setCloudCount] = useState(-1)
+
+  // P2-A：语块生成请求器——403（TiDB 冷启动）自动重试 1 次；POST 带 authBody 鉴权，GET 不带 body
+  const segHttpPost = withRetry403((path, body) =>
+    apiFetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authBody(body)) })
+  )
 
   // —— 课程序管理状态 ——
   const [active, setActive] = useState(null)        // 当前管理课程序的课程
@@ -1079,6 +1086,13 @@ export default function AdminDashboard() {
     setNewSentZh('')
     setView('unit')
     window.scrollTo({ top: 0 })
+    // P2-A：打开课时自动补跑上次失败的语块（本机增强；无记录 / 失败静默，不打扰）
+    const uTexts = (u.sentences || []).filter(s => String((s && (s.ru || s.russian || s.text)) || '').trim())
+    if (active && uTexts.length) {
+      retryPendingSegments({ courseId: active.id, unitId: u.id, sentences: u.sentences, deps: { httpPost: segHttpPost } })
+        .then((r) => { if (r && !r.skipped && (r.done || []).length) flash(`语块补跑完成：${r.done.length} 项`) })
+        .catch((e) => console.warn('[segments] 打开课时补跑失败：', e && e.message))
+    }
   }
 
   // 更新 activeUnit 副本
@@ -1151,6 +1165,13 @@ export default function AdminDashboard() {
     const left = nextUnits.filter(u => !unitHasContent(u)).length
     setSaveBanner({ title: activeUnit.title, stats: stats || '（暂无内容）', left })
     flash(`已保存《${activeUnit.title}》` + (stats ? '：' + stats : '') + (left ? `，还有 ${left} 个课时未挂内容` : '，所有课时已就绪'))
+    // P2-A：保存后异步触发语块生成（不 await；关页不保证完成，下次打开课时自动补跑）
+    const segSentences = activeUnit.sentences || []
+    if (active && segSentences.some(s => String((s && (s.ru || s.russian || s.text)) || '').trim())) {
+      triggerUnitSegments({ courseId: active.id, unitId: activeUnit.id, sentences: segSentences, deps: { httpPost: segHttpPost } })
+        .then((r) => { if (r && !r.skipped) flash('已触发语块生成，完成后下次打开可见') })
+        .catch((e) => console.warn('[segments] 语块生成触发失败（下次打开自动补跑）：', e && e.message))
+    }
     setView('units')
   }
 
