@@ -5,6 +5,7 @@ import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { API_BASE, apiFetch } from '../lib/api'
 import { tsToLocalInput, localInputToTs, courseStatus, statusLabel, fmtSchedule } from '../utils/courseSchedule'
 import { saveCourseVersion, listCourseVersions, getCourseVersion, clearCourseVersions, rollbackCourse } from '../utils/courseVersions'
+import { runQc, qcSummary } from '../utils/importQc'
 import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
 import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps, russianizeNumbers } from '../lib/snowballEngine'
@@ -1174,6 +1175,46 @@ export default function AdminDashboard() {
   }
 
   // ========== AI 前置数据入库：批量导入 JSON 句子 + 修复中文（缺失/逐词硬拼），前端只渲染固定数据 ==========
+  // —— 批量导入质检：导入后自动跑规则质检 + 可一键 AI 深度审核（语序/语义/语法/数字）——
+  const [qcReport, setQcReport] = useState(null) // runQc 结果 {errors,warns,items}
+  const [qcAiIssues, setQcAiIssues] = useState([]) // AI 深度审核问题 [{ru, level, message}]
+  const [qcAiBusy, setQcAiBusy] = useState(false)
+  // AI 深度审核：检查俄语语法/语序/语义/数字规范，返回问题标注
+  const aiDeepReview = async () => {
+    const texts = []
+    const src = []
+    ;(activeUnit.sentences || []).forEach((s) => { const ru = String(s.ru || '').trim(); if (ru) { texts.push(ru); src.push('句子') } })
+    ;(activeUnit.scaffoldingPaths || []).forEach((p) => {
+      const steps = Array.isArray(p.steps) ? p.steps : []
+      const last = steps[steps.length - 1]
+      const ru = String((last && (last.russian || last.ru)) || '').trim()
+      if (ru) { texts.push(ru); src.push('路径 ' + (p.pathId || '')) }
+    })
+    if (!texts.length) { flash('本课时还没有内容，先导入或生成后再审核'); return }
+    setQcAiBusy(true)
+    setQcAiIssues([])
+    try {
+      const content = await chat({
+        messages: [
+          { role: 'system', content: '你是严格的俄语语法审校。逐句检查：1) 语法是否正确；2) 语序是否自然；3) 词与词搭配是否合乎逻辑；4) 数字是否应为俄语写法（500→пятьсот）。只挑真实问题，不要吹毛求疵。' },
+          { role: 'user', content:
+            '请逐句检查以下俄语文本，返回 JSON：{"issues":[{"ru":"原句","level":"error|warn","message":"简短中文问题说明"}]}。没有问题的句子不要列出。只输出 JSON。\n' + JSON.stringify(texts) },
+        ],
+      })
+      const r = parseAIJSON(content)
+      const issues = Array.isArray(r && r.issues) ? r.issues : []
+      const withSrc = issues
+        .map((it) => ({ ru: String(it.ru || '').trim(), level: it.level === 'error' ? 'error' : 'warn', message: String(it.message || '') }))
+        .filter((it) => it.ru && it.message)
+        .map((it) => { const i = texts.indexOf(it.ru); return { ...it, where: i >= 0 ? src[i] : '' } })
+      setQcAiIssues(withSrc)
+      flash(withSrc.length ? `🤖 AI 审核发现 ${withSrc.length} 个问题，请修正后保存` : '🤖 AI 深度审核通过：语法/语序/语义未发现问题')
+    } catch (e) {
+      flash('⚠️ AI 深度审核失败：' + e.message)
+    }
+    setQcAiBusy(false)
+  }
+
   // 检测某句中文是否需要 AI 修复：缺失 / 俄语残留 / 明显逐词硬拼（如「谁这是？」）
   const needsZhFix = (s) => {
     const zh = String(s.chinese || s.zh || '').trim()
@@ -1318,6 +1359,16 @@ export default function AdminDashboard() {
       return
     }
     flash(`✅ 导入完成：句子 ${sentences.length} 条、滚动路径 ${paths.length} 条、对话 ${dialogues.length} 条（点「保存课时内容」固定入库）`)
+    // —— 导入即质检：对本次合并后的本课时内容跑规则检查（用局部变量，勿读未更新的 state）——
+    let qcSentences = activeUnit.sentences || [], qcPaths = activeUnit.scaffoldingPaths || [], qcDialogues = activeUnit.dialogues || []
+    if (sentences.length) qcSentences = merged
+    if (paths.length) qcPaths = prev
+    if (dialogues.length) qcDialogues = prev
+    const mergedQc = runQc({ sentences: qcSentences, paths: qcPaths, dialogues: qcDialogues })
+    setQcReport(mergedQc)
+    setQcAiIssues([])
+    const qs = qcSummary(mergedQc)
+    if (mergedQc.errors || mergedQc.warns) flash(`✅ 导入完成，质检 ${qs}（见下方质检报告）`)
     setJsonText('')
     if (paths.length) {
       setTimeout(() => { const el = document.getElementById('scaffold-section'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 300)
@@ -1593,6 +1644,61 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+
+          {/* 批量导入质检报告（导入后自动出现；AI 深度审核检查语序/语义/语法/数字） */}
+          {(qcReport || qcAiIssues.length > 0) && (
+            <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
+              <div className="card-body p-5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h2 className="card-title text-base text-gray-900">
+                    🧪 批量导入质检
+                    {qcReport && (
+                      <span className={'badge badge-sm ml-1 ' + (qcReport.errors ? 'badge-error' : (qcReport.warns ? 'badge-warning' : 'badge-success'))}>
+                        {qcReport.errors ? qcReport.errors + ' 硬伤' : ''}{qcReport.warns ? (qcReport.errors ? ' · ' : '') + qcReport.warns + ' 提示' : ''}{!qcReport.errors && !qcReport.warns ? '全部通过' : ''}
+                      </span>
+                    )}
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <button className="btn btn-outline btn-xs" disabled={qcAiBusy} onClick={aiDeepReview}>
+                      {qcAiBusy ? 'AI 审核中…' : '🤖 AI 深度审核（语序/语义/语法/数字）'}
+                    </button>
+                    <button className="btn btn-ghost btn-xs text-gray-400" onClick={() => { setQcReport(null); setQcAiIssues([]) }}>关闭</button>
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-gray-400">导入/生成后自动检查：缺中文、缺词性/成分/发音、俄语残留、数字未俄语化、路径缺步等。硬伤建议修复后再「保存课时内容」。</p>
+
+                {(qcReport && qcReport.items.length === 0) ? (
+                  <p className="mt-3 text-sm text-green-600">✅ 规则质检全部通过：中文、词卡、路径结构均正常。</p>
+                ) : (qcReport && (
+                  <div className="mt-3 max-h-72 space-y-1 overflow-y-auto">
+                    {qcReport.items.map((it, i) => (
+                      <div key={i} className={'flex items-start gap-2 rounded-lg px-2.5 py-1.5 text-xs ' + (it.level === 'error' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700')}>
+                        <span className={'badge badge-xs mt-0.5 shrink-0 ' + (it.level === 'error' ? 'badge-error' : 'badge-warning')}>{it.level === 'error' ? '硬伤' : '提示'}</span>
+                        <span className="shrink-0 font-mono text-gray-400">{it.type}{typeof it.index === 'number' ? ' #' + (it.index + 1) : ''}</span>
+                        <span className="min-w-0 flex-1">{it.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+
+                {qcAiIssues.length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-xs font-semibold text-gray-600 mb-1.5">🤖 AI 深度审核发现（语序 / 语义 / 语法 / 数字）</div>
+                    <div className="max-h-56 space-y-1 overflow-y-auto">
+                      {qcAiIssues.map((it, i) => (
+                        <div key={i} className={'flex items-start gap-2 rounded-lg px-2.5 py-1.5 text-xs ' + (it.level === 'error' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700')}>
+                          <span className={'badge badge-xs mt-0.5 shrink-0 ' + (it.level === 'error' ? 'badge-error' : 'badge-warning')}>{it.level === 'error' ? '硬伤' : '提示'}</span>
+                          <span className="shrink-0 font-mono text-gray-400 max-w-[200px] truncate" title={it.ru}>{it.ru}</span>
+                          {it.where && <span className="shrink-0 badge badge-ghost badge-xs">{it.where}</span>}
+                          <span className="min-w-0 flex-1">{it.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ③ 课时素材 */}
           <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
