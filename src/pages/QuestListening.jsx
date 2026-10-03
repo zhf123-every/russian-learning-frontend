@@ -7,6 +7,7 @@ import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
+import { touchSync } from "../lib/cloudProgress";
 import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
@@ -214,6 +215,7 @@ export default function QuestListening() {
     if (loading || !sequences.length) return;
     try {
       localStorage.setItem(progKey(), JSON.stringify({ idx: currentIdx, difficulty: diffKey, custom: customTypes, ts: Date.now() }));
+      touchSync();
     } catch (e) { /* 忽略 */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, currentIdx, sequences.length]);

@@ -10,6 +10,7 @@ import { API_BASE, apiFetch } from '../lib/api'
 import ModePickerModal, { COURSE_MODES } from '../components/ModePickerModal'
 import { getCourseById } from '../utils/courseService'
 import { getUnitDoneMap } from '../lib/lessonProgress'
+import { pullCloudProgress } from '../lib/cloudProgress'
 import { getCourseStats, fmtDuration, fmtLastAt } from '../lib/learningStats'
 import { isCoursePurchased } from '../lib/courseAccess'
 import { resolvePlayUrl } from '../lib/playUrl'
@@ -70,6 +71,13 @@ export default function GameDetail() {
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [])
+  // P1-B：进页面拉取云端学习进度（合并回本地后再刷新大纲状态/继续学习）
+  useEffect(() => {
+    let alive = true
+    pullCloudProgress(id).then(() => { if (alive) setProgressVersion((v) => v + 1) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
   const continueUnit = useMemo(() => {
     if (!units.length) return null
     const keys = ['qs_progress_practice_', 'qs_progress_listening_', 'qs_progress_speaking_', 'qs_progress_dictation_']

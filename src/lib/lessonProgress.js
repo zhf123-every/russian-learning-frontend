@@ -1,4 +1,5 @@
 // 课时完成进度：本地记录 unitId → 完成时间戳，两个课程详情页（CourseDetail / GameDetail）共享同一份数据
+import { touchSync } from './cloudProgress'
 const LS_DONE = 'rlearn_unit_done'
 
 export function markUnitDone(unitId) {
@@ -7,6 +8,7 @@ export function markUnitDone(unitId) {
     const all = JSON.parse(localStorage.getItem(LS_DONE) || '{}')
     all[unitId] = Date.now()
     localStorage.setItem(LS_DONE, JSON.stringify(all))
+    touchSync() // P1-B：完成标记同步上云
   } catch (e) { /* 忽略 */ }
 }
 
