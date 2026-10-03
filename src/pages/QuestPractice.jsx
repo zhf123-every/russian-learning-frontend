@@ -27,7 +27,8 @@ import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
 import { inferRoles } from "../lib/roleRules";
 import { expandSequencesWithChunks } from "../lib/chunking";
-import { scaffoldingToSequences, filterSequencesByDifficulty } from "../lib/scaffolding";
+import { scaffoldingToSequences } from "../lib/scaffolding";
+import { segmentsToSequences, filterSegmentsByDifficulty } from "../lib/segmentsToQuestions";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -55,6 +56,25 @@ import { useQuestSettings, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings"
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 无 courseId 时的默认单元：privet_rossiya_a1 课程包第一单元（u1），后端已确证存在
 const DEFAULT_UNIT_ID = "u1";
+
+// P3：读课时语块 → C 混合题目。课时有 ok 语块 → 返回题目组；无/读失败 → null（调用方降级老路径）
+// 静默失败：后端冷启动 403/404/超时一律返回 null，不弹错不卡
+async function loadSegmentsForUnit(unitId, courseId) {
+  if (!unitId) return null;
+  try {
+    const q = new URLSearchParams();
+    if (courseId) q.set("course_id", courseId);
+    q.set("unit_id", unitId);
+    const res = await fetch(`${API_BASE}/api/segments?${q.toString()}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || !data.ok) return null;
+    const seqs = segmentsToSequences(data.items || [], "本课");
+    return seqs && seqs.length ? seqs : null;
+  } catch (e) {
+    return null;
+  }
+}
 
 // 把 /api/units/:id/build-steps 的 family/step 适配成答题引擎使用的 sequence/unit 结构
 // family -> sequence；step -> unit；答题状态机/判题/连击/结算完全复用，不感知数据来源
@@ -300,14 +320,14 @@ export default function QuestPractice() {
   const rawSequencesRef = useRef([]); // 过滤前的原始 sequences（切难度时重新过滤，不从 0 重下数据）
   const applyDiff = (seqs) => {
     rawSequencesRef.current = seqs;
-    return filterSequencesByDifficulty(seqs, diffKeyRef.current, customRef.current);
+    return filterSegmentsByDifficulty(seqs, diffKeyRef.current, customRef.current);
   };
 
   // ---- 难度切换 → 重新过滤 + 从第 0 题开始（对标句乐部：选难度即重新开始） ----
   useEffect(() => {
     const raw = rawSequencesRef.current;
     if (!raw.length) return;
-    setSequences(filterSequencesByDifficulty(raw, diffKey, customTypes));
+    setSequences(filterSegmentsByDifficulty(raw, diffKey, customTypes));
     setCurrentSequenceIndex(0);
     setCurrentUnitIndex(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -545,7 +565,8 @@ export default function QuestPractice() {
             if (!cancelled) {
               setUnitMeta(pre.unit || null);
               const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-              const seqs = expandSequencesWithChunks(adapted, cloudWords);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, cloudWords);
               setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
               setLoading(false);
             }
@@ -558,7 +579,8 @@ export default function QuestPractice() {
               window.__unitKnowledge = window.__unitKnowledge || {};
               window.__unitKnowledge[effectiveCourseId] = (pre && pre.knowledge) || {};
               setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
-              const seqs = expandSequencesWithChunks(adapted, pre?.words);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, pre?.words);
               setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
               setLoading(false);
             }
@@ -586,7 +608,8 @@ export default function QuestPractice() {
               window.__unitKnowledge = window.__unitKnowledge || {};
               window.__unitKnowledge[effectiveCourseId] = (stored && stored.knowledge) || {};
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
-              const seqs = expandSequencesWithChunks(adapted, stored?.words);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, stored?.words);
               setSequences(applyDiff(seqs));
               setCurrentSequenceIndex(0);
               setCurrentUnitIndex(0);
@@ -614,7 +637,8 @@ export default function QuestPractice() {
                     setLocalLesson(u)
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
-                    const seqs = expandSequencesWithChunks(adapted, u?.words)
+                    const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId)
+                    const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, u?.words)
                     setSequences(applyDiff(seqs))
                     setCurrentSequenceIndex(0)
                     setCurrentUnitIndex(0)
@@ -641,7 +665,8 @@ export default function QuestPractice() {
             setUnitMeta(data.unit || null);
             // 云端词表：从各句 words 提取 {ru, zh}，供 chunking 块中文翻译（缺词不再兜底俄语）
             const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-            const seqs = expandSequencesWithChunks(adapted, cloudWords);
+            const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+            const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, cloudWords);
             setSequences(applyDiff(seqs));
             setCurrentSequenceIndex(0);
             setCurrentUnitIndex(0);
