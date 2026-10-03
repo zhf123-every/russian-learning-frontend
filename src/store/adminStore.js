@@ -41,6 +41,7 @@ export const useAdminStore = create((set, get) => ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: u, password }),
+        timeout: 90000, // 云端库(如 TiDB)公网链路较慢且可能休眠唤醒，放宽到 90s，避免误报"后端不可用"
       })
       const j = await r.json()
       if (j.ok && j.token) {
@@ -64,6 +65,7 @@ export const useAdminStore = create((set, get) => ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: u, password, nickname: nickname || '' }),
+        timeout: 90000, // 云端库(如 TiDB)公网链路较慢且可能休眠唤醒，放宽到 90s，避免误报"后端不可用"
       })
       const j = await r.json()
       if (j.ok && j.token) {

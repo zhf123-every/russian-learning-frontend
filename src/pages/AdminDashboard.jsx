@@ -489,7 +489,10 @@ export default function AdminDashboard() {
     setToast('提示词已复制，请粘贴给 AI 生成 JSON')
   }
   // —— 云端同步状态 ——
-  const { adminKey, token, user, isLoggedIn, loginPassword, register, logout, authBody } = useAdminStore()
+  const { adminKey, token, user, loginPassword, register, logout, authBody } = useAdminStore()
+  // isLoggedIn 每次渲染实时计算（不能用 store 对象 getter：zustand set 会用 Object.assign 合并，
+  // 把 getter 求值一次后固化成旧布尔值，登录后不会更新导致永远停在登录卡片）
+  const isLoggedIn = !!((token && user && (user.role === 'admin' || user.role === 'editor' || user.role === 'viewer')) || adminKey)
   const [cloudBusy, setCloudBusy] = useState(false)
   const [cloudMsg, setCloudMsg] = useState('')
   const [cloudCount, setCloudCount] = useState(-1)

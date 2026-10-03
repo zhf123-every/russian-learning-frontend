@@ -12,7 +12,9 @@ const TYPES = ['单词', '例句', '单词 · 例句']
 export default function AdminLessons() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { isLoggedIn, authBody } = useAdminStore()
+  const { adminKey, token, user, authBody } = useAdminStore()
+  // isLoggedIn 实时计算（不能依赖 store 对象 getter：zustand set 会把 getter 固化成旧布尔值）
+  const isLoggedIn = !!((token && user && (user.role === 'admin' || user.role === 'editor' || user.role === 'viewer')) || adminKey)
   const [course, setCourse] = useState(null)
   const [rows, setRows] = useState([])
   const [toast, setToast] = useState('')
