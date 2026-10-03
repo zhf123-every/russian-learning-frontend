@@ -266,8 +266,10 @@ describe('场景7 批量生成与缓存读取（并发上限、单句失败不�
     assert.equal(r.failed.length, 1)
     assert.equal(r.failed[0].error, 'network')
     assert.equal(r.pending.length, 0)
-    // 两成功句各自 save（status=ok）
-    assert.equal(calls.filter((c) => c.path === '/api/admin/segments/save' && c.body.items[0].status === 'ok').length, 2)
+    // 两成功句各自 save（status=ok，且带 sentence=俄语化原句供后端 cache 溯源）
+    const okSaves = calls.filter((c) => c.path === '/api/admin/segments/save' && c.body.items[0].status === 'ok')
+    assert.equal(okSaves.length, 2)
+    assert.ok(okSaves.every((c) => typeof c.body.items[0].sentence === 'string' && c.body.items[0].sentence.length > 0))
   })
   test('并发上限 ≤ 5（BATCH=3 分批，12 句全完成，单句失败不阻塞）', async () => {
     let inFlight = 0

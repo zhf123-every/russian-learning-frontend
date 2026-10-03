@@ -192,9 +192,11 @@ export async function aiSegment({ sentence, tokens, difficulty }, deps = {}) {
 
 // 索引组 → 入库格式：机械截取 tokens 生成 text、按序赋 sort_order。
 // 这是"文本截取与 sort_order 赋值"的落地处（aiSegment 只返回索引组，不产出入库 segments）。
+// sentence 字段 = normalize 后的原句（与 llm-segment 写 cache 的 russian_text 同值，后端 cache.sentence 溯源用）。
 function aiResultToInbound(job, r) {
   return [{
     sentence_hash: job.sentenceHash,
+    sentence: job.sentence,
     difficulty: job.difficulty,
     segments: r.segments.map((g, idx) => ({
       sort_order: idx,
@@ -321,7 +323,8 @@ export async function generateUnitSegmentsAsync({ courseId, unitId, sentences, d
   const jobs = []
   for (const s of sentences) {
     const hash = sentenceHash(s.russian, 'easy') // hash 不含难度；(hash, diff) 联合才是 cache 键
-    for (const d of diffs) jobs.push({ sentenceHash: hash, difficulty: d, russian: s.russian })
+    const normalized = normalizeSentence(s.russian)
+    for (const d of diffs) jobs.push({ sentenceHash: hash, difficulty: d, russian: s.russian, sentence: normalized })
   }
   const done = []
   const failed = []
@@ -338,7 +341,7 @@ export async function generateUnitSegmentsAsync({ courseId, unitId, sentences, d
         }
         if (r.reviewStatus === 'pending') {
           // 机械兜底：segments 已是入库格式（sort_order/text），整体写回，status='pending' 待人工校对
-          const items = [{ sentence_hash: job.sentenceHash, difficulty: job.difficulty, segments: r.segments, status: 'pending', translation: '' }]
+          const items = [{ sentence_hash: job.sentenceHash, sentence: job.sentence, difficulty: job.difficulty, segments: r.segments, status: 'pending', translation: '' }]
           await deps.httpPost('/api/admin/segments/save', { courseId, unitId, items })
           return { kind: 'pending', sentenceHash: job.sentenceHash, difficulty: job.difficulty, reason: 'ai_fallback_machine' }
         }
