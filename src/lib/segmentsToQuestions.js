@@ -19,7 +19,7 @@
  *   渲染层 / 输入层 / 校验层 / 现有粒度过滤（filterSequencesByDifficulty）零改动。
  *   组装题打 chunkIsFinal:true → 现有 granularityOfUnit 判定为 sentence。
  */
-import { filterSequencesByDifficulty } from "./scaffolding.js";
+import { filterSequencesByDifficulty, filterItemsByDifficulty } from "./scaffolding.js";
 
 const DIFF_LABEL = { easy: "初级", medium: "中级", hard: "高级" };
 
@@ -175,4 +175,62 @@ export function filterSegmentsByDifficulty(sequences, difficultyKey, customTypes
     if (pick) picked = arr.filter((s) => s.segDifficulty === pick);
   }
   return filterSequencesByDifficulty(picked, difficultyKey, customTypes);
+}
+
+// ============================================================
+// 听写页（QuestDictation，items 流）：语块 → items（整句听写）
+// ============================================================
+
+/**
+ * 语块 items → 听写 items（每句每档一个"组装题"= 整句听写；C 混合下听写不拆零件）。
+ * 输出结构与 scaffoldingToItems 兼容；segKind:'full' 供听写页跳过本地 chunk 二次展开；
+ * chunkIsFinal:true → 现有 granularityOfUnit 判 sentence（粒度过滤复用）。
+ */
+export function segmentsToItems(items) {
+  const out = [];
+  const ok = (Array.isArray(items) ? items : []).filter(
+    (it) => it && it.status === "ok" && Array.isArray(it.segments) && it.segments.length
+  );
+  const bySentence = new Map();
+  for (const it of ok) {
+    const h = cleanText(it.sentence_hash) || `h${bySentence.size}`;
+    if (!bySentence.has(h)) bySentence.set(h, []);
+    bySentence.get(h).push(it);
+  }
+  let sentenceNo = 0;
+  for (const group of bySentence.values()) {
+    sentenceNo++;
+    for (const it of group) {
+      const diffKey = cleanText(it.difficulty) || "medium";
+      const segments = [...it.segments].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      const russian = segments.map((s) => cleanText(s.text)).filter(Boolean).join(" ");
+      const tokens = russian.split(/\s+/).filter(Boolean);
+      const words = tokens.map((w) => ({ ru: w, zh: cleanText(it.translation) }));
+      out.push({
+        id: `seg_${cleanText(it.sentence_hash) || sentenceNo}_${diffKey}_full`,
+        russian,
+        chinese: cleanText(it.translation),
+        words,
+        audio_url: "",
+        segDifficulty: diffKey,
+        segKind: "full",
+        chunkIsFinal: true, // 现有 granularityOfUnit → sentence
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * 听写页语块模式下难度过滤：档位预选 + 现有粒度过滤；老 items（无 segDifficulty）放行。
+ */
+export function filterSegmentsItemsByDifficulty(items, difficultyKey, customTypes) {
+  const arr = Array.isArray(items) ? items : [];
+  const hasSeg = arr.some((it) => it && it.segDifficulty);
+  let picked = arr;
+  if (hasSeg) {
+    const pick = pickSegmentDifficulty(difficultyKey);
+    if (pick) picked = arr.filter((it) => it.segDifficulty === pick);
+  }
+  return filterItemsByDifficulty(picked, difficultyKey, customTypes);
 }

@@ -27,7 +27,8 @@ import { addStudyTime } from "../lib/learningStats";
 import { getCourseById } from "../utils/courseService";
 import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { expandUnitToChunkSteps, buildZhIndex } from "../lib/chunking";
-import { scaffoldingToItems, filterItemsByDifficulty } from "../lib/scaffolding";
+import { scaffoldingToItems } from "../lib/scaffolding";
+import { segmentsToItems, filterSegmentsItemsByDifficulty } from "../lib/segmentsToQuestions";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -55,10 +56,30 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 无 courseId 时的默认单元：privet_rossiya_a1 课程包第一单元（u1），后端已确证存在
 const DEFAULT_UNIT_ID = "u1";
 
+// P3：读课时语块 → 听写 items（整句听写）。课时有 ok 语块 → 返回 items；无/读失败 → null（降级老路径）
+async function loadSegmentsItemsForUnit(unitId, courseId) {
+  if (!unitId) return null;
+  try {
+    const q = new URLSearchParams();
+    if (courseId) q.set("course_id", courseId);
+    q.set("unit_id", unitId);
+    const res = await fetch(`${API_BASE}/api/segments?${q.toString()}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || !data.ok) return null;
+    const items = segmentsToItems(data.items || []);
+    return items && items.length ? items : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Chunking：把拍平的 statements 逐句展开为滚雪球步骤（听写页无 spellWord 单词环节，全部句子切块）
+// P3：语块组装题（segKind:'full'）整句听写，跳过本地 chunk 二次展开（语块已是最终分段）
 function expandStatements(items, wordList) {
   const zhIdx = buildZhIndex(wordList);
   return (Array.isArray(items) ? items : []).flatMap((it) => {
+    if (it && it.segKind === 'full') return [it];
     const steps = expandUnitToChunkSteps(it, zhIdx);
     return steps || [it];
   });
@@ -116,14 +137,14 @@ export default function QuestDictation() {
   const rawItemsRef = useRef([]);
   const applyDiffItems = (items) => {
     rawItemsRef.current = items;
-    return filterItemsByDifficulty(items, diffKeyRef.current, customRef.current);
+    return filterSegmentsItemsByDifficulty(items, diffKeyRef.current, customRef.current);
   };
 
   // ---- 难度切换 → 重新过滤 + 从头开始 ----
   useEffect(() => {
     const raw = rawItemsRef.current;
     if (!raw.length) return;
-    setStatements(filterItemsByDifficulty(raw, diffKey, customTypes));
+    setStatements(filterSegmentsItemsByDifficulty(raw, diffKey, customTypes));
     setQuestionIndex(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diffKey, customTypes]);
@@ -395,6 +416,22 @@ export default function QuestDictation() {
     async function loadCourse() {
       setLoading(true);
       setLoadError(null);
+      // P3：语块优先——课时有 ok 语块 → 整句听写（C 混合），不再走旧分支；无则降级老路径
+      try {
+        const segItems = await loadSegmentsItemsForUnit(effectiveCourseId, courseId);
+        if (segItems && segItems.length && !cancelled) {
+          let title = "本课", desc = "";
+          try { const pre = getCachedLesson(effectiveCourseId); if (pre) { title = pre.title || pre.name || title; desc = pre.description || ""; } } catch (e) { /* 忽略 */ }
+          if (title === "本课") { try { const lu = findLocalUnitById(effectiveCourseId); if (lu) { title = lu.title || title; desc = lu.description || ""; } } catch (e) { /* 忽略 */ } }
+          setUnitMeta({ title, description: desc });
+          setLocalLesson({ id: effectiveCourseId, title });
+          setIsLocalMode(false);
+          const stmts = expandStatements(segItems, []);
+          setStatements(applyDiffItems(stmts));
+          setLoading(false);
+          return;
+        }
+      } catch (e) { /* 语块不可用 → 走原逻辑 */ }
       // 预加载页已预载课时数据 → 无遮罩直接消费
       try {
         const pre = getCachedLesson(effectiveCourseId);

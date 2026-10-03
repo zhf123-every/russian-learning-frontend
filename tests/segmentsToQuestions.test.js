@@ -13,7 +13,7 @@
 
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { segmentsToSequences, pickSegmentDifficulty, filterSegmentsByDifficulty } from '../src/lib/segmentsToQuestions.js'
+import { segmentsToSequences, pickSegmentDifficulty, filterSegmentsByDifficulty, segmentsToItems, filterSegmentsItemsByDifficulty } from '../src/lib/segmentsToQuestions.js'
 import { granularityOfUnit, unitTokenCount } from '../src/lib/scaffolding.js'
 
 // —— mock 语块（与后端 GET /api/segments 返回结构一致；text 为原句 token 子串，sort_order 已对）——
@@ -192,5 +192,39 @@ describe('filterSegmentsByDifficulty（弹窗难度 → 档位预选 + 现有粒
     assert.equal(r.length, 1)
     assert.equal(r[0].units.length, 1) // 只整句
     assert.equal(r[0].units[0].russian, 'Я люблю')
+  })
+})
+
+describe('segmentsToItems / filterSegmentsItemsByDifficulty（听写页）', () => {
+  const dItems = segmentsToItems(items)
+
+  test('每句每档一个组装题（整句听写，不拆零件）', () => {
+    // h1 三档 + h2 easy = 4 个；pending h3 不出
+    assert.equal(dItems.length, 4)
+    assert.ok(!dItems.some((it) => it.id.includes('h3')), 'pending 句不出题')
+    for (const it of dItems) {
+      assert.equal(it.segKind, 'full')
+      assert.equal(it.chunkIsFinal, true)
+      assert.equal(granularityOfUnit(it), 'sentence')
+      // h1 各档整句 = S1；h2 整句 = S2
+      assert.equal(it.russian, it.id.includes('h2') ? S2 : S1)
+    }
+  })
+
+  test('难度档位预选：beginner→easy / intermediate→medium / advanced→hard', () => {
+    assert.equal(filterSegmentsItemsByDifficulty(dItems, 'beginner').length, 2) // h1 easy + h2 easy
+    const med = filterSegmentsItemsByDifficulty(dItems, 'intermediate')
+    assert.equal(med.length, 1)
+    assert.equal(med[0].segDifficulty, 'medium')
+    const adv = filterSegmentsItemsByDifficulty(dItems, 'advanced')
+    assert.equal(adv.length, 1)
+    assert.equal(adv[0].segDifficulty, 'hard')
+  })
+
+  test('老 items（无 segDifficulty）放行，粒度过滤正常', () => {
+    const fake = [{ id: 'x1', russian: 'Я', scaffoldStepIndex: 0, scaffoldN: 2 }, { id: 'x2', russian: 'Я люблю', scaffoldStepIndex: 1, scaffoldN: 2 }]
+    const r = filterSegmentsItemsByDifficulty(fake, 'advanced')
+    assert.equal(r.length, 1)
+    assert.equal(r[0].russian, 'Я люблю')
   })
 })

@@ -11,7 +11,8 @@ import { touchSync } from "../lib/cloudProgress";
 import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
-import { scaffoldingToSequences, filterSequencesByDifficulty } from "../lib/scaffolding";
+import { scaffoldingToSequences } from "../lib/scaffolding";
+import { segmentsToSequences, filterSegmentsByDifficulty } from "../lib/segmentsToQuestions";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { preloadTtsAll } from "../lib/ttsPreload";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
@@ -32,6 +33,24 @@ import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 const DEFAULT_UNIT_ID = "u1";
+
+// P3：读课时语块 → C 混合题目。课时有 ok 语块 → 返回题目组；无/读失败 → null（调用方降级老路径）
+async function loadSegmentsForUnit(unitId, courseId) {
+  if (!unitId) return null;
+  try {
+    const q = new URLSearchParams();
+    if (courseId) q.set("course_id", courseId);
+    q.set("unit_id", unitId);
+    const res = await fetch(`${API_BASE}/api/segments?${q.toString()}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || !data.ok) return null;
+    const seqs = segmentsToSequences(data.items || [], "本课");
+    return seqs && seqs.length ? seqs : null;
+  } catch (e) {
+    return null;
+  }
+}
 
 // ---- 数据适配（与 QuestPractice 一致）----
 function adaptBuildSteps(data) {
@@ -186,14 +205,14 @@ export default function QuestSpeaking() {
   const rawSequencesRef = useRef([]);
   const applyDiff = (seqs) => {
     rawSequencesRef.current = seqs;
-    return filterSequencesByDifficulty(seqs, diffKeyRef.current, customRef.current);
+    return filterSegmentsByDifficulty(seqs, diffKeyRef.current, customRef.current);
   };
 
   // ---- 难度切换 → 重新过滤 + 从第 0 题开始 ----
   useEffect(() => {
     const raw = rawSequencesRef.current;
     if (!raw.length) return;
-    setSequences(filterSequencesByDifficulty(raw, diffKey, customTypes));
+    setSequences(filterSegmentsByDifficulty(raw, diffKey, customTypes));
     setCurrentIdx(0);
     setOrder([]); setShuffled(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -297,7 +316,8 @@ export default function QuestSpeaking() {
             if (!cancelled) {
               setUnitMeta(pre.unit || null);
               const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-              const seqs = expandSequencesWithChunks(adapted, cloudWords);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, cloudWords);
               setSequences(applyDiff(seqs));
               setLoading(false);
             }
@@ -308,7 +328,8 @@ export default function QuestSpeaking() {
             if (!cancelled) {
               setLocalLesson(pre); setIsLocalMode(true);
               setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
-              const seqs = expandSequencesWithChunks(adapted, pre?.words);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, pre?.words);
               setSequences(applyDiff(seqs));
               setLoading(false);
             }
@@ -332,7 +353,8 @@ export default function QuestSpeaking() {
               window.__unitKnowledge = window.__unitKnowledge || {};
               window.__unitKnowledge[effectiveCourseId] = (stored && stored.knowledge) || {};
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
-              const seqs = expandSequencesWithChunks(adapted, stored?.words);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, stored?.words);
               setSequences(applyDiff(seqs));
               if (!cancelled) setLoading(false);
             }
@@ -356,7 +378,8 @@ export default function QuestSpeaking() {
                     setLocalLesson(u);
                     setIsLocalMode(true);
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" });
-                    const seqs = expandSequencesWithChunks(adapted, u?.words);
+                    const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+                    const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, u?.words);
                     setSequences(applyDiff(seqs));
                     if (!cancelled) setLoading(false);
                   }
@@ -379,7 +402,8 @@ export default function QuestSpeaking() {
           else {
             setUnitMeta(data.unit || null);
             const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-            const seqs = expandSequencesWithChunks(adapted, cloudWords);
+            const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+            const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, cloudWords);
             setSequences(applyDiff(seqs));
             if (!cancelled) setLoading(false);
           }
