@@ -165,6 +165,25 @@ export default function AdminDashboard() {
   const [genBusy, setGenBusy] = useState(false)
   const [showGenPrompt, setShowGenPrompt] = useState(false)
 
+  // P1-C：后端分类树（一级分类/二级标签动态化；失败回退静态 CATS/TAG_POOL）
+  const [dbCats, setDbCats] = useState(null)
+  useEffect(() => {
+    let alive = true
+    apiFetch('/api/categories/tree', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+      timeout: 15000,
+    }).then(r => r.json()).then(j => {
+      if (!alive) return
+      if (j.ok && Array.isArray(j.tree) && j.tree.length) setDbCats(j.tree)
+    }).catch(() => { /* 后端不可用：保持静态分类 */ })
+    return () => { alive = false }
+  }, [])
+  // 一级分类选项（动态优先）；二级标签池（动态优先，过滤 UI 默认项"全部"）
+  const catOptions = dbCats ? dbCats.map(c => c.name) : CATS
+  const tagPoolFor = (cat) => (dbCats ? (dbCats.find(c => c.name === cat) || {}).subs || [] : (TAG_POOL[cat] || [])).filter(t => t !== '全部')
+
   // 生成器取词：优先用生成器单词框；留空则自动读取本课已保存的词条（老数据兼容）
   const getGenWords = () => {
     let w = String(genWords || '').trim()
@@ -1753,7 +1772,7 @@ export default function AdminDashboard() {
               <div className="form-control">
                 <label className="label"><span className="label-text">一级分类</span></label>
                 <select className="select select-bordered" value={form.category} onChange={e => setField('category', e.target.value)}>
-                  {CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                  {catOptions.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
 
@@ -1787,11 +1806,11 @@ export default function AdminDashboard() {
 
             </div>
 
-            {/* 二级标签多选（按一级分类联动） */}
+            {/* 二级标签多选（按一级分类联动；动态分类树优先） */}
             <div className="form-control mt-3">
-              <label className="label"><span className="label-text">二级标签（{form.category}）：{TAG_POOL[form.category]?.length || 0} 个可选，多选</span></label>
+              <label className="label"><span className="label-text">二级标签（{form.category}）：{tagPoolFor(form.category).length} 个可选，多选</span></label>
               <div className="flex flex-wrap gap-2">
-                {(TAG_POOL[form.category] || []).map(t => (
+                {tagPoolFor(form.category).map(t => (
                   <button
                     key={t}
                     type="button"
@@ -1837,6 +1856,7 @@ export default function AdminDashboard() {
                     <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/stats')}>📊 数据看板</button>
                     <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/users')}>👥 用户管理</button>
                     <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/orders')}>🧾 订单管理</button>
+                    <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/categories')}>🏷️ 分类管理</button>
                   </>
                 )}
                 <button className="btn btn-sm btn-primary" onClick={syncToCloud} disabled={cloudBusy || !isLoggedIn}>

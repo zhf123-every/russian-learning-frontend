@@ -61,10 +61,14 @@ const CAT_MAP = {
   '影视音乐': ['影视俄语', '全部'],
   '考试备考': ['考试备考', '全部'],
 }
-// 数据 → 主分类：新分类直通；旧内置分类名/旧投稿分类走映射（默认基础入门）
+// P1-C：后端分类树缓存（/api/categories/tree 拉取成功后填充；供 mapCat/mapSub 识别后端新增分类名）
+let _DB_TREE = null
+const _dbHasCat = (name) => !!(_DB_TREE && _DB_TREE.some(t => t.name === name))
+const _dbSubsOf = (name) => (_DB_TREE && _DB_TREE.find(t => t.name === name) || {}).subs || null
+// 数据 → 主分类：新分类直通（静态池或后端动态池）；旧内置分类名/旧投稿分类走映射（默认基础入门）
 const mapCat = (v) => {
   const key = v.cat || v.category || ''
-  if (key && SUBCATS[key]) return key
+  if (key && (SUBCATS[key] || _dbHasCat(key))) return key
   if (key) return (CAT_MAP[key] || ['基础俄语', '全部'])[0]
   return '基础俄语'
 }
@@ -241,6 +245,25 @@ export default function GameStore() {
     loadCloud()
     return () => { alive = false }
   }, [adminKey])
+
+  // P1-C：拉后端分类树（成功 → 动态主分类/子分类；失败静默回退静态 CATS/SUBCATS）
+  const [dbCats, setDbCats] = useState(null)
+  useEffect(() => {
+    let alive = true
+    apiFetch('/api/categories/tree', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+      timeout: 15000,
+    }).then(r => r.json()).then(j => {
+      if (!alive) return
+      if (j.ok && Array.isArray(j.tree) && j.tree.length) {
+        _DB_TREE = j.tree
+        setDbCats(j.tree)
+      }
+    }).catch(() => { /* 后端不可用：保持静态分类 */ })
+    return () => { alive = false }
+  }, [])
   const adminLogin = useAdminStore(s => s.login)
   const adminLogout = useAdminStore(s => s.logout)
 
@@ -277,7 +300,7 @@ export default function GameStore() {
   const dynamicTextbooks = activeCat === '教材同步'
     ? Array.from(new Set(allItemsForTextbook.filter(x => mapCat(x) === '教材同步' && mapSub(x) !== '全部').map(v => mapSub(v))))
     : []
-  const baseSubs = SUBCATS[activeCat] || ['全部']
+  const baseSubs = _dbSubsOf(activeCat) || SUBCATS[activeCat] || ['全部']
   const subTagsForActive = [...baseSubs, ...dynamicTextbooks.filter(t => !baseSubs.includes(t))]
 
   // 点「上传视频」：未登录管理员 → 先登录；已登录 → 打开投稿弹窗（投稿功能已移除，入口不再展示）
@@ -292,8 +315,13 @@ export default function GameStore() {
     toast('已退出管理模式')
   }
 
-  // 分类标签（含"全部"）：mode=all 显示全部，否则按当前模式过滤
-  const visibleCats = mode === 'all' ? CATS : CATS.filter(c => c.cat === 'both' || c.cat === mode)
+  // 分类标签（含"推荐/全部"两个 UI 特殊项）：后端分类树就绪时用动态主分类（类型归属沿用静态 cat，新分类默认 both）；失败回退静态 CATS
+  const SPECIAL_CATS = CATS.filter(c => c.label === '推荐' || c.label === '全部')
+  const realCats = dbCats
+    ? dbCats.map(t => ({ label: t.name, cat: (CATS.find(c => c.label === t.name) || {}).cat || 'both' }))
+    : CATS.filter(c => c.label !== '推荐' && c.label !== '全部')
+  const allCats = dbCats ? [...SPECIAL_CATS, ...realCats] : CATS
+  const visibleCats = mode === 'all' ? allCats : allCats.filter(c => c.cat === 'both' || c.cat === mode)
   const modeLabel = mode === 'video' ? ' · 通关视频' : mode === 'guide' ? ' · 通关秘籍' : ''
 
   const pick = (m) => { setMode(m); setMenuOpen(false) }
