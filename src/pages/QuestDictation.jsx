@@ -75,11 +75,11 @@ async function loadSegmentsItemsForUnit(unitId, courseId) {
 }
 
 // Chunking：把拍平的 statements 逐句展开为滚雪球步骤（听写页无 spellWord 单词环节，全部句子切块）
-// P3：语块组装题（segKind:'full'）整句听写，跳过本地 chunk 二次展开（语块已是最终分段）
+// P3：语块题自带 chunks 分段（该档语块顺序）→ 展开器优先用语块分段生成"零件→累积→整句"；
+//     老数据无 chunks → 本地规则切块；hard 档整句一块 → 展开器判 <2 块直接整句听写
 function expandStatements(items, wordList) {
   const zhIdx = buildZhIndex(wordList);
   return (Array.isArray(items) ? items : []).flatMap((it) => {
-    if (it && it.segKind === 'full') return [it];
     const steps = expandUnitToChunkSteps(it, zhIdx);
     return steps || [it];
   });

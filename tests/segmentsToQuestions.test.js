@@ -198,17 +198,27 @@ describe('filterSegmentsByDifficulty（弹窗难度 → 档位预选 + 现有粒
 describe('segmentsToItems / filterSegmentsItemsByDifficulty（听写页）', () => {
   const dItems = segmentsToItems(items)
 
-  test('每句每档一个组装题（整句听写，不拆零件）', () => {
+  test('每句每档一个组装题（按语块分段渐进，hard 整句一块）', () => {
     // h1 三档 + h2 easy = 4 个；pending h3 不出
     assert.equal(dItems.length, 4)
     assert.ok(!dItems.some((it) => it.id.includes('h3')), 'pending 句不出题')
+    const byDiff = {}
     for (const it of dItems) {
-      assert.equal(it.segKind, 'full')
       assert.equal(it.chunkIsFinal, true)
       assert.equal(granularityOfUnit(it), 'sentence')
-      // h1 各档整句 = S1；h2 整句 = S2
+      assert.ok(Array.isArray(it.chunks) && it.chunks.length >= 1, '带语块分段')
+      assert.ok(it.chunks.every((c) => c.ru && typeof c.zh === 'string'), '每段含块级中文')
+      // 分段按序拼接 == 整句
+      assert.equal(it.chunks.map((c) => c.ru).join(' '), it.russian)
       assert.equal(it.russian, it.id.includes('h2') ? S2 : S1)
+      byDiff[it.segDifficulty] = byDiff[it.segDifficulty] || []
+      byDiff[it.segDifficulty].push(it)
     }
+    // easy（h1）分段细（4 段）、medium 段数（3）、hard 整句一块
+    assert.equal(byDiff.easy[0].chunks.length, 4)
+    assert.equal(byDiff.medium[0].chunks.length, 3)
+    assert.equal(byDiff.hard[0].chunks.length, 1)
+    assert.equal(byDiff.hard[0].chunks[0].ru, S1)
   })
 
   test('难度档位预选：beginner→easy / intermediate→medium / advanced→hard', () => {

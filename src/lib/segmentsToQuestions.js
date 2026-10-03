@@ -182,9 +182,10 @@ export function filterSegmentsByDifficulty(sequences, difficultyKey, customTypes
 // ============================================================
 
 /**
- * 语块 items → 听写 items（每句每档一个"组装题"= 整句听写；C 混合下听写不拆零件）。
- * 输出结构与 scaffoldingToItems 兼容；segKind:'full' 供听写页跳过本地 chunk 二次展开；
- * chunkIsFinal:true → 现有 granularityOfUnit 判 sentence（粒度过滤复用）。
+ * 语块 items → 听写 items（每句每档一个组装题，按该档语块分段渐进听写）。
+ * - 每个 item 带 chunks=[{ru,zh}]（该档语块顺序，含块级中文）→ 听写页展开器
+ *   优先用语块分段生成"零件→累积→整句"步骤；hard 档整句一块 → 展开器判 <2 块直接整句听写。
+ * - chunkIsFinal:true → 现有 granularityOfUnit 判 sentence（粒度过滤复用）。
  */
 export function segmentsToItems(items) {
   const out = [];
@@ -206,14 +207,15 @@ export function segmentsToItems(items) {
       const russian = segments.map((s) => cleanText(s.text)).filter(Boolean).join(" ");
       const tokens = russian.split(/\s+/).filter(Boolean);
       const words = tokens.map((w) => ({ ru: w, zh: cleanText(it.translation) }));
+      const chunks = segments.map((s) => ({ ru: cleanText(s.text), zh: cleanText(s.chinese) })).filter((c) => c.ru);
       out.push({
-        id: `seg_${cleanText(it.sentence_hash) || sentenceNo}_${diffKey}_full`,
+        id: `seg_${cleanText(it.sentence_hash) || sentenceNo}_${diffKey}`,
         russian,
         chinese: cleanText(it.translation),
         words,
         audio_url: "",
+        chunks, // 该档语块分段（含块级中文）→ 听写页按语块顺序渐进展开
         segDifficulty: diffKey,
-        segKind: "full",
         chunkIsFinal: true, // 现有 granularityOfUnit → sentence
       });
     }
