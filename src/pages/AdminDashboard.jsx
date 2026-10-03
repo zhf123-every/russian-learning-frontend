@@ -4,6 +4,7 @@ import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { API_BASE, apiFetch } from '../lib/api'
 import { tsToLocalInput, localInputToTs, courseStatus, statusLabel, fmtSchedule } from '../utils/courseSchedule'
+import { saveCourseVersion, listCourseVersions, getCourseVersion, clearCourseVersions, rollbackCourse } from '../utils/courseVersions'
 import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
 import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps, russianizeNumbers } from '../lib/snowballEngine'
@@ -860,6 +861,7 @@ export default function AdminDashboard() {
       if (!ok) return // 云端删除失败则中止，避免本地删了商城还显示
     }
     deleteCourse(id)
+    clearCourseVersions(id) // 清掉该课程的版本历史
     refresh()
     flash('课程已删除（本地 + 云端）')
   }
@@ -994,6 +996,34 @@ export default function AdminDashboard() {
 
   // ========== 第二步：课程序管理 ==========
 
+  // ---- 版本历史（本地快照 + 一键回滚） ----
+  const [verModal, setVerModal] = useState(null) // { course, versions: [] }
+  const openVersions = (c) => setVerModal({ course: c, versions: listCourseVersions(c.id) })
+  const closeVersions = () => setVerModal(null)
+
+  const doRollback = async (ts) => {
+    if (!verModal) return
+    const ver = getCourseVersion(verModal.course.id, ts)
+    if (!ver) { flash('该版本不存在或已被清理', 'error'); return }
+    if (!window.confirm(`确定回滚到 ${new Date(ts).toLocaleString()} 的版本吗？\n（共 ${ver.unitCount} 个课时。当前内容将被替换，可在版本历史中再次回滚。）`)) return
+    const updated = rollbackCourse(verModal.course.id, ts)
+    if (!updated) { flash('回滚失败：未找到课程', 'error'); return }
+    // 若正在课程序/课时内容视图编辑该课程，同步 UI
+    if (active && active.id === updated.id) { setActive(updated); setUnits(updated.units || []) }
+    refresh()
+    flash('✅ 已回滚到历史版本')
+    // 已发布课程：自动重新同步云端，商城立即回滚
+    if (updated.status !== 'draft') {
+      if (isLoggedIn) {
+        setCloudMsg('版本已回滚，正在重新同步云端…')
+        await syncToCloud()
+      } else {
+        flash('⚠️ 已回滚到历史版本，但课程已发布：请登录后台重新同步云端，商城才会更新')
+      }
+    }
+    closeVersions()
+  }
+
   // 进入课程序管理
   const manageUnits = (c) => {
     setActive(c)
@@ -1003,7 +1033,7 @@ export default function AdminDashboard() {
     window.scrollTo({ top: 0 })
   }
 
-  // 持久化课时列表并同步 active
+  // 持久化课时列表并同步 active（自动留一个版本快照，可随时回滚）
   const persistUnits = (next) => {
     setUnits(next)
     const list = getCourses()
@@ -1014,6 +1044,7 @@ export default function AdminDashboard() {
       saveCourses(list)
       setActive(updated)
       refresh()
+      saveCourseVersion(updated, '课时内容保存') // 版本快照（内容未变则不重复存）
     }
   }
 
@@ -1636,7 +1667,10 @@ export default function AdminDashboard() {
               <h1 className="text-xl font-extrabold text-gray-900 mt-1">{active.title}</h1>
               <p className="text-xs text-gray-400 mt-0.5">第二步 · 搭课程序：共 {units.length} 个课时</p>
             </div>
-            <button className="btn btn-outline btn-sm" onClick={() => navigate('/game-mall')}>去商城查看 →</button>
+            <div className="flex items-center gap-2">
+              <button className="btn btn-outline btn-sm" onClick={() => openVersions(active)}>🕘 版本历史</button>
+              <button className="btn btn-outline btn-sm" onClick={() => navigate('/game-mall')}>去商城查看 →</button>
+            </div>
           </div>
 
           {/* 课时列表 */}
@@ -1698,6 +1732,39 @@ export default function AdminDashboard() {
           </div>
 
         </div>
+
+        {/* 版本历史弹窗 */}
+        {verModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={closeVersions}>
+            <div className="w-full max-w-2xl rounded-2xl bg-base-100 p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-bold">🕘 版本历史 · {verModal.course.title}</h3>
+                <button className="btn btn-ghost btn-sm btn-circle" onClick={closeVersions}>✕</button>
+              </div>
+              <p className="text-xs text-gray-400 mb-3">
+                每次课时内容保存自动留档（最多 20 版）。回滚后当前内容被替换；若课程已发布，会自动重新同步云端。
+              </p>
+              {verModal.versions.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">还没有版本记录 —— 保存一次课时内容后自动生成。</p>
+              ) : (
+                <div className="max-h-96 space-y-2 overflow-y-auto">
+                  {verModal.versions.map((v) => (
+                    <div key={v.ts} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-gray-800">
+                          {new Date(v.ts).toLocaleString()}
+                          <span className="ml-2 badge badge-ghost badge-xs">{v.reason}</span>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-0.5">{v.unitCount} 个课时{v.title ? ' · ' + v.title : ''}</div>
+                      </div>
+                      <button className="btn btn-outline btn-xs shrink-0" onClick={() => doRollback(v.ts)}>回滚到此版</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
     )
   }
