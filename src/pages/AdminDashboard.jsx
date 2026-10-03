@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { API_BASE, apiFetch } from '../lib/api'
+import { tsToLocalInput, localInputToTs, courseStatus, statusLabel, fmtSchedule } from '../utils/courseSchedule'
 import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
 import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps, russianizeNumbers } from '../lib/snowballEngine'
@@ -143,6 +144,8 @@ const emptyForm = () => ({
   cover: '', // 封面上传 B2 后的持久地址（b2:// 或 dataURL 待上传）
   coverName: '',
   materials: [], // { name, type, url }
+  scheduledPublishAt: '', // 定时上架（datetime-local 字符串，空=立即上架）
+  scheduledUnpublishAt: '', // 定时下架（datetime-local 字符串，空=永不下架）
 })
 
 export default function AdminDashboard() {
@@ -732,6 +735,8 @@ export default function AdminDashboard() {
       isGrammar: form.category === '语法专项', // 一级分类为「语法专项」即语法课程（点亮变格天赋树）
       units: [], // 第二步「课程序」填充
       status,
+      scheduledPublishAt: localInputToTs(form.scheduledPublishAt), // 定时上架（undefined=立即）
+      scheduledUnpublishAt: localInputToTs(form.scheduledUnpublishAt), // 定时下架（undefined=永不下架）
       updatedAt: now,
     }
     return base
@@ -800,6 +805,8 @@ export default function AdminDashboard() {
       cover: c.cover || '',
       coverName: '',
       materials: c.materials || [],
+      scheduledPublishAt: tsToLocalInput(c.scheduledPublishAt),
+      scheduledUnpublishAt: tsToLocalInput(c.scheduledUnpublishAt),
     })
     setEditingId(c.id)
     setView('list')
@@ -1804,6 +1811,16 @@ export default function AdminDashboard() {
                 </select>
               </div>
 
+              <div className="form-control">
+                <label className="label"><span className="label-text">定时上架（留空 = 保存/发布后立即上架）</span></label>
+                <input type="datetime-local" className="input input-bordered" value={form.scheduledPublishAt} onChange={e => setField('scheduledPublishAt', e.target.value)} />
+              </div>
+
+              <div className="form-control">
+                <label className="label"><span className="label-text">定时下架（留空 = 永不下架）</span></label>
+                <input type="datetime-local" className="input input-bordered" value={form.scheduledUnpublishAt} onChange={e => setField('scheduledUnpublishAt', e.target.value)} />
+              </div>
+
             </div>
 
             {/* 二级标签多选（按一级分类联动；动态分类树优先） */}
@@ -1906,9 +1923,13 @@ export default function AdminDashboard() {
                     {courses.map(c => (
                       <tr key={c.id}>
                         <td>
-                          {c.status === 'published' || !c.status
-                            ? <span className="badge badge-success badge-sm">已发布</span>
-                            : <span className="badge badge-warning badge-sm">草稿</span>}
+                          {(() => {
+                            const st = courseStatus(c)
+                            if (st === 'published') return <span className="badge badge-success badge-sm">已发布</span>
+                            if (st === 'scheduled') return <span className="badge badge-info badge-sm" title={'将于 ' + statusLabel(c) + ' 自动上架'}>定时中 {fmtSchedule(c.scheduledPublishAt)}</span>
+                            if (st === 'expired') return <span className="badge badge-warning badge-sm" title={'已于 ' + statusLabel(c) + ' 下架'}>已下架</span>
+                            return <span className="badge badge-warning badge-sm">草稿</span>
+                          })()}
                           {c.cloudSynced && <span className="badge badge-info badge-sm ml-1">云端</span>}
                         </td>
                         <td>

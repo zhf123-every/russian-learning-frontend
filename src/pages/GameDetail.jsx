@@ -13,6 +13,7 @@ import { getUnitDoneMap } from '../lib/lessonProgress'
 import { pullCloudProgress } from '../lib/cloudProgress'
 import { getCourseStats, fmtDuration, fmtLastAt } from '../lib/learningStats'
 import { isCoursePurchased } from '../lib/courseAccess'
+import { isCourseVisible, fmtSchedule } from '../utils/courseSchedule'
 import { resolvePlayUrl } from '../lib/playUrl'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { toast } from '../lib/toast'
@@ -62,6 +63,13 @@ export default function GameDetail() {
   const [isDemo, setIsDemo] = useState(false)
   const [pickedUnit, setPickedUnit] = useState(null)
   const [activeTab, setActiveTab] = useState('大纲') // 句乐部式 Tab：学习路线 / 大纲 / 评价
+
+  // 定时上架/下架：每分钟重算可见性，到点自动放行（不用刷新）
+  const [nowTick, setNowTick] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 60000)
+    return () => clearInterval(t)
+  }, [])
 
   // ---- 继续学习：定位"最近学过"的课时（读 4 种答题模式的进度缓存） ----
   // 注意：必须在组件所有条件 return 之前声明 hooks，避免 React #310
@@ -271,6 +279,25 @@ export default function GameDetail() {
         <div style={{ fontSize: 40 }}>🕹️</div>
         <h2>课程不存在或云端加载超时</h2>
         <p style={{ marginTop: 6, fontSize: 13, color: '#9ca3af' }}>后端响应较慢（免费层可能处于休眠），请稍后刷新重试</p>
+        <button className="btn sm primary" onClick={() => navigate('/unlocked-games')}>回商城看看</button>
+      </div></div>
+    )
+  }
+
+  // 定时上架/下架：未到上架时间/已下架 → 友好占位
+  if (!isCourseVisible(game, nowTick)) {
+    const pub = Number(game.scheduledPublishAt)
+    const unpub = Number(game.scheduledUnpublishAt)
+    const hint = (unpub > 0 && nowTick >= unpub)
+      ? `该课程已于 ${fmtSchedule(unpub)} 下架，暂不可学习`
+      : (pub > 0 && nowTick < pub)
+        ? `该课程将于 ${fmtSchedule(pub)} 上架，敬请期待`
+        : '该课程暂未上架'
+    return (
+      <div className="db-page"><div className="db-container" style={{ padding: 60, textAlign: 'center' }}>
+        <div style={{ fontSize: 40 }}>⏳</div>
+        <h2>课程暂不可学习</h2>
+        <p style={{ marginTop: 6, fontSize: 13, color: '#9ca3af' }}>{hint}</p>
         <button className="btn sm primary" onClick={() => navigate('/unlocked-games')}>回商城看看</button>
       </div></div>
     )

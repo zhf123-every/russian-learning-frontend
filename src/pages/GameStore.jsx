@@ -12,6 +12,7 @@ import { apiFetch } from '../lib/api'
 import { getCloudCache } from '../lib/cloudPrefetch'
 import { resolvePlayUrl } from '../lib/playUrl'
 import VipModal from '../components/VipModal'
+import { isCourseVisible } from '../utils/courseSchedule'
 
 // 游戏商城 · 课程包商城（总入口）
 // 课程类（kind=cover）：已解锁点卡片 → 课程详情页 /game/:id（学习路线+大纲）
@@ -273,7 +274,13 @@ export default function GameStore() {
   // 后台发布课程判定：带 src=admin 标记，或旧数据有 units 课时结构（投稿课程用 lessons 无 units）
   const isAdminCourse = (c) => c && (c.src === 'admin' || c.src === 'admin_publish' || (Array.isArray(c.units) && c.units.length > 0))
   // 通关秘籍区 = 后台发布课程（云端去重，前） + 内置秘籍（后）；投稿课程不在此商城页展示
-  const adminCloudCourses = cloudCourses.filter(isAdminCourse)
+  // 定时上架/下架：每分钟 tick 重算可见性，到点自动出现/消失，无需刷新
+  const [nowTick, setNowTick] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 60000)
+    return () => clearInterval(t)
+  }, [])
+  const adminCloudCourses = cloudCourses.filter(c => isAdminCourse(c) && isCourseVisible(c, nowTick))
   const mergedCourses = [...adminCloudCourses]
   const cseen = new Set()
   const dedupCourses = mergedCourses.filter(c => { if (cseen.has(c.id)) return false; cseen.add(c.id); return true })
