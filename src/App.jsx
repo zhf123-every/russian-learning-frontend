@@ -33,6 +33,7 @@ import SaveUnknown from './pages/SaveUnknown'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminLessons from './pages/AdminLessons'
 import AdminUsers from './pages/AdminUsers'
+import AdminUserDetail from './pages/AdminUserDetail'
 import AdminStats from './pages/AdminStats'
 import AdminOrders from './pages/AdminOrders'
 import AdminCategories from './pages/AdminCategories'
@@ -77,6 +78,7 @@ export default function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/lessons/:id" element={<AdminLessons />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/users/:id" element={<AdminUserDetail />} />
         <Route path="/admin/stats" element={<AdminStats />} />
         <Route path="/admin/orders" element={<AdminOrders />} />
         <Route path="/admin/categories" element={<AdminCategories />} />

@@ -185,6 +185,7 @@ export default function AdminUsers() {
                       <td className="text-gray-400 text-xs">{new Date(u.created_at || 0).toLocaleDateString('zh-CN')}</td>
                       <td className="text-right">
                         <div className="flex gap-1 justify-end">
+                          <button className="btn btn-xs btn-outline" onClick={() => navigate('/admin/users/' + u.id)}>详情</button>
                           <button className="btn btn-xs btn-outline" disabled={busyId === u.id} onClick={() => { setResetTarget(u); setResetResult('') }}>重置密码</button>
                           <button className={`btn btn-xs ${u.status === 1 ? 'btn-error btn-outline' : 'btn-success btn-outline'}`} disabled={busyId === u.id} onClick={() => toggleStatus(u)}>
                             {u.status === 1 ? '禁用' : '启用'}
