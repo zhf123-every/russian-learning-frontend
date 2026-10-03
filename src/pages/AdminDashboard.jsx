@@ -1833,7 +1833,10 @@ export default function AdminDashboard() {
               </span>
               <div className="flex gap-2">
                 {user?.role === 'admin' && (
-                  <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/users')}>👥 用户管理</button>
+                  <>
+                    <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/stats')}>📊 数据看板</button>
+                    <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/users')}>👥 用户管理</button>
+                  </>
                 )}
                 <button className="btn btn-sm btn-primary" onClick={syncToCloud} disabled={cloudBusy || !isLoggedIn}>
                   {cloudBusy ? '同步中…' : '🚀 同步到云端'}

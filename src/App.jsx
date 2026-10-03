@@ -33,6 +33,7 @@ import SaveUnknown from './pages/SaveUnknown'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminLessons from './pages/AdminLessons'
 import AdminUsers from './pages/AdminUsers'
+import AdminStats from './pages/AdminStats'
 import { useEffect } from 'react'
 import { prefetchCloudList } from './lib/cloudPrefetch'
 
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/lessons/:id" element={<AdminLessons />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/stats" element={<AdminStats />} />
         <Route path="/my-games" element={<MyGames />} />
         <Route path="/game/:id" element={<GameDetail />} />
         <Route path="/preload/:mode/:unitId" element={<Preloader />} />
