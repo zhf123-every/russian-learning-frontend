@@ -1836,6 +1836,7 @@ export default function AdminDashboard() {
                   <>
                     <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/stats')}>📊 数据看板</button>
                     <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/users')}>👥 用户管理</button>
+                    <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/orders')}>🧾 订单管理</button>
                   </>
                 )}
                 <button className="btn btn-sm btn-primary" onClick={syncToCloud} disabled={cloudBusy || !isLoggedIn}>

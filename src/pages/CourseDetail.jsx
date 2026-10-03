@@ -5,7 +5,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getCourseById, getTrialConfig, getLessonsList } from '../utils/courseService'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { toast } from '../lib/toast'
-import { savePurchase, isCoursePurchased } from '../lib/courseAccess'
+import { isCoursePurchased } from '../lib/courseAccess'
+import { apiFetch } from '../lib/api'
+import { useAdminStore } from '../store/adminStore'
+import VipModal from '../components/VipModal'
 
 export default function CourseDetail() {
   const { id } = useParams()
@@ -18,10 +21,20 @@ export default function CourseDetail() {
   const [showVipModal, setShowVipModal] = useState(false) // 开通会员确认弹窗
   const [vipUnlocked, setVipUnlocked] = useState(false)   // 会员已解锁（模拟购买）
 
-  // 会员状态初始化（已购买/已开通会员则全解锁）
+  // 会员状态初始化（本地已购买记录 + 云端 VIP 双源；P1-D 起以云端为准）
+  const authBody = useAdminStore(s => s.authBody)
   useEffect(() => {
-    setVipUnlocked(isCoursePurchased(course?.id))
-  }, [course])
+    let alive = true
+    const local = isCoursePurchased(course?.id)
+    if (local) { setVipUnlocked(true); return () => { alive = false } }
+    const u = useAdminStore.getState()
+    if (!(u.token && u.user && u.user.id)) { return () => { alive = false } }
+    apiFetch('/api/vip/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authBody({})), timeout: 30000 })
+      .then(r => r.json())
+      .then(j => { if (alive && j.ok && j.is_vip) setVipUnlocked(true) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [course, authBody])
 
   // 读取完整课程（云端含大纲 lessonsList）
   useEffect(() => {
@@ -71,13 +84,7 @@ export default function CourseDetail() {
   // 点击「可试学」课时 → 跳到游戏详情页（/game/:id，学习路线+大纲）
   const goGameDetail = () => navigate(`/game/${course.id}`)
 
-  // 开通会员（模拟购买解锁）：写入购买记录 → 全课时解锁
-  const handleOpenVip = () => {
-    savePurchase(course.id, { kind: 'vip', courseTitle: course.title })
-    setVipUnlocked(true)
-    setShowVipModal(false)
-    toast('会员已开通，全部课时已解锁')
-  }
+  // 开通会员（P1-D：真实购买流程，hero 按钮直接打开 VIP 弹窗下单；本地旧购买记录仍兼容）
 
   // 推荐好友：复制课程链接
   const handleShare = () => {
@@ -225,28 +232,8 @@ export default function CourseDetail() {
         </p>
       )}
 
-      {/* ===== 开通会员确认弹窗 ===== */}
-      {showVipModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowVipModal(false)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-lg">💎</span>
-              <h3 className="text-lg font-extrabold text-gray-900">开通会员</h3>
-            </div>
-            <p className="mt-3 text-sm leading-relaxed text-gray-500">
-              开通后解锁全部 <span className="font-semibold text-primary">{totalLessons}</span> 课，包含所有课时与完整学习路线，随时回看。
-            </p>
-            <div className="mt-6 flex gap-3">
-              <button type="button" onClick={() => setShowVipModal(false)} className="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
-                暂不
-              </button>
-              <button type="button" onClick={handleOpenVip} className="flex-1 rounded-full bg-primary py-2.5 text-sm font-bold text-white transition hover:brightness-110">
-                确认开通
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ===== 开通会员确认弹窗 → P1-D 真实购买流程 ===== */}
+      <VipModal open={showVipModal} onClose={() => setShowVipModal(false)} />
     </div>
   )
 }

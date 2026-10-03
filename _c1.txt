@@ -1,0 +1,3 @@
+﻿[main 5a387e5] P1-E 数据看板：AdminStats 看板页 + /admin/stats 路由 + 后台入口
+ 3 files changed, 176 insertions(+), 1 deletion(-)
+ create mode 100644 src/pages/AdminStats.jsx

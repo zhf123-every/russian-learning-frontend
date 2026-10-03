@@ -11,6 +11,7 @@ import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { apiFetch } from '../lib/api'
 import { getCloudCache } from '../lib/cloudPrefetch'
 import { resolvePlayUrl } from '../lib/playUrl'
+import VipModal from '../components/VipModal'
 
 // 游戏商城 · 课程包商城（总入口）
 // 课程类（kind=cover）：已解锁点卡片 → 课程详情页 /game/:id（学习路线+大纲）
@@ -152,6 +153,7 @@ export default function GameStore() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [, setTick] = useState(0)
   const [videoTarget, setVideoTarget] = useState(null) // 视频类卡片 → 弹窗
+  const [showVipModal, setShowVipModal] = useState(false) // VIP 购买弹窗（P1-D）
   const [showAdmin, setShowAdmin] = useState(false) // 管理员登录弹窗
   // 隐藏管理入口：只有 URL 带 ?admin=1（仅你知道）才显示"管理登录"，普通访客看不到任何投稿/管理按钮
   const [isAdminMode, setIsAdminMode] = useState(() => new URLSearchParams(location.search).get('admin') === '1')
@@ -351,10 +353,13 @@ export default function GameStore() {
             placeholder="搜索视频 / 课程…"
           />
         </div>
+        <button type="button" onClick={() => setShowVipModal(true)} className="shrink-0 h-9 px-4 rounded-full bg-primary text-white text-sm font-bold transition hover:brightness-110">
+          💎 开通VIP
+        </button>
       </div>
     )
     return () => { setTitleOverride(null); setHeaderRight(null) }
-  }, [mode, menuOpen, activeCat, query, visibleCats, menuItem, setHeaderRight, setTitleOverride])
+  }, [mode, menuOpen, activeCat, query, visibleCats, menuItem, setHeaderRight, setTitleOverride, showVipModal])
 
   useEffect(() => {
     const sync = () => setTick((t) => t + 1)
@@ -622,6 +627,9 @@ export default function GameStore() {
           </div>
         </div>
       )}
+
+      {/* ===== VIP 会员购买弹窗（P1-D） ===== */}
+      <VipModal open={showVipModal} onClose={() => setShowVipModal(false)} />
     </div>
   )
 }
