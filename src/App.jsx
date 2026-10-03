@@ -36,6 +36,7 @@ import AdminUsers from './pages/AdminUsers'
 import AdminStats from './pages/AdminStats'
 import AdminOrders from './pages/AdminOrders'
 import AdminCategories from './pages/AdminCategories'
+import AdminSettings from './pages/AdminSettings'
 import { useEffect } from 'react'
 import { prefetchCloudList } from './lib/cloudPrefetch'
 
@@ -79,6 +80,7 @@ export default function App() {
         <Route path="/admin/stats" element={<AdminStats />} />
         <Route path="/admin/orders" element={<AdminOrders />} />
         <Route path="/admin/categories" element={<AdminCategories />} />
+        <Route path="/admin/settings" element={<AdminSettings />} />
         <Route path="/my-games" element={<MyGames />} />
         <Route path="/game/:id" element={<GameDetail />} />
         <Route path="/preload/:mode/:unitId" element={<Preloader />} />
