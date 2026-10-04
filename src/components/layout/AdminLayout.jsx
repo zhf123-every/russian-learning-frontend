@@ -82,7 +82,8 @@ export default function AdminLayout() {
   if (!isLoggedIn) return <LoginGate />
 
   const role = user?.role || (adminKey ? 'legacy' : '')
-  const canSee = (roles) => roles.includes('admin') || roles.includes(role)
+  // 当前角色是否在菜单白名单中（旧密钥模式视为全权限 admin）
+  const canSee = (roles) => role === 'legacy' || roles.includes(role)
 
   const doSearch = () => {
     const q = kw.trim()
