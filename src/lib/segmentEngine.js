@@ -95,10 +95,12 @@ function sha256Hex(msg) {
   return hex(h0) + hex(h1) + hex(h2) + hex(h3) + hex(h4) + hex(h5) + hex(h6) + hex(h7)
 }
 
-// 归一化句子：去首尾空白 + 数字俄语化（"500 лет." → "пятьсот лет."）。
+// 归一化句子：压缩所有空白为单空格（换行/多空格 → 单个空格）+ 去首尾空白 + 数字俄语化（"500 лет." → "пятьсот лет."）。
 // 作为 sentence_hash 的输入原文（俄语化后），避免 tokenizer 升级导致缓存失效。
+// ⚠️ 空白必须压缩：splitTokens 按任意空白拆词后以单空格 join，
+// 若原句含换行/连续空格，拼接结果 != 原句，会导致后端"拼接==原句"硬校验失败 → AI 切块全量兜底。
 export function normalizeSentence(text) {
-  const s = String(text ?? '').trim()
+  const s = String(text ?? '').trim().replace(/\s+/g, ' ')
   if (!s) return ''
   return russianizeNumbers(s)
 }
