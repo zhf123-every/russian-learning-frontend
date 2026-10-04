@@ -251,11 +251,19 @@ export async function checkCache({ courseId, unitId }, deps = {}) {
 // 写语块：POST /api/admin/segments/save（后端 upsert，幂等；尾部裁剪由后端负责，本函数不裁剪）。
 // items 为入库格式：[{ sentence_hash, difficulty, segments:[{sort_order,text,type,chinese}], status, translation }]。
 // deps.httpPost(path, body) 注入；返回后端响应（{ok,saved}）。
+// ⚠️ 字段名必须用下划线 course_id / unit_id（后端 _handle_admin_segments_save 只认下划线），
+// 且必须检查响应 ok——apiFetch 是裸 fetch，400 不会抛错，不检查会导致"假成功、数据库空"。
 export async function saveSegments({ courseId, unitId, items }, deps = {}) {
   if (!deps || typeof deps.httpPost !== 'function') {
     throw new Error('saveSegments: deps.httpPost 必须注入')
   }
-  return deps.httpPost('/api/admin/segments/save', { courseId, unitId, items })
+  const res = await deps.httpPost('/api/admin/segments/save', { course_id: courseId, unit_id: unitId, items })
+  // 兼容两种 httpPost 返回形态：浏览器 fetch Response（res.ok + res.json()）与单测纯对象（{ok, saved}）
+  let data = res && typeof res.json === 'function' ? await res.json().catch(() => ({})) : (res || {})
+  if (!data.ok) {
+    throw new Error('save 失败：' + (data.error || ('HTTP ' + (res && res.status ? res.status : '?'))))
+  }
+  return data
 }
 
 // 索引校验（纯函数，只管"索引"层）：并集==0..n-1 不重不漏 + 每组 indexes 连续递增 + 索引为合法整数；
@@ -336,6 +344,17 @@ export function buildHardSegments(tokens, translation) {
 //         pending: [{sentenceHash, difficulty, reason}] }；
 // 'generating'（后端占位在途）不写不报，不进任何列表。
 // deps.httpPost 注入。注意：不传 tokens 给 aiSegment，由其内部 splitTokens(俄语化原句)，避免数字句/标点坑。
+// 内部 save 一律走 saveSegmentsChecked：字段用下划线 course_id/unit_id + 检查响应 ok，
+// 失败抛错 → 进 failed（避免 400 被裸 fetch 静默吞掉导致"假成功、数据库空"）。
+async function saveSegmentsChecked(deps, courseId, unitId, items) {
+  const res = await deps.httpPost('/api/admin/segments/save', { course_id: courseId, unit_id: unitId, items })
+  // 兼容两种 httpPost 返回形态：浏览器 fetch Response（res.ok + res.json()）与单测纯对象（{ok, saved}）
+  let data = res && typeof res.json === 'function' ? await res.json().catch(() => ({})) : (res || {})
+  if (!data.ok) {
+    throw new Error('save 失败：' + (data.error || ('HTTP ' + (res && res.status ? res.status : '?'))))
+  }
+  return data
+}
 export async function generateUnitSegmentsAsync({ courseId, unitId, sentences, difficulties }, deps = {}) {
   if (!deps || typeof deps.httpPost !== 'function') {
     throw new Error('generateUnitSegmentsAsync: deps.httpPost 必须注入')
@@ -358,13 +377,13 @@ export async function generateUnitSegmentsAsync({ courseId, unitId, sentences, d
         const r = await aiSegment({ sentence: job.russian, difficulty: job.difficulty }, deps)
         if (r.reviewStatus === 'ok') {
           const items = aiResultToInbound(job, r)
-          await deps.httpPost('/api/admin/segments/save', { courseId, unitId, items })
+          await saveSegmentsChecked(deps, courseId, unitId, items)
           return { kind: 'done', sentenceHash: job.sentenceHash, difficulty: job.difficulty, reviewStatus: r.reviewStatus }
         }
         if (r.reviewStatus === 'pending') {
           // 机械兜底：segments 已是入库格式（sort_order/text），整体写回，status='pending' 待人工校对
           const items = [{ sentence_hash: job.sentenceHash, sentence: job.sentence, difficulty: job.difficulty, segments: r.segments, status: 'pending', translation: '' }]
-          await deps.httpPost('/api/admin/segments/save', { courseId, unitId, items })
+          await saveSegmentsChecked(deps, courseId, unitId, items)
           return { kind: 'pending', sentenceHash: job.sentenceHash, difficulty: job.difficulty, reason: 'ai_fallback_machine' }
         }
         return { kind: 'skip', sentenceHash: job.sentenceHash, difficulty: job.difficulty } // generating：占位在途
