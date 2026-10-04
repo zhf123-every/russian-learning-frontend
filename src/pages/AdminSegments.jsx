@@ -1,4 +1,4 @@
-// AdminSegments.jsx —— P2-B：语块校对页（只读 + 补跑 + 筛选；不做人工编辑，留 P3）。
+// AdminSegments.jsx —— P2-B：语块校对页（读 + 补跑 + 筛选 + P4-A 人工编辑）。
 //
 // 数据源（降级）：localStorage(rb_admin_courses) 秒开 → 异步 GET /api/videos/list 合并去重
 // （同 courseId 以 local 为准）；云端加载失败 → 仅显示本机 + toast。
@@ -7,13 +7,15 @@
 // 状态徽章只映射后端 review_status 的 ok / pending / generating（不造第三套命名）；
 // 无任何记录的 (句, 档) 显示「未生成」（缺失提示，不是 review_status 值）。
 // 补跑 = 整课时重跑（triggerUnitSegments：后端 llm-segment 幂等，已 ok 句零 LLM 成本）。
-// 置灰条件：pending + generating + 未生成句子数 全部为 0 → disabled + tooltip。
+// P4-A 人工编辑：仅 ok 且有语块的句子可编辑；text 只读（拼接必须 == 原句），可改
+// type/chinese、合并/拆分相邻段；保存 POST /api/admin/segments/update（后端硬校验 +
+// 同步覆盖全局 cache，补跑不会冲掉人工修改）。
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getCourses } from '../utils/storage'
 import { apiFetch } from '../lib/api'
 import { useAdminStore } from '../store/adminStore'
-import { withRetry403, sentenceHash } from '../lib/segmentEngine'
+import { withRetry403, sentenceHash, normalizeSentence } from '../lib/segmentEngine'
 import { triggerUnitSegments } from '../lib/segmentTrigger'
 
 const DIFFS = ['easy', 'medium', 'hard']
@@ -26,6 +28,9 @@ const STATUS_META = {
 }
 
 const sentText = (s) => String((s && (s.ru || s.russian || s.text)) || '').trim()
+
+// P4-A 人工编辑：type 合法值（对齐后端 llm-segment 输出枚举）
+const SEG_TYPES = ['word', 'phrase', 'verb', 'prep_phrase', 'fixed', 'clause']
 
 export default function AdminSegments() {
   const navigate = useNavigate()
@@ -44,6 +49,9 @@ export default function AdminSegments() {
   const [loadingItems, setLoadingItems] = useState(false)
   const [runBusy, setRunBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  // P4-A 人工编辑：{ hash, diff, segs, err } | null
+  const [editing, setEditing] = useState(null)
+  const [saveBusy, setSaveBusy] = useState(false)
 
   const segHttpPost = withRetry403((path, body) =>
     apiFetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authBody(body)) })
@@ -131,7 +139,75 @@ export default function AdminSegments() {
     }
   }
 
-  // 4) 统计与筛选
+  // 4) P4-A 人工编辑：打开 / 修改段 / 合并 / 拆分 / 保存
+  const startEdit = (row, d, cur) => {
+    if (saveBusy) return
+    setMsg('')
+    setEditing({
+      hash: row.hash,
+      diff: d,
+      ru: row.ru, // 原句：前端拼接校验基准（normalizeSentence 后与后端基准一致）
+      segs: (cur.segments || []).map((s, i) => ({ sort_order: i, text: s.text || '', type: s.type || 'chunk', chinese: s.chinese || '' })),
+      err: '',
+    })
+  }
+  const cancelEdit = () => { setEditing(null); setMsg('') }
+  const patchSeg = (idx, patch) => setEditing((ed) => ed && { ...ed, segs: ed.segs.map((s, i) => (i === idx ? { ...s, ...patch } : s)), err: '' })
+  // 拆分：该段 text 含空格 → 按第一个空格拆成两段（sort_order 顺延）
+  const splitSeg = (idx) => setEditing((ed) => {
+    if (!ed) return ed
+    const segs = [...ed.segs]
+    const s = segs[idx]
+    const m = String(s.text || '').match(/^(\S+)\s+(.*)$/)
+    if (!m) return ed
+    segs.splice(idx, 1,
+      { ...s, text: m[1] },
+      { ...s, text: m[2], type: s.type || 'chunk', chinese: '' })
+    return { ...ed, segs, err: '' }
+  })
+  // 合并：与下一段合并（text 拼接、type/chinese 取第一段）
+  const mergeSeg = (idx) => setEditing((ed) => {
+    if (!ed) return ed
+    const segs = [...ed.segs]
+    if (idx >= segs.length - 1) return ed
+    const a = segs[idx], b = segs[idx + 1]
+    segs.splice(idx, 2, { sort_order: a.sort_order, text: (a.text + ' ' + b.text).replace(/\s+/g, ' ').trim(), type: a.type || 'chunk', chinese: a.chinese || '' })
+    return { ...ed, segs, err: '' }
+  })
+  const saveEdit = async () => {
+    if (!editing || saveBusy) return
+    // 前端硬校验：拼接必须 == normalizeSentence(原句)
+    const joined = editing.segs.map((s) => (s.text || '').trim()).filter(Boolean).join(' ')
+    const baseline = normalizeSentence(editing.ru || '')
+    if (joined !== baseline) {
+      setEditing({ ...editing, err: `拼接校验失败：编辑后 ${joined} 必须等于原句 ${baseline}（合并/拆分请用按钮，不要手改俄文文本）` })
+      return
+    }
+    setSaveBusy(true)
+    setMsg('')
+    try {
+      const body = {
+        course_id: courseId, unit_id: unitId,
+        sentence_hash: editing.hash, difficulty: editing.diff,
+        segments: editing.segs.map((s, i) => ({ sort_order: i, text: s.text.trim(), type: s.type || 'chunk', chinese: (s.chinese || '').trim() })),
+      }
+      const r = await segHttpPost('/api/admin/segments/update', body)
+      if (!r || !r.ok) {
+        const e = (r && r.error) || '更新失败'
+        setEditing({ ...editing, err: e + (r && r.joined ? `（拼接结果：${r.joined}）` : '') })
+      } else {
+        setEditing(null)
+        setMsg(`已保存第 ${(r.updated || 0)} 段（该句该档已确认 ok，学生端立即生效）`)
+        loadItems()
+      }
+    } catch (e) {
+      setEditing({ ...editing, err: (e && e.message) || '网络错误' })
+    } finally {
+      setSaveBusy(false)
+    }
+  }
+
+  // 5) 统计与筛选
   const counts = { pending: 0, generating: 0, missing: 0, ok: 0 }
   for (const row of rows) {
     for (const d of DIFFS) {
@@ -232,18 +308,54 @@ export default function AdminSegments() {
                           <div className="flex items-center gap-2 mt-2 flex-wrap">
                             <span className={`badge badge-sm ${meta.cls}`} title={meta.tip}>{meta.label}</span>
                             <span className="text-xs text-gray-400">{DIFF_LABELS[diff]}档{cur.translation ? ` · 译文：${cur.translation}` : ''}</span>
+                            {cur.segments.length && cur.status === 'ok' ? (
+                              <button className="btn btn-xs btn-outline" onClick={() => startEdit(row, diff, cur)}>✎ 编辑</button>
+                            ) : null}
                           </div>
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {cur.segments.length ? cur.segments.map((seg, si) => (
-                              <span key={si} className="badge badge-outline badge-sm px-2 py-2 h-auto whitespace-normal font-normal"
-                                title={`${seg.type || 'chunk'}`}>
-                                <span className="text-gray-800">{seg.text}</span>
-                                {seg.chinese ? <span className="ml-1 text-gray-400">（{seg.chinese}）</span> : null}
-                              </span>
-                            )) : (
-                              <span className="text-xs text-gray-400">{cur.status === 'generating' ? '正在生成…' : '暂无语块（点击「补跑待生成」）'}</span>
-                            )}
-                          </div>
+                          {editing && editing.hash === row.hash && editing.diff === diff ? (
+                            <div className="mt-3 border border-dashed border-amber-300 rounded-xl bg-amber-50/50 p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-amber-700">人工编辑 {DIFF_LABELS[diff]}档语块</span>
+                                <button className="btn btn-xs btn-ghost" onClick={cancelEdit}>取消</button>
+                              </div>
+                              <div className="space-y-1.5">
+                                {editing.segs.map((s, si) => (
+                                  <div key={si} className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-xs text-gray-400 w-5">{si + 1}</span>
+                                    <input className="input input-sm input-bordered w-40 font-mono text-xs bg-gray-100" readOnly value={s.text} title="分段文本来自原句，不能手改（用合并/拆分调整）" />
+                                    <select className="select select-sm select-bordered text-xs" value={SEG_TYPES.includes(s.type) ? s.type : 'chunk'} onChange={(e) => patchSeg(si, { type: e.target.value })}>
+                                      {SEG_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                                      {!SEG_TYPES.includes(s.type) ? <option value={s.type}>{s.type}</option> : null}
+                                    </select>
+                                    <input className="input input-sm input-bordered text-xs" placeholder="块中文（词卡显示）" value={s.chinese} onChange={(e) => patchSeg(si, { chinese: e.target.value })} />
+                                    {String(s.text || '').match(/^(\S+)\s+\S/) ? (
+                                      <button className="btn btn-xs btn-outline btn-info" title="把本段按第一个空格拆成两段" onClick={() => splitSeg(si)}>拆分</button>
+                                    ) : null}
+                                    {si < editing.segs.length - 1 ? (
+                                      <button className="btn btn-xs btn-outline btn-secondary" title="与下一段合并" onClick={() => mergeSeg(si)}>合并↓</button>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                              {editing.err ? <div className="text-xs text-error mt-2 whitespace-pre-wrap break-all">{editing.err}</div> : null}
+                              <div className="flex items-center gap-2 mt-3">
+                                <button className="btn btn-xs btn-primary" disabled={saveBusy} onClick={saveEdit}>{saveBusy ? '保存中…' : '保存（校验拼接 = 原句）'}</button>
+                                <span className="text-[11px] text-gray-400">保存后该句该档标记 ok，学生端立即生效；补跑不会覆盖人工修改</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {cur.segments.length ? cur.segments.map((seg, si) => (
+                                <span key={si} className="badge badge-outline badge-sm px-2 py-2 h-auto whitespace-normal font-normal"
+                                  title={`${seg.type || 'chunk'}`}>
+                                  <span className="text-gray-800">{seg.text}</span>
+                                  {seg.chinese ? <span className="ml-1 text-gray-400">（{seg.chinese}）</span> : null}
+                                </span>
+                              )) : (
+                                <span className="text-xs text-gray-400">{cur.status === 'generating' ? '正在生成…' : '暂无语块（点击「补跑待生成」）'}</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
