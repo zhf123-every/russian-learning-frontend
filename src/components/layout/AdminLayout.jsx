@@ -110,7 +110,8 @@ export default function AdminLayout() {
         <NavLink to="/admin" className="flex items-center gap-2 font-bold text-gray-900">
           <span className="text-lg">📚</span> 课程包管理后台
         </NavLink>
-        <div className="ml-auto hidden sm:flex flex-1 max-w-md items-center gap-1">
+        {/* 顶部搜索：任何宽度都显示 */}
+        <div className="ml-auto flex-1 max-w-md items-center gap-1 px-2">
           <input
             className="input input-bordered input-sm w-full"
             placeholder="搜索课程标题…（回车跳转）"
@@ -130,8 +131,8 @@ export default function AdminLayout() {
       </header>
 
       <div className="flex flex-1">
-        {/* ===== 左侧导航 ===== */}
-        <aside className="hidden md:flex w-52 shrink-0 flex-col border-r border-gray-200 bg-white">
+        {/* ===== 左侧导航：任何宽度都显示（窄屏缩窄，内容区自适应） ===== */}
+        <aside className="flex w-44 lg:w-52 shrink-0 flex-col border-r border-gray-200 bg-white">
           <nav className="flex-1 space-y-1 p-3">
             {NAV_ITEMS.filter(n => canSee(n.roles)).map(n => (
               <NavLink
@@ -160,28 +161,9 @@ export default function AdminLayout() {
 
         {/* ===== 内容区 ===== */}
         <main className="min-w-0 flex-1">
-          {/* 移动端：横向菜单条 */}
-          <div className="md:hidden flex gap-1 overflow-x-auto border-b border-gray-200 bg-white px-2 py-1.5">
-            {NAV_ITEMS.filter(n => canSee(n.roles)).map(n => (
-              <NavLink
-                key={n.to}
-                to={n.to}
-                end={!!n.end}
-                className={({ isActive }) =>
-                  `whitespace-nowrap rounded-full px-3 py-1 text-xs ${
-                    isActive ? 'bg-primary/10 font-semibold text-primary' : 'text-gray-600'
-                  }`
-                }
-              >
-                {n.icon} {n.title}
-              </NavLink>
-            ))}
-            <button className="whitespace-nowrap rounded-full px-3 py-1 text-xs text-gray-600" onClick={goSync}>☁️ 同步云端</button>
-          </div>
-
           {/* 页面内容：各 Admin 页面自带标题/操作/列表 */}
           <div className="p-4 md:p-5" key={location.pathname}>
-            <div className="mb-3 md:hidden text-sm font-semibold text-gray-800">📚 {activeTitle}</div>
+            <div className="mb-3 text-sm font-semibold text-gray-800">📚 {activeTitle}</div>
             <Outlet />
           </div>
         </main>
