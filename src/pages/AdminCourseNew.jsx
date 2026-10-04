@@ -31,7 +31,7 @@ const emptyForm = () => ({
   subtitle: '',
   category: '教材同步',
   grade: '通用',
-  textbook: '走遍俄罗斯',
+  textbook: '', // 教材版本：默认不选，避免未选时被 AI 误当事实引用
   difficulty: '入门',
   badge: '',
   lessons: 0,
@@ -131,6 +131,8 @@ export default function AdminCourseNew() {
             '要求：\n1. 第一段以【课程介绍】开头：说明课程内容、学习范围和亮点（100字左右）；\n' +
             '2. 第二段以【学习目标】开头：写3-5条可衡量的学习目标（80字左右）；\n' +
             '3. 第三段以【适合谁学】开头：列出适合的学习人群（60字左右）；\n' +
+            '4. 教材信息仅供你参考，是否提及由你判断：只有当它与课程标题明显一致时才可提及教材名；\n' +
+            '   绝对禁止编造、臆测或沿用与课程标题无关的教材名（如标题是"东方俄语"，简介里不得出现"走遍俄罗斯"）。\n' +
             '直接输出三段文字，每段以对应方括号标题起行，不要额外解释。' },
         ],
       })
@@ -435,6 +437,7 @@ export default function AdminCourseNew() {
             <div className="form-control">
               <label className="label"><span className="label-text">教材版本</span></label>
               <select className="select select-bordered" value={form.textbook} onChange={e => setField('textbook', e.target.value)}>
+                <option value="">（未选择）</option>
                 {TEXTBOOKS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
