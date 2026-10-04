@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { API_BASE, apiFetch } from '../lib/api'
@@ -154,6 +154,10 @@ const emptyForm = () => ({
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  // 全局搜索（顶部栏传入 ?q=）与「同步云端」提示（?sync=1）
+  const q = (searchParams.get('q') || '').trim().toLowerCase()
+  const syncFlag = searchParams.get('sync')
   const [view, setView] = useState('list')          // list=档案列表 | units=课程序 | unit=课时内容
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState('')    // 非空 = 正在编辑某条档案
@@ -523,6 +527,15 @@ export default function AdminDashboard() {
   const [cloudMsg, setCloudMsg] = useState('')
   const [cloudCount, setCloudCount] = useState(-1)
 
+  // 顶部栏「同步云端」跳转入口：带 ?sync=1 → 提示在下方同步区操作，并清除参数
+  useEffect(() => {
+    if (syncFlag) {
+      setCloudMsg('请在下方「同步到云端」区域点击「🚀 同步到云端」按钮')
+      setSearchParams({}, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncFlag])
+
   // P2-A：语块生成请求器——403（TiDB 冷启动）自动重试 1 次；POST 带 authBody 鉴权，GET 不带 body
   const segHttpPost = withRetry403((path, body) =>
     apiFetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authBody(body)) })
@@ -659,8 +672,14 @@ export default function AdminDashboard() {
   // 提示（2.5 秒自动消失）
   const flash = (msg) => {
     setToast(msg)
-    setTimeout(() => setToast(''), 2500)
+    // 自动清除提示
+    window.setTimeout(() => setToast(''), 3000)
   }
+
+  // 全局搜索过滤（顶部栏 ?q=）：匹配课程标题或简介
+  const filteredCourses = q
+    ? courses.filter(c => ((c.title || '') + ' ' + (c.subtitle || '')).toLowerCase().includes(q))
+    : courses
 
   // 封面图：文件 → dataURL（本地预览 + 待保存/发布时上传 B2 持久化，避免 blob 临时链接刷新失效）
   const applyCoverFile = async (f) => {
@@ -1940,7 +1959,7 @@ export default function AdminDashboard() {
   return (
     <main className="min-h-full bg-base-100 px-6 py-7">
       <div className="mx-auto max-w-[1100px]">
-        <h1 className="text-2xl font-extrabold text-gray-900">课程包管理后台</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900">📚 课程管理</h1>
         <p className="mt-1 text-sm text-gray-400">第一步：建课程档案 → 第二步：搭课程序 → 第三步：挂内容 → 第四步：发布</p>
 
         {toast && (
@@ -2140,9 +2159,13 @@ export default function AdminDashboard() {
         {/* ===== ② 已有课程列表 ===== */}
         <div className="card mt-6 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
           <div className="card-body p-6">
-            <h2 className="card-title text-base text-gray-900">已有课程（{courses.length}）</h2>
-            {courses.length === 0 ? (
-              <p className="py-6 text-center text-sm text-gray-400">还没有课程，先填上面表单保存一个草稿试试。</p>
+            <h2 className="card-title text-base text-gray-900">
+              已有课程（{q ? `${filteredCourses.length} / ${courses.length} 匹配「${q}」` : courses.length}）
+            </h2>
+            {filteredCourses.length === 0 ? (
+              <p className="py-6 text-center text-sm text-gray-400">
+                {courses.length === 0 ? '还没有课程，先填上面表单保存一个草稿试试。' : `没有标题或简介包含「${q}」的课程，换个关键词试试。`}
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="table table-zebra table-sm">
@@ -2152,7 +2175,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {courses.map(c => (
+                    {filteredCourses.map(c => (
                       <tr key={c.id}>
                         <td>
                           {(() => {

@@ -39,6 +39,7 @@ import AdminOrders from './pages/AdminOrders'
 import AdminCategories from './pages/AdminCategories'
 import AdminSettings from './pages/AdminSettings'
 import AdminSegments from './pages/AdminSegments'
+import AdminLayout from './components/layout/AdminLayout'
 import { useEffect } from 'react'
 import { prefetchCloudList } from './lib/cloudPrefetch'
 
@@ -76,15 +77,6 @@ export default function App() {
         <Route path="/quest/:packId" element={<RuQuest />} />
         <Route path="/quest-store" element={<CourseStore />} />
         <Route path="/unlocked-games" element={<GameStore />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/lessons/:id" element={<AdminLessons />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/users/:id" element={<AdminUserDetail />} />
-        <Route path="/admin/stats" element={<AdminStats />} />
-        <Route path="/admin/orders" element={<AdminOrders />} />
-        <Route path="/admin/categories" element={<AdminCategories />} />
-        <Route path="/admin/settings" element={<AdminSettings />} />
-        <Route path="/admin/segments" element={<AdminSegments />} />
         <Route path="/my-games" element={<MyGames />} />
         <Route path="/game/:id" element={<GameDetail />} />
         <Route path="/preload/:mode/:unitId" element={<Preloader />} />
@@ -108,6 +100,19 @@ export default function App() {
         <Route path="/method/:level" element={<Navigate to="/square" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+
+      {/* 后台：统一 AdminLayout（顶部栏 + 左侧导航 + 内容区 + 登录门禁） */}
+      <Route element={<AdminLayout />}>
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/lessons/:id" element={<AdminLessons />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/users/:id" element={<AdminUserDetail />} />
+        <Route path="/admin/stats" element={<AdminStats />} />
+        <Route path="/admin/orders" element={<AdminOrders />} />
+        <Route path="/admin/categories" element={<AdminCategories />} />
+        <Route path="/admin/settings" element={<AdminSettings />} />
+        <Route path="/admin/segments" element={<AdminSegments />} />
       </Route>
     </Routes>
   )
