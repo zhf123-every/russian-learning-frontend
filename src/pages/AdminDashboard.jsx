@@ -1025,6 +1025,7 @@ export default function AdminDashboard() {
         flash('⚠️ 变体词池生成失败，本次按无词池继续（变体词由 AI 自由选择）：' + String(e && e.message || e))
       }
       const BATCH = 4
+      const DIFFS = ['easy', 'medium', 'hard']
       const allPaths = []
       const failed = []
       let done = 0
@@ -1034,13 +1035,18 @@ export default function AdminDashboard() {
           const ru = String(s.ru || s.russian || s.text || '').trim()
           if (!ru) return null
           try {
-            const r = await generateSlotPaths({ sentence: ru, tokens: splitTokens(ru), difficulty: 'easy', pool, httpPost: segHttpPost })
-            if (r.fallback) return { ok: false, ru, reason: r.reason || 'fallback' }
-            if (r.pending) return { ok: false, ru, reason: 'pending' }
-            const v = verifySlotPaths(r.paths, ru)
-            if (!v.ok) return { ok: false, ru, reason: v.errors.join(';') }
+            // 三档难度：每句生成 easy/medium/hard 三套路径（块粒度不同，末步都是完整句）
+            const out = []
+            for (const d of DIFFS) {
+              const r = await generateSlotPaths({ sentence: ru, tokens: splitTokens(ru), difficulty: d, pool, httpPost: segHttpPost })
+              if (r.fallback) return { ok: false, ru, reason: `${d}: ${r.reason || 'fallback'}` }
+              if (r.pending) return { ok: false, ru, reason: `${d}: pending` }
+              const v = verifySlotPaths(r.paths, ru)
+              if (!v.ok) return { ok: false, ru, reason: `${d}: ${v.errors.join(';')}` }
+              out.push(...r.paths.map((p) => ({ ...p, difficulty: d })))
+            }
             done++
-            return { ok: true, paths: r.paths }
+            return { ok: true, paths: out }
           } catch (e) {
             return { ok: false, ru, reason: String(e && e.message || e).slice(0, 120) }
           }
@@ -1401,7 +1407,7 @@ export default function AdminDashboard() {
                   <p className="text-xs text-gray-400 mt-1">按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。粘贴 pathId + steps 结构 JSON 后立即显示在这里。</p>
                   {slotResult && (
                     <div className="mt-2 rounded-lg border border-info/30 bg-info/5 p-2.5 text-xs text-gray-700 space-y-1">
-                      <div>共 {slotResult.total} 句：✅ 成功 {slotResult.done}，❌ 失败 {slotResult.failed.length} {slotResult.poolReused || ''}</div>
+                      <div>共 {slotResult.total} 句：✅ 成功 {slotResult.done}（每句三档：初级/中级/高级），❌ 失败 {slotResult.failed.length} {slotResult.poolReused || ''}</div>
                       {slotResult.backupKey && <div>🛟 旧路径已备份到本地（{slotResult.backupKey}），可随时回滚</div>}
                       {slotResult.failed.length > 0 && (
                         <div className="max-h-24 overflow-y-auto">

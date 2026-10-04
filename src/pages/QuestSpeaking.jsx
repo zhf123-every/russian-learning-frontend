@@ -52,6 +52,19 @@ async function loadSegmentsForUnit(unitId, courseId) {
   }
 }
 
+// ---- P4 句乐部路径优先：三档路径按难度取档（与 QuestPractice 一致） ----
+const diffToPathKey = { beginner: "easy", intermediate: "medium", advanced: "hard" };
+function pathsByDifficulty(paths, diffKey) {
+  const arr = Array.isArray(paths) ? paths : [];
+  const key = diffToPathKey[diffKey];
+  if (!key) return arr;
+  const matched = arr.filter((p) => !p.difficulty || p.difficulty === key);
+  return matched.length ? matched : arr;
+}
+function seqsFromPaths(paths, title, diffKey) {
+  return scaffoldingToSequences(pathsByDifficulty(paths, diffKey), title || "本课");
+}
+
 // ---- 数据适配（与 QuestPractice 一致）----
 function adaptBuildSteps(data) {
   const families = Array.isArray(data?.families) ? data.families : [];
@@ -311,6 +324,17 @@ export default function QuestSpeaking() {
       try {
         const pre = getCachedLesson(effectiveCourseId);
         if (pre) {
+          // 路径优先（句乐部三档路径）：存在 scaffoldingPaths → 按难度取档出题，不读语块
+          const hasPaths = Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length;
+          if (hasPaths) {
+            if (!cancelled) {
+              setUnitMeta(pre.unit || null);
+              const seqs = seqsFromPaths(pre.scaffoldingPaths, (pre.unit && pre.unit.title) || pre.title || "本课", diffKeyRef.current);
+              setSequences(applyDiff(seqs));
+              setLoading(false);
+            }
+            return;
+          }
           if (pre.families) {
             const adapted = adaptBuildSteps(pre);
             if (!cancelled) {
@@ -324,12 +348,18 @@ export default function QuestSpeaking() {
             return;
           }
           if ((Array.isArray(pre.sentences) && pre.sentences.length) || (Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length)) {
-            const adapted = adaptLocalLesson(pre);
+            const hasPaths = Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length;
+            const adapted = hasPaths ? null : adaptLocalLesson(pre);
             if (!cancelled) {
               setLocalLesson(pre); setIsLocalMode(true);
               setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
-              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
-              const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, pre?.words);
+              let seqs = null;
+              if (hasPaths) {
+                seqs = seqsFromPaths(pre.scaffoldingPaths, pre.title || "本课", diffKeyRef.current);
+              } else {
+                const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
+                seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, pre?.words);
+              }
               setSequences(applyDiff(seqs));
               setLoading(false);
             }
@@ -346,15 +376,21 @@ export default function QuestSpeaking() {
           try { stored = JSON.parse(sessionStorage.getItem("rlearn_local_lesson_" + effectiveCourseId) || "null") } catch (e) { stored = null }
           if (!(stored && ((Array.isArray(stored.sentences) && stored.sentences.length) || (Array.isArray(stored.scaffoldingPaths) && stored.scaffoldingPaths.length)))) stored = findLocalUnitById(effectiveCourseId);
           if (stored && ((Array.isArray(stored.sentences) && stored.sentences.length) || (Array.isArray(stored.scaffoldingPaths) && stored.scaffoldingPaths.length))) {
-            const adapted = adaptLocalLesson(stored);
+            const hasPaths = Array.isArray(stored.scaffoldingPaths) && stored.scaffoldingPaths.length;
+            const adapted = hasPaths ? null : adaptLocalLesson(stored);
             if (!cancelled) {
               setLocalLesson(stored);
               setIsLocalMode(true);
               window.__unitKnowledge = window.__unitKnowledge || {};
               window.__unitKnowledge[effectiveCourseId] = (stored && stored.knowledge) || {};
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
-              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
-              const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, stored?.words);
+              let seqs = null;
+              if (hasPaths) {
+                seqs = seqsFromPaths(stored.scaffoldingPaths, stored.title || "本课", diffKeyRef.current);
+              } else {
+                const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
+                seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, stored?.words);
+              }
               setSequences(applyDiff(seqs));
               if (!cancelled) setLoading(false);
             }
@@ -373,13 +409,19 @@ export default function QuestSpeaking() {
               if (v && v.kind === 'course' && Array.isArray(v.units)) {
                 const u = v.units.find(x => x.id === effectiveCourseId);
                 if (u && ((Array.isArray(u.sentences) && u.sentences.length) || (Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length))) {
-                  const adapted = adaptLocalLesson(u);
+                  const hasPaths = Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length;
+                  const adapted = hasPaths ? null : adaptLocalLesson(u);
                   if (!cancelled) {
                     setLocalLesson(u);
                     setIsLocalMode(true);
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" });
-                    const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
-                    const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, u?.words);
+                    let seqs = null;
+                    if (hasPaths) {
+                      seqs = seqsFromPaths(u.scaffoldingPaths, u.title || "本课", diffKeyRef.current);
+                    } else {
+                      const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
+                      seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, u?.words);
+                    }
                     setSequences(applyDiff(seqs));
                     if (!cancelled) setLoading(false);
                   }

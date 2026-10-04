@@ -76,6 +76,19 @@ async function loadSegmentsForUnit(unitId, courseId) {
   }
 }
 
+// ---- P4 句乐部路径优先：三档路径按难度取档（无 difficulty 标记的旧路径按 easy；custom 取全档） ----
+const diffToPathKey = { beginner: "easy", intermediate: "medium", advanced: "hard" };
+function pathsByDifficulty(paths, diffKey) {
+  const arr = Array.isArray(paths) ? paths : [];
+  const key = diffToPathKey[diffKey];
+  if (!key) return arr; // custom → 全档
+  const matched = arr.filter((p) => !p.difficulty || p.difficulty === key);
+  return matched.length ? matched : arr; // 该档缺失 → 全量兜底
+}
+function seqsFromPaths(paths, title, diffKey) {
+  return scaffoldingToSequences(pathsByDifficulty(paths, diffKey), title || "本课");
+}
+
 // 把 /api/units/:id/build-steps 的 family/step 适配成答题引擎使用的 sequence/unit 结构
 // family -> sequence；step -> unit；答题状态机/判题/连击/结算完全复用，不感知数据来源
 function adaptBuildSteps(data) {
@@ -560,6 +573,17 @@ export default function QuestPractice() {
       try {
         const pre = getCachedLesson(effectiveCourseId);
         if (pre) {
+          // 路径优先（句乐部三档路径）：存在 scaffoldingPaths → 按难度取档出题，不读语块
+          const hasPaths = Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length;
+          if (hasPaths) {
+            if (!cancelled) {
+              setUnitMeta(pre.unit || null);
+              const seqs = seqsFromPaths(pre.scaffoldingPaths, (pre.unit && pre.unit.title) || pre.title || "本课", diffKeyRef.current);
+              setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
+              setLoading(false);
+            }
+            return;
+          }
           if (pre.families) {
             const adapted = adaptBuildSteps(pre);
             if (!cancelled) {
@@ -573,14 +597,20 @@ export default function QuestPractice() {
             return;
           }
           if ((Array.isArray(pre.sentences) && pre.sentences.length) || (Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length)) {
-            const adapted = adaptLocalLesson(pre);
+            const hasPaths = Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length;
+            const adapted = hasPaths ? null : adaptLocalLesson(pre);
             if (!cancelled) {
               setLocalLesson(pre); setIsLocalMode(true);
               window.__unitKnowledge = window.__unitKnowledge || {};
               window.__unitKnowledge[effectiveCourseId] = (pre && pre.knowledge) || {};
               setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
-              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
-              const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, pre?.words);
+              let seqs = null;
+              if (hasPaths) {
+                seqs = seqsFromPaths(pre.scaffoldingPaths, pre.title || "本课", diffKeyRef.current);
+              } else {
+                const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
+                seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, pre?.words);
+              }
               setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
               setLoading(false);
             }

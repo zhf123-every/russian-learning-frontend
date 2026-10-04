@@ -74,6 +74,19 @@ async function loadSegmentsItemsForUnit(unitId, courseId) {
   }
 }
 
+// ---- P4 句乐部路径优先（听写）：三档路径按难度取档，每教学块 = 一道听写题（分步零件顺序） ----
+const diffToPathKey = { beginner: "easy", intermediate: "medium", advanced: "hard" };
+function pathsByDifficulty(paths, diffKey) {
+  const arr = Array.isArray(paths) ? paths : [];
+  const key = diffToPathKey[diffKey];
+  if (!key) return arr;
+  const matched = arr.filter((p) => !p.difficulty || p.difficulty === key);
+  return matched.length ? matched : arr;
+}
+function itemsFromPaths(paths, diffKey) {
+  return scaffoldingToItems(pathsByDifficulty(paths, diffKey));
+}
+
 // Chunking：把拍平的 statements 逐句展开为滚雪球步骤（听写页无 spellWord 单词环节，全部句子切块）
 // P3：语块题自带 chunks 分段（该档语块顺序）→ 展开器优先用语块分段生成"零件→累积→整句"；
 //     老数据无 chunks → 本地规则切块；hard 档整句一块 → 展开器判 <2 块直接整句听写
@@ -416,6 +429,23 @@ export default function QuestDictation() {
     async function loadCourse() {
       setLoading(true);
       setLoadError(null);
+      // P4：句乐部路径优先——课时有 scaffoldingPaths → 按难度取档，每个教学块 = 一道听写题（分步零件顺序）
+      try {
+        const pre = getCachedLesson(effectiveCourseId);
+        const hasPaths = pre && Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length;
+        if (hasPaths) {
+          const items = itemsFromPaths(pre.scaffoldingPaths, diffKeyRef.current);
+          if (items.length && !cancelled) {
+            setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
+            setLocalLesson(pre); setIsLocalMode(true);
+            window.__unitKnowledge = window.__unitKnowledge || {};
+            window.__unitKnowledge[effectiveCourseId] = (pre && pre.knowledge) || {};
+            setStatements(applyDiffItems(items)); // 不分步展开：路径步骤即听写题序
+            setLoading(false);
+          }
+          return;
+        }
+      } catch (e) { /* 缓存不可用 → 走原逻辑 */ }
       // P3：语块优先——课时有 ok 语块 → 整句听写（C 混合），不再走旧分支；无则降级老路径
       try {
         const segItems = await loadSegmentsItemsForUnit(effectiveCourseId, studyCourseId);
@@ -500,13 +530,12 @@ export default function QuestDictation() {
             stored = findLocalUnitById(effectiveCourseId)
           }
           if (stored && Array.isArray(stored.scaffoldingPaths) && stored.scaffoldingPaths.length) {
-            const items = scaffoldingToItems(stored.scaffoldingPaths);
+            const items = itemsFromPaths(stored.scaffoldingPaths, diffKeyRef.current);
             if (!cancelled) {
               setLocalLesson(stored); setIsLocalMode(true);
               window.__unitKnowledge = window.__unitKnowledge || {};
               window.__unitKnowledge[effectiveCourseId] = (stored && stored.knowledge) || {};
-              const stmts = expandStatements(items, stored.words);
-              setStatements(applyDiffItems(stmts));
+              setStatements(applyDiffItems(items)); // 不分步：路径步骤即听写题序
               setLoading(false);
             }
             return;
@@ -543,13 +572,12 @@ export default function QuestDictation() {
               if (v && v.kind === 'course' && Array.isArray(v.units)) {
                 const u = v.units.find(x => x.id === effectiveCourseId)
                 if (u && Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length) {
-                  const items = scaffoldingToItems(u.scaffoldingPaths)
+                  const items = itemsFromPaths(u.scaffoldingPaths, diffKeyRef.current)
                   if (!cancelled) {
                     setLocalLesson(u)
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
-                    const stmts = expandStatements(items, u.words)
-                    setStatements(applyDiffItems(stmts))
+                    setStatements(applyDiffItems(items)) // 不分步：路径步骤即听写题序
                     if (!cancelled) setLoading(false);
                   }
                   return
