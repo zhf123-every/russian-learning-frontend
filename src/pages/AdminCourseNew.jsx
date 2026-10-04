@@ -29,6 +29,7 @@ const TAG_POOL = {
 const emptyForm = () => ({
   title: '',
   subtitle: '',
+  contentOutline: '', // 课程内容说明（课文/要点/目录）：AI 生成真实简介的核心素材
   category: '教材同步',
   grade: '通用',
   textbook: '', // 教材版本：默认不选，避免未选时被 AI 误当事实引用
@@ -64,6 +65,7 @@ export default function AdminCourseNew() {
     setForm({
       title: c.title || '',
       subtitle: c.subtitle || '',
+      contentOutline: c.contentOutline || '',
       category: c.category || '教材同步',
       grade: c.grade || '通用',
       textbook: c.textbook || '自编课',
@@ -109,30 +111,35 @@ export default function AdminCourseNew() {
     window.setTimeout(() => setToast(''), 3000)
   }
 
-  // —— AI 自动生成课程简介（【课程介绍】【学习目标】【适合谁学】）——
+  // —— AI 自动生成课程简介（基于「课程内容说明」写真实简介；无素材时只按标题写概括）——
   const aiGenDesc = async () => {
     const title = form.title.trim()
     if (!title) { flash('请先填写课程标题，再生成简介'); return }
     setAiDescBusy(true)
     try {
+      const outline = (form.contentOutline || '').trim()
       const ctx = [
         title && `课程标题：${title}`,
+        outline && `课程真实内容（必须严格基于此撰写，不得编造内容之外的具体细节）：\n${outline}`,
         form.category && `分类：${form.category}`,
         form.textbook && `教材：${form.textbook}`,
         form.grade && `年级：${form.grade}`,
         form.difficulty && `难度：${form.difficulty}`,
         form.tags && form.tags.length && `标签：${form.tags.join('、')}`,
-      ].filter(Boolean).join('\n')
+      ].filter(Boolean).join('\n\n')
       const content = await chat({
         messages: [
-          { role: 'system', content: '你是俄语课程运营编辑，擅长为俄语学习课程撰写专业、有吸引力、分三段的介绍文案，全部使用简体中文。' },
+          { role: 'system', content: '你是俄语课程运营编辑，擅长为俄语学习课程撰写专业、真实、有吸引力的三段式介绍文案，全部使用简体中文。' },
           { role: 'user', content:
             `请根据以下课程信息，撰写三段式课程简介：\n${ctx}\n\n` +
-            '要求：\n1. 第一段以【课程介绍】开头：说明课程内容、学习范围和亮点（100字左右）；\n' +
+            '要求：\n1. 第一段以【课程介绍】开头：真实说明课程学什么、覆盖哪些内容（100字左右）；\n' +
             '2. 第二段以【学习目标】开头：写3-5条可衡量的学习目标（80字左右）；\n' +
             '3. 第三段以【适合谁学】开头：列出适合的学习人群（60字左右）；\n' +
-            '4. 教材信息仅供你参考，是否提及由你判断：只有当它与课程标题明显一致时才可提及教材名；\n' +
-            '   绝对禁止编造、臆测或沿用与课程标题无关的教材名（如标题是"东方俄语"，简介里不得出现"走遍俄罗斯"）。\n' +
+            '4. 真实性铁律：\n' +
+            '   - 只能描述「课程真实内容」里出现的内容（课文主题、语法点、词汇范围、场景等），逐条如实转述，不得脑补、扩展或编造细节；\n' +
+            '   - 教材名、章节数、知识点、课时安排、统计数据等一律不得臆造；若课程真实内容中未提及，则不得出现；\n' +
+            '   - 教材信息仅供你判断是否与课程一致，只有标题或内容明确对应时才可提及教材名；\n' +
+            '   - 若「课程真实内容」为空，只允许基于标题写概括性介绍，不得虚构任何具体细节。\n' +
             '直接输出三段文字，每段以对应方括号标题起行，不要额外解释。' },
         ],
       })
@@ -215,6 +222,7 @@ export default function AdminCourseNew() {
     const base = {
       title,
       subtitle: form.subtitle.trim(),
+      contentOutline: (form.contentOutline || '').trim(), // AI 简介素材，保存供后续重新生成
       category: form.category,
       grade: form.grade || '通用',
       textbook: form.textbook || '自编课',
@@ -376,6 +384,14 @@ export default function AdminCourseNew() {
                 </button>
               </label>
               <textarea className="textarea textarea-bordered" rows={5} value={form.subtitle} onChange={e => setField('subtitle', e.target.value)} placeholder="可手动填写一句话简介，或点击右上角「✨ AI 自动生成」生成：课程介绍 / 学习目标 / 适合谁学" />
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">课程内容说明（AI 生成真实简介的素材，可选但强烈建议）</span>
+              </label>
+              <textarea className="textarea textarea-bordered" rows={6} value={form.contentOutline} onChange={e => setField('contentOutline', e.target.value)} placeholder={"粘贴你课程的真实内容：课文片段、单元目录、语法点、词汇主题、学习场景等。\nAI 生成简介时只依据这里的内容如实撰写，不会编造。\n示例：\n第一课：字母与发音（33个字母、重音规则）\n第二课：问候与自我介绍（Здравствуйте! Меня зовут...）\n每课含课文、对话、语法讲解和课后练习。"} />
+              <span className="mt-1 text-xs text-gray-400">留空时 AI 只能按课程标题写概括性介绍；填入真实内容后简介才有具体细节。</span>
             </div>
 
             <div className="form-control">
