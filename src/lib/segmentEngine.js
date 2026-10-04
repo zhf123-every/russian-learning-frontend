@@ -107,7 +107,9 @@ export function normalizeSentence(text) {
 // TiDB Serverless 冷启动：服务重启后首个请求偶发 403（鉴权查用户时数据库未就绪）。
 // 包装 httpPost：仅对带 status=403 的异常自动重试 1 次（共 2 次尝试）；
 // 网络错误（无 status）、其他 HTTP 状态、重试后仍 403 → 原样抛出。
-export async function withRetry403(httpPost, maxAttempts = 2) {
+// 注意：本函数必须是非 async 的普通函数——它返回的 async 包装函数才是被调用的 httpPost；
+// 若外层写成 async，调用方拿到的是 Promise 而非函数（deps.httpPost 校验会失败）。
+export function withRetry403(httpPost, maxAttempts = 2) {
   if (typeof httpPost !== 'function') throw new Error('withRetry403: httpPost 必须为函数')
   return async (path, body) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {

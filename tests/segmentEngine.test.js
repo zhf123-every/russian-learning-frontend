@@ -341,7 +341,7 @@ describe('场景8 withRetry403（TiDB 冷启动 403 自动重试 1 次）', () =
     await assert.rejects(() => wrapped('/api/x', {}), (e) => e.status === 500)
     assert.equal(calls, 1)
   })
-  test('httpPost 非函数 → 构造时抛错', async () => {
-    await assert.rejects(() => withRetry403(null), /httpPost 必须为函数/)
+  test('httpPost 非函数 → 构造时同步抛错', () => {
+    assert.throws(() => withRetry403(null), /httpPost 必须为函数/)
   })
 })
