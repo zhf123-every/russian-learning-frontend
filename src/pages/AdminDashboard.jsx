@@ -849,7 +849,7 @@ export default function AdminDashboard() {
     setView('unit')
     window.scrollTo({ top: 0 })
     // P2-A：打开课时自动补跑上次失败的语块（本机增强；无记录 / 失败静默，不打扰）
-    const uTexts = (u.sentences || []).filter(s => String((s && (s.ru || s.russian || s.text)) || '').trim())
+    const uTexts = collectUnitSentenceObjs(u)
     if (active && uTexts.length) {
       retryPendingSegments({ courseId: active.id, unitId: u.id, sentences: u.sentences, deps: { httpPost: segHttpPost } })
         .then((r) => { if (r && !r.skipped && (r.done || []).length) flash(`语块补跑完成：${r.done.length} 项`) })
@@ -887,6 +887,26 @@ export default function AdminDashboard() {
     return out
   }
 
+  // 课时句子收集器（对象数组）：例句 + 滚动路径末步完整句（去重）——批量回填语块的句子来源。
+  // 修复"有滚动路径但例句区为空 → 回填提示无句子"：路径末步即完整句，同样可切语块。
+  const collectUnitSentenceObjs = (u) => {
+    const seen = new Set()
+    const out = []
+    const push = (ru, zh) => {
+      const k = String(ru || '').trim()
+      if (!k || seen.has(k)) return
+      seen.add(k)
+      out.push({ ru: k, zh: String(zh || '').trim() })
+    }
+    ;(u.sentences || []).forEach((s) => push(s && (s.ru || s.russian || s.text), s && (s.chinese || s.zh)))
+    ;(u.scaffoldingPaths || []).forEach((p) => {
+      const steps = Array.isArray(p.steps) ? p.steps : []
+      const last = steps[steps.length - 1]
+      push(last && (last.russian || last.ru || last.text), last && (last.chinese || last.zh))
+    })
+    return out
+  }
+
   const genUnitKnowledge = async () => {
     if (!activeUnit) return
     const sents = collectUnitSentences(activeUnit)
@@ -920,7 +940,7 @@ export default function AdminDashboard() {
   const [fillProgress, setFillProgress] = useState(null) // {done, total, okUnits, failUnits, cur}
   const batchFillSegments = async () => {
     if (fillBusy || !active) return
-    const withSent = units.filter(u => (u.sentences || []).some(s => String((s && (s.ru || s.russian || s.text)) || '').trim()))
+    const withSent = units.filter(u => collectUnitSentenceObjs(u).length)
     if (!withSent.length) { flash('本课程没有含句子的课时，无需回填语块'); return }
     const total = Math.min(withSent.length, 10)
     if (withSent.length > 10 && !window.confirm(`共 ${withSent.length} 个课时含句子，单次最多回填 ${total} 个，完成后可再次点击继续回填。继续？`)) return
@@ -931,7 +951,7 @@ export default function AdminDashboard() {
       const u = withSent[i]
       setFillProgress({ done: i + 1, total, okUnits, failUnits, cur: u.title })
       try {
-        const r = await triggerUnitSegments({ courseId: active.id, unitId: u.id, sentences: u.sentences, deps: { httpPost: segHttpPost } })
+        const r = await triggerUnitSegments({ courseId: active.id, unitId: u.id, sentences: collectUnitSentenceObjs(u), deps: { httpPost: segHttpPost } })
         if (r && (r.skipped || (r.failed || []).length)) failUnits++
         else okUnits++
       } catch (e) {
@@ -958,8 +978,8 @@ export default function AdminDashboard() {
     setSaveBanner({ title: activeUnit.title, stats: stats || '（暂无内容）', left })
     flash(`已保存《${activeUnit.title}》` + (stats ? '：' + stats : '') + (left ? `，还有 ${left} 个课时未挂内容` : '，所有课时已就绪'))
     // P2-A：保存后异步触发语块生成（不 await；关页不保证完成，下次打开课时自动补跑）
-    const segSentences = activeUnit.sentences || []
-    if (active && segSentences.some(s => String((s && (s.ru || s.russian || s.text)) || '').trim())) {
+    const segSentences = collectUnitSentenceObjs(activeUnit)
+    if (active && segSentences.length) {
       triggerUnitSegments({ courseId: active.id, unitId: activeUnit.id, sentences: segSentences, deps: { httpPost: segHttpPost } })
         .then((r) => { if (r && !r.skipped) flash('已触发语块生成，完成后下次打开可见') })
         .catch((e) => console.warn('[segments] 语块生成触发失败（下次打开自动补跑）：', e && e.message))
