@@ -9,6 +9,7 @@ import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
 import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps, russianizeNumbers } from '../lib/snowballEngine'
 import { withRetry403 } from '../lib/segmentEngine'
+import { generateSlotPaths, verifySlotPaths } from '../lib/slotEngine'
 import { collectUnitSentenceObjs } from '../lib/unitSentences'
 import { triggerUnitSegments, retryPendingSegments } from '../lib/segmentTrigger'
 import { useAdminStore } from '../store/adminStore'
@@ -991,6 +992,59 @@ export default function AdminDashboard() {
     patchUnit({ scaffoldingPaths: paths })
   }
 
+  // ========== P4：生成句乐部式滚雪球路径（AI 出增量词序列 → 电脑拼装 → 强校验 → 写回课时） ==========
+  const [slotBusy, setSlotBusy] = useState(false)
+  const [slotResult, setSlotResult] = useState(null) // {ok, total, done, failed:[{ru,reason}], backupKey}
+  const generateSlotPathsForUnit = async () => {
+    const sentences = collectUnitSentenceObjs(activeUnit)
+    if (!sentences.length) { flash('本课时没有句子（例句或路径末步均可作为数据源）'); return }
+    setSlotBusy(true); setSlotResult(null)
+    const backupKey = 'rb_slot_paths_backup_' + (activeUnit.id || 'unit')
+    try {
+      const old = activeUnit.scaffoldingPaths || []
+      if (old.length) {
+        try { localStorage.setItem(backupKey, JSON.stringify(old)) } catch (e) { /* 忽略 */ }
+      }
+      const BATCH = 4
+      const allPaths = []
+      const failed = []
+      let done = 0
+      for (let i = 0; i < sentences.length; i += BATCH) {
+        const batch = sentences.slice(i, i + BATCH)
+        const results = await Promise.all(batch.map(async (s) => {
+          const ru = String(s.ru || s.russian || s.text || '').trim()
+          if (!ru) return null
+          try {
+            const r = await generateSlotPaths({ sentence: ru, tokens: splitTokens(ru), difficulty: 'easy', httpPost: segHttpPost })
+            if (r.fallback) return { ok: false, ru, reason: r.reason || 'fallback' }
+            if (r.pending) return { ok: false, ru, reason: 'pending' }
+            const v = verifySlotPaths(r.paths, ru)
+            if (!v.ok) return { ok: false, ru, reason: v.errors.join(';') }
+            done++
+            return { ok: true, paths: r.paths }
+          } catch (e) {
+            return { ok: false, ru, reason: String(e && e.message || e).slice(0, 120) }
+          }
+        }))
+        results.filter(Boolean).forEach((r) => {
+          if (r.ok) allPaths.push(...r.paths); else failed.push({ ru: r.ru, reason: r.reason })
+        })
+      }
+      if (allPaths.length) {
+        patchUnit({ scaffoldingPaths: allPaths })
+        flash(`✅ 句乐部路径已生成：${done} 句成功` + (failed.length ? `，${failed.length} 句失败` : ''))
+      } else {
+        flash(`⚠️ 全部失败：${failed.length} 句（详见下方失败列表）`)
+      }
+      setSlotResult({ ok: allPaths.length > 0, total: sentences.length, done, failed, backupKey: old.length ? backupKey : null })
+    } catch (e) {
+      flash('生成句乐部路径失败：' + String(e && e.message || e))
+      setSlotResult({ ok: false, total: sentences.length, done: 0, failed: [], backupKey: null })
+    } finally {
+      setSlotBusy(false)
+    }
+  }
+
   // ========== AI 前置数据入库：批量导入 JSON 句子 + 修复中文（缺失/逐词硬拼），前端只渲染固定数据 ==========
   // —— 批量导入质检：导入后自动跑规则质检 + 可一键 AI 深度审核（语序/语义/语法/数字）——
   const [qcReport, setQcReport] = useState(null) // runQc 结果 {errors,warns,items}
@@ -1319,8 +1373,26 @@ export default function AdminDashboard() {
               {/* ② 滚动学习路径（scaffoldingPaths）——连词成句滚雪球 */}
               <div id="scaffold-section" className="card mt-4 border border-purple-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
                 <div className="card-body p-5">
-                  <h2 className="card-title text-base text-gray-900">② 滚动学习路径（连词成句滚雪球）</h2>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <h2 className="card-title text-base text-gray-900">② 滚动学习路径（连词成句滚雪球）</h2>
+                    <button className="btn btn-primary btn-sm" onClick={generateSlotPathsForUnit} disabled={slotBusy}>
+                      {slotBusy ? '✨ 生成中…（AI 规划 + 电脑拼装）' : '✨ 生成句乐部路径（AI 规划 + 自动拼装）'}
+                    </button>
+                  </div>
                   <p className="text-xs text-gray-400 mt-1">按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。粘贴 pathId + steps 结构 JSON 后立即显示在这里。</p>
+                  {slotResult && (
+                    <div className="mt-2 rounded-lg border border-info/30 bg-info/5 p-2.5 text-xs text-gray-700 space-y-1">
+                      <div>共 {slotResult.total} 句：✅ 成功 {slotResult.done}，❌ 失败 {slotResult.failed.length}</div>
+                      {slotResult.backupKey && <div>🛟 旧路径已备份到本地（{slotResult.backupKey}），可随时回滚</div>}
+                      {slotResult.failed.length > 0 && (
+                        <div className="max-h-24 overflow-y-auto">
+                          {slotResult.failed.map((f, i) => (
+                            <div key={i} className="text-error"><span className="font-mono">{f.ru}</span> —— {f.reason}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {(!activeUnit.scaffoldingPaths || !activeUnit.scaffoldingPaths.length) ? (
                     <p className="py-6 text-center text-sm text-gray-400">还没有路径。在下方「批量导入 JSON」粘贴 pathId + steps 数据即可。</p>
                   ) : (
