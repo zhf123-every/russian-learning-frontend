@@ -418,7 +418,7 @@ export default function QuestDictation() {
       setLoadError(null);
       // P3：语块优先——课时有 ok 语块 → 整句听写（C 混合），不再走旧分支；无则降级老路径
       try {
-        const segItems = await loadSegmentsItemsForUnit(effectiveCourseId, courseId);
+        const segItems = await loadSegmentsItemsForUnit(effectiveCourseId, studyCourseId);
         if (segItems && segItems.length && !cancelled) {
           let title = "本课", desc = "";
           try { const pre = getCachedLesson(effectiveCourseId); if (pre) { title = pre.title || pre.name || title; desc = pre.description || ""; } } catch (e) { /* 忽略 */ }

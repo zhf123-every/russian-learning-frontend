@@ -316,7 +316,7 @@ export default function QuestSpeaking() {
             if (!cancelled) {
               setUnitMeta(pre.unit || null);
               const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
               const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, cloudWords);
               setSequences(applyDiff(seqs));
               setLoading(false);
@@ -328,7 +328,7 @@ export default function QuestSpeaking() {
             if (!cancelled) {
               setLocalLesson(pre); setIsLocalMode(true);
               setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
-              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
               const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, pre?.words);
               setSequences(applyDiff(seqs));
               setLoading(false);
@@ -353,7 +353,7 @@ export default function QuestSpeaking() {
               window.__unitKnowledge = window.__unitKnowledge || {};
               window.__unitKnowledge[effectiveCourseId] = (stored && stored.knowledge) || {};
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
-              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
               const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, stored?.words);
               setSequences(applyDiff(seqs));
               if (!cancelled) setLoading(false);
@@ -378,7 +378,7 @@ export default function QuestSpeaking() {
                     setLocalLesson(u);
                     setIsLocalMode(true);
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" });
-                    const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+                    const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
                     const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, u?.words);
                     setSequences(applyDiff(seqs));
                     if (!cancelled) setLoading(false);
@@ -402,7 +402,7 @@ export default function QuestSpeaking() {
           else {
             setUnitMeta(data.unit || null);
             const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-            const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+            const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
             const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, cloudWords);
             setSequences(applyDiff(seqs));
             if (!cancelled) setLoading(false);

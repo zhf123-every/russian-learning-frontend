@@ -565,7 +565,7 @@ export default function QuestPractice() {
             if (!cancelled) {
               setUnitMeta(pre.unit || null);
               const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
               const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, cloudWords);
               setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
               setLoading(false);
@@ -579,7 +579,7 @@ export default function QuestPractice() {
               window.__unitKnowledge = window.__unitKnowledge || {};
               window.__unitKnowledge[effectiveCourseId] = (pre && pre.knowledge) || {};
               setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
-              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
               const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, pre?.words);
               setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
               setLoading(false);
@@ -608,7 +608,7 @@ export default function QuestPractice() {
               window.__unitKnowledge = window.__unitKnowledge || {};
               window.__unitKnowledge[effectiveCourseId] = (stored && stored.knowledge) || {};
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
-              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
               const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, stored?.words);
               setSequences(applyDiff(seqs));
               setCurrentSequenceIndex(0);
@@ -637,7 +637,7 @@ export default function QuestPractice() {
                     setLocalLesson(u)
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
-                    const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId)
+                    const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId)
                     const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, u?.words)
                     setSequences(applyDiff(seqs))
                     setCurrentSequenceIndex(0)
@@ -665,7 +665,7 @@ export default function QuestPractice() {
             setUnitMeta(data.unit || null);
             // 云端词表：从各句 words 提取 {ru, zh}，供 chunking 块中文翻译（缺词不再兜底俄语）
             const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-            const segSeqs = await loadSegmentsForUnit(effectiveCourseId, courseId);
+            const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
             const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, cloudWords);
             setSequences(applyDiff(seqs));
             setCurrentSequenceIndex(0);
