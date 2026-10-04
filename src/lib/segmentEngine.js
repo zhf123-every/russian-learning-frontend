@@ -202,9 +202,11 @@ export async function aiSegment({ sentence, tokens, difficulty }, deps = {}) {
       return makeGenerating([])
     }
     if (resp && resp.ok === false && resp.fallback) {
+      console.error('[segmentEngine] 后端 fallback', { sentenceHash: hash, difficulty: d, reason: resp.reason, detail: resp.full || resp.expected || resp.raw || '' })
       if (attempt === 1) continue
       break
     }
+    console.error('[segmentEngine] llm-segment 未知响应', { sentenceHash: hash, difficulty: d, resp })
     break // 未知响应，不再重试
   }
   // 重试仍失败 → 机械兜底 + pending（禁止静默兜底：已 console.error）
