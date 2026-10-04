@@ -2,24 +2,28 @@ import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import { planToScaffoldingPaths, verifySlotPaths, generateSlotPaths, generateVariantPool, slotNormalize } from '../src/lib/slotEngine.js'
 
-// 与后端 _slot_verify_and_build 对齐的样例（骨架 + 否定变体）
+// 与后端 _slot_verify_and_build 对齐的样例（块模式：add 直显，末步 = 完整句）
+// 骨架组节奏对齐句乐部：Это → мой → Это мой → друг, → который живёт в Москве → 完整句
 const PLAN = {
   groups: [
     {
       title: '骨架',
       steps: [
         { add: 'Это', russian: 'Это', zh: '这', type: 'pronoun' },
-        { add: 'мой', russian: 'Это мой', zh: '我的', type: 'adj' },
-        { add: 'друг,', russian: 'Это мой друг,', zh: '朋友，', type: 'noun' },
-        { add: 'который живёт в Москве', russian: 'Это мой друг, который живёт в Москве', zh: '他住在莫斯科', type: 'clause' },
+        { add: 'мой', russian: 'мой', zh: '我的', type: 'adj' },
+        { add: 'Это мой', russian: 'Это мой', zh: '这是我的', type: 'comb' },
+        { add: 'друг,', russian: 'друг,', zh: '朋友，', type: 'noun' },
+        { add: 'который живёт в Москве', russian: 'который живёт в Москве', zh: '他住在莫斯科', type: 'clause' },
+        { add: 'Это мой друг, который живёт в Москве', russian: 'Это мой друг, который живёт в Москве', zh: '这是我的朋友，他住在莫斯科。', type: 'sentence' },
       ],
     },
     {
       title: '否定',
       steps: [
         { add: 'не', russian: 'не', zh: '不', type: 'neg' },
-        { add: 'живёт', russian: 'не живёт', zh: '居住', type: 'verb' },
-        { add: 'в Москве', russian: 'не живёт в Москве', zh: '在莫斯科', type: 'prep_phrase' },
+        { add: 'не живёт', russian: 'не живёт', zh: '不居住', type: 'comb' },
+        { add: 'не живёт в Москве', russian: 'не живёт в Москве', zh: '不住在莫斯科', type: 'comb' },
+        { add: 'Это мой друг, который не живёт в Москве', russian: 'Это мой друг, который не живёт в Москве', zh: '这是我的朋友，他不住在莫斯科。', type: 'sentence' },
       ],
     },
   ],
@@ -27,66 +31,71 @@ const PLAN = {
 }
 const ORIGINAL = 'Это мой друг, который живёт в Москве'
 
-describe('slotEngine P4 句乐部式滚雪球', () => {
-  test('plan → scaffoldingPaths：结构正确（pathId / stepIndex / russian 递增）', () => {
+describe('slotEngine P4 句乐部式滚雪球（块模式）', () => {
+  test('plan → scaffoldingPaths：结构正确（pathId / stepIndex / 末步=完整句）', () => {
     const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
     assert.equal(paths.length, 2)
     assert.equal(paths[0].pathId, 'path_01')
     assert.equal(paths[1].pathId, 'path_02')
     assert.equal(paths[0].name, '骨架')
-    assert.equal(paths[0].steps.length, 4)
+    assert.equal(paths[0].steps.length, 6)
     assert.equal(paths[0].steps[1].stepIndex, 2)
-    assert.equal(paths[0].steps[1].russian, 'Это мой')
-    assert.equal(paths[0].steps[3].russian, ORIGINAL) // 骨架最终 == 原句
+    assert.equal(paths[0].steps[2].russian, 'Это мой') // 块直显
+    assert.equal(paths[0].steps[5].russian, ORIGINAL) // 骨架末步 == 原句
+    assert.equal(paths[1].steps[3].russian, 'Это мой друг, который не живёт в Москве') // 变体末步 = 完整句
   })
 
-  test('每步 russian = 前一步 + add（机械拼接零错误）', () => {
+  test('块模式：每步 russian 直显（= add），系统不累加', () => {
     const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
-    assert.equal(paths[0].steps[2].russian, 'Это мой друг,')
+    assert.equal(paths[0].steps[0].russian, 'Это')
+    assert.equal(paths[0].steps[3].russian, 'друг,')
+    assert.equal(paths[0].steps[4].russian, 'который живёт в Москве')
     assert.equal(paths[1].steps[1].russian, 'не живёт')
-    assert.equal(paths[1].steps[2].russian, 'не живёт в Москве')
   })
 
-  test('最后一步 chinese = translation（通顺整句）；中间步 = 零件中文累积', () => {
+  test('最后一步 chinese = translation（通顺整句）；中间步 = 该块中文', () => {
     const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
-    assert.equal(paths[0].steps[3].chinese, '这是我的朋友，他住在莫斯科。')
-    assert.equal(paths[0].steps[1].chinese, '这 我的')
-    assert.ok(paths[0].steps[0].chinese.includes('这'))
+    assert.equal(paths[0].steps[5].chinese, '这是我的朋友，他住在莫斯科。')
+    assert.equal(paths[0].steps[2].chinese, '这是我的')
+    assert.equal(paths[1].steps[3].chinese, '这是我的朋友，他住在莫斯科。') // 变体末步用整句翻译
   })
 
-  test('newChunks / allChunks：add 整块作零件，累积正确', () => {
+  test('newChunks / allChunks：教学块作零件，累积正确', () => {
     const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
     assert.equal(paths[0].steps[0].newChunks[0].word, 'Это')
     assert.equal(paths[0].steps[1].allChunks.length, 2)
-    assert.equal(paths[0].steps[3].allChunks.length, 4)
-    assert.equal(paths[0].steps[3].allChunks[3].translation, '他住在莫斯科')
+    assert.equal(paths[0].steps[5].allChunks.length, 6)
+    assert.equal(paths[0].steps[5].allChunks[5].word, ORIGINAL)
+    assert.equal(paths[0].steps[5].allChunks[4].translation, '他住在莫斯科')
   })
 
-  test('骨架组拼接 != 原句 → 抛错（防 AI 漏词）', () => {
+  test('骨架组末步 != 原句 → 抛错（防 AI 漏词/篡改）', () => {
     const bad = JSON.parse(JSON.stringify(PLAN))
-    bad.groups[0].steps = bad.groups[0].steps.slice(0, 3) // 缺最后一块
-    assert.throws(() => planToScaffoldingPaths(bad, ORIGINAL), /骨架组拼接 != 原句/)
+    bad.groups[0].steps = bad.groups[0].steps.slice(0, 5) // 缺完整句块
+    assert.throws(() => planToScaffoldingPaths(bad, ORIGINAL), /骨架组末步 != 原句/)
   })
 
-  test('add 为空 → 抛错', () => {
+  test('russian 为空 → 抛错', () => {
     const bad = JSON.parse(JSON.stringify(PLAN))
-    bad.groups[1].steps[0].add = '  '
-    assert.throws(() => planToScaffoldingPaths(bad, ORIGINAL), /add 为空/)
+    bad.groups[1].steps[0].russian = '  '
+    assert.throws(() => planToScaffoldingPaths(bad, ORIGINAL), /russian 为空/)
   })
 
-  test('russian 与机械拼接不一致 → 抛错', () => {
-    const bad = JSON.parse(JSON.stringify(PLAN))
-    bad.groups[0].steps[1].russian = 'мой Это' // 语序反了
-    assert.throws(() => planToScaffoldingPaths(bad, ORIGINAL), /拼接不一致/)
-  })
-
-  test('verifySlotPaths：合法路径通过；篡改后拦截', () => {
+  test('verifySlotPaths：合法路径通过；篡改骨架末步 → 拦截', () => {
     const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
     assert.equal(verifySlotPaths(paths, ORIGINAL).ok, true)
-    paths[0].steps[3].russian = 'Это мой друг' // 篡改骨架最终步
+    paths[0].steps[5].russian = 'Это мой друг' // 篡改骨架最终步
     const v = verifySlotPaths(paths, ORIGINAL)
     assert.equal(v.ok, false)
-    assert.ok(v.errors.some((e) => e.includes('骨架组拼接')))
+    assert.ok(v.errors.some((e) => e.includes('骨架组末步')))
+  })
+
+  test('verifySlotPaths：末步不是最长块 → 拦截（防末步不是完整句）', () => {
+    const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
+    paths[1].steps[3].russian = 'не живёт в Москве' // 末步变短
+    const v = verifySlotPaths(paths, ORIGINAL)
+    assert.equal(v.ok, false)
+    assert.ok(v.errors.some((e) => e.includes('末步不是最长块')))
   })
 
   test('generateSlotPaths：httpPost 返回 fetch Response-like → 解析成功', async () => {
@@ -94,7 +103,7 @@ describe('slotEngine P4 句乐部式滚雪球', () => {
     const post = async () => ({ ok: true, json: async () => body })
     const r = await generateSlotPaths({ sentence: ORIGINAL, tokens: ['Это', 'мой', 'друг,', 'который', 'живёт', 'в', 'Москве'], difficulty: 'easy', httpPost: post })
     assert.ok(r.paths)
-    assert.equal(r.paths[0].steps[3].russian, ORIGINAL)
+    assert.equal(r.paths[0].steps[5].russian, ORIGINAL)
   })
 
   test('generateSlotPaths：fallback → 返回 {fallback, reason} 不抛错', async () => {

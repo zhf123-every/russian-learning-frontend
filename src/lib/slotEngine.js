@@ -26,7 +26,8 @@ export function slotNormalize(text) {
 import { normalizeSentence, sentenceHash } from "./segmentEngine.js";
 
 // plan → scaffoldingPaths（纯函数，可单测）
-// originalSentence = 俄语化压缩空白后的原句（骨架强校验基准）
+// 块模式（对齐句乐部）：add = 教学块直显，每组最后一步 add = 完整句
+// originalSentence = 俄语化压缩空白后的原句（骨架组末步强校验基准）
 export function planToScaffoldingPaths(plan, originalSentence) {
   const groups = Array.isArray(plan && plan.groups) ? plan.groups : [];
   if (!groups.length) throw new Error("slotPlan: 无 groups");
@@ -37,39 +38,31 @@ export function planToScaffoldingPaths(plan, originalSentence) {
     const steps = Array.isArray(g.steps) ? g.steps : [];
     if (!steps.length) throw new Error(`slotPlan: 第${gi + 1}组无 steps`);
     const built = [];
-    let accZh = "";
     for (let si = 0; si < steps.length; si++) {
       const st = steps[si];
-      const add = slotNormalize(st && st.add);
-      if (!add) throw new Error(`slotPlan: 第${gi + 1}组第${si + 1}步 add 为空`);
-      const russian = slotNormalize(st && st.russian);
-      const expected = si === 0 ? add : built[si - 1].russian + " " + add;
-      if (russian !== expected) {
-        // 后端已机械拼好；此处双保险：不一致视为异常
-        throw new Error(`slotPlan: 第${gi + 1}组第${si + 1}步拼接不一致 expected=${expected} got=${russian}`);
-      }
+      const block = slotNormalize(st && st.russian);
+      if (!block) throw new Error(`slotPlan: 第${gi + 1}组第${si + 1}步 russian 为空`);
       const zh = slotNormalize(st && st.zh);
-      accZh = si === 0 ? zh : ([accZh, zh].filter(Boolean).join(" "));
-      // 词卡块：add 整块作为零件（连词成句的颗粒）
-      const addChunk = { word: add, translation: zh, role: slotNormalize(st && st.type) || "chunk" };
+      // 词卡块：该步教学块整体作为一个零件（连词成句的颗粒）
+      const addChunk = { word: block, translation: zh, role: slotNormalize(st && st.type) || "chunk" };
       built.push({
         stepIndex: si + 1,
-        russian,
+        russian: block,
         chinese: "",
-        zhAcc: accZh,
+        zhAcc: zh,
         newChunks: [addChunk],
         allChunks: (built[si - 1] ? built[si - 1].allChunks : []).concat([addChunk]),
       });
     }
-    // 最后一步中文 = 整句通顺翻译（translation）；中间步 = 该步零件中文累积
+    // 最后一步中文 = 整句通顺翻译（translation）；中间步 = 该步块的中文
     for (let si = 0; si < built.length; si++) {
       built[si].chinese = (si === built.length - 1 && translation) ? translation : built[si].zhAcc;
     }
-    // 骨架组（第1组）强校验：拼接 == 原句
+    // 骨架组（第1组）强校验：末步块 == 原句（句乐部机制：末步 add = 完整句）
     if (gi === 0) {
       const finalText = built[built.length - 1].russian;
       if (finalText !== slotNormalize(originalSentence)) {
-        throw new Error(`slotPlan: 骨架组拼接 != 原句 expected=${slotNormalize(originalSentence)} got=${finalText}`);
+        throw new Error(`slotPlan: 骨架组末步 != 原句 expected=${slotNormalize(originalSentence)} got=${finalText}`);
       }
     }
     paths.push({
@@ -115,7 +108,9 @@ export async function generateVariantPool({ sentences, httpPost }, deps = {}) {
   return { pool: r.pool };
 }
 
-// 校验已生成的 paths（写入前防御）：骨架组拼接 == 原句；每步 russian 递增
+// 校验已生成的 paths（写入前防御，块模式）：
+//  骨架组：末步块 == 原句（硬校验）；末步是组内最长块（弱校验，防 AI 末步不是完整句）
+//  变体组：末步非空；每步非空
 export function verifySlotPaths(paths, originalSentence) {
   const arr = Array.isArray(paths) ? paths : [];
   if (!arr.length) return { ok: false, errors: ["无路径"] };
@@ -123,22 +118,20 @@ export function verifySlotPaths(paths, originalSentence) {
   for (let gi = 0; gi < arr.length; gi++) {
     const steps = Array.isArray(arr[gi].steps) ? arr[gi].steps : [];
     if (!steps.length) { errors.push(`路径${gi + 1}无步骤`); continue; }
-    for (let si = 0; si < steps.length; si++) {
+    let maxLen = 0;
+    for (let si = 0; si < steps.length - 1; si++) {
       const r = slotNormalize(steps[si].russian);
       if (!r) { errors.push(`路径${gi + 1}第${si + 1}步为空`); continue; }
-      if (si > 0) {
-        const prev = slotNormalize(steps[si - 1].russian);
-        const add = slotNormalize(steps[si].newChunks && steps[si].newChunks[0] && steps[si].newChunks[0].word);
-        if (r !== prev + " " + add) {
-          errors.push(`路径${gi + 1}第${si + 1}步拼接不一致`);
-        }
+      if (r.length > maxLen) maxLen = r.length;
+    }
+    const finalText = slotNormalize(steps[steps.length - 1].russian);
+    if (gi === 0) {
+      if (finalText !== slotNormalize(originalSentence)) {
+        errors.push(`骨架组末步 != 原句`);
       }
     }
-    if (gi === 0) {
-      const finalText = slotNormalize(steps[steps.length - 1].russian);
-      if (finalText !== slotNormalize(originalSentence)) {
-        errors.push(`骨架组拼接 != 原句`);
-      }
+    if (finalText.length <= maxLen) {
+      errors.push(`路径${gi + 1}末步不是最长块（最后一步应是完整句）`);
     }
   }
   return { ok: errors.length === 0, errors };
