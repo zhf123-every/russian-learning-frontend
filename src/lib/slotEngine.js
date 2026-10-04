@@ -83,11 +83,13 @@ export function planToScaffoldingPaths(plan, originalSentence) {
 
 // 调后端 plan 接口 → 校验 → 转 scaffoldingPaths
 // deps: { httpPost(path, body) } 注入（与 segmentEngine 一致，兼容 fetch Response）
-export async function generateSlotPaths({ sentence, tokens, difficulty = "easy", httpPost }, deps = {}) {
+// pool：本课变体词池（可选；传了则变体词只能从词池取）
+export async function generateSlotPaths({ sentence, tokens, difficulty = "easy", pool, httpPost }, deps = {}) {
   const post = httpPost || (deps && deps.httpPost);
   if (typeof post !== "function") throw new Error("slotEngine: httpPost 必须注入");
   const normalized = normalizeSentence(sentence);
   const body = { sentence_hash: sentenceHash(sentence, difficulty), russian_text: normalized, tokens, difficulty };
+  if (pool && typeof pool === "object") body.pool = pool;
   const res = await post("/api/admin/segments/plan", body);
   const r = (res && typeof res.json === "function") ? await res.json().catch(() => ({})) : (res || {});
   if (r.ok === false) {
@@ -96,6 +98,21 @@ export async function generateSlotPaths({ sentence, tokens, difficulty = "easy",
   }
   const paths = planToScaffoldingPaths({ groups: r.groups, translation: r.translation }, normalized);
   return { paths };
+}
+
+// 调后端 pool 接口 → 课程级变体词池（9 类各 2-4 词）
+export async function generateVariantPool({ sentences, httpPost }, deps = {}) {
+  const post = httpPost || (deps && deps.httpPost);
+  if (typeof post !== "function") throw new Error("slotEngine: httpPost 必须注入");
+  const list = (Array.isArray(sentences) ? sentences : []).map((s) => ({
+    ru: String(s.ru || s.russian || s.text || "").trim(),
+    zh: String(s.zh || s.chinese || "").trim(),
+  })).filter((s) => s.ru);
+  if (!list.length) throw new Error("slotEngine: 词池生成需要至少一句");
+  const res = await post("/api/admin/segments/pool", { sentences: list });
+  const r = (res && typeof res.json === "function") ? await res.json().catch(() => ({})) : (res || {});
+  if (r.ok === false) return { fallback: true, reason: r.reason || "fallback", raw: r.raw || "" };
+  return { pool: r.pool };
 }
 
 // 校验已生成的 paths（写入前防御）：骨架组拼接 == 原句；每步 russian 递增

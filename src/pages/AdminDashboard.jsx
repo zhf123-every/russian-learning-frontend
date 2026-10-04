@@ -9,7 +9,7 @@ import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
 import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps, russianizeNumbers } from '../lib/snowballEngine'
 import { withRetry403 } from '../lib/segmentEngine'
-import { generateSlotPaths, verifySlotPaths } from '../lib/slotEngine'
+import { generateSlotPaths, verifySlotPaths, generateVariantPool } from '../lib/slotEngine'
 import { collectUnitSentenceObjs } from '../lib/unitSentences'
 import { triggerUnitSegments, retryPendingSegments } from '../lib/segmentTrigger'
 import { useAdminStore } from '../store/adminStore'
@@ -995,6 +995,17 @@ export default function AdminDashboard() {
   // ========== P4：生成句乐部式滚雪球路径（AI 出增量词序列 → 电脑拼装 → 强校验 → 写回课时） ==========
   const [slotBusy, setSlotBusy] = useState(false)
   const [slotResult, setSlotResult] = useState(null) // {ok, total, done, failed:[{ru,reason}], backupKey}
+  // ① 生成/复用课程级变体词池（9 类各 2-4 词，存回课时 variantPool；可手动重新生成）
+  const ensureVariantPool = async () => {
+    if (activeUnit.variantPool && Object.keys(activeUnit.variantPool).length) {
+      return { pool: activeUnit.variantPool, reused: true }
+    }
+    const sentences = collectUnitSentenceObjs(activeUnit)
+    const r = await generateVariantPool({ sentences, httpPost: segHttpPost })
+    if (r.fallback) throw new Error('词池生成失败：' + (r.reason || 'fallback'))
+    patchUnit({ variantPool: r.pool })
+    return { pool: r.pool, reused: false }
+  }
   const generateSlotPathsForUnit = async () => {
     const sentences = collectUnitSentenceObjs(activeUnit)
     if (!sentences.length) { flash('本课时没有句子（例句或路径末步均可作为数据源）'); return }
@@ -1004,6 +1015,14 @@ export default function AdminDashboard() {
       const old = activeUnit.scaffoldingPaths || []
       if (old.length) {
         try { localStorage.setItem(backupKey, JSON.stringify(old)) } catch (e) { /* 忽略 */ }
+      }
+      // 词池：已有则复用，没有则生成一次（全课变体词统一，复刻句乐部）
+      let pool = null
+      try {
+        const pr = await ensureVariantPool()
+        pool = pr.pool
+      } catch (e) {
+        flash('⚠️ 变体词池生成失败，本次按无词池继续（变体词由 AI 自由选择）：' + String(e && e.message || e))
       }
       const BATCH = 4
       const allPaths = []
@@ -1015,7 +1034,7 @@ export default function AdminDashboard() {
           const ru = String(s.ru || s.russian || s.text || '').trim()
           if (!ru) return null
           try {
-            const r = await generateSlotPaths({ sentence: ru, tokens: splitTokens(ru), difficulty: 'easy', httpPost: segHttpPost })
+            const r = await generateSlotPaths({ sentence: ru, tokens: splitTokens(ru), difficulty: 'easy', pool, httpPost: segHttpPost })
             if (r.fallback) return { ok: false, ru, reason: r.reason || 'fallback' }
             if (r.pending) return { ok: false, ru, reason: 'pending' }
             const v = verifySlotPaths(r.paths, ru)
@@ -1036,7 +1055,7 @@ export default function AdminDashboard() {
       } else {
         flash(`⚠️ 全部失败：${failed.length} 句（详见下方失败列表）`)
       }
-      setSlotResult({ ok: allPaths.length > 0, total: sentences.length, done, failed, backupKey: old.length ? backupKey : null })
+      setSlotResult({ ok: allPaths.length > 0, total: sentences.length, done, failed, backupKey: old.length ? backupKey : null, poolReused: pool ? '（本课变体词池' + (activeUnit.variantPool ? '已复用' : '已生成') + '）' : '' })
     } catch (e) {
       flash('生成句乐部路径失败：' + String(e && e.message || e))
       setSlotResult({ ok: false, total: sentences.length, done: 0, failed: [], backupKey: null })
@@ -1382,7 +1401,7 @@ export default function AdminDashboard() {
                   <p className="text-xs text-gray-400 mt-1">按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。粘贴 pathId + steps 结构 JSON 后立即显示在这里。</p>
                   {slotResult && (
                     <div className="mt-2 rounded-lg border border-info/30 bg-info/5 p-2.5 text-xs text-gray-700 space-y-1">
-                      <div>共 {slotResult.total} 句：✅ 成功 {slotResult.done}，❌ 失败 {slotResult.failed.length}</div>
+                      <div>共 {slotResult.total} 句：✅ 成功 {slotResult.done}，❌ 失败 {slotResult.failed.length} {slotResult.poolReused || ''}</div>
                       {slotResult.backupKey && <div>🛟 旧路径已备份到本地（{slotResult.backupKey}），可随时回滚</div>}
                       {slotResult.failed.length > 0 && (
                         <div className="max-h-24 overflow-y-auto">

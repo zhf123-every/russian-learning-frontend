@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { planToScaffoldingPaths, verifySlotPaths, generateSlotPaths, slotNormalize } from '../src/lib/slotEngine.js'
+import { planToScaffoldingPaths, verifySlotPaths, generateSlotPaths, generateVariantPool, slotNormalize } from '../src/lib/slotEngine.js'
 
 // 与后端 _slot_verify_and_build 对齐的样例（骨架 + 否定变体）
 const PLAN = {
@@ -110,5 +110,34 @@ describe('slotEngine P4 句乐部式滚雪球', () => {
 
   test('slotNormalize：压缩空白', () => {
     assert.equal(slotNormalize('  Это   мой  друг '), 'Это мой друг')
+  })
+
+  test('generateSlotPaths：带 pool 时 POST body 含 pool（词池随句传）', async () => {
+    let posted = null
+    const pool = { time: [{ ru: 'завтра', zh: '明天' }], predicates: [{ ru: 'хочу', zh: '想' }] }
+    const post = async (path, body) => { posted = { path, body }; return { ok: true, groups: PLAN.groups, translation: PLAN.translation } }
+    const r = await generateSlotPaths({ sentence: ORIGINAL, tokens: ['Это', 'мой', 'друг,'], difficulty: 'easy', pool, httpPost: post })
+    assert.ok(r.paths)
+    assert.deepEqual(posted.body.pool, pool)
+    assert.equal(posted.body.sentence_hash.length, 16)
+  })
+
+  test('generateVariantPool：正常返回 9 类词池', async () => {
+    const pool = { negation: [{ ru: 'не', zh: '不' }], time: [{ ru: 'сейчас', zh: '现在' }] }
+    const post = async () => ({ ok: true, pool })
+    const r = await generateVariantPool({ sentences: [{ ru: ORIGINAL, zh: 'x' }], httpPost: post })
+    assert.ok(r.pool)
+    assert.equal(r.pool.time[0].ru, 'сейчас')
+  })
+
+  test('generateVariantPool：fallback 返回 {fallback, reason}', async () => {
+    const post = async () => ({ ok: false, fallback: true, reason: 'ai_none' })
+    const r = await generateVariantPool({ sentences: [{ ru: ORIGINAL }], httpPost: post })
+    assert.equal(r.fallback, true)
+    assert.equal(r.reason, 'ai_none')
+  })
+
+  test('generateVariantPool：httpPost 缺失 → 抛错', async () => {
+    await assert.rejects(() => generateVariantPool({ sentences: [{ ru: ORIGINAL }] }), /httpPost/)
   })
 })
