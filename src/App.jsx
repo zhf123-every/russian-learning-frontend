@@ -31,6 +31,7 @@ import SaveNotes from './pages/SaveNotes'
 import SaveProficiency from './pages/SaveProficiency'
 import SaveUnknown from './pages/SaveUnknown'
 import AdminDashboard from './pages/AdminDashboard'
+import AdminCourseNew from './pages/AdminCourseNew'
 import AdminLessons from './pages/AdminLessons'
 import AdminUsers from './pages/AdminUsers'
 import AdminUserDetail from './pages/AdminUserDetail'
@@ -105,6 +106,7 @@ export default function App() {
       {/* 后台：统一 AdminLayout（顶部栏 + 左侧导航 + 内容区 + 登录门禁） */}
       <Route element={<AdminLayout />}>
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/courses/new" element={<AdminCourseNew />} />
         <Route path="/admin/lessons/:id" element={<AdminLessons />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/users/:id" element={<AdminUserDetail />} />

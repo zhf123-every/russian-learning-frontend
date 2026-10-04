@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
-import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { API_BASE, apiFetch } from '../lib/api'
-import { tsToLocalInput, localInputToTs, courseStatus, statusLabel, fmtSchedule } from '../utils/courseSchedule'
+import { courseStatus, statusLabel, fmtSchedule } from '../utils/courseSchedule'
 import { saveCourseVersion, listCourseVersions, getCourseVersion, clearCourseVersions, rollbackCourse } from '../utils/courseVersions'
 import { runQc, qcSummary } from '../utils/importQc'
 import { parseAIJSON, chat } from '../lib/ai'
@@ -114,43 +113,8 @@ function AdminLoginGate() {
   )
 }
 
-// 一级分类（与商城/投稿分类体系一致）
-const CATS = ['教材同步', '考试备考', '少儿俄语', '基础俄语', '语法专项', '场景俄语', '阅读听力', '影视俄语', '音乐俄语']
-// 角标选项
-const BADGES = ['', '精选', '热销', '新', '备考', '衔接']
-// 难度
-const DIFFS = ['入门', '初级', '中级', '高级']
-// 二级标签池（按一级分类联动；年级/教材版本已单列）
-const TAG_POOL = {
-  '教材同步': ['走遍俄罗斯', '大学俄语', '东方俄语', '新概念俄语', '黑大俄语', '北外俄语', '人教版初中', '人教版高中', '自编课'],
-  '考试备考': ['中高考', '专四专八', '考研', 'ТРКИ等级', '留学预科', 'CATTI', '职业俄语'],
-  '少儿俄语': ['少儿启蒙', '动画分级', '分级阅读', '动画绘本', '儿歌童谣', '字母拼读', '少儿词汇'],
-  '基础俄语': ['零基础路线', '字母发音', '基础语法', '基础词汇', '核心句型', '经典教材', '综合提升'],
-  '语法专项': ['主格', '属格', '与格', '宾格', '工具格', '前置格'],
-  '场景俄语': ['日常对话', '商务职场', '外贸商务', '旅游出行', '面试校园', '社交口语', '写作邮件'],
-  '阅读听力': ['短文精读', '俄语故事', '名著简写', '新闻短文', '文化科普', '专业阅读'],
-  '影视俄语': ['情景剧', '影视台词', '电影片段', '动画片段', '经典教材剧'],
-  '音乐俄语': ['俄语歌曲'],
-}
-
-const emptyForm = () => ({
-  title: '',
-  subtitle: '',
-  category: '教材同步',
-  grade: '通用',
-  textbook: '走遍俄罗斯',
-  difficulty: '入门',
-  badge: '',
-  lessons: 0,
-  students: 0,
-  tags: [],
-  coverUrl: '',
-  cover: '', // 封面上传 B2 后的持久地址（b2:// 或 dataURL 待上传）
-  coverName: '',
-  materials: [], // { name, type, url }
-  scheduledPublishAt: '', // 定时上架（datetime-local 字符串，空=立即上架）
-  scheduledUnpublishAt: '', // 定时下架（datetime-local 字符串，空=永不下架）
-})
+// 课程档案表单（新建/编辑）已拆分为独立页：/admin/courses/new（见 src/pages/AdminCourseNew.jsx）
+// 本页只保留课程列表 + 课程序 + 课时内容管理。
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
@@ -159,8 +123,6 @@ export default function AdminDashboard() {
   const q = (searchParams.get('q') || '').trim().toLowerCase()
   const syncFlag = searchParams.get('sync')
   const [view, setView] = useState('list')          // list=档案列表 | units=课程序 | unit=课时内容
-  const [form, setForm] = useState(emptyForm)
-  const [editingId, setEditingId] = useState('')    // 非空 = 正在编辑某条档案
   const [courses, setCourses] = useState([])
   const [toast, setToast] = useState('')
   const [saveBanner, setSaveBanner] = useState(null) // 保存课时后的成功横幅 + 下一步引导
@@ -175,25 +137,6 @@ export default function AdminDashboard() {
   const [genPrompt, setGenPrompt] = useState('')
   const [genBusy, setGenBusy] = useState(false)
   const [showGenPrompt, setShowGenPrompt] = useState(false)
-
-  // P1-C：后端分类树（一级分类/二级标签动态化；失败回退静态 CATS/TAG_POOL）
-  const [dbCats, setDbCats] = useState(null)
-  useEffect(() => {
-    let alive = true
-    apiFetch('/api/categories/tree', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-      timeout: 15000,
-    }).then(r => r.json()).then(j => {
-      if (!alive) return
-      if (j.ok && Array.isArray(j.tree) && j.tree.length) setDbCats(j.tree)
-    }).catch(() => { /* 后端不可用：保持静态分类 */ })
-    return () => { alive = false }
-  }, [])
-  // 一级分类选项（动态优先）；二级标签池（动态优先，过滤 UI 默认项"全部"）
-  const catOptions = dbCats ? dbCats.map(c => c.name) : CATS
-  const tagPoolFor = (cat) => (dbCats ? (dbCats.find(c => c.name === cat) || {}).subs || [] : (TAG_POOL[cat] || [])).filter(t => t !== '全部')
 
   // 生成器取词：优先用生成器单词框；留空则自动读取本课已保存的词条（老数据兼容）
   const getGenWords = () => {
@@ -554,50 +497,13 @@ export default function AdminDashboard() {
   const [editSent, setEditSent] = useState({ ru: '', zh: '', chunks: '' })
   const [jsonText, setJsonText] = useState('')            // 批量导入 JSON（句子）粘贴区
   const [jsonBusy, setJsonBusy] = useState(false)
-  const [aiDescBusy, setAiDescBusy] = useState(false)     // AI 自动生成课程简介中
   const [aiUnitTitleBusy, setAiUnitTitleBusy] = useState(false) // AI 生成课时名（手动添加表单）
   const [aiRenameBusy, setAiRenameBusy] = useState(null)  // AI 重命名课时列表中的行 index
 
-  // —— AI 自动生成课程简介（【课程介绍】【学习目标】【适合谁学】）——
-  const aiGenDesc = async () => {
-    const title = form.title.trim()
-    if (!title) { flash('请先填写课程标题，再生成简介'); return }
-    setAiDescBusy(true)
-    try {
-      const ctx = [
-        title && `课程标题：${title}`,
-        form.category && `分类：${form.category}`,
-        form.textbook && `教材：${form.textbook}`,
-        form.grade && `年级：${form.grade}`,
-        form.difficulty && `难度：${form.difficulty}`,
-        form.tags && form.tags.length && `标签：${form.tags.join('、')}`,
-      ].filter(Boolean).join('\n')
-      const content = await chat({
-        messages: [
-          { role: 'system', content: '你是俄语课程运营编辑，擅长为俄语学习课程撰写专业、有吸引力、分三段的介绍文案，全部使用简体中文。' },
-          { role: 'user', content:
-            `请根据以下课程信息，撰写三段式课程简介：\n${ctx}\n\n` +
-            '要求：\n1. 第一段以【课程介绍】开头：说明课程内容、学习范围和亮点（100字左右）；\n' +
-            '2. 第二段以【学习目标】开头：写3-5条可衡量的学习目标（80字左右）；\n' +
-            '3. 第三段以【适合谁学】开头：列出适合的学习人群（60字左右）；\n' +
-            '直接输出三段文字，每段以对应方括号标题起行，不要额外解释。' },
-        ],
-      })
-      const text = String(content || '').trim()
-      if (!text || !text.includes('【')) { flash('⚠️ AI 生成结果异常，请重试'); return }
-      setField('subtitle', text)
-      flash('✅ 已用 AI 生成课程简介，可再手动微调')
-    } catch (e) {
-      flash('⚠️ AI 接口暂不可用：' + (e.message || '请稍后重试'))
-    } finally {
-      setAiDescBusy(false)
-    }
-  }
-
   // —— AI 生成课时标题（手动添加课时表单：基于课程标题推导主题名）——
   const aiGenUnitTitle = async () => {
-    const courseTitle = form.title.trim()
-    if (!courseTitle) { flash('请先填写课程标题，再生成课时名'); return }
+    const courseTitle = (active && active.title || '').trim()
+    if (!courseTitle) { flash('请先进入课程序，再生成课时名'); return }
     setAiUnitTitleBusy(true)
     try {
       const content = await chat({
@@ -667,178 +573,15 @@ export default function AdminDashboard() {
   const refresh = () => setCourses(getCourses())
   useEffect(() => { refresh() }, [])
 
-  const setField = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
-
-  // 提示（2.5 秒自动消失）
-  const flash = (msg) => {
-    setToast(msg)
-    // 自动清除提示
-    window.setTimeout(() => setToast(''), 3000)
-  }
-
   // 全局搜索过滤（顶部栏 ?q=）：匹配课程标题或简介
   const filteredCourses = q
     ? courses.filter(c => ((c.title || '') + ' ' + (c.subtitle || '')).toLowerCase().includes(q))
     : courses
 
-  // 封面图：文件 → dataURL（本地预览 + 待保存/发布时上传 B2 持久化，避免 blob 临时链接刷新失效）
-  const applyCoverFile = async (f) => {
-    if (!f) return
-    const dataUrl = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f) })
-    setForm(prev => ({ ...prev, coverUrl: dataUrl, cover: dataUrl, coverName: f.name }))
-    flash('封面已选择：保存或发布时自动上传云端（全网可见）')
-  }
-  const onPickCover = (e) => { applyCoverFile(e.target.files && e.target.files[0]) }
-  const onCoverDrop = (e) => { e.preventDefault(); e.stopPropagation(); applyCoverFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) }
-
-  // 封面 dataURL → 上传 B2（thumbs 目录）→ 返回 b2:// URL；失败返回 ''（用占位图兜底）
-  const uploadCoverToB2 = async (dataUrl) => {
-    try {
-      if (!isLoggedIn) return ''
-      const pr = await apiFetch('/api/upload/presign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authBody({ filename: 'cover_' + Date.now() + '.jpg', kind: 'image', contentType: 'image/jpeg' }))
-      })
-      const pj = await pr.json()
-      if (!pj.ok || !pj.uploadUrl) return ''
-      const blob = await (await fetch(dataUrl)).blob()
-      const res = await new Promise((resolve) => {
-        const xhr = new XMLHttpRequest()
-        xhr.open('PUT', pj.uploadUrl, true)
-        xhr.setRequestHeader('Content-Type', 'image/jpeg')
-        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300)
-        xhr.onerror = () => resolve(false)
-        xhr.send(blob)
-      })
-      return res ? pj.objectUrl : ''
-    } catch (e) { return '' }
-  }
-
-  // 保存/发布前解析封面：dataURL → 上传 B2 拿持久地址；已持久化（b2:// 或 http）原样返回
-  const resolveCover = async () => {
-    const raw = form.cover || form.coverUrl || ''
-    if (String(raw).startsWith('data:')) {
-      const b2 = await uploadCoverToB2(raw)
-      return b2 || raw
-    }
-    return raw
-  }
-
-  // 课件上传：多选（PDF/Word/MP3/MP4）→ 本地 URL 模拟
-  const onPickMaterials = (e) => {
-    const files = Array.from(e.target.files || [])
-    if (!files.length) return
-    const items = files.map(f => ({ name: f.name, type: f.type || f.name.split('.').pop(), url: URL.createObjectURL(f) }))
-    setForm(prev => ({ ...prev, materials: [...prev.materials, ...items] }))
-    e.target.value = ''
-  }
-
-  const toggleTag = (t) => {
-    setForm(prev => ({
-      ...prev,
-      tags: prev.tags.includes(t) ? prev.tags.filter(x => x !== t) : [...prev.tags, t],
-    }))
-  }
-
-  // 组装课程档案对象
-  const buildCourse = (status, coverOverride) => {
-    const title = form.title.trim()
-    if (!title) { flash('请先填写课程标题'); return null }
-    const now = Date.now()
-    const base = {
-      title,
-      subtitle: form.subtitle.trim(),
-      category: form.category,
-      grade: form.grade || '通用',
-      textbook: form.textbook || '自编课',
-      difficulty: form.difficulty,
-      badge: form.badge,
-      author: '管理员',
-      lessons: Number(form.lessons) || 1,
-      students: Number(form.students) || 0,
-      tags: form.tags,
-      cover: coverOverride || form.coverUrl || 'https://picsum.photos/seed/course_' + now + '/400/280',
-      materials: form.materials,
-      isGrammar: form.category === '语法专项', // 一级分类为「语法专项」即语法课程（点亮变格天赋树）
-      units: [], // 第二步「课程序」填充
-      status,
-      scheduledPublishAt: localInputToTs(form.scheduledPublishAt), // 定时上架（undefined=立即）
-      scheduledUnpublishAt: localInputToTs(form.scheduledUnpublishAt), // 定时下架（undefined=永不下架）
-      updatedAt: now,
-    }
-    return base
-  }
-
-  // 保存草稿
-  const saveDraft = async () => {
-    const coverResolved = await resolveCover()
-    const base = buildCourse('draft', coverResolved)
-    if (!base) return
-    const list = getCourses()
-    if (editingId) {
-      const i = list.findIndex(c => c.id === editingId)
-      if (i >= 0) list[i] = { ...list[i], ...base, units: Array.isArray(list[i].units) ? list[i].units : [], id: editingId }
-      flash('草稿已更新')
-    } else {
-      base.id = 'course_' + Date.now()
-      base.createdAt = Date.now()
-      list.push(base)
-      flash('课程档案已保存（草稿），下一步搭课程序')
-    }
-    if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
-    setForm(emptyForm())
-    setEditingId('')
-    refresh()
-  }
-
-  // 直接发布上架（发布后自动同步到云端，全网可见，游戏商城页/商城立即可见）
-  const publish = async () => {
-    const coverResolved = await resolveCover()
-    const base = buildCourse('published', coverResolved)
-    if (!base) return
-    const list = getCourses()
-    if (editingId) {
-      const i = list.findIndex(c => c.id === editingId)
-      if (i >= 0) list[i] = { ...list[i], ...base, units: Array.isArray(list[i].units) ? list[i].units : [], id: editingId }
-      flash('已更新并发布上架！')
-    } else {
-      base.id = 'course_' + Date.now()
-      base.createdAt = Date.now()
-      list.push(base)
-      flash('已发布上架！共 ' + list.length + ' 个课程')
-    }
-    if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
-    setForm(emptyForm())
-    setEditingId('')
-    refresh()
-    // 发布即全网可见：自动同步到云端（需已登录管理员）
-    await syncToCloud()
-  }
-
-  // 继续编辑（把档案填回表单）
-  const edit = (c) => {
-    setForm({
-      title: c.title || '',
-      subtitle: c.subtitle || '',
-      category: c.category || '教材同步',
-      grade: c.grade || '通用',
-      textbook: c.textbook || '自编课',
-      difficulty: c.difficulty || '入门',
-      badge: c.badge || '',
-      lessons: c.lessons || 12,
-      students: c.students || 0,
-      tags: c.tags || [],
-      coverUrl: c.cover || '',
-      cover: c.cover || '',
-      coverName: '',
-      materials: c.materials || [],
-      scheduledPublishAt: tsToLocalInput(c.scheduledPublishAt),
-      scheduledUnpublishAt: tsToLocalInput(c.scheduledUnpublishAt),
-    })
-    setEditingId(c.id)
-    setView('list')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  // 提示（2.5 秒自动消失）
+  const flash = (msg) => {
+    setToast(msg)
+    window.setTimeout(() => setToast(''), 3000)
   }
 
   // 从云端删除该课程（商城/前端读云端名单，删除必须同步云端才会生效）
@@ -1968,142 +1711,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ===== ① 课程档案表单 ===== */}
-        <div className="card mt-5 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
-          <div className="card-body p-6">
-            <h2 className="card-title text-base text-gray-900">
-              {editingId ? '编辑课程档案' : '① 新建课程档案'}
-              {editingId && <span className="badge badge-warning badge-sm ml-1">编辑中</span>}
-            </h2>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="form-control sm:col-span-2">
-                <label className="label"><span className="label-text">课程标题 *</span></label>
-                <input className="input input-bordered" value={form.title} onChange={e => setField('title', e.target.value)} placeholder="例如：走遍俄罗斯 · 第1课《字母与问候》" />
-              </div>
-
-              <div className="form-control sm:col-span-2">
-                <label className="label">
-                  <span className="label-text">课程简介</span>
-                  <button type="button" className="btn btn-primary btn-xs" onClick={aiGenDesc} disabled={aiDescBusy}>
-                    {aiDescBusy ? '生成中…' : '✨ AI 自动生成'}
-                  </button>
-                </label>
-                <textarea className="textarea textarea-bordered" rows={5} value={form.subtitle} onChange={e => setField('subtitle', e.target.value)} placeholder="可手动填写一句话简介，或点击右上角「✨ AI 自动生成」生成：课程介绍 / 学习目标 / 适合谁学" />
-              </div>
-
-              <div className="form-control">
-                <label className="label"><span className="label-text">封面图（可点击选择或拖拽图片到下方区域）</span></label>
-                <input type="file" accept="image/*" className="file-input file-input-bordered file-input-sm" onChange={onPickCover} />
-                <div
-                  className="group mt-2 h-32 w-full cursor-pointer overflow-hidden rounded-lg border border-gray-200 transition-colors hover:border-primary"
-                  onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
-                  onDrop={onCoverDrop}
-                  onClick={() => document.querySelector('#admin-cover-picker')?.click()}
-                >
-                  <input id="admin-cover-picker" type="file" accept="image/*" className="hidden" onChange={onPickCover} />
-                  {form.coverUrl ? (
-                    <img src={form.coverUrl} alt="封面预览" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center border border-dashed border-gray-300 text-xs text-gray-400 group-hover:border-primary group-hover:text-primary">点击选择 或 拖拽图片到此处</div>
-                  )}
-                </div>
-              </div>
-
-              <div className="form-control">
-                <label className="label"><span className="label-text">课件上传（PDF/Word/MP3/MP4）</span></label>
-                <input type="file" multiple accept=".pdf,.doc,.docx,.mp3,.mp4,audio/*,video/*" className="file-input file-input-bordered file-input-sm" onChange={onPickMaterials} />
-                {form.materials.length > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {form.materials.map((m, i) => (
-                      <li key={i} className="flex items-center gap-2 rounded-lg bg-gray-50 px-2 py-1 text-xs text-gray-600">
-                        <span className="badge badge-ghost badge-xs">{String(m.type).split('/').pop()}</span>
-                        <span className="truncate flex-1">{m.name}</span>
-                        <a href={m.url} target="_blank" rel="noreferrer" className="link link-primary">预览</a>
-                        <button className="btn btn-ghost btn-xs text-gray-400" onClick={() => setForm(prev => ({ ...prev, materials: prev.materials.filter((_, j) => j !== i) }))}>✕</button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div className="form-control">
-                <label className="label"><span className="label-text">一级分类</span></label>
-                <select className="select select-bordered" value={form.category} onChange={e => setField('category', e.target.value)}>
-                  {catOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-
-              <div className="form-control">
-                <label className="label"><span className="label-text">难度</span></label>
-                <select className="select select-bordered" value={form.difficulty} onChange={e => setField('difficulty', e.target.value)}>
-                  {DIFFS.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-
-              <div className="form-control">
-                <label className="label"><span className="label-text">年级</span></label>
-                <select className="select select-bordered" value={form.grade} onChange={e => setField('grade', e.target.value)}>
-                  {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
-              </div>
-
-              <div className="form-control">
-                <label className="label"><span className="label-text">教材版本</span></label>
-                <select className="select select-bordered" value={form.textbook} onChange={e => setField('textbook', e.target.value)}>
-                  {TEXTBOOKS.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-
-              <div className="form-control">
-                <label className="label"><span className="label-text">角标</span></label>
-                <select className="select select-bordered" value={form.badge} onChange={e => setField('badge', e.target.value)}>
-                  {BADGES.map(b => <option key={b} value={b}>{b === '' ? '无' : b}</option>)}
-                </select>
-              </div>
-
-              <div className="form-control">
-                <label className="label"><span className="label-text">定时上架（留空 = 保存/发布后立即上架）</span></label>
-                <input type="datetime-local" className="input input-bordered" value={form.scheduledPublishAt} onChange={e => setField('scheduledPublishAt', e.target.value)} />
-              </div>
-
-              <div className="form-control">
-                <label className="label"><span className="label-text">定时下架（留空 = 永不下架）</span></label>
-                <input type="datetime-local" className="input input-bordered" value={form.scheduledUnpublishAt} onChange={e => setField('scheduledUnpublishAt', e.target.value)} />
-              </div>
-
-            </div>
-
-            {/* 二级标签多选（按一级分类联动；动态分类树优先） */}
-            <div className="form-control mt-3">
-              <label className="label"><span className="label-text">二级标签（{form.category}）：{tagPoolFor(form.category).length} 个可选，多选</span></label>
-              <div className="flex flex-wrap gap-2">
-                {tagPoolFor(form.category).map(t => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => toggleTag(t)}
-                    className={`badge badge-lg cursor-pointer transition-colors ${form.tags.includes(t) ? 'badge-primary' : 'badge-ghost'}`}
-                    style={{ padding: '8px 12px' }}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center gap-3 flex-wrap">
-              <button className="btn btn-primary" onClick={saveDraft}>💾 保存草稿</button>
-              <button className="btn btn-outline" onClick={publish}>🚀 发布上架</button>
-              <button className="btn btn-ghost" onClick={() => { setForm(emptyForm()); setEditingId(''); flash('表单已清空') }}>清空表单</button>
-              <button className="btn btn-outline btn-sm ml-auto" onClick={() => navigate('/game-mall')}>去商城查看 →</button>
-            </div>
-            <div className="mt-3 text-xs text-gray-400">
-              💡 第一步只建「课程档案」：保存草稿后不会出现在商城；保存后点下方列表的「搭课程序」进入第二步。
-            </div>
-          </div>
-        </div>
-
         {/* ===== ①.5 全网可见 · 云端同步 ===== */}
         <div className="card mt-6 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
           <div className="card-body p-6">
@@ -2111,30 +1718,13 @@ export default function AdminDashboard() {
               <h2 className="card-title text-base text-gray-900">🌐 全网可见 · 同步到云端</h2>
               <span className="text-xs text-gray-400">后台课程目前只存在你的浏览器；同步后所有访客可见、可学</span>
             </div>
-            <div className="mt-3 flex flex-col sm:flex-row items-center gap-2">
-              <span className="text-sm text-gray-600">
-                当前登录：<b>{user?.username || '旧密钥模式'}</b>
-                <span className="ml-2 badge badge-ghost badge-sm">
-                  {user?.role === 'admin' ? '管理员' : user?.role === 'editor' ? '编辑' : user?.role === 'viewer' ? '只读' : '旧密钥'}
-                </span>
-              </span>
-              <div className="flex gap-2">
-                {user?.role === 'admin' && (
-                  <>
-                    <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/stats')}>📊 数据看板</button>
-                    <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/users')}>👥 用户管理</button>
-                    <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/orders')}>🧾 订单管理</button>
-                    <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/categories')}>🏷️ 分类管理</button>
-                    <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/settings')}>⚙️ 系统设置</button>
-                  </>
-                )}
-                <button className="btn btn-sm btn-primary" onClick={syncToCloud} disabled={cloudBusy || !isLoggedIn}>
-                  {cloudBusy ? '同步中…' : '🚀 同步到云端'}
-                </button>
-                <button className="btn btn-sm btn-ghost" onClick={() => { logout(); setCloudMsg('已退出登录') }}>退出</button>
-              </div>
-            </div>
             {cloudMsg && <div className="mt-3 text-sm text-gray-600">{cloudMsg}</div>}
+            <div className="mt-3">
+              <button className="btn btn-sm btn-primary" onClick={syncToCloud} disabled={cloudBusy || !isLoggedIn}>
+                {cloudBusy ? '同步中…' : '🚀 同步到云端'}
+              </button>
+              {syncFlag && <span className="ml-2 text-xs text-gray-400">已为你定位：点此按钮即可将已发布课程同步到云端</span>}
+            </div>
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
               <span className="text-xs text-gray-500">课程数据迁移（换浏览器/正式站时使用）：</span>
               <button className="btn btn-xs btn-outline" onClick={exportCourses}>📤 导出课程数据</button>
@@ -2159,9 +1749,12 @@ export default function AdminDashboard() {
         {/* ===== ② 已有课程列表 ===== */}
         <div className="card mt-6 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
           <div className="card-body p-6">
-            <h2 className="card-title text-base text-gray-900">
-              已有课程（{q ? `${filteredCourses.length} / ${courses.length} 匹配「${q}」` : courses.length}）
-            </h2>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h2 className="card-title text-base text-gray-900">
+                已有课程（{q ? `${filteredCourses.length} / ${courses.length} 匹配「${q}」` : courses.length}）
+              </h2>
+              <button className="btn btn-primary btn-sm" onClick={() => navigate('/admin/courses/new')}>＋ 新建课程</button>
+            </div>
             {filteredCourses.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-400">
                 {courses.length === 0 ? '还没有课程，先填上面表单保存一个草稿试试。' : `没有标题或简介包含「${q}」的课程，换个关键词试试。`}
@@ -2205,7 +1798,7 @@ export default function AdminDashboard() {
                         <td>
                           <div className="flex gap-1">
                             <button className="btn btn-primary btn-xs" onClick={() => manageUnits(c)}>搭课程序</button>
-                            <button className="btn btn-ghost btn-xs" onClick={() => edit(c)}>编辑</button>
+                            <button className="btn btn-ghost btn-xs" onClick={() => navigate('/admin/courses/new?edit=' + c.id)}>编辑</button>
                             <button className="btn btn-error btn-xs btn-outline" onClick={() => remove(c.id)}>删除</button>
                           </div>
                         </td>
