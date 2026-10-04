@@ -17,6 +17,7 @@ import { apiFetch } from '../lib/api'
 import { useAdminStore } from '../store/adminStore'
 import { withRetry403, sentenceHash, normalizeSentence } from '../lib/segmentEngine'
 import { triggerUnitSegments } from '../lib/segmentTrigger'
+import { collectUnitSentenceObjs, countUnitSentences } from '../lib/unitSentences'
 
 const DIFFS = ['easy', 'medium', 'hard']
 const DIFF_LABELS = { easy: '初级', medium: '中级', hard: '高级' }
@@ -94,7 +95,8 @@ export default function AdminSegments() {
         const map = new Map()
         for (const it of j.items) map.set(`${it.sentence_hash}::${it.difficulty}`, it)
         const u = (course && (course.units || []).find((x) => x.id === unitId)) || {}
-        const list = (u.sentences || []).map((s) => {
+        // 句子主轴与批量回填一致：例句 + 滚动路径末步（有路径无例句的课时也能显示语块）
+        const list = collectUnitSentenceObjs(u).map((s) => {
           const ru = sentText(s)
           const hash = sentenceHash(ru, 'easy')
           const byDiff = {}
@@ -125,7 +127,7 @@ export default function AdminSegments() {
     setRunBusy(true)
     setMsg('')
     try {
-      const r = await triggerUnitSegments({ courseId, unitId, sentences: unit.sentences || [], deps: { httpPost: segHttpPost } })
+      const r = await triggerUnitSegments({ courseId, unitId, sentences: collectUnitSentenceObjs(unit), deps: { httpPost: segHttpPost } })
       if (r && r.skipped) {
         setMsg(r.skipped === 'in_flight' ? '本课时正在生成中，稍等再试' : '本课时没有句子')
       } else {
@@ -244,7 +246,7 @@ export default function AdminSegments() {
             <option value="">选择课时…</option>
             {(course ? (course.units || []) : []).map((u) => <option key={u.id} value={u.id}>{u.title || u.id}</option>)}
           </select>
-          {unit && <span className="text-xs text-gray-400">课时共 {(unit.sentences || []).length} 句 · 三档 × 每句</span>}
+          {unit && <span className="text-xs text-gray-400">课时共 {countUnitSentences(unit)} 句（例句+路径末步） · 三档 × 每句</span>}
         </div>
       </div>
 

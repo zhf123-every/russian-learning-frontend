@@ -9,6 +9,7 @@ import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
 import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps, russianizeNumbers } from '../lib/snowballEngine'
 import { withRetry403 } from '../lib/segmentEngine'
+import { collectUnitSentenceObjs } from '../lib/unitSentences'
 import { triggerUnitSegments, retryPendingSegments } from '../lib/segmentTrigger'
 import { useAdminStore } from '../store/adminStore'
 
@@ -887,25 +888,8 @@ export default function AdminDashboard() {
     return out
   }
 
-  // 课时句子收集器（对象数组）：例句 + 滚动路径末步完整句（去重）——批量回填语块的句子来源。
-  // 修复"有滚动路径但例句区为空 → 回填提示无句子"：路径末步即完整句，同样可切语块。
-  const collectUnitSentenceObjs = (u) => {
-    const seen = new Set()
-    const out = []
-    const push = (ru, zh) => {
-      const k = String(ru || '').trim()
-      if (!k || seen.has(k)) return
-      seen.add(k)
-      out.push({ ru: k, zh: String(zh || '').trim() })
-    }
-    ;(u.sentences || []).forEach((s) => push(s && (s.ru || s.russian || s.text), s && (s.chinese || s.zh)))
-    ;(u.scaffoldingPaths || []).forEach((p) => {
-      const steps = Array.isArray(p.steps) ? p.steps : []
-      const last = steps[steps.length - 1]
-      push(last && (last.russian || last.ru || last.text), last && (last.chinese || last.zh))
-    })
-    return out
-  }
+  // 课时句子收集器（例句 + 滚动路径末步）已提取到 src/lib/unitSentences.js 统一维护，
+  // 与本页 collectUnitSentenceObjs 调用点、校对页 AdminSegments 共用同一数据源。
 
   const genUnitKnowledge = async () => {
     if (!activeUnit) return
