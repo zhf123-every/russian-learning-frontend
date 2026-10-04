@@ -191,6 +191,17 @@ describe('场景5 aiSegment（easy/medium 调 LLM，hard 直构；fallback 重�
     assert.equal(r.reviewStatus, 'generating') // 与 AI 失败(校对 pending)区分
     assert.deepEqual(r.segments, [])
   })
+  test('生产形态：httpPost 返回 fetch Response-like（含 .json() 方法）→ 正确解析，不误判未知响应（2026-10-05 根因回归）', async () => {
+    const S5 = 'Анна любит музыку.'
+    const T5 = ['Анна', 'любит', 'музыку.']
+    const data = { ok: true, segments: [{ indexes: [0, 1], type: 'phrase', chinese: '安娜爱' }, { indexes: [2], type: 'word', chinese: '音乐。' }], translation: '安娜爱音乐。' }
+    const calls = []
+    const post = async () => { calls.push(1); return { ok: true, json: async () => data } }
+    const r = await aiSegment({ sentence: S5, tokens: T5, difficulty: 'easy' }, { httpPost: post })
+    assert.equal(calls.length, 1)
+    assert.equal(r.reviewStatus, 'ok')
+    assert.deepEqual(r.segments.map((s) => s.indexes), [[0, 1], [2]])
+  })
   test('deps 缺失 httpPost → 抛错（含 httpPost 字样，不静默用全局 fetch）', async () => {
     await assert.rejects(() => aiSegment({ sentence: S1, tokens: T1, difficulty: 'easy' }), /httpPost/)
   })

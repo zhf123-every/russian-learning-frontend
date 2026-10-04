@@ -167,10 +167,16 @@ export async function aiSegment({ sentence, tokens, difficulty }, deps = {}) {
     aiCache.set(cacheKey, hardResult)
     return hardResult
   }
-  const callOnce = async () =>
-    deps.httpPost('/api/admin/segments/llm-segment', {
+  const callOnce = async () => {
+    // **兼容两种 httpPost 返回形态（与 saveSegmentsChecked 同款）**：
+    // 浏览器 fetch Response（res.ok=HTTP 状态 + res.json()）与单测纯对象（{ok, segments}）。
+    // ⚠️ 2026-10-05 根因修复：此前直接判断 resp.ok，fetch Response 的 .ok 是 HTTP 状态，
+    // 导致后端返回成功 JSON 也被当成"未知响应"→ 机械兜底，AI 切块从未真正生效过。
+    const res = await deps.httpPost('/api/admin/segments/llm-segment', {
       sentence_hash: hash, russian_text: normalized, tokens: tks, difficulty: d,
     })
+    return (res && typeof res.json === 'function') ? await res.json().catch(() => ({})) : (res || {})
+  }
   // 注意：HTTP/JSON 层异常不在此吞掉——向上抛，由调用方（generateUnitSegmentsAsync）catch 进 failed；
   // 只有后端明确返回 {ok:false,fallback:true}（业务失败）才走"重试 1 次 → 机械兜底 pending"。
   const makeGenerating = (segments) => ({ segments, translation: '', reviewStatus: 'generating', tokens: tks, sentenceHash: hash })
@@ -244,7 +250,9 @@ export async function checkCache({ courseId, unitId }, deps = {}) {
     throw new Error('checkCache: deps.httpPost 必须注入')
   }
   const path = `/api/segments?course_id=${encodeURIComponent(courseId)}&unit_id=${encodeURIComponent(unitId)}`
-  const r = await deps.httpPost(path)
+  const res = await deps.httpPost(path)
+  // 兼容两种 httpPost 返回形态：浏览器 fetch Response（res.json()）与单测纯对象（{items}）
+  const r = (res && typeof res.json === 'function') ? await res.json().catch(() => ({})) : (res || {})
   const map = new Map()
   for (const it of (Array.isArray(r.items) ? r.items : [])) {
     map.set(`${it.sentence_hash}::${it.difficulty}`, it)
