@@ -4,10 +4,9 @@ import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { API_BASE, apiFetch } from '../lib/api'
 import { courseStatus, statusLabel, fmtSchedule } from '../utils/courseSchedule'
 import { saveCourseVersion, listCourseVersions, getCourseVersion, clearCourseVersions, rollbackCourse } from '../utils/courseVersions'
-import { runQc, qcSummary } from '../utils/importQc'
 import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
-import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps, russianizeNumbers } from '../lib/snowballEngine'
+import { splitTokens } from '../lib/snowballEngine'
 import { withRetry403 } from '../lib/segmentEngine'
 import { resolvePlayUrl } from '../lib/playUrl'
 import { generateSlotPaths, verifySlotPaths, generateVariantPool } from '../lib/slotEngine'
@@ -148,340 +147,9 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState('')
   const [saveBanner, setSaveBanner] = useState(null) // 保存课时后的成功横幅 + 下一步引导
   const [kpState, setKpState] = useState(null)       // 一键生成本课知识点进度 { done, total, cur }
-  // —— 连词成句课程生成器：单词 → 提示词 ——
-  const [genWords, setGenWords] = useState('')
-  const [sentencesInput, setSentencesInput] = useState('')
-  const [snowballBusy, setSnowballBusy] = useState(false)
-  const [snowballResult, setSnowballResult] = useState(null)
-  const [snowballBatch, setSnowballBatch] = useState(2)
-  const [snowballDone, setSnowballDone] = useState(0)
-  const [genPrompt, setGenPrompt] = useState('')
-  const [genBusy, setGenBusy] = useState(false)
-  const [showGenPrompt, setShowGenPrompt] = useState(false)
+  // —— 唯一上传入口：批量粘贴句子（每行：俄语 || 中文）——
+  const [batchSentText, setBatchSentText] = useState('')
 
-  // 生成器取词：优先用生成器单词框；留空则自动读取本课已保存的词条（老数据兼容）
-  const getGenWords = () => {
-    let w = String(genWords || '').trim()
-    if (!w && activeUnit && activeUnit.vocab) {
-      w = String(activeUnit.vocab).split(/\r?\n/).map(l => l.split('|')[0].trim()).filter(Boolean).join(', ')
-    }
-    return w
-  }
-
-  const generatePrompt = () => {
-    const words = getGenWords()
-    if (!words) { setToast('请先在生成器输入框填写本课单词（逗号隔开）'); return }
-    const prompt = `你是一个极度严谨的俄语教学课程设计师。请严格按照"单句逐词派生（长雪球）"生成 JSON，完全对标"句乐部"连词成句打字模式（先学零件 → 再组装 → 再变形）。
-【词性驱动分配（必须严格遵守）】
-0. 先识别输入单词的词性，再按用途自动分配：
-   - 名词（дом, книга, Анна）→ 作主语或宾语，按句法变格（книга -> книгу）；至少一条路径用形容词/数词/物主代词扩展宾语（новую книгу, одну книгу, мою книгу）
-   - 动词（любить, читать, знать）→ 变位作谓语（Я люблю, Иван знает）；每个动词至少进入一条路径；整体至少一条路径做否定（не）+ 至少一条做不定式（хочет читать）+ 至少一条做疑问
-   - 代词（я, ты, он, она）→ 作主语，必要时变格（ты -> тебя）
-   - 形容词（новый, хороший）→ 扩展宾语（новую книгу）
-   - 数词（один, два）→ 扩展宾语（одну книгу）
-   - 副词（очень, хорошо）→ 程度副词放动词前（Иван хорошо знает Анну）
-   - 时间词（сегодня, утром, вечером）→ 动作动词路径加时间状语
-   - 地点词（дома, в школе, в городе）→ 动作动词路径加地点状语
-   - 疑问词（кто, что, где）→ 至少一条疑问路径用疑问词滚雪球
-   - 连接/语气词（не, и, да）→ 否定/连接用
-   覆盖要求：输入中出现的每类词，至少在一组路径中被用到；不得跳过某类词。
-   自动衍生缺失词类（极其重要）：如果输入中没有某类词，AI 必须自动衍生该类词，并且必须多样化——示例仅供参考，不限于示例，可自由衍生其他高频词：
-   - 无动词 → 自由选高频动词（читать, знать, делать, работать, жить, говорить, любить, видеть, хотеть, учить, слушать, смотреть, помогать, идти, есть, пить, учиться, заниматься 等），不同路径换不同动词，严禁全课只用 1 个动词；
-   - 无形容词 → 自由选（новый, хороший, большой, маленький, красивый, интересный, вкусный, трудный 等）；
-   - 无数词 → 自由选（один, два, три 等）；
-   - 无时间词 → 自由选（сегодня, утром, вечером, сейчас, всегда 等）；
-   - 无地点词 → 自由选（дома, в школе, в городе, в магазине, на работе 等）；
-   - 无疑问词 → 自由选（кто, что, где, когда, как 等）；
-   - 无副词 → 自由选（очень, хорошо, быстро, много 等）；
-   - 连接/语气词可自由用（и, а, но, тоже, конечно, не）。
-   多样性要求：同类衍生成分至少使用 2-3 个不同词轮换，确保课程不单调。
-【核心铁律：违反任何一条直接判定失败！】
-1. 锁死主语：一个肯定雪球只能有一个主语！在句子滚到 8-12 个词之前，绝对禁止切换主语！
-1.1. 动词轮换：如果提供多个动词，不同 pathId 之间必须轮换使用不同动词（如 path_01 用 любить，path_02 用 читать）；同一 pathId 内只能锁一个动词。
-2. 严禁横向替换：绝对禁止生成"Я знаю Ивана. Ты знаешь Анну."这种横向换主语或换宾语的平行句！每一步必须比上一步多出一个词或一个词组！
-3. 零件 + 组装模式（对标句乐部）：允许"零件关"：动词原形（знать）、不定式（читать）、否定词（не）、宾语（Анну）可单独成一关；但零件关之后必须立即进入组装关（主谓、主谓宾），严禁连续只堆零件。组装顺序：主语 -> 谓语（可先出原形零件再变位）-> 主谓 -> 宾语 -> 主谓宾 -> 扩展。
-4. 强制纵向加长（上限8-12个词）：宾语允许用形容词（новую книгу）、数词（одну книгу）、物主代词（мою книгу）扩展；程度副词必须放在动词前面（如 Иван хорошо знает Анну）。滚到 8-12 词后停止加长，开启新 pathId 做变体替换。
-5. 语义搭配绝对禁令：状态/心理动词（знать, любить）禁止加时间/地点状语（сегодня, в школе），只能加程度副词（очень, хорошо）或扩展宾语（形容词/数词/物主代词）；动作动词（читать, делать, говорить, жить 等）允许加时间状语（сегодня, утром, вечером）和地点状语（дома, в школе, в городе）；加不自然就直接结束。
-6. 禁止滥用"Да"；严禁堆砌名单：禁止用"и"叠加不相关宾语，禁止把代词（это）和人物名词（маму）用 и 并列。
-【变体替换规则】
-7. 肯定雪球滚到 8-12 词达标后，开启新 pathId：
-   【否定路径】按否定零件滚雪球：не -> не знает -> не знает Анну -> Иван не знает Анну -> не очень хорошо -> Иван не очень хорошо знает Анну
-   【疑问路径】二选一：a) 取肯定句末尾加问号（Иван хорошо знает Анну?）；b) 用疑问词滚雪球（Кто -> Кто знает -> Кто хорошо знает Анну?）
-   【不定式路径】零件：читать -> читать книгу -> Иван хочет читать книгу
-8. 强制语义审查：输出前默读中文，如果中文听起来像"我很了解这个和妈妈"，立即停止并结束该 pathId。
-9. 严格输出 JSON 格式：字段为 pathId、steps（含 stepIndex, russian, chinese）。可选附 newChunks / allChunks（每个单词含 word / translation / role / color）。russian 以我提供的单词为核心素材（必须全部用上），允许自动衍生所有必要成分（动词变位/не/疑问词/不定式/形容词/数词/程度副词/时间地点状语），衍生成分不受输入限制。每组生成 10-15 关。只输出 JSON，无任何解释或 markdown 包裹。
-10. 输出前自查：逐条核对 1-8 条铁律，只要有一条不满足就立即修正后再输出。
-单词如下：${words}`
-    setGenPrompt(prompt)
-    setShowGenPrompt(true)
-    setToast('提示词已生成，请复制后粘贴给 AI')
-  }
-
-  // 单组单词 → AI 生成路径（核心逻辑，单课生成与批量生成共用；失败自动重试一次）
-  const genPathOnce = async (wordsStr) => {
-    const system = '你是一个资深俄语教学课程设计师。严格按用户要求只输出 JSON 数组，不要输出任何解释或 markdown 包裹。'
-    const user = `你是一个极度严谨的俄语教学课程设计师。请严格按照"单句逐词派生（长雪球）"生成 JSON，完全对标"句乐部"连词成句打字模式（先学零件 → 再组装 → 再变形）。
-【词性驱动分配（必须严格遵守）】
-0. 先识别输入单词的词性，再按用途自动分配：
-   - 名词（дом, книга, Анна）→ 作主语或宾语，按句法变格（книга -> книгу）；至少一条路径用形容词/数词/物主代词扩展宾语（новую книгу, одну книгу, мою книгу）
-   - 动词（любить, читать, знать）→ 变位作谓语（Я люблю, Иван знает）；每个动词至少进入一条路径；整体至少一条路径做否定（не）+ 至少一条做不定式（хочет читать）+ 至少一条做疑问
-   - 代词（я, ты, он, она）→ 作主语，必要时变格（ты -> тебя）
-   - 形容词（новый, хороший）→ 扩展宾语（новую книгу）
-   - 数词（один, два）→ 扩展宾语（одну книгу）
-   - 副词（очень, хорошо）→ 程度副词放动词前（Иван хорошо знает Анну）
-   - 时间词（сегодня, утром, вечером）→ 动作动词路径加时间状语
-   - 地点词（дома, в школе, в городе）→ 动作动词路径加地点状语
-   - 疑问词（кто, что, где）→ 至少一条疑问路径用疑问词滚雪球
-   - 连接/语气词（не, и, да）→ 否定/连接用
-   覆盖要求：输入中出现的每类词，至少在一组路径中被用到；不得跳过某类词。
-   自动衍生缺失词类（极其重要）：如果输入中没有某类词，AI 必须自动衍生该类词，并且必须多样化——示例仅供参考，不限于示例，可自由衍生其他高频词：
-   - 无动词 → 自由选高频动词（читать, знать, делать, работать, жить, говорить, любить, видеть, хотеть, учить, слушать, смотреть, помогать, идти, есть, пить, учиться, заниматься 等），不同路径换不同动词，严禁全课只用 1 个动词；
-   - 无形容词 → 自由选（новый, хороший, большой, маленький, красивый, интересный, вкусный, трудный 等）；
-   - 无数词 → 自由选（один, два, три 等）；
-   - 无时间词 → 自由选（сегодня, утром, вечером, сейчас, всегда 等）；
-   - 无地点词 → 自由选（дома, в школе, в городе, в магазине, на работе 等）；
-   - 无疑问词 → 自由选（кто, что, где, когда, как 等）；
-   - 无副词 → 自由选（очень, хорошо, быстро, много 等）；
-   - 连接/语气词可自由用（и, а, но, тоже, конечно, не）。
-   多样性要求：同类衍生成分至少使用 2-3 个不同词轮换，确保课程不单调。
-【核心铁律：违反任何一条直接判定失败！】
-1. 锁死主语：一个肯定雪球只能有一个主语！在句子滚到 8-12 个词之前，绝对禁止切换主语！
-1.1. 动词轮换：如果提供多个动词，不同 pathId 之间必须轮换使用不同动词（如 path_01 用 любить，path_02 用 читать）；同一 pathId 内只能锁一个动词。
-2. 严禁横向替换：绝对禁止生成"Я знаю Ивана. Ты знаешь Анну."这种横向换主语或换宾语的平行句！每一步必须比上一步多出一个词或一个词组！
-3. 零件 + 组装模式（对标句乐部）：允许"零件关"：动词原形（знать）、不定式（читать）、否定词（не）、宾语（Анну）可单独成一关；但零件关之后必须立即进入组装关（主谓、主谓宾），严禁连续只堆零件。组装顺序：主语 -> 谓语（可先出原形零件再变位）-> 主谓 -> 宾语 -> 主谓宾 -> 扩展。
-4. 强制纵向加长（上限8-12个词）：宾语允许用形容词（новую книгу）、数词（одну книгу）、物主代词（мою книгу）扩展；程度副词必须放在动词前面（如 Иван хорошо знает Анну）。滚到 8-12 词后停止加长，开启新 pathId 做变体替换。
-5. 语义搭配绝对禁令：状态/心理动词（знать, любить）禁止加时间/地点状语（сегодня, в школе），只能加程度副词（очень, хорошо）或扩展宾语（形容词/数词/物主代词）；动作动词（читать, делать, говорить, жить 等）允许加时间状语（сегодня, утром, вечером）和地点状语（дома, в школе, в городе）；加不自然就直接结束。
-6. 禁止滥用"Да"；严禁堆砌名单：禁止用"и"叠加不相关宾语，禁止把代词（это）和人物名词（маму）用 и 并列。
-【变体替换规则】
-7. 肯定雪球滚到 8-12 词达标后，开启新 pathId：
-   【否定路径】按否定零件滚雪球：не -> не знает -> не знает Анну -> Иван не знает Анну -> не очень хорошо -> Иван не очень хорошо знает Анну
-   【疑问路径】二选一：a) 取肯定句末尾加问号（Иван хорошо знает Анну?）；b) 用疑问词滚雪球（Кто -> Кто знает -> Кто хорошо знает Анну?）
-   【不定式路径】零件：читать -> читать книгу -> Иван хочет читать книгу
-8. 强制语义审查：输出前默读中文，如果中文听起来像"我很了解这个和妈妈"，立即停止并结束该 pathId。
-【输出限制】
-9. 严格输出 JSON **数组**，每个元素为 {"pathId": "...", "steps": [{"stepIndex": 1, "russian": "...", "chinese": "..."}]}。**不要输出 newChunks / allChunks**（后台会自动补全词卡）。russian 以我提供的单词为核心素材（必须全部用上），允许自动衍生所有必要成分（动词变位/не/疑问词/不定式/形容词/数词/程度副词/时间地点状语），衍生成分不受输入限制。每组生成 10-15 关。只输出 JSON，无任何解释或 markdown 包裹。
-10. 输出前自查：逐条核对 1-8 条铁律，只要有一条不满足就修正后再输出。
-单词如下：${wordsStr}`
-    let attempt = 0
-    while (attempt < 2) {
-      attempt++
-      try {
-        const content = await chat({ messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
-        const parsed = parseAIJSON(content)
-        if (!parsed) throw new Error('AI 未返回合法 JSON')
-        const arr = Array.isArray(parsed) ? parsed : [parsed]
-        const paths = arr.filter(p => p && Array.isArray(p.steps))
-        if (!paths.length) throw new Error('AI 返回中没有 pathId+steps 路径')
-        // 本地补全词卡：词表匹配 + 语法规则（AI 只出 russian/chinese，避免超长截断）
-        let vocab = []
-        try { vocab = JSON.parse(localStorage.getItem('rlearn_v1_vocab') || '[]') } catch (e) { vocab = [] }
-        const vocabMap = {}
-        vocab.forEach(c => { if (c && c.word) { const k = String(c.word).toLowerCase(); if (k && !vocabMap[k]) vocabMap[k] = c } })
-        const posColor = { '名词': 'orange', '动词': 'red', '形容词': 'green', '副词': 'green', '代词': 'orange', '数词': 'green', '连接词': 'gray', '疑问词': 'purple', '语气词': 'gray' }
-        const makeChunk = (w) => {
-          const clean = String(w).toLowerCase().replace(/[.,!?;:«»"'()]/g, '')
-          const c = vocabMap[clean]
-          let role = '', color = 'orange'
-          if (['не','и','а','но','да','тоже','очень','конечно'].includes(clean)) { role = '连接/语气词'; color = 'gray' }
-          else if (['что','кто','как','когда','где','почему'].includes(clean)) { role = '疑问词'; color = 'purple' }
-          else if (/(ть|тся|чь)$/.test(clean)) { role = '动词'; color = 'red' }
-          if (c) { role = c.pos || role; color = posColor[role] || color }
-          return { word: w, translation: c ? (c.chinese || '') : '', role, color }
-        }
-        paths.forEach(p => {
-          let prevWords = new Set()
-          p.steps = p.steps.map(st => {
-            const tokens = String(st.russian || '').trim().split(/\s+/).filter(Boolean)
-            const newTokens = tokens.filter(t => !prevWords.has(t.toLowerCase()))
-            tokens.forEach(t => prevWords.add(t.toLowerCase()))
-            const allChunks = tokens.map(makeChunk)
-            const newChunks = newTokens.map(makeChunk)
-            return { ...st, newChunks, allChunks }
-          })
-        })
-        return paths
-      } catch (e) {
-        if (attempt === 1) continue // 冷启动/超时自动重试一次
-        throw new Error(e.message || 'AI 生成失败')
-      }
-    }
-    throw new Error('AI 生成失败')
-  }
-
-  // 🤖 AI 一键生成滚动路径：填词 → 后端 AI 直接返回 JSON → 自动导入本课时（零复制粘贴）
-  const aiGenPath = async () => {
-    const words = getGenWords()
-    if (!words) { setToast('请先在生成器输入框填写本课单词（逗号隔开）'); return }
-    const wordsStr = words.split(/[，,]/).map(w => w.trim()).filter(Boolean).join(', ')
-    setGenBusy(true)
-    try {
-      const paths = await genPathOnce(wordsStr)
-      const prev = [...(activeUnit.scaffoldingPaths || [])]
-      const pathIds = new Set(prev.map(p => p.pathId))
-      paths.forEach(p => {
-        if (pathIds.has(p.pathId)) { const i = prev.findIndex(x => x.pathId === p.pathId); prev[i] = p }
-        else { prev.push(p); pathIds.add(p.pathId) }
-      })
-      patchUnit({ scaffoldingPaths: prev })
-      const emptySteps = paths.reduce((a, p) => a + p.steps.filter(s => (s.allChunks || []).some(c => !c.translation)).length, 0)
-      setToast(`✅ AI 已生成 ${paths.length} 条路径（共 ${paths.reduce((a, p) => a + (p.steps || []).length, 0)} 关），词卡已按词表+规则补全；${emptySteps} 关有单词未收录词表（可去词汇表补充）。记得点「保存课时内容」固定入库`)
-      setTimeout(() => { const el = document.getElementById('scaffold-section'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 300)
-    } catch (e) {
-      setToast('⚠️ AI 生成失败：' + e.message + '（可改用「生成提示词」复制后到外部 AI 生成再导入）')
-    }
-    setGenBusy(false)
-  }
-
-  // 🧊 课文句子 → 机器生成滚雪球 + AI 审核（末步强制=原句；AI 只审核语序/语义/翻译，不编排路径，杜绝发散错误）
-  // mode='append'：只生成下一批（少量多次，降低长句 AI 出错率），追加到已有结果；mode='full'：清空后全量重新生成
-  const genSnowballCourse = async (mode = 'append') => {
-    const lines = String(sentencesInput || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-    if (!lines.length) { setToast('请先粘贴课文句子（每行一句）'); return }
-    const prevPaths = mode === 'append' ? (snowballResult || []) : []
-    const start = mode === 'append' ? snowballDone : 0
-    const end = mode === 'append' ? Math.min(snowballDone + snowballBatch, lines.length) : lines.length
-    if (mode === 'append' && snowballDone >= lines.length) { setToast('✅ 全部句子都已生成，如需重做请点「重新生成全部」'); return }
-    setSnowballBusy(true)
-    try {
-      const paths = []
-      const offset = prevPaths.length
-      for (let k = 0; k < end - start; k++) {
-        const i = start + k
-        const original = lines[i]
-        const tokens = splitTokens(original)
-        const machine = buildMachineSteps(tokens)
-        let steps = []
-        try {
-          steps = await aiReviewSteps(original, machine)
-        } catch (e) {
-          // AI 审核不可用：退回纯机器路径（中文留空待补，不阻塞生成）
-          steps = machine.map((s, idx) => ({ stepIndex: idx + 1, russian: s.join(' '), chinese: '' }))
-        }
-        steps = (steps || []).filter(s => s && s.russian && String(s.russian).trim())
-        steps = steps.map((s, idx) => ({ ...s, stepIndex: idx + 1 }))
-        // 硬校验：末步必须 100% = 原句（数字已由引擎统一俄语化，此处忽略数字写法比较）
-        if (!verifyFinalStep(steps, original)) {
-          const last = steps[steps.length - 1]
-          const lastRuss = last ? String(last.russian || '').replace(/\s+/g, ' ').trim() : ''
-          const origNorm = original.replace(/\s+/g, ' ').trim()
-          if (last && lastRuss === origNorm) last.russian = russianizeNumbers(original)
-          else steps.push({ stepIndex: steps.length + 1, russian: russianizeNumbers(original), chinese: last ? (last.chinese || '') : '' })
-        }
-        // 词卡补全（词表匹配 + 词性规则）；pathId 从已有结果数续接，避免重复覆盖
-        paths.push({ pathId: 'path_' + String(offset + k + 1).padStart(2, '0'), steps: buildChunksForSteps(steps) })
-      }
-      if (mode === 'append') {
-        setSnowballResult([...prevPaths, ...paths])
-        setSnowballDone(end)
-        setToast(`✅ 已追加生成 ${paths.length} 条（共 ${prevPaths.length + paths.length}/${lines.length}），继续点「生成下一批」或直接保存`)
-      } else {
-        setSnowballResult(paths)
-        setSnowballDone(lines.length)
-        setToast(`✅ 已重新生成全部 ${paths.length} 条路径（机器生成 + AI 审核，末步强制=原句），点「保存到本课时」固定入库`)
-      }
-      setTimeout(() => { const el = document.getElementById('scaffold-section'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 300)
-    } catch (e) {
-      setToast('⚠️ 生成失败：' + e.message + '（AI 审核不可用时会退回纯机器路径，中文留空待补）')
-    }
-    setSnowballBusy(false)
-  }
-
-  const snowballLineCount = String(sentencesInput || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).length
-
-  // 编辑结果预览中的某一步（russian/chinese 可直接改，保存时用改后的值）
-  const updateSnowballStep = (pathId, stepIndex, field, value) => {
-    setSnowballResult(prev => (prev || []).map(p => {
-      if (p.pathId !== pathId) return p
-      return { ...p, steps: p.steps.map(s => (s.stepIndex === stepIndex ? { ...s, [field]: value } : s)) }
-    }))
-  }
-
-  // 删除某条路径中的特定步骤（末步=原句，不可删；删除后步骤重新编号）
-  const removeSnowballStep = (pathId, stepIndex) => {
-    setSnowballResult(prev => (prev || []).map(p => {
-      if (p.pathId !== pathId) return p
-      const steps = p.steps.filter(s => s.stepIndex !== stepIndex).map((s, i) => ({ ...s, stepIndex: i + 1 }))
-      return { ...p, steps }
-    }))
-    setToast(`🗑️ 已删除 ${pathId} 的第 ${stepIndex} 步（删除后步骤已重新编号）`)
-  }
-
-  // 保存机器生成+审核的路径到本课时（复用现有合并逻辑）
-  const saveSnowball = () => {
-    if (!snowballResult || !snowballResult.length) return
-    const prev = [...(activeUnit.scaffoldingPaths || [])]
-    const pathIds = new Set(prev.map(p => p.pathId))
-    snowballResult.forEach(p => {
-      if (pathIds.has(p.pathId)) { const i = prev.findIndex(x => x.pathId === p.pathId); prev[i] = p }
-      else { prev.push(p); pathIds.add(p.pathId) }
-    })
-    patchUnit({ scaffoldingPaths: prev })
-    setToast(`✅ 已保存 ${snowballResult.length} 条路径到本课时，记得点「保存课时内容」固定入库`)
-  }
-
-  // 🚀 批量生成：多组单词（每组一行=一课）→ 循环 AI 生成 → 自动创建课时并保存
-  const batchGenPaths = async () => {
-    const raw = String(genWords || '').trim()
-    if (!raw) { setToast('请先在生成器输入框填写单词，每组一行=一课'); return }
-    const wordGroups = raw.split(/\r?\n/).map(l => l.split(/[，,]/).map(w => w.trim()).filter(Boolean)).filter(g => g.length)
-    if (!wordGroups.length) { setToast('请先输入单词，每组一行=一课'); return }
-    const total = wordGroups.length
-    if (!window.confirm(`将按 ${total} 组单词循环调用 AI 生成路径，并自动创建 ${total} 个新课时（第 ${units.length + 1} 课起）。继续？`)) return
-    setGenBusy(true)
-    let ok = 0, fail = 0
-    const errs = []
-    const newUnits = []
-    for (let i = 0; i < total; i++) {
-      const wordsStr = wordGroups[i].join(', ')
-      setToast(`⏳ 正在生成第 ${i + 1}/${total} 课：${wordsStr.slice(0, 24)}${wordsStr.length > 24 ? '…' : ''}`)
-      try {
-        const paths = await genPathOnce(wordsStr)
-        newUnits.push({
-          id: 'unit_' + Date.now() + '_' + i,
-          title: `第 ${units.length + newUnits.length + 1} 课`,
-          desc: '', vocab: '', imported: false,
-          words: wordGroups[i], sentences: [], scaffoldingPaths: paths,
-        })
-        ok++
-      } catch (e) {
-        fail++
-        errs.push('第 ' + (i + 1) + ' 课：' + (e.message || '未知错误'))
-        console.warn('批量第 ' + (i + 1) + ' 课生成失败：', e.message)
-      }
-    }
-    if (newUnits.length) {
-      persistUnits([...units, ...newUnits])
-      const last = newUnits[newUnits.length - 1]
-      setActiveUnit(last)
-      setTimeout(() => {
-        const el = document.getElementById('scaffold-section')
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 400)
-    }
-    setGenBusy(false)
-    setToast(`✅ 批量完成：成功 ${ok} 课，失败 ${fail} 课` + (fail ? `（原因：${errs[0] || '未知'}）` : `，已自动切换到「${newUnits[newUnits.length - 1]?.title || ''}」并在下方展示路径，可逐课点选检查`))
-  }
-  const copyPrompt = () => {
-    if (!genPrompt) return
-    let ok = false
-    try {
-      // 方案1（主）：隐藏 textarea + execCommand，同步执行，不依赖页面焦点权限
-      const ta = document.createElement('textarea')
-      ta.value = genPrompt
-      ta.style.position = 'fixed'
-      ta.style.opacity = '0'
-      document.body.appendChild(ta)
-      ta.focus()
-      ta.select()
-      ok = document.execCommand('copy')
-      document.body.removeChild(ta)
-    } catch (e) { ok = false }
-    // 方案2（兜底）：Clipboard API
-    if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(genPrompt).catch(() => {})
-    }
-    setToast('提示词已复制，请粘贴给 AI 生成 JSON')
-  }
   // —— 云端同步状态 ——
   const { adminKey, token, user, loginPassword, register, logout, authBody } = useAdminStore()
   // isLoggedIn 每次渲染实时计算（不能用 store 对象 getter：zustand set 会用 Object.assign 合并，
@@ -517,8 +185,6 @@ export default function AdminDashboard() {
   const [newSentZh, setNewSentZh] = useState('')
   const [editSentIdx, setEditSentIdx] = useState(-1)      // 正在行内编辑的例句下标（-1=未编辑）
   const [editSent, setEditSent] = useState({ ru: '', zh: '', chunks: '' })
-  const [jsonText, setJsonText] = useState('')            // 批量导入 JSON（句子）粘贴区
-  const [jsonBusy, setJsonBusy] = useState(false)
   const [aiUnitTitleBusy, setAiUnitTitleBusy] = useState(false) // AI 生成课时名（手动添加表单）
   const [aiRenameBusy, setAiRenameBusy] = useState(null)  // AI 重命名课时列表中的行 index
 
@@ -1002,6 +668,26 @@ export default function AdminDashboard() {
     setNewSentZh('')
   }
 
+  // 批量粘贴添加（唯一上传入口主路径）：每行 "俄语 || 中文"（支持 || ｜ | Tab）
+  const addSentencesBatch = () => {
+    const lines = String(batchSentText || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    if (!lines.length) { flash('请先粘贴句子（每行一句：俄语 || 中文）'); return }
+    const added = []
+    const skipped = []
+    for (const line of lines) {
+      const parts = line.split(/\s*\|\|\s*|\s*[｜]\s*|\s*\|\s*|\t+/).map(s => s.trim())
+      const ru = parts[0] || ''
+      const zh = parts[1] || ''
+      if (!ru) { skipped.push(line); continue }
+      added.push({ ru, zh })
+    }
+    if (!added.length) { flash('没有解析到有效句子：每行需以俄语开头，格式「俄语 || 中文」'); return }
+    patchUnit({ sentences: [...(activeUnit.sentences || []), ...added] })
+    const noZh = added.filter(s => !s.zh).length
+    flash(`已批量添加 ${added.length} 句` + (noZh ? `（其中 ${noZh} 句缺中文，可逐句点「编」补齐）` : ''))
+    setBatchSentText('')
+  }
+
   // 删除例句
   const removeSentence = (idx) => {
     patchUnit({ sentences: (activeUnit.sentences || []).filter((_, i) => i !== idx) })
@@ -1091,206 +777,7 @@ export default function AdminDashboard() {
     }
   }
 
-  // ========== AI 前置数据入库：批量导入 JSON 句子 + 修复中文（缺失/逐词硬拼），前端只渲染固定数据 ==========
-  // —— 批量导入质检：导入后自动跑规则质检 + 可一键 AI 深度审核（语序/语义/语法/数字）——
-  const [qcReport, setQcReport] = useState(null) // runQc 结果 {errors,warns,items}
-  const [qcAiIssues, setQcAiIssues] = useState([]) // AI 深度审核问题 [{ru, level, message}]
-  const [qcAiBusy, setQcAiBusy] = useState(false)
-  // AI 深度审核：检查俄语语法/语序/语义/数字规范，返回问题标注
-  const aiDeepReview = async () => {
-    const texts = []
-    const src = []
-    ;(activeUnit.sentences || []).forEach((s) => { const ru = String(s.ru || '').trim(); if (ru) { texts.push(ru); src.push('句子') } })
-    ;(activeUnit.scaffoldingPaths || []).forEach((p) => {
-      const steps = Array.isArray(p.steps) ? p.steps : []
-      const last = steps[steps.length - 1]
-      const ru = String((last && (last.russian || last.ru)) || '').trim()
-      if (ru) { texts.push(ru); src.push('路径 ' + (p.pathId || '')) }
-    })
-    if (!texts.length) { flash('本课时还没有内容，先导入或生成后再审核'); return }
-    setQcAiBusy(true)
-    setQcAiIssues([])
-    try {
-      const content = await chat({
-        messages: [
-          { role: 'system', content: '你是严格的俄语语法审校。逐句检查：1) 语法是否正确；2) 语序是否自然；3) 词与词搭配是否合乎逻辑；4) 数字是否应为俄语写法（500→пятьсот）。只挑真实问题，不要吹毛求疵。' },
-          { role: 'user', content:
-            '请逐句检查以下俄语文本，返回 JSON：{"issues":[{"ru":"原句","level":"error|warn","message":"简短中文问题说明"}]}。没有问题的句子不要列出。只输出 JSON。\n' + JSON.stringify(texts) },
-        ],
-      })
-      const r = parseAIJSON(content)
-      const issues = Array.isArray(r && r.issues) ? r.issues : []
-      const withSrc = issues
-        .map((it) => ({ ru: String(it.ru || '').trim(), level: it.level === 'error' ? 'error' : 'warn', message: String(it.message || '') }))
-        .filter((it) => it.ru && it.message)
-        .map((it) => { const i = texts.indexOf(it.ru); return { ...it, where: i >= 0 ? src[i] : '' } })
-      setQcAiIssues(withSrc)
-      flash(withSrc.length ? `🤖 AI 审核发现 ${withSrc.length} 个问题，请修正后保存` : '🤖 AI 深度审核通过：语法/语序/语义未发现问题')
-    } catch (e) {
-      flash('⚠️ AI 深度审核失败：' + e.message)
-    }
-    setQcAiBusy(false)
-  }
 
-  // 检测某句中文是否需要 AI 修复：缺失 / 俄语残留 / 明显逐词硬拼（如「谁这是？」）
-  const needsZhFix = (s) => {
-    const zh = String(s.chinese || s.zh || '').trim()
-    if (!zh) return true
-    if (/[а-яё]/i.test(zh)) return true
-    if (/^(谁|什么|哪儿|哪里|怎么|为什么|多少|几)[^。！？]*?(这|那)是/.test(zh)) return true
-    return false
-  }
-  // AI 不可用时的本地兜底修复（仅处理典型「疑问词前置 + 这是」语序错位）
-  const localFixZh = (zh) => {
-    let t = String(zh || '').trim()
-    const m = t.match(/^(谁|什么|哪儿|哪里|怎么|为什么|多少|几)([^。！？]*?)(这|那)是/)
-    if (m) t = m[3] + '是' + m[2] + m[1] + t.slice(m[0].length)
-    return t
-  }
-  // 批量调用后端 AI（密钥在服务端）：整句地道中文 + 意群块 chunks
-  const aiFixSentences = async (sentences) => {
-    const items = sentences.map((s) => String(s.ru || s.russian || '').trim()).filter(Boolean)
-    if (!items.length) return {}
-    const content = await chat({
-      messages: [
-        { role: 'system', content: '你是资深俄语→中文翻译，擅长合并意群、调整语序，输出地道中文。' },
-        { role: 'user', content:
-          '请将以下俄语句子翻译成地道的中文，并自动合并意群，避免逐词硬拼（例如 "Кто это?" 应译为 "这是谁？" 而不是 "谁这是？"）。\n' +
-          '返回 JSON 格式：{"items":[{"ru":"原句","chinese":"地道整句中文","chunks":["意群块1","意群块2"]}]}，只输出 JSON。\n句子列表：\n' + JSON.stringify(items) },
-      ],
-    })
-    const r = parseAIJSON(content)
-    const map = {}
-    ;(Array.isArray(r && r.items) ? r.items : []).forEach((it) => {
-      const ru = String(it && it.ru || '').trim()
-      if (ru) map[ru] = { chinese: String(it.chinese || '').trim(), chunks: Array.isArray(it.chunks) ? it.chunks.filter(Boolean) : [] }
-    })
-    return map
-  }
-  // 粘贴句子 JSON 数组 [{ru, zh}] → 检测异常 → AI 修复 → 去重追加（前端此后直接读 chinese）
-  // —— 兼容三类导入：句子数组 / 滚动学习路径 {pathId,steps} / 对话 dialogues ——
-  const normalizeImportData = (data) => {
-    const out = { sentences: [], paths: [], dialogues: [] }
-    const items = Array.isArray(data) ? data : [data]
-    items.forEach((it) => {
-      if (!it || typeof it !== 'object') return
-      // ① 滚动学习路径：{ pathId, steps: [...] }（连词成句「滚雪球」步骤）
-      if (Array.isArray(it.steps) && (it.pathId || it.steps.length)) {
-        out.paths.push({
-          pathId: String(it.pathId || 'path_' + Date.now()),
-          steps: it.steps.map((st, i) => ({
-            stepIndex: Number(st.stepIndex) || i + 1,
-            russian: String(st.russian || st.ru || '').trim(),
-            chinese: String(st.chinese || st.zh || '').trim(),
-            audioUrl: String(st.audioUrl || st.audio || '').trim(),
-            newChunks: Array.isArray(st.newChunks) ? st.newChunks : [],
-            allChunks: Array.isArray(st.allChunks) ? st.allChunks : [],
-          })).filter((st) => st.russian),
-        })
-        return
-      }
-      // ② 混合对象 / 对话：{ sentences:[...] } / { dialogues:[...] } / { dialogue:[...] }
-      if (Array.isArray(it.sentences) || Array.isArray(it.dialogues) || Array.isArray(it.dialogue)) {
-        if (Array.isArray(it.sentences)) out.sentences.push(...it.sentences)
-        if (Array.isArray(it.dialogues)) out.dialogues.push(...it.dialogues)
-        if (Array.isArray(it.dialogue)) out.dialogues.push(...it.dialogue)
-        return
-      }
-      // ③ 单句（数组元素）：{ ru / russian / text }
-      if (it.ru || it.russian || it.text) out.sentences.push(it)
-    })
-    return out
-  }
-  const importSentencesJson = async () => {
-    const text = (jsonText || '').trim()
-    if (!text) { flash('请先粘贴 JSON'); return }
-    let data
-    try { data = JSON.parse(text) }
-    catch (e) { flash('JSON 解析失败：' + e.message); return }
-    const { sentences, paths, dialogues } = normalizeImportData(data)
-    // 1) 句子：AI 修复中文 + 去重追加（老逻辑，兼容老数据）
-    if (sentences.length) {
-      const list = sentences.map((s) => ({
-        ru: String(s.ru || s.russian || s.text || '').trim(),
-        zh: String(s.zh || '').trim(),
-        chinese: String(s.chinese || s.zh || '').trim(),
-      })).filter((s) => s.ru)
-      if (list.length) {
-        const need = list.filter((s) => needsZhFix(s))
-        let fixed = list
-        if (need.length) {
-          setJsonBusy(true)
-          try {
-            const aiMap = await aiFixSentences(need)
-            fixed = list.map((s) => (aiMap[s.ru] ? { ...s, chinese: aiMap[s.ru].chinese || s.chinese, chunks: aiMap[s.ru].chunks } : s))
-            flash(`✅ AI 已修复 ${Object.keys(aiMap).length} 句中文（语序/意群）`)
-          } catch (e) {
-            fixed = list.map((s) => (needsZhFix(s) ? { ...s, chinese: localFixZh(s.chinese || s.zh) } : s))
-            flash('⚠️ AI 接口暂不可用：已用本地规则修复典型逐词句，其余请人工复核后保存')
-          }
-          setJsonBusy(false)
-        }
-        const merged = [...(activeUnit.sentences || [])]
-        const existIdx = new Map()
-        merged.forEach((x, i) => { const k = String(x.ru || '').trim().toLowerCase(); if (k && !existIdx.has(k)) existIdx.set(k, i) })
-        fixed.forEach((s) => {
-          const k = String(s.ru).trim().toLowerCase()
-          const i = existIdx.get(k)
-          if (i >= 0) {
-            const cur = merged[i].chinese || merged[i].zh || ''
-            if (s.chinese && s.chinese !== cur) {
-              merged[i] = { ...merged[i], chinese: s.chinese, chunks: s.chunks || merged[i].chunks }
-            }
-          } else {
-            merged.push(s)
-            existIdx.set(k, merged.length - 1)
-          }
-        })
-        patchUnit({ sentences: merged })
-      }
-    }
-    // 2) 滚动学习路径：按 pathId 去重合并（同 pathId 用新 steps 覆盖）
-    if (paths.length) {
-      const prev = [...(activeUnit.scaffoldingPaths || [])]
-      const pathIds = new Set(prev.map((p) => p.pathId))
-      paths.forEach((p) => {
-        if (pathIds.has(p.pathId)) {
-          const i = prev.findIndex((x) => x.pathId === p.pathId)
-          prev[i] = p
-        } else {
-          prev.push(p)
-          pathIds.add(p.pathId)
-        }
-      })
-      patchUnit({ scaffoldingPaths: prev })
-    }
-    // 3) 对话：透传保存（按 JSON 去重）
-    if (dialogues.length) {
-      const prev = [...(activeUnit.dialogues || [])]
-      const seen = new Set(prev.map((d) => JSON.stringify(d)))
-      dialogues.forEach((d) => { const k = JSON.stringify(d); if (!seen.has(k)) { prev.push(d); seen.add(k) } })
-      patchUnit({ dialogues: prev })
-    }
-    if (!sentences.length && !paths.length && !dialogues.length) {
-      flash('未识别到可导入内容：需要 句子数组 / {pathId,steps} 滚动路径 / dialogues')
-      return
-    }
-    flash(`✅ 导入完成：句子 ${sentences.length} 条、滚动路径 ${paths.length} 条、对话 ${dialogues.length} 条（点「保存课时内容」固定入库）`)
-    // —— 导入即质检：对本次合并后的本课时内容跑规则检查（用局部变量，勿读未更新的 state）——
-    let qcSentences = activeUnit.sentences || [], qcPaths = activeUnit.scaffoldingPaths || [], qcDialogues = activeUnit.dialogues || []
-    if (sentences.length) qcSentences = merged
-    if (paths.length) qcPaths = prev
-    if (dialogues.length) qcDialogues = prev
-    const mergedQc = runQc({ sentences: qcSentences, paths: qcPaths, dialogues: qcDialogues })
-    setQcReport(mergedQc)
-    setQcAiIssues([])
-    const qs = qcSummary(mergedQc)
-    if (mergedQc.errors || mergedQc.warns) flash(`✅ 导入完成，质检 ${qs}（见下方质检报告）`)
-    setJsonText('')
-    if (paths.length) {
-      setTimeout(() => { const el = document.getElementById('scaffold-section'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 300)
-    }
-  }
   // —— 手动修正（后台保留）：行内编辑 sentence 的 ru / chinese / chunks ——
   const startEditSent = (i) => {
     const s = (activeUnit.sentences || [])[i]
@@ -1361,13 +848,37 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          {/* 📤 唯一上传入口 · 三步引导 */}
+          <div className="card mt-4 border border-primary/30 bg-primary/5 shadow-sm" style={{ borderRadius: 16 }}>
+            <div className="card-body p-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-sm font-bold text-gray-900">📤 上传课程 = 三步</span>
+                <span className="text-[11px] text-gray-400">本课时内容只有一个入口：贴句子 → 生成路径 → 保存</span>
+              </div>
+              <ol className="mt-2 grid gap-1.5 text-xs text-gray-700 sm:grid-cols-3">
+                <li className="rounded-lg bg-white/70 px-3 py-2">
+                  <b className="text-primary">① 粘贴句子</b><br />
+                  在下方「① 例句」粘贴完整句子（每行：俄语 || 中文），点「批量添加」
+                </li>
+                <li className="rounded-lg bg-white/70 px-3 py-2">
+                  <b className="text-primary">② 生成路径</b><br />
+                  点「✨ 生成句乐部路径」，AI 自动把每句拆成学习关卡（初级/中级/高级）
+                </li>
+                <li className="rounded-lg bg-white/70 px-3 py-2">
+                  <b className="text-primary">③ 保存</b><br />
+                  点「💾 保存课时内容」，语块自动生成，学生端即可学习
+                </li>
+              </ol>
+            </div>
+          </div>
+
           {/* ① 例句 */}
           <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
             <div className="card-body p-5">
               <h2 className="card-title text-base text-gray-900">① 例句（可手动添加 / 编辑）</h2>
 
               {(!activeUnit.sentences || !activeUnit.sentences.length) ? (
-                <p className="py-8 text-center text-sm text-gray-400">还没有例句，可手动添加；主内容走「滚动学习路径」。</p>
+                <p className="py-8 text-center text-sm text-gray-400">还没有句子，用下方「📥 批量粘贴句子」添加完整句子（俄语 || 中文）。</p>
               ) : (
                 <>
                   <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
@@ -1395,7 +906,7 @@ export default function AdminDashboard() {
                           <span className="text-xs font-bold text-gray-400 w-6 shrink-0 pt-0.5">{String(i + 1).padStart(2, '0')}</span>
                           <div className="min-w-0 flex-1">
                             <div className="text-sm text-gray-900">{s.ru}</div>
-                            <div className="text-xs text-gray-400 mt-0.5">{s.chinese || s.zh || <span className="text-amber-600">（缺中文，请编辑或用 AI 修复）</span>}</div>
+                            <div className="text-xs text-gray-400 mt-0.5">{s.chinese || s.zh || <span className="text-amber-600">（缺中文，点「编」手动补齐）</span>}</div>
                             {Array.isArray(s.chunks) && s.chunks.length > 0 && (
                               <div className="text-[10px] text-gray-300 mt-0.5 font-mono">意群块：{s.chunks.join(' | ')}</div>
                             )}
@@ -1416,6 +927,22 @@ export default function AdminDashboard() {
                 <button className="btn btn-outline btn-sm" onClick={addSentence}>+ 添加</button>
               </div>
 
+              {/* 📥 批量粘贴（唯一上传入口主路径） */}
+              <div className="mt-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-semibold text-gray-700">📥 批量粘贴句子（每行一句：俄语 || 中文）</span>
+                  <button className="btn btn-primary btn-xs" onClick={addSentencesBatch}>批量添加</button>
+                </div>
+                <textarea
+                  className="textarea textarea-bordered mt-2 w-full font-mono text-xs"
+                  rows={5}
+                  placeholder={'Улица Чистые пруды — это старая улица в центре Москвы. || 清水池街是莫斯科市中心的一条老街。\nЭта улица небольшая, но известная. || 这条街不大，但很有名。'}
+                  value={batchSentText}
+                  onChange={e => setBatchSentText(e.target.value)}
+                />
+                <p className="mt-1 text-[11px] text-gray-400">支持分隔符：|| ｜ | Tab；建议中文必填（俄语 || 中文），缺中文可事后点例句「编」手动补齐</p>
+              </div>
+
               {/* ② 滚动学习路径（scaffoldingPaths）——连词成句滚雪球 */}
               <div id="scaffold-section" className="card mt-4 border border-purple-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
                 <div className="card-body p-5">
@@ -1425,7 +952,7 @@ export default function AdminDashboard() {
                       {slotBusy ? '✨ 生成中…（AI 规划 + 电脑拼装）' : '✨ 生成句乐部路径（AI 规划 + 自动拼装）'}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。粘贴 pathId + steps 结构 JSON 后立即显示在这里。</p>
+                  <p className="text-xs text-gray-400 mt-1">按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。点上方按钮即按「① 例句」的句子顺序自动生成。</p>
                   {slotResult && (
                     <div className="mt-2 rounded-lg border border-info/30 bg-info/5 p-2.5 text-xs text-gray-700 space-y-1">
                       <div>共 {slotResult.total} 句：✅ 成功 {slotResult.done}（每句三档：初级/中级/高级），❌ 失败 {slotResult.failed.length} {slotResult.poolReused || ''}</div>
@@ -1440,7 +967,7 @@ export default function AdminDashboard() {
                     </div>
                   )}
                   {(!activeUnit.scaffoldingPaths || !activeUnit.scaffoldingPaths.length) ? (
-                    <p className="py-6 text-center text-sm text-gray-400">还没有路径。在下方「批量导入 JSON」粘贴 pathId + steps 数据即可。</p>
+                    <p className="py-6 text-center text-sm text-gray-400">还没有路径。先在「① 例句」添加句子，再点上方「✨ 生成句乐部路径」即可自动生成。</p>
                   ) : (
                     <div className="mt-3 space-y-3 max-h-[480px] overflow-y-auto pr-1">
                       {(activeUnit.scaffoldingPaths || []).map((p, pi) => (
@@ -1465,180 +992,9 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* 批量导入 JSON（AI 前置修复中文）+ 连词成句课程生成器（并排） */}
-              <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                <div className="rounded-xl border border-dashed border-gray-300 p-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-xs font-semibold text-gray-600">📋 批量导入 JSON（句子数组 / 滚动学习路径 / 对话）+ AI 修复中文（缺失/逐词硬拼）</span>
-                    <button className="btn btn-outline btn-xs" onClick={importSentencesJson} disabled={jsonBusy}>
-                      {jsonBusy ? 'AI 修复中…' : '导入并 AI 修复'}
-                    </button>
-                  </div>
-                  <textarea
-                    className="textarea textarea-bordered mt-2 w-full font-mono text-xs"
-                    rows={3}
-                    placeholder={'[{ "ru": "Кто это?", "zh": "谁这是？" }, { "ru": "Это дом.", "zh": "这是房子。" }]\n或滚动路径：{ "pathId": "path_01", "steps": [{ "stepIndex": 1, "russian": "Это", "chinese": "这", "newChunks": [{ "word": "Это", "translation": "这", "role": "主语" }], "allChunks": [] }] }\n说明：缺失中文 / 含俄语 / 明显逐词硬拼的句子自动交 AI 重译；滚动路径（连词成句滚雪球）与对话数据按原结构透传保存。'}
-                    value={jsonText}
-                    onChange={e => setJsonText(e.target.value)}
-                  />
-                </div>
-
-                {/* 连词成句课程生成器：单词 → 提示词 → 一键复制 */}
-                <div className="card border border-gray-200 bg-base-100 shadow-sm">
-                  <div className="card-body p-4">
-                    <h3 className="card-title text-sm text-gray-900">连词成句课程生成器</h3>
-                    <label className="label pb-1">
-                      <span className="label-text text-xs text-gray-600">请输入单词（逗号隔开；每组一行 = 一课，可批量生成）</span>
-                    </label>
-                    <textarea
-                      className="textarea textarea-bordered w-full font-mono text-xs"
-                      rows={4}
-                      placeholder={'это, Иван, Анна, дом\nдом, лампа, вода, книга（每组一行=一课，留空则用本课已有词条）'}
-                      value={genWords}
-                      onChange={e => setGenWords(e.target.value)}
-                    />
-                    <div className="mt-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button className="btn btn-primary btn-sm" onClick={aiGenPath} disabled={genBusy}>
-                          {genBusy ? 'AI 生成中…' : '🤖 AI 一键生成路径'}
-                        </button>
-                        <button className="btn btn-outline btn-sm" onClick={generatePrompt} disabled={genBusy}>生成提示词</button>
-                        <button className="btn btn-secondary btn-sm" onClick={batchGenPaths} disabled={genBusy}>
-                          {genBusy ? '批量生成中…' : `🚀 批量生成（${genWords.trim() ? genWords.split(/\r?\n/).filter(l => l.trim() && l.split(/[，,]/).some(w => w.trim())).length : 0} 课）`}
-                        </button>
-                      </div>
-                    </div>
-                    {showGenPrompt && (
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                          <span className="text-xs font-semibold text-gray-600">生成的提示词（复制后粘贴给 AI 生成 JSON）</span>
-                          <button className="btn btn-outline btn-xs" onClick={copyPrompt}>一键复制</button>
-                        </div>
-                        <textarea
-                          className="textarea textarea-bordered mt-1 w-full font-mono text-xs"
-                          rows={7}
-                          value={genPrompt}
-                          onChange={e => setGenPrompt(e.target.value)}
-                          placeholder="生成的提示词可在此直接编辑（增删单词/规则），改完点「一键复制」复制修改后的版本"
-                        />
-                      </div>
-                    )}
-
-                    {/* 课文句子 → 机器生成滚雪球 + AI 审核（用户拍板方案：机器按拆词规则生成，AI 只审核语义/语序，末步强制=原句） */}
-                    <div className="divider my-3 text-xs text-gray-400">或：课文句子 → 机器生成 + AI 审核（末步强制=原句）</div>
-                    <label className="label pb-1">
-                      <span className="label-text text-xs text-gray-600">粘贴课文句子（每行一句）：先按拆词规则机器生成路径，再交 AI 审核语序/语义并翻译中文，最后一步 100% 等于原句</span>
-                    </label>
-                    <textarea
-                      className="textarea textarea-bordered w-full font-mono text-xs"
-                      rows={4}
-                      placeholder={'Улица Чистые пруды — это старая улица в центре Москвы.\nЭта улица небольшая, но известная.'}
-                      value={sentencesInput}
-                      onChange={e => setSentencesInput(e.target.value)}
-                    />
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <label className="flex items-center gap-1 text-xs text-gray-600">每批
-                        <input type="number" min="1" max="5" className="input input-xs input-bordered w-14 text-center" value={snowballBatch}
-                          onChange={e => setSnowballBatch(Math.min(5, Math.max(1, parseInt(e.target.value, 10) || 1)))} />
-                        条
-                      </label>
-                      <button className="btn btn-primary btn-sm" onClick={() => genSnowballCourse('append')} disabled={snowballBusy || snowballDone >= snowballLineCount}>
-                        {snowballBusy ? '生成+审核中…' : snowballDone >= snowballLineCount ? '✅ 已全部生成' : `🧊 生成下一批（${Math.min(snowballDone + 1, snowballLineCount)}-${Math.min(snowballDone + snowballBatch, snowballLineCount)} / ${snowballLineCount}）`}
-                      </button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => genSnowballCourse('full')} disabled={snowballBusy}>
-                        ↺ 重新生成全部
-                      </button>
-                      {snowballResult && (
-                        <button className="btn btn-secondary btn-sm" onClick={saveSnowball}>
-                          💾 保存到本课时（{snowballResult.length} 条路径）
-                        </button>
-                      )}
-                    </div>
-                    {!snowballBusy && snowballDone > 0 && snowballDone < snowballLineCount && (
-                      <p className="mt-1 text-xs text-gray-400">少量多次生成可降低长句出错率；改过句子后请点「重新生成全部」，避免追加错位</p>
-                    )}
-                    {snowballResult && (
-                      <div className="mt-3 max-h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
-                        {snowballResult.map(p => (
-                          <div key={p.pathId} className="mb-2 rounded border border-gray-200 bg-white p-2">
-                            <div className="mb-1 text-xs font-semibold text-gray-600">{p.pathId}</div>
-                            {p.steps.map(s => (
-                              <div key={s.stepIndex} className="flex items-center gap-1.5 py-0.5 text-xs">
-                                <span className="w-6 shrink-0 text-right text-gray-400">{s.stepIndex}</span>
-                                <input className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 font-medium text-gray-800 focus:border-purple-400 focus:outline-none"
-                                  value={s.russian} onChange={e => updateSnowballStep(p.pathId, s.stepIndex, 'russian', e.target.value)} />
-                                <input className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-gray-500 focus:border-purple-400 focus:outline-none"
-                                  value={s.chinese || ''} onChange={e => updateSnowballStep(p.pathId, s.stepIndex, 'chinese', e.target.value)} />
-                                {s.stepIndex < p.steps.length && (
-                                  <button className="ml-1 shrink-0 px-1 text-gray-300 hover:text-red-500" title="删除此步骤（末步=原句，不可删）"
-                                    onClick={() => removeSnowballStep(p.pathId, s.stepIndex)}>✕</button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
-          {/* 批量导入质检报告（导入后自动出现；AI 深度审核检查语序/语义/语法/数字） */}
-          {(qcReport || qcAiIssues.length > 0) && (
-            <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
-              <div className="card-body p-5">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h2 className="card-title text-base text-gray-900">
-                    🧪 批量导入质检
-                    {qcReport && (
-                      <span className={'badge badge-sm ml-1 ' + (qcReport.errors ? 'badge-error' : (qcReport.warns ? 'badge-warning' : 'badge-success'))}>
-                        {qcReport.errors ? qcReport.errors + ' 硬伤' : ''}{qcReport.warns ? (qcReport.errors ? ' · ' : '') + qcReport.warns + ' 提示' : ''}{!qcReport.errors && !qcReport.warns ? '全部通过' : ''}
-                      </span>
-                    )}
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <button className="btn btn-outline btn-xs" disabled={qcAiBusy} onClick={aiDeepReview}>
-                      {qcAiBusy ? 'AI 审核中…' : '🤖 AI 深度审核（语序/语义/语法/数字）'}
-                    </button>
-                    <button className="btn btn-ghost btn-xs text-gray-400" onClick={() => { setQcReport(null); setQcAiIssues([]) }}>关闭</button>
-                  </div>
-                </div>
-                <p className="mt-1 text-xs text-gray-400">导入/生成后自动检查：缺中文、缺词性/成分/发音、俄语残留、数字未俄语化、路径缺步等。硬伤建议修复后再「保存课时内容」。</p>
-
-                {(qcReport && qcReport.items.length === 0) ? (
-                  <p className="mt-3 text-sm text-green-600">✅ 规则质检全部通过：中文、词卡、路径结构均正常。</p>
-                ) : (qcReport && (
-                  <div className="mt-3 max-h-72 space-y-1 overflow-y-auto">
-                    {qcReport.items.map((it, i) => (
-                      <div key={i} className={'flex items-start gap-2 rounded-lg px-2.5 py-1.5 text-xs ' + (it.level === 'error' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700')}>
-                        <span className={'badge badge-xs mt-0.5 shrink-0 ' + (it.level === 'error' ? 'badge-error' : 'badge-warning')}>{it.level === 'error' ? '硬伤' : '提示'}</span>
-                        <span className="shrink-0 font-mono text-gray-400">{it.type}{typeof it.index === 'number' ? ' #' + (it.index + 1) : ''}</span>
-                        <span className="min-w-0 flex-1">{it.message}</span>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-
-                {qcAiIssues.length > 0 && (
-                  <div className="mt-3">
-                    <div className="text-xs font-semibold text-gray-600 mb-1.5">🤖 AI 深度审核发现（语序 / 语义 / 语法 / 数字）</div>
-                    <div className="max-h-56 space-y-1 overflow-y-auto">
-                      {qcAiIssues.map((it, i) => (
-                        <div key={i} className={'flex items-start gap-2 rounded-lg px-2.5 py-1.5 text-xs ' + (it.level === 'error' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700')}>
-                          <span className={'badge badge-xs mt-0.5 shrink-0 ' + (it.level === 'error' ? 'badge-error' : 'badge-warning')}>{it.level === 'error' ? '硬伤' : '提示'}</span>
-                          <span className="shrink-0 font-mono text-gray-400 max-w-[200px] truncate" title={it.ru}>{it.ru}</span>
-                          {it.where && <span className="shrink-0 badge badge-ghost badge-xs">{it.where}</span>}
-                          <span className="min-w-0 flex-1">{it.message}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* ③ 课时素材 */}
           <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
