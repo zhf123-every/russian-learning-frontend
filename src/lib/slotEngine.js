@@ -54,9 +54,11 @@ export function planToScaffoldingPaths(plan, originalSentence) {
         allChunks: (built[si - 1] ? built[si - 1].allChunks : []).concat([addChunk]),
       });
     }
-    // 最后一步中文 = 整句通顺翻译（translation）；中间步 = 该步块的中文
+    // 末步中文：骨架组（第1组）末步 = 整句通顺翻译（translation）；变体组末步 = 该组自己的末步 zh（AI 给的变体句翻译）
+    // 中间步 = 该步块的中文
     for (let si = 0; si < built.length; si++) {
-      built[si].chinese = (si === built.length - 1 && translation) ? translation : built[si].zhAcc;
+      const isFinal = si === built.length - 1;
+      built[si].chinese = (isFinal && gi === 0 && translation) ? translation : built[si].zhAcc;
     }
     // 骨架组（第1组）强校验：末步块 == 原句（句乐部机制：末步 add = 完整句）
     if (gi === 0) {
@@ -110,7 +112,8 @@ export async function generateVariantPool({ sentences, httpPost }, deps = {}) {
 
 // 校验已生成的 paths（写入前防御，块模式）：
 //  骨架组：末步块 == 原句（硬校验）；末步是组内最长块（弱校验，防 AI 末步不是完整句）
-//  变体组：末步非空且最长；末步 != 骨架末步（不重复原句）；末步中文非空且 != 原句翻译（防中文错乱）
+//  变体组：末步非空且最长；末步 != 骨架末步（不重复原句）；末步中文非空且 != 骨架末步中文（防中文错乱，骨架末步 zh 即 AI translation）
+//  originalZh（用户上传中文）仅作补充参照：变体末步 zh 也不能照抄它
 export function verifySlotPaths(paths, originalSentence, originalZh) {
   const arr = Array.isArray(paths) ? paths : [];
   if (!arr.length) return { ok: false, errors: ["无路径"] };
@@ -121,6 +124,7 @@ export function verifySlotPaths(paths, originalSentence, originalZh) {
   const skeletonZh = arr[0] && Array.isArray(arr[0].steps) && arr[0].steps.length
     ? String(arr[0].steps[arr[0].steps.length - 1].chinese || "").trim()
     : "";
+  const originalZhTrim = String(originalZh || "").trim();
   for (let gi = 0; gi < arr.length; gi++) {
     const steps = Array.isArray(arr[gi].steps) ? arr[gi].steps : [];
     if (!steps.length) { errors.push(`路径${gi + 1}无步骤`); continue; }
@@ -140,11 +144,13 @@ export function verifySlotPaths(paths, originalSentence, originalZh) {
       if (finalText === skeletonFinal) {
         errors.push(`路径${gi + 1}末步与骨架末步重复（变体句不能等于原句）`);
       }
-      // 变体组：末步中文不能照抄原句翻译（防中文错乱）
+      // 变体组：末步中文不能照抄骨架末步中文（= AI translation）或用户上传中文（防中文错乱）
       const finalZh = String(steps[steps.length - 1].chinese || "").trim();
       if (!finalZh) {
         errors.push(`路径${gi + 1}末步缺中文`);
-      } else if (originalZh && finalZh === String(originalZh || "").trim()) {
+      } else if (skeletonZh && finalZh === skeletonZh) {
+        errors.push(`路径${gi + 1}末步中文与骨架末步中文相同（变体句翻译错误）`);
+      } else if (originalZhTrim && finalZh === originalZhTrim) {
         errors.push(`路径${gi + 1}末步中文与原句翻译相同（变体句翻译错误）`);
       }
     }

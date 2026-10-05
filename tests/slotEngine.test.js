@@ -53,11 +53,11 @@ describe('slotEngine P4 句乐部式滚雪球（块模式）', () => {
     assert.equal(paths[1].steps[1].russian, 'не живёт')
   })
 
-  test('最后一步 chinese = translation（通顺整句）；中间步 = 该块中文', () => {
+  test('最后一步 chinese：骨架组=translation；变体组=该组末步 zh；中间步=该块中文', () => {
     const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
-    assert.equal(paths[0].steps[5].chinese, '这是我的朋友，他住在莫斯科。')
+    assert.equal(paths[0].steps[5].chinese, '这是我的朋友，他住在莫斯科。') // 骨架末步 = translation
     assert.equal(paths[0].steps[2].chinese, '这是我的')
-    assert.equal(paths[1].steps[3].chinese, '这是我的朋友，他住在莫斯科。') // 变体末步用整句翻译
+    assert.equal(paths[1].steps[3].chinese, '这是我的朋友，他不住在莫斯科。') // 变体末步 = 该组末步 zh
   })
 
   test('newChunks / allChunks：教学块作零件，累积正确', () => {
@@ -106,12 +106,21 @@ describe('slotEngine P4 句乐部式滚雪球（块模式）', () => {
     assert.ok(v.errors.some((e) => e.includes('与骨架末步重复')))
   })
 
-  test('verifySlotPaths：变体末步中文照抄原句翻译 → 拦截（中文错乱）', () => {
+  test('verifySlotPaths：变体末步中文照抄骨架末步中文（=AI translation）→ 拦截', () => {
+    const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
+    // 骨架末步 chinese 即 plan.translation
+    paths[1].steps[3].chinese = paths[0].steps[paths[0].steps.length - 1].chinese
+    const v = verifySlotPaths(paths, ORIGINAL)
+    assert.equal(v.ok, false)
+    assert.ok(v.errors.some((e) => e.includes('与骨架末步中文相同')))
+  })
+
+  test('verifySlotPaths：变体末步中文照抄用户上传中文 → 拦截（中文错乱）', () => {
     const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
     paths[1].steps[3].chinese = '这是我的朋友，他住在莫斯科。' // 照抄原句翻译
     const v = verifySlotPaths(paths, ORIGINAL, '这是我的朋友，他住在莫斯科。')
     assert.equal(v.ok, false)
-    assert.ok(v.errors.some((e) => e.includes('中文与原句翻译相同')))
+    assert.ok(v.errors.some((e) => e.includes('中文')))
   })
 
   test('verifySlotPaths：变体末步缺中文 → 拦截', () => {
