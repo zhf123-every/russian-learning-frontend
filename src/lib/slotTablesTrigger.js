@@ -20,7 +20,7 @@ const DIFFICULTIES = ['easy', 'medium', 'hard']
 // 允许调用方通过 deps.pool 覆盖（后续做"按课程级词池"改造时替换）
 export const DEFAULT_SLOT_POOL = {
   negation: [{ ru: 'не', zh: '不' }],
-  time: [{ ru: 'сегодня', zh: '今天' }, { ru: 'сейчас', zh: '现在' }],
+  time: [{ ru: 'сейчас', zh: '现在' }, { ru: 'сегодня', zh: '今天' }],
   place: [{ ru: 'здесь', zh: '这里' }],
   degree: [{ ru: 'очень', zh: '非常' }],
   evaluation: [{ ru: 'важно', zh: '重要' }, { ru: 'хорошо', zh: '好' }, { ru: 'невозможно', zh: '不可能' }, { ru: 'возможно', zh: '可能' }],
