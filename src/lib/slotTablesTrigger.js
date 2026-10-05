@@ -25,7 +25,7 @@ export const DEFAULT_SLOT_POOL = {
   degree: [{ ru: 'очень', zh: '非常' }],
   evaluation: [{ ru: 'важно', zh: '重要' }, { ru: 'хорошо', zh: '好' }, { ru: 'невозможно', zh: '不可能' }, { ru: 'возможно', zh: '可能' }],
   predicates: [{ ru: 'хочу', zh: '想' }, { ru: 'нужно', zh: '需要' }, { ru: 'должен', zh: '必须' }],
-  objects: [{ ru: 'делать это', zh: '做这个' }],
+  objects: [{ ru: 'еду', zh: '食物', inf: 'есть' }],
   preposition: [{ ru: 'для меня', zh: '对我来说' }],
   connector: [{ ru: 'поэтому', zh: '所以' }],
 }

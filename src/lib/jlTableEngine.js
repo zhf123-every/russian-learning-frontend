@@ -113,12 +113,14 @@ export const TEMPLATE_SECTIONS = [
   },
   {
     id: 'object_swap', name: '换宾语（+状语）', steps: [
+      { kind: 'part', cardType: '积木', role: '不定式', source: 'pool', poolKey: 'objects', poolField: 'inf' },
       { kind: 'part', cardType: '积木', role: '补语', source: 'pool', poolKey: 'objects' },
+      { kind: 'part', cardType: '积木', role: '组合' },
       { kind: 'full', cardType: '完整句', template: 'object_pos' },
       { kind: 'part', cardType: '积木', role: '时间', source: 'pool', poolKey: 'time' },
       { kind: 'full', cardType: '完整句', template: 'time_pos' },
       { kind: 'part', cardType: '积木', role: '否定组合', source: 'reuse' },
-      { kind: 'full', cardType: '完整句', template: 'time_neg' },
+      { kind: 'full', cardType: '完整句', template: 'swap_neg' },
     ],
   },
   {
