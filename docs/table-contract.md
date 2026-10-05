@@ -109,14 +109,16 @@ sentence_hash = sha256( normalizeSentence(原句) ).hex() 前 16 位
 7. 变体完整句 zh ≠ originalZh
 8. **同组完整句防重**：同 groupId 内完整句 ru 不得重复（跨组同 ru 放行）
 
-## 5. 链结构（方案 A，用户已拍板）
+## 5. 链结构（方案 A，用户已拍板；2026-09 核心链压缩至 ~40 步）
 
 | 链 | 适用 | 组成 | 规模 |
 | :--- | :--- | :--- | :--- |
-| 核心长链 `buildCoreChainIntent` | 每课第 1 句（`units[0]`，或 `core:true` 显式） | 20 类模板全开：骨架→否定→不定式→时间→地点→换谓语→换谓语+时间→换宾语→every day→all the day→need→have to→新宾语→something→It is 基础→for me→不定式评价→形容词轮换×3→连句(if/so/not)→复习×4 | ~190 意图，G_01..G_22 |
+| 核心长链 `buildCoreChainIntent` | 每课第 1 句（`units[0]`，或 `core:true` 显式） | 模板子集：骨架→否定→不定式→时间→地点→换谓语→换宾语→频率→复习×4 | ~34 意图 / ~40 步，G_01..G_09 |
 | 短链 `buildShortChainIntent` | 其余句子 | 骨架 + 否定 + 时间 + 地点 + 频率 | ~20 意图，G_01..G_05 |
 
-词池消费：`predicates` 按出现次序递增（хочу/нужно/должен → 0/1/2）；`evaluation` 0/1/2/3（важно/хорошо/невозможно/возможно）；time/place/degree/objects/connector 固定 idx=0（复用首词，对齐句乐部同批词复用）。
+> 核心链已砍掉的深层模板（曾属 190 步版）：something/it_is/for_me/to_do_eval/adj_rotate/clause/need/have_to。意图结构变更 → `intents_fp` 自动失效 → 已入库旧长链由补跑按新结构重生成（无需动后端）。predicates 词池只消费 idx=0（хочу）。
+
+词池消费（短链/核心链现状）：`predicates` 固定 idx=0（хочу）；time/place/degree/objects/connector 固定 idx=0（复用首词，对齐句乐部同批词复用）。
 
 ## 6. 前端页面契约（学生端）
 - 学生端**不显示序号/组ID/列表**。

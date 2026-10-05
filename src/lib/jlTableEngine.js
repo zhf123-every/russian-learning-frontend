@@ -284,40 +284,31 @@ export function buildSkeletonIntent(tokens, groups) {
   return steps
 }
 
-// ============ 核心句全量长链意图（方案 A：第 1 句；20 类模板全开，~190 步） ============
+// ============ 核心句长链意图（方案 A：第 1 句；模板子集，~40 步） ============
 // sentence/tokens: 核心句（俄语化后）与其 token 列表；pool: 课级变体词池（9 类）
 // zh: 核心句中文翻译
 // 返回意图序列数组（含组 ID 分配）；AI 填词后由 aiFillTable 转成行
 // 骨架段 = 单个 skeleton full 占位行（compose 空）→ 后端做 AI 分组决策后机器生成完整骨架替换
+// 2026-09 收紧（用户要求）：长链上限 ~40 步，符合句乐部教学节奏；保留
+//   骨架→否定→不定式→时间→地点→换谓语→换宾语→频率→简短复习，
+//   关掉深层模板（something/it_is/for_me/to_do_eval/adj_rotate/clause/need/have_to）。
+//   ⚠️ 意图结构变更 → intents_fp 自动失效 → 已入库旧长链由补跑按新结构重生成（无需动后端）。
 export function buildCoreChainIntent({ sentence, tokens, pool, zh }) {
   const n = Array.isArray(tokens) ? tokens.length : 0
   if (!n) return []
   const intents = []
   // 骨架占位（后端 LLM-1 分组 + 机器生成）
   intents.push({ kind: 'full', cardType: '完整句', template: 'skeleton', compose: [], groupId: 'G_01' })
-  // 链顺序（对齐句乐部 01-194 节奏）；predicates / evaluation 按出现次序递增消费词池
+  // 链顺序（对齐句乐部 01-40 节奏）；predicates 按出现次序递增消费词池
   const CHAIN = [
     { id: 'negation', g: 'G_02' },
     { id: 'infinitive', g: 'G_03' },
     { id: 'time', g: 'G_04' },
     { id: 'place', g: 'G_05' },
     { id: 'predicate_swap', g: 'G_06' },
-    { id: 'predicate_time', g: 'G_07' },
-    { id: 'object_swap', g: 'G_08' },
-    { id: 'freq_every_day', g: 'G_09' },
-    { id: 'freq_all_day', g: 'G_10' },
-    { id: 'predicate_cycle_need', g: 'G_11' },
-    { id: 'predicate_cycle_have_to', g: 'G_12' },
-    { id: 'new_object', g: 'G_13' },
-    { id: 'something_ext', g: 'G_14' },
-    { id: 'it_is_base', g: 'G_15', evaluationIdx: 0 },
-    { id: 'for_me', g: 'G_16' },
-    { id: 'to_do_eval', g: 'G_17' },
-    { id: 'adj_rotate', g: 'G_18', evaluationIdx: 1 },
-    { id: 'adj_rotate', g: 'G_19', evaluationIdx: 2 },
-    { id: 'adj_rotate', g: 'G_20', evaluationIdx: 3 },
-    { id: 'clause', g: 'G_21' },
-    { id: 'review', g: 'G_22', hints: ['复习：object_pos', '复习：time_pos', '复习：evaluation', '复习：so'] },
+    { id: 'object_swap', g: 'G_07' },
+    { id: 'freq_every_day', g: 'G_08' },
+    { id: 'review', g: 'G_09', hints: ['复习：object_pos', '复习：time_pos'] },
   ]
   const predicateIdx = { n: 0 }
   const sectionById = Object.fromEntries(TEMPLATE_SECTIONS.map((s) => [s.id, s]))

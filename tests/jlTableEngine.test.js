@@ -343,30 +343,31 @@ describe('jlTableEngine 5c：链生成（buildCoreChainIntent / buildShortChainI
     connector: [{ ru: 'поэтому', zh: '所以' }],
   }
 
-  test('核心句长链：骨架占位开头 + review 收尾 + 组 ID 顺序 G_01..G_22 + 行数 > 80', () => {
+  test('核心句长链（~40 步）：骨架占位开头 + review 收尾 + 组 ID 顺序 G_01..G_09 + 行数 25-45', () => {
     const intents = buildCoreChainIntent({ sentence: 'Я люблю еду', tokens: ['Я', 'люблю', 'еду'], pool, zh: '我喜欢食物' })
-    assert.ok(intents.length > 80, `got ${intents.length}`)
+    assert.ok(intents.length > 25 && intents.length <= 45, `got ${intents.length}`)
     assert.equal(intents[0].template, 'skeleton')
     assert.deepEqual(intents[0].compose, [])
     assert.equal(intents[0].groupId, 'G_01')
     const reviews = intents.filter((x) => x.template === 'review')
     assert.equal(reviews.length, 4)
-    assert.ok(reviews.every((x) => x.groupId === 'G_22' && x.hint), '复习行必须带中文 hint')
-    // 组 ID 顺序严格递增（G_01 → G_22）
+    assert.ok(reviews.every((x) => x.groupId === 'G_09'), '复习行必须收尾于 G_09')
+    assert.equal(reviews.filter((x) => x.hint).length, 2, '复习行带 2 条中文 hint')
+    // 组 ID 顺序严格递增（G_01 → G_09）
     const groups = [...new Set(intents.map((x) => x.groupId))]
     assert.deepEqual(groups[0], 'G_01')
-    assert.deepEqual(groups[groups.length - 1], 'G_22')
+    assert.deepEqual(groups[groups.length - 1], 'G_09')
     for (let i = 1; i < groups.length; i++) {
       assert.ok(groups[i] > groups[i - 1], `组乱序：${groups[i - 1]} → ${groups[i]}`)
     }
   })
 
-  test('核心句长链：predicates 词池索引 0/1/2 递增（want/need/have to），evaluation 0/1/2/3（重要/好/不可能/可能）', () => {
+  test('核心句长链（~40 步）：predicates 词池索引 0（хочу），无 evaluation 消费', () => {
     const intents = buildCoreChainIntent({ sentence: 'Я люблю еду', tokens: ['Я', 'люблю', 'еду'], pool, zh: '' })
     const predIdx = intents.filter((x) => x.source === 'pool' && x.poolKey === 'predicates').map((x) => x.poolIndex)
-    assert.deepEqual(predIdx, [0, 1, 2])
+    assert.deepEqual(predIdx, [0])
     const evIdx = intents.filter((x) => x.source === 'pool' && x.poolKey === 'evaluation').map((x) => x.poolIndex)
-    assert.deepEqual(evIdx, [0, 1, 2, 3])
+    assert.deepEqual(evIdx, [])
   })
 
   test('核心句长链：否定幕紧跟骨架；negation 模板词固定 не', () => {
@@ -443,8 +444,8 @@ describe('jlTableEngine 5c：组合层 generateUnitTableAsync（并发分批 + �
     assert.equal(r.failed.length, 0)
     assert.equal(r.pending.length, 0)
     assert.equal(calls, 3)
-    // 第 1 句 = 核心长链（>80 意图行），后两句 = 短链（<30）
-    assert.ok(seen[0] > 80, `核心句意图 ${seen[0]}`)
+    // 第 1 句 = 核心长链（~40 步意图行），后两句 = 短链（<30）
+    assert.ok(seen[0] > 25 && seen[0] <= 45, `核心句意图 ${seen[0]}`)
     assert.ok(seen[1] < 30, `短链意图 ${seen[1]}`)
     assert.ok(seen[2] < 30, `短链意图 ${seen[2]}`)
   })
