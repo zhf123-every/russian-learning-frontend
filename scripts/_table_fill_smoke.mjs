@@ -4,6 +4,8 @@
 //   CORE=1 跑核心句长链（~190 步意图），默认短链（~20 步）
 // 退出码：0=verifyTable 通过  1=HTTP/响应异常  2=网络错误（未部署）  3=后端 fallback  4=响应结构异常  5=verifyTable 未过
 import crypto from 'node:crypto'
+import dns from 'node:dns'
+dns.setDefaultResultOrder('ipv4first') // Windows 双栈 DNS：强制 IPv4（否则 fetch 走无路由 IPv6 间歇 failed）
 import { buildShortChainIntent, buildCoreChainIntent, verifyTable } from '../src/lib/jlTableEngine.js'
 import { normalizeSentence, splitTokens, sentenceHash } from '../src/lib/segmentEngine.js'
 
@@ -45,18 +47,25 @@ const intents = isCore
 const body = { sentence_hash: hash, russian_text: normalized, tokens, difficulty, intents, pool }
 const start = Date.now()
 let res
-try {
-  res = await fetch(BASE + '/api/admin/segments/table-fill', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + signJwt(SECRET, { sub: UID, role: 'admin' }),
-    },
-    body: JSON.stringify(body),
-  })
-} catch (e) {
-  console.error('网络错误（生产接口未部署/离线？）:', e.message)
-  process.exit(2)
+for (let attempt = 1; attempt <= 3; attempt++) {
+  try {
+    res = await fetch(BASE + '/api/admin/segments/table-fill', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + signJwt(SECRET, { sub: UID, role: 'admin' }),
+      },
+      body: JSON.stringify(body),
+    })
+    break
+  } catch (e) {
+    if (attempt === 3) {
+      console.error('网络错误（生产接口未部署/离线？）:', e.message)
+      process.exit(2)
+    }
+    console.error(`网络错误第 ${attempt} 次，5s 后重试:`, e.message)
+    await new Promise((r) => setTimeout(r, 5000))
+  }
 }
 const elapsed = ((Date.now() - start) / 1000).toFixed(1)
 const json = await res.json().catch(() => null)
