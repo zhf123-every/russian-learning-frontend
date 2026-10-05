@@ -114,7 +114,6 @@ export const TEMPLATE_SECTIONS = [
   {
     id: 'object_swap', name: '换宾语（+状语）', steps: [
       { kind: 'part', cardType: '积木', role: '补语', source: 'pool', poolKey: 'objects' },
-      { kind: 'part', cardType: '积木', role: '组合' },
       { kind: 'full', cardType: '完整句', template: 'object_pos' },
       { kind: 'part', cardType: '积木', role: '时间', source: 'pool', poolKey: 'time' },
       { kind: 'full', cardType: '完整句', template: 'time_pos' },
@@ -126,7 +125,7 @@ export const TEMPLATE_SECTIONS = [
     id: 'freq_every_day', name: '频率状语 every day', steps: [
       { kind: 'part', cardType: '积木', role: '频率', source: 'template', templateText: 'каждый день' },
       { kind: 'full', cardType: '完整句', template: 'time_pos' },
-      { kind: 'full', cardType: '完整句', template: 'time_neg' },
+      { kind: 'full', cardType: '完整句', template: 'freq_neg' },
     ],
   },
   {
