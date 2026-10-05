@@ -139,6 +139,22 @@ describe('jlTableEngine 5a：verifyTable 硬校验（7 项）', () => {
     rows2[7].zh = '我喜欢食物' // 照抄原句翻译
     assert.equal(verifyTable(rows2, ORIG, ORIG_ZH).ok, false)
   })
+
+  test('同组完整句重复（第 8 项）→ 报错', () => {
+    const rows = goodRows.map((x) => ({ ...x }))
+    rows.push({ seq: 9, cardType: '完整句', ru: 'Я не люблю еду', zh: '我不喜欢食物', tag: '否定句', groupId: 'G_02' })
+    const r = verifyTable(rows, ORIG, ORIG_ZH)
+    assert.equal(r.ok, false)
+    assert.ok(r.errors.some((e) => e.includes('同组完整句重复')))
+  })
+
+  test('跨组完整句同 ru 不算重复（第 8 项边界）→ ok', () => {
+    const rows = goodRows.map((x) => ({ ...x }))
+    // G_03 出现与 G_02 相同的完整句（≠ 原句）→ 跨组允许
+    rows.push({ seq: 9, cardType: '完整句', ru: 'Я не люблю еду', zh: '我不喜欢食物', tag: '复习', groupId: 'G_03' })
+    const r = verifyTable(rows, ORIG, ORIG_ZH)
+    assert.equal(r.ok, true)
+  })
 })
 
 describe('jlTableEngine 5a：常量契约', () => {

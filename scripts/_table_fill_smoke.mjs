@@ -77,4 +77,6 @@ if (v.ok) {
   process.exit(0)
 }
 console.error('❌ verifyTable 失败:', v.errors.slice(0, 5).join('\n   '))
+console.error('— 完整句行全览 —')
+for (const r of json.rows.filter((x) => x.cardType === '完整句')) console.error(`  #${r.seq} [${r.groupId}] ${r.ru} | ${r.zh}`)
 process.exit(5)

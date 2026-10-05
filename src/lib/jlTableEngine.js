@@ -317,7 +317,7 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh }) {
     { id: 'adj_rotate', g: 'G_19', evaluationIdx: 2 },
     { id: 'adj_rotate', g: 'G_20', evaluationIdx: 3 },
     { id: 'clause', g: 'G_21' },
-    { id: 'review', g: 'G_22', hints: ['复习：核心句（第一句）', '复习：换谓语句', '复习：评价句', '复习：连句'] },
+    { id: 'review', g: 'G_22', hints: ['复习：object_pos', '复习：time_pos', '复习：evaluation', '复习：so'] },
   ]
   const predicateIdx = { n: 0 }
   const sectionById = Object.fromEntries(TEMPLATE_SECTIONS.map((s) => [s.id, s]))
@@ -533,6 +533,18 @@ export function verifyTable(rows, original, originalZh) {
     if (normOriginalZh && normalizeTableText(row.zh) === normOriginalZh) {
       errors.push(`变体完整句中文照抄原句翻译：'${row.zh}'`)
     }
+  }
+  // 8. 同组完整句互不重复（机器拼装天然不重；AI 填的 if/so 若重复在此拦截）
+  const groupSeen = {}
+  for (const row of arr) {
+    if (row.cardType !== '完整句') continue
+    const ru = normalizeSentence(row.ru)
+    const g = row.groupId || ''
+    const s = (groupSeen[g] = groupSeen[g] || new Set())
+    if (s.has(ru)) {
+      errors.push(`同组完整句重复：组 ${g} 出现两次 '${row.ru}'`)
+    }
+    s.add(ru)
   }
   return { ok: errors.length === 0, errors }
 }
