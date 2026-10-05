@@ -131,7 +131,9 @@ export async function triggerUnitSlotTables({ courseId, unitId, sentences, deps 
     let saved = 0
     let saveFailed = false
     if (toSave.length) {
-      const res = await deps.httpPost('/api/admin/slot-tables/save', { course_id: courseId, unit_id: unitId, items: toSave })
+      const res0 = await deps.httpPost('/api/admin/slot-tables/save', { course_id: courseId, unit_id: unitId, items: toSave })
+      // ⚠️ 同款兼容：httpPost 可能返回 fetch Response（.ok=HTTP 状态）而非 JSON，必须解析后再判断业务 ok
+      const res = (res0 && typeof res0.json === 'function') ? await res0.json().catch(() => ({})) : (res0 || {})
       if (res && res.ok) {
         saved = typeof res.saved === 'number' ? res.saved : toSave.length
       } else {

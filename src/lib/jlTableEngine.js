@@ -394,6 +394,12 @@ export async function aiFillTable(intents, { sentence, tokens, difficulty = 'eas
     let res = null
     try {
       res = await post('/api/admin/segments/table-fill', payload)
+      // ⚠️ 根因修复（与 aiSegment 同款）：httpPost 可能返回浏览器 fetch Response（res.ok=HTTP 状态）
+      // 而非解析后的 JSON → res.pending/fallback/rows 全读不到 → 一律机械兜底，表格从未真正生成过。
+      // 兼容两种形态：有 .json() 方法 → 解析；纯对象 → 直接用。
+      if (res && typeof res.json === 'function') {
+        res = await res.json().catch(() => ({}))
+      }
     } catch (e) {
       console.error('[jlTable] table-fill 网络错误', { sentenceHash: hash, difficulty, error: String((e && e.message) || e) })
       lastReason = 'network'
