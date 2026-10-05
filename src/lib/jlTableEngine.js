@@ -306,7 +306,7 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh }) {
     { id: 'predicate_swap', g: 'G_06' },
     { id: 'object_swap', g: 'G_07' },
     { id: 'freq_every_day', g: 'G_08' },
-    { id: 'review', g: 'G_09', hints: ['复习：object_pos', '复习：time_pos'] },
+    { id: 'review', g: 'G_09', hints: ['复习：object_pos', '复习：time_pos', '复习：time_neg', '复习：predicate_neg'] },
   ]
   const predicateIdx = { n: 0 }
   const sectionById = Object.fromEntries(TEMPLATE_SECTIONS.map((s) => [s.id, s]))

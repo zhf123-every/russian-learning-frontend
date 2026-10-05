@@ -352,7 +352,7 @@ describe('jlTableEngine 5c：链生成（buildCoreChainIntent / buildShortChainI
     const reviews = intents.filter((x) => x.template === 'review')
     assert.equal(reviews.length, 4)
     assert.ok(reviews.every((x) => x.groupId === 'G_09'), '复习行必须收尾于 G_09')
-    assert.equal(reviews.filter((x) => x.hint).length, 2, '复习行带 2 条中文 hint')
+    assert.equal(reviews.filter((x) => x.hint).length, 4, '复习行带 4 条中文 hint（2026-10-06：补全 hint 防止无 hint 复习行重复复制 last_full → dup_full fallback）')
     // 组 ID 顺序严格递增（G_01 → G_09）
     const groups = [...new Set(intents.map((x) => x.groupId))]
     assert.deepEqual(groups[0], 'G_01')
