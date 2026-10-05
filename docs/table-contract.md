@@ -141,3 +141,25 @@ sentence_hash = sha256( normalizeSentence(原句) ).hex() 前 16 位
 - `scripts/_table_fill_smoke.mjs`（前端 repo）：生成意图 → HS256 签 JWT → 真调生产 `table-fill` → `verifyTable` 双保险。用法 `node scripts/_table_fill_smoke.mjs ["句子"] ["中文"]`，`CORE=1` 跑核心长链。
 - 退出码：0=verifyTable 过 / 1=HTTP·响应异常 / 2=网络错误（已重试 3 次）/ 3=后端 fallback / 4=结构异常 / 5=verifyTable 未过。
 - 绕开 undici 大请求问题时的备用链路：`node scripts/_gen_smoke_body.mjs <句子> <中文>`（CORE=1 长链）生成 `_smoke_body.json` → PowerShell 读文件 + node 生成 JWT 发 POST → `verifyTable` 读响应校验。
+
+## 10. P2 持久化（课时维度落库 + 学生端切换，已部署）
+### 新表 `sentence_slot_unit_tables`
+- 列：`course_id / unit_id / sentence_hash / sentence / difficulty / intents_fp / rows(JSON,反引号) / review_status / created_at / updated_at`。
+- 唯一约束 `uk_slot_unit (course_id, unit_id, sentence_hash, difficulty, intents_fp)`。
+- **⚠️ `rows` 是 TiDB 保留字**：CREATE/SELECT/INSERT 三处 SQL 必须反引号（裸写静默失败，表建不出来）。
+- 删课时/课程：同事务级联删本表（勿裸同步调）。
+
+### 接口
+- `POST /api/admin/slot-tables/save`（admin 鉴权）：body `{course_id, unit_id, items:[{sentence_hash, sentence, difficulty, intents_fp, rows, review_status}]}` → `{ok, saved:N}`。事务内 DELETE 该 unit 旧行 + INSERT 新行（批量 replace）；校验 sentence_hash 非空 / difficulty 三值 / rows 非空列表并过滤非法行；`_log_op` 记日志。
+- `GET /api/slot-tables?course_id=&unit_id=&difficulty=&include_pending=0|1`（公开读）：只回 `review_status='ok'` 且有 rows（代码层再兜 status/difficulty 过滤，rows 按 seq 升序）；`include_pending=1` 回全部行（rows 可空，供后台校对比对"未生成"）。
+
+### 前端接线
+- `saveUnit` 保存课时成功 → 立即返回 → 后台异步 `generateUnitTableAsync`（表格生成+save）；失败进 `rb_pending_slot_tables` 待生成列表，下次打开课时自动补跑（关闭页面后不保证完成，靠补跑兜底）。
+- 新页 `/admin/slot-tables`（AdminSlotTables.jsx）：只读 + 补跑 + 难度/状态筛选 + 表格行预览；不做人工编辑（留后续）。
+- **学生端四模式表格优先**（loadSlotTables.js）：中译俄/听力/口语 → `loadSlotTablesForUnit`（slotTablesToSequences）；听写 → `loadSlotTablesItemsForUnit`（slotTablesToItems，每行一步听写）。有 ok 表格 → 出表格题；无 → 降级链（路径 → 语块 → 老路径），失败静默 null 不弹错。
+- 转换器单测 `tests/slotTablesToQuestions.test.js` 7/7；引擎单测 `tests/jlTableEngine.test.js` 35/35。
+- **学生端展示**：不显示序号/列表，只按 rows[].seq 顺序给中文 → 打字输入俄语。
+
+### P2 端到端冒烟
+- `scripts/_slot_save_smoke.mjs <句子> <中文>`：生成短链（真 LLM）→ 生产 save（probe 课时）→ 生产 read → verifyTable 校验回读。退出码 0=全链路通过 / 6=save 失败 / 7=read 回读不符（其余同第 9 节）。
+- 生产实测（2026-09 后端 79dac27 + 前端 eaab26d）：生成 22 行 → save 200 saved:1 → read 回读 22 行 seq 1..22 verifyTable 通过；difficulty=easy 过滤与 include_pending=1 均返回 1 item。
