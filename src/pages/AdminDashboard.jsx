@@ -9,12 +9,31 @@ import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
 import { splitTokens, buildMachineSteps, aiReviewSteps, verifyFinalStep, buildChunksForSteps, russianizeNumbers } from '../lib/snowballEngine'
 import { withRetry403 } from '../lib/segmentEngine'
+import { resolvePlayUrl } from '../lib/playUrl'
 import { generateSlotPaths, verifySlotPaths, generateVariantPool } from '../lib/slotEngine'
 import { collectUnitSentenceObjs } from '../lib/unitSentences'
 import { triggerUnitSegments, retryPendingSegments } from '../lib/segmentTrigger'
 import { useAdminStore } from '../store/adminStore'
 
 // ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
+
+// —— 后台课程封面：b2:// 云端封面异步解析为预签名可显示链接（<img> 不认 b2:// 协议） ——
+function AdminCourseCover({ src, className }) {
+  const [url, setUrl] = useState(() => (src && !String(src).startsWith("b2://") ? src : ""));
+  useEffect(() => {
+    let alive = true;
+    const s = String(src || "");
+    if (s.startsWith("b2://")) {
+      resolvePlayUrl(s).then((u) => { if (alive && u && u !== s) setUrl(u); }).catch(() => { /* 解析失败留空，不显示 */ });
+    } else {
+      setUrl(s);
+    }
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src]);
+  if (!url) return null;
+  return <img src={url} alt="" className={className} onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />;
+}
 
 // —— P0 登录门禁：未登录（无账号 token、无旧密钥）时显示登录/注册卡片 ——
 function AdminLoginGate() {
@@ -482,8 +501,9 @@ export default function AdminDashboard() {
   }, [syncFlag])
 
   // P2-A：语块生成请求器——403（TiDB 冷启动）自动重试 1 次；POST 带 authBody 鉴权，GET 不带 body
+  // 超时放宽到 120s：plan/词池/llm-segment 都要调 AI（glm-4-plus 慢 + Render 冷启动），默认 12s 会被 abort
   const segHttpPost = withRetry403((path, body) =>
-    apiFetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authBody(body)) })
+    apiFetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authBody(body)), timeout: 120000 })
   )
 
   // —— 课程序管理状态 ——
@@ -1882,8 +1902,7 @@ export default function AdminDashboard() {
                           {c.cloudSynced && <span className="badge badge-info badge-sm ml-1">云端</span>}
                         </td>
                         <td>
-                          <img src={c.cover} alt="" className="h-10 w-16 rounded object-cover"
-                            onError={e => { e.currentTarget.style.visibility = 'hidden' }} />
+                          <AdminCourseCover src={c.cover} className="h-10 w-16 rounded object-cover" />
                         </td>
                         <td className="font-medium text-gray-800">
                           <div className="line-clamp-1">{c.title}</div>
