@@ -72,7 +72,6 @@ export const TEMPLATE_SECTIONS = [
       { kind: 'part', cardType: '积木', role: '不定式', source: 'template', templateText: 'делать' },
       { kind: 'part', cardType: '积木', role: '宾语', source: 'template', templateText: 'это' },
       { kind: 'part', cardType: '积木', role: '组合' },
-      { kind: 'part', cardType: '积木', role: '组合', source: 'reuse' },
       { kind: 'full', cardType: '完整句', template: 'object_pos' },
       { kind: 'part', cardType: '积木', role: '否定组合', source: 'reuse' },
       { kind: 'full', cardType: '完整句', template: 'object_neg' },
@@ -89,7 +88,6 @@ export const TEMPLATE_SECTIONS = [
     id: 'place', name: '地点块', steps: [
       { kind: 'part', cardType: '积木', role: '地点', source: 'pool', poolKey: 'place' },
       { kind: 'part', cardType: '积木', role: '组合' },
-      { kind: 'part', cardType: '积木', role: '组合', source: 'reuse' },
       { kind: 'full', cardType: '完整句', template: 'place_pos' },
       { kind: 'part', cardType: '积木', role: '否定组合', source: 'reuse' },
       { kind: 'full', cardType: '完整句', template: 'place_neg' },
