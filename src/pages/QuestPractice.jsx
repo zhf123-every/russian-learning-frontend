@@ -29,6 +29,7 @@ import { inferRoles } from "../lib/roleRules";
 import { expandSequencesWithChunks } from "../lib/chunking";
 import { scaffoldingToSequences } from "../lib/scaffolding";
 import { segmentsToSequences, filterSegmentsByDifficulty } from "../lib/segmentsToQuestions";
+import { loadSlotTablesForUnit } from "../lib/loadSlotTables";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -573,6 +574,16 @@ export default function QuestPractice() {
       try {
         const pre = getCachedLesson(effectiveCourseId);
         if (pre) {
+          // P2：表格优先（句乐部式 6 列表格，已入库 ok）→ 出表格题；无 → 走路径/语块降级链
+          const slotSeqs = await loadSlotTablesForUnit(effectiveCourseId, studyCourseId);
+          if (slotSeqs) {
+            if (!cancelled) {
+              setUnitMeta(pre.unit || null);
+              setSequences(applyDiff(slotSeqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
+              setLoading(false);
+            }
+            return;
+          }
           // 路径优先（句乐部三档路径）：存在 scaffoldingPaths → 按难度取档出题，不读语块
           const hasPaths = Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length;
           if (hasPaths) {

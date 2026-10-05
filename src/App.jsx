@@ -40,6 +40,7 @@ import AdminOrders from './pages/AdminOrders'
 import AdminCategories from './pages/AdminCategories'
 import AdminSettings from './pages/AdminSettings'
 import AdminSegments from './pages/AdminSegments'
+import AdminSlotTables from './pages/AdminSlotTables'
 import AdminLayout from './components/layout/AdminLayout'
 import { useEffect } from 'react'
 import { prefetchCloudList } from './lib/cloudPrefetch'
@@ -115,6 +116,7 @@ export default function App() {
         <Route path="/admin/categories" element={<AdminCategories />} />
         <Route path="/admin/settings" element={<AdminSettings />} />
         <Route path="/admin/segments" element={<AdminSegments />} />
+        <Route path="/admin/slot-tables" element={<AdminSlotTables />} />
       </Route>
     </Routes>
   )

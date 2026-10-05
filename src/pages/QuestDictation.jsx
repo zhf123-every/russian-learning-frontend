@@ -29,6 +29,7 @@ import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { expandUnitToChunkSteps, buildZhIndex } from "../lib/chunking";
 import { scaffoldingToItems } from "../lib/scaffolding";
 import { segmentsToItems, filterSegmentsItemsByDifficulty } from "../lib/segmentsToQuestions";
+import { loadSlotTablesItemsForUnit } from "../lib/loadSlotTables";
 import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
@@ -429,6 +430,18 @@ export default function QuestDictation() {
     async function loadCourse() {
       setLoading(true);
       setLoadError(null);
+      // P2：表格优先（句乐部式 6 列表格，已入库 ok）→ 每行一步听写（不分步展开，行序=听写题序）
+      const slotItems = await loadSlotTablesItemsForUnit(effectiveCourseId, studyCourseId);
+      if (slotItems && slotItems.length && !cancelled) {
+        let title = "本课", desc = "";
+        try { const pre = getCachedLesson(effectiveCourseId); if (pre) { title = pre.title || pre.name || title; desc = pre.description || ""; } } catch (e) { /* 忽略 */ }
+        setUnitMeta({ title, description: desc });
+        setLocalLesson({ id: effectiveCourseId, title });
+        setIsLocalMode(false);
+        setStatements(applyDiffItems(slotItems));
+        setLoading(false);
+        return;
+      }
       // P4：句乐部路径优先——课时有 scaffoldingPaths → 按难度取档，每个教学块 = 一道听写题（分步零件顺序）
       try {
         const pre = getCachedLesson(effectiveCourseId);

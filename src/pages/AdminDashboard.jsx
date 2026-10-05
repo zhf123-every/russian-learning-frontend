@@ -12,6 +12,7 @@ import { resolvePlayUrl } from '../lib/playUrl'
 import { generateSlotPaths, verifySlotPaths, generateVariantPool } from '../lib/slotEngine'
 import { collectUnitSentenceObjs } from '../lib/unitSentences'
 import { triggerUnitSegments, retryPendingSegments } from '../lib/segmentTrigger'
+import { triggerUnitSlotTables, retryPendingSlotTables } from '../lib/slotTablesTrigger'
 import { useAdminStore } from '../store/adminStore'
 
 // ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
@@ -542,6 +543,10 @@ export default function AdminDashboard() {
       retryPendingSegments({ courseId: active.id, unitId: u.id, sentences: u.sentences, deps: { httpPost: segHttpPost } })
         .then((r) => { if (r && !r.skipped && (r.done || []).length) flash(`语块补跑完成：${r.done.length} 项`) })
         .catch((e) => console.warn('[segments] 打开课时补跑失败：', e && e.message))
+      // P2：6 列表格补跑（失败进本机待重试，下次打开自动补跑）
+      retryPendingSlotTables({ courseId: active.id, unitId: u.id, sentences: uTexts, deps: { httpPost: segHttpPost } })
+        .then((r) => { if (r && !r.skipped && (r.done || []).length) flash(`表格补跑完成：${r.done.length} 项`) })
+        .catch((e) => console.warn('[slot-tables] 打开课时补跑失败：', e && e.message))
     }
   }
 
@@ -654,6 +659,15 @@ export default function AdminDashboard() {
       triggerUnitSegments({ courseId: active.id, unitId: activeUnit.id, sentences: segSentences, deps: { httpPost: segHttpPost } })
         .then((r) => { if (r && !r.skipped) flash('已触发语块生成，完成后下次打开可见') })
         .catch((e) => console.warn('[segments] 语块生成触发失败（下次打开自动补跑）：', e && e.message))
+      // P2：6 列表格生成（第 1 句核心长链 + 其余短链 + 三档难度；异步触发，失败下次打开补跑）
+      triggerUnitSlotTables({ courseId: active.id, unitId: activeUnit.id, sentences: segSentences, deps: { httpPost: segHttpPost } })
+        .then((r) => {
+          if (!r || r.skipped) return
+          const ok = (r.done || []).length
+          const fail = (r.failed || []).length
+          flash(ok ? `已触发表格生成：${ok} 项入库${fail ? `，${fail} 项待补跑` : ''}` : (fail ? `表格生成失败 ${fail} 项，下次打开自动补跑` : ''))
+        })
+        .catch((e) => console.warn('[slot-tables] 表格生成触发失败（下次打开自动补跑）：', e && e.message))
     }
     setView('units')
   }
