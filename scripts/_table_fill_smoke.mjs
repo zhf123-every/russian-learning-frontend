@@ -26,7 +26,7 @@ const sentence = process.argv[2] || 'Я люблю еду'
 const zh = process.argv[3] || '我喜欢食物'
 const normalized = normalizeSentence(sentence)
 const tokens = splitTokens(normalized)
-const difficulty = 'easy'
+const difficulty = process.env.DIFF || 'easy'
 const hash = sentenceHash(normalized, difficulty)
 const isCore = process.env.CORE === '1'
 const pool = {
@@ -75,7 +75,7 @@ if (!res.ok || !json) {
   process.exit(1)
 }
 if (json.pending) { console.log('→ pending:', json.reason); process.exit(0) }
-if (json.fallback) { console.log('→ fallback:', json.reason); process.exit(3) }
+if (json.fallback) { console.log('→ fallback:', json.reason, '| detail:', json.detail || ''); process.exit(3) }
 if (!json.ok || !Array.isArray(json.rows)) { console.error('异常响应:', JSON.stringify(json, null, 2).slice(0, 800)); process.exit(4) }
 const v = verifyTable(json.rows, normalized, zh)
 console.log(`rows=${json.rows.length} · 组数=${new Set(json.rows.map((r) => r.groupId)).size}`)

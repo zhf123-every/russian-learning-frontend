@@ -69,8 +69,8 @@ export const TEMPLATE_SECTIONS = [
   },
   {
     id: 'infinitive', name: '不定式扩展', steps: [
-      { kind: 'part', cardType: '积木', role: '不定式' },
-      { kind: 'part', cardType: '积木', role: '宾语' },
+      { kind: 'part', cardType: '积木', role: '不定式', source: 'template', templateText: 'делать' },
+      { kind: 'part', cardType: '积木', role: '宾语', source: 'template', templateText: 'это' },
       { kind: 'part', cardType: '积木', role: '组合' },
       { kind: 'part', cardType: '积木', role: '组合', source: 'reuse' },
       { kind: 'full', cardType: '完整句', template: 'object_pos' },
