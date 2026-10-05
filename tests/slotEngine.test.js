@@ -98,6 +98,30 @@ describe('slotEngine P4 句乐部式滚雪球（块模式）', () => {
     assert.ok(v.errors.some((e) => e.includes('末步不是最长块')))
   })
 
+  test('verifySlotPaths：变体末步重复骨架末步 → 拦截（变体句不能等于原句）', () => {
+    const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
+    paths[1].steps[3].russian = ORIGINAL // 变体末步改成原句
+    const v = verifySlotPaths(paths, ORIGINAL)
+    assert.equal(v.ok, false)
+    assert.ok(v.errors.some((e) => e.includes('与骨架末步重复')))
+  })
+
+  test('verifySlotPaths：变体末步中文照抄原句翻译 → 拦截（中文错乱）', () => {
+    const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
+    paths[1].steps[3].chinese = '这是我的朋友，他住在莫斯科。' // 照抄原句翻译
+    const v = verifySlotPaths(paths, ORIGINAL, '这是我的朋友，他住在莫斯科。')
+    assert.equal(v.ok, false)
+    assert.ok(v.errors.some((e) => e.includes('中文与原句翻译相同')))
+  })
+
+  test('verifySlotPaths：变体末步缺中文 → 拦截', () => {
+    const paths = planToScaffoldingPaths(PLAN, ORIGINAL)
+    paths[1].steps[3].chinese = '  '
+    const v = verifySlotPaths(paths, ORIGINAL, '这是我的朋友，他住在莫斯科。')
+    assert.equal(v.ok, false)
+    assert.ok(v.errors.some((e) => e.includes('缺中文')))
+  })
+
   test('generateSlotPaths：httpPost 返回 fetch Response-like → 解析成功', async () => {
     const body = { ok: true, groups: PLAN.groups, translation: PLAN.translation }
     const post = async () => ({ ok: true, json: async () => body })

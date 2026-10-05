@@ -1053,6 +1053,7 @@ export default function AdminDashboard() {
         const batch = sentences.slice(i, i + BATCH)
         const results = await Promise.all(batch.map(async (s) => {
           const ru = String(s.ru || s.russian || s.text || '').trim()
+          const zh = String(s.zh || s.chinese || s.translation || s.mean || '').trim()
           if (!ru) return null
           try {
             // 三档难度：每句生成 easy/medium/hard 三套路径（块粒度不同，末步都是完整句）
@@ -1061,7 +1062,7 @@ export default function AdminDashboard() {
               const r = await generateSlotPaths({ sentence: ru, tokens: splitTokens(ru), difficulty: d, pool, httpPost: segHttpPost })
               if (r.fallback) return { ok: false, ru, reason: `${d}: ${r.reason || 'fallback'}` }
               if (r.pending) return { ok: false, ru, reason: `${d}: pending` }
-              const v = verifySlotPaths(r.paths, ru)
+              const v = verifySlotPaths(r.paths, ru, zh)
               if (!v.ok) return { ok: false, ru, reason: `${d}: ${v.errors.join(';')}` }
               out.push(...r.paths.map((p) => ({ ...p, difficulty: d })))
             }
