@@ -362,12 +362,52 @@ describe('jlTableEngine 5c：链生成（buildCoreChainIntent / buildShortChainI
     }
   })
 
-  test('核心句长链（~40 步）：predicates 词池索引 0（хочу），无 evaluation 消费', () => {
-    const intents = buildCoreChainIntent({ sentence: 'Я люблю еду', tokens: ['Я', 'люблю', 'еду'], pool, zh: '' })
-    const predIdx = intents.filter((x) => x.source === 'pool' && x.poolKey === 'predicates').map((x) => x.poolIndex)
-    assert.deepEqual(predIdx, [0])
-    const evIdx = intents.filter((x) => x.source === 'pool' && x.poolKey === 'evaluation').map((x) => x.poolIndex)
-    assert.deepEqual(evIdx, [])
+  test('核心句长链：predicates/objects/time/place 词池索引确定性轮换（在界内、同句稳定、不同句不同词）', () => {
+    const poolBig = {
+      negation: [{ ru: 'не', zh: '不' }],
+      time: Array.from({ length: 20 }, (_, i) => ({ ru: 't' + i, zh: '时' + i })),
+      place: Array.from({ length: 20 }, (_, i) => ({ ru: 'p' + i, zh: '地' + i })),
+      predicates: Array.from({ length: 20 }, (_, i) => ({ ru: 'v' + i, zh: '谓' + i })),
+      objects: Array.from({ length: 20 }, (_, i) => ({ ru: 'o' + i, zh: '宾' + i, inf: 'inf' + i })),
+      evaluation: [{ ru: 'важно', zh: '重要' }],
+    }
+    const a = buildCoreChainIntent({ sentence: 'Я люблю еду', tokens: ['Я', 'люблю', 'еду'], pool: poolBig, zh: '' })
+    const b = buildCoreChainIntent({ sentence: 'Я люблю еду', tokens: ['Я', 'люблю', 'еду'], pool: poolBig, zh: '' })
+    const c = buildCoreChainIntent({ sentence: 'Я читаю книгу', tokens: ['Я', 'читаю', 'книгу'], pool: poolBig, zh: '' })
+    const idxOf = (ins, key) => ins.filter((x) => x.source === 'pool' && x.poolKey === key).map((x) => x.poolIndex)
+    for (const key of ['predicates', 'objects', 'time', 'place']) {
+      const ia = idxOf(a, key)
+      const ib = idxOf(b, key)
+      assert.deepEqual(ia, ib, `${key} 同句必须稳定`)
+      for (const v of ia) assert.ok(v >= 0 && v < poolBig[key].length, `${key} 索引越界 ${v}`)
+    }
+    // 不同句应整体轮换（四类 key 的索引分布至少一处不同；单 key 撞词概率 1/20，全撞 ~1/160000）
+    const flat = (ins) => Object.keys(poolBig).flatMap((k) => idxOf(ins, k))
+    assert.notDeepEqual(flat(a), flat(c), '不同句子应轮换到不同词（整体分布至少一处不同）')
+  })
+
+  test('objects 轮换排除与句子重复的词（换宾语段不换到原词）', () => {
+    const poolObj = {
+      negation: [{ ru: 'не', zh: '不' }],
+      time: Array.from({ length: 20 }, (_, i) => ({ ru: 't' + i, zh: '时' + i })),
+      place: [{ ru: 'здесь', zh: '这里' }],
+      predicates: [{ ru: 'хочу', zh: '想' }],
+      objects: [
+        { ru: 'книгу', zh: '书', inf: 'читать' }, // 与句子补语重复 → 必须被排除
+        { ru: 'воду', zh: '水', inf: 'пить' },
+        { ru: 'чай', zh: '茶', inf: 'пить' },
+        { ru: 'фильм', zh: '电影', inf: 'смотреть' },
+      ],
+      evaluation: [{ ru: 'важно', zh: '重要' }],
+    }
+    const ins = buildCoreChainIntent({ sentence: 'Я люблю читать книгу', tokens: ['Я', 'люблю', 'читать', 'книгу'], pool: poolObj, zh: '' })
+    const objIdx = ins.filter((x) => x.source === 'pool' && x.poolKey === 'objects').map((x) => x.poolIndex)
+    assert.ok(objIdx.length >= 2, 'object_swap 段应有不定式+宾语两行 pool 引用')
+    // 同一句内两行索引一致（搭配词条）
+    assert.equal(objIdx[0], objIdx[1])
+    // 索引不能指向 objects[0]（книгу 与句子重复被排除）
+    assert.notEqual(objIdx[0], 0, '换宾语段不得轮换到与句子补语相同的词（книгу）')
+    assert.ok(objIdx[0] >= 1 && objIdx[0] < 4, `索引越界 ${objIdx[0]}`)
   })
 
   test('核心句长链：否定幕紧跟骨架；negation 模板词固定 не', () => {
