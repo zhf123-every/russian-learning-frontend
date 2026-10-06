@@ -335,7 +335,7 @@ export function pickPoolIndex(listLen, seedText) {
   return (h >>> 0) % listLen
 }
 
-export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 'easy' }) {
+export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 'easy', chainIndex = 0, poolSeed = '' }) {
   const n = Array.isArray(tokens) ? tokens.length : 0
   if (!n) return []
   const intents = []
@@ -352,10 +352,10 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 
     { id: 'freq_every_day', g: 'G_08' },
     { id: 'review', g: 'G_09', hints: ['复习：object_pos', '复习：time_pos', '复习：time_neg', '复习：predicate_neg'] },
   ]
-  const predicateIdx = { n: 0 }
-  const seed = ((Array.isArray(tokens) ? tokens.join(' ') : '') + '|' + (sentence || '')).trim()
+  // B 方案轮转：课程级起点（poolSeed 哈希，同课程稳定、不同课程不同起点）+ 句子序号循环
+  // → 一门课 N 句保证池内前 N 个词各用一遍（超出循环），不再依赖句子文本多样性
+  const baseFor = (key, len) => pickPoolIndex(len || 1, String(poolSeed || '') + ':base:' + key)
   // objects 轮换候选：排除与句子重复的词（ru/inf/首词命中 tokens 即跳过），索引映射回原池
-  // 目的：换宾语段应换到"新词"（"Я хочу читать книгу"若轮换到 objects 里的 книгу → 观感像没换）
   let objIdxCache
   const tokensSet = new Set(Array.isArray(tokens) ? tokens.map((t) => t) : [])
   const sectionById = Object.fromEntries(TEMPLATE_SECTIONS.map((s) => [s.id, s]))
@@ -370,7 +370,10 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 
       if (skip === 'hidden') out.hidden = true
       if (st.source === 'pool') {
         let idx = 0
-        if (st.poolKey === 'predicates') idx = pickPoolIndex((pool?.predicates?.length) || 1, seed + ':pred')
+        if (st.poolKey === 'predicates') {
+          const len = (pool?.predicates?.length) || 1
+          idx = (baseFor('pred', len) + chainIndex) % len
+        }
         else if (st.poolKey === 'evaluation' && item.evaluationIdx !== undefined) idx = item.evaluationIdx
         else if (st.poolKey === 'objects') {
           if (objIdxCache === undefined) {
@@ -381,12 +384,19 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 
               const inf = String((o && o.inf) || '')
               if (!tokensSet.has(ru) && !tokensSet.has(inf) && !tokensSet.has(ru.split(' ')[0])) idxMap.push(i)
             })
-            objIdxCache = idxMap.length ? idxMap[pickPoolIndex(idxMap.length, seed + ':obj')] : 0
+            const len = idxMap.length || 1
+            objIdxCache = idxMap.length ? idxMap[(baseFor('obj', len) + chainIndex) % len] : 0
           }
           idx = objIdxCache
         }
-        else if (st.poolKey === 'time') idx = pickPoolIndex((pool?.time?.length) || 1, seed + ':time')
-        else if (st.poolKey === 'place') idx = pickPoolIndex((pool?.place?.length) || 1, seed + ':place')
+        else if (st.poolKey === 'time') {
+          const len = (pool?.time?.length) || 1
+          idx = (baseFor('time', len) + chainIndex) % len
+        }
+        else if (st.poolKey === 'place') {
+          const len = (pool?.place?.length) || 1
+          idx = (baseFor('place', len) + chainIndex) % len
+        }
         else idx = 0
         out.poolIndex = idx
       }
@@ -399,7 +409,7 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 
 }
 
 // ============ 短链意图（方案 A：非核心句；骨架 + 否定 + 时间 + 地点 + 频率，~20 步） ============
-export function buildShortChainIntent({ sentence, tokens, pool, zh, difficulty = 'easy' }) {
+export function buildShortChainIntent({ sentence, tokens, pool, zh, difficulty = 'easy', chainIndex = 0, poolSeed = '' }) {
   const n = Array.isArray(tokens) ? tokens.length : 0
   if (!n) return []
   const intents = []
@@ -410,7 +420,7 @@ export function buildShortChainIntent({ sentence, tokens, pool, zh, difficulty =
     { id: 'place', g: 'G_04' },
     { id: 'freq_every_day', g: 'G_05' },
   ]
-  const seed = ((Array.isArray(tokens) ? tokens.join(' ') : '') + '|' + (sentence || '')).trim()
+  const baseFor = (key, len) => pickPoolIndex(len || 1, String(poolSeed || '') + ':base:' + key)
   const sectionById = Object.fromEntries(TEMPLATE_SECTIONS.map((s) => [s.id, s]))
   for (const item of CHAIN) {
     const sec = sectionById[item.id]
@@ -422,8 +432,14 @@ export function buildShortChainIntent({ sentence, tokens, pool, zh, difficulty =
       if (skip === 'hidden') out.hidden = true
       if (st.source === 'pool') {
         let idx = 0
-        if (st.poolKey === 'time') idx = pickPoolIndex((pool?.time?.length) || 1, seed + ':time')
-        else if (st.poolKey === 'place') idx = pickPoolIndex((pool?.place?.length) || 1, seed + ':place')
+        if (st.poolKey === 'time') {
+          const len = (pool?.time?.length) || 1
+          idx = (baseFor('time', len) + chainIndex) % len
+        }
+        else if (st.poolKey === 'place') {
+          const len = (pool?.place?.length) || 1
+          idx = (baseFor('place', len) + chainIndex) % len
+        }
         else idx = 0
         out.poolIndex = idx
       }
@@ -639,6 +655,7 @@ export async function generateUnitTableAsync(units, opts = {}, deps = {}) {
   // （每请求 ~19s）→ 冷启动/限流导致部分难度生成失败；串行 + aiFillTable 重试后每个难度独立稳定生成。
   const batchSize = Math.min(Math.max(opts.batchSize || 1, 1), 5)
   const pool = opts.pool
+  const poolSeed = opts.poolSeed || ''
   const httpPost = opts.httpPost || (deps && deps.httpPost)
   const list = Array.isArray(units) ? units : []
   const done = []
@@ -652,14 +669,15 @@ export async function generateUnitTableAsync(units, opts = {}, deps = {}) {
       const difficulty = (u && u.difficulty) || 'easy'
       const zh = (u && u.zh) || ''
       const isCore = (u && u.core === true) || (i + j === 0) // 方案 A：第一句 = 核心句
+      const chainIndex = (u && typeof u.chainIndex === 'number') ? u.chainIndex : (i + j) // 句子在课程中的序号（三档共用 → 同句跨难度同词）
       const hash = sentenceHash(sentence, difficulty)
       if (!sentence || !tokens.length) {
         return { kind: 'failed', item: { sentenceHash: hash, difficulty, error: 'empty_sentence' } }
       }
       try {
         const intents = isCore
-          ? buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty })
-          : buildShortChainIntent({ sentence, tokens, pool, zh, difficulty })
+          ? buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty, chainIndex, poolSeed })
+          : buildShortChainIntent({ sentence, tokens, pool, zh, difficulty, chainIndex, poolSeed })
         const r = await aiFillTable(intents, { sentence, tokens, difficulty, pool, httpPost }, { zh })
         if (r.ok) return { kind: 'done', item: { sentenceHash: hash, difficulty, reviewStatus: 'ok', rows: r.rows } }
         if (r.pending) return { kind: 'pending', item: { sentenceHash: hash, difficulty, reason: r.reason, rows: r.rows } }

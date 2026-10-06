@@ -132,13 +132,15 @@ export async function triggerUnitSlotTables({ courseId, unitId, sentences, deps 
   if (!list.length) return { skipped: 'no_sentences' }
   inFlight.add(key)
   try {
-    // 方案 A：第 1 句 = 核心长链；三档难度各生成一次
+    // 方案 A：第 1 句 = 核心长链；三档难度各生成一次；chainIndex=句子在课程中的序号（B 方案轮转基准）
     const units = []
     list.forEach((s, idx) => {
-      for (const d of DIFFICULTIES) units.push({ ru: s.ru, zh: s.zh, difficulty: d, core: idx === 0 })
+      for (const d of DIFFICULTIES) units.push({ ru: s.ru, zh: s.zh, difficulty: d, core: idx === 0, chainIndex: idx })
     })
     const pool = (deps && deps.pool) || DEFAULT_SLOT_POOL
-    const r = await generateUnitTableAsync(units, { httpPost: deps.httpPost, pool }, deps)
+    // poolSeed=课程级轮转起点（同课程稳定、不同课程不同起点 → 变体词课程内循环覆盖、跨课程不雷同）
+    const poolSeed = deps && deps.courseId ? `${deps.courseId}::${deps.unitId || ''}` : ''
+    const r = await generateUnitTableAsync(units, { httpPost: deps.httpPost, pool, poolSeed }, deps)
     // hash → 原句 映射（save 需要 sentence 字段；与 generateUnitTableAsync 内部 hash 算法一致）
     const hashToSentence = {}
     for (const s of list) {

@@ -362,7 +362,7 @@ describe('jlTableEngine 5c：链生成（buildCoreChainIntent / buildShortChainI
     }
   })
 
-  test('核心句长链：predicates/objects/time/place 词池索引确定性轮换（在界内、同句稳定、不同句不同词）', () => {
+  test('B 方案轮转：predicates/objects/time/place 按句子序号循环、课程起点稳定、20 句覆盖全池', () => {
     const poolBig = {
       negation: [{ ru: 'не', zh: '不' }],
       time: Array.from({ length: 20 }, (_, i) => ({ ru: 't' + i, zh: '时' + i })),
@@ -371,19 +371,29 @@ describe('jlTableEngine 5c：链生成（buildCoreChainIntent / buildShortChainI
       objects: Array.from({ length: 20 }, (_, i) => ({ ru: 'o' + i, zh: '宾' + i, inf: 'inf' + i })),
       evaluation: [{ ru: 'важно', zh: '重要' }],
     }
-    const a = buildCoreChainIntent({ sentence: 'Я люблю еду', tokens: ['Я', 'люблю', 'еду'], pool: poolBig, zh: '' })
-    const b = buildCoreChainIntent({ sentence: 'Я люблю еду', tokens: ['Я', 'люблю', 'еду'], pool: poolBig, zh: '' })
-    const c = buildCoreChainIntent({ sentence: 'Я читаю книгу', tokens: ['Я', 'читаю', 'книгу'], pool: poolBig, zh: '' })
     const idxOf = (ins, key) => ins.filter((x) => x.source === 'pool' && x.poolKey === key).map((x) => x.poolIndex)
+    // 同句同 chainIndex 同课程 → 完全稳定（缓存友好）
+    const a = buildCoreChainIntent({ sentence: 'Я люблю еду', tokens: ['Я', 'люблю', 'еду'], pool: poolBig, zh: '', chainIndex: 3, poolSeed: 'course_1::unit_1' })
+    const b = buildCoreChainIntent({ sentence: 'Я люблю еду', tokens: ['Я', 'люблю', 'еду'], pool: poolBig, zh: '', chainIndex: 3, poolSeed: 'course_1::unit_1' })
     for (const key of ['predicates', 'objects', 'time', 'place']) {
-      const ia = idxOf(a, key)
-      const ib = idxOf(b, key)
-      assert.deepEqual(ia, ib, `${key} 同句必须稳定`)
-      for (const v of ia) assert.ok(v >= 0 && v < poolBig[key].length, `${key} 索引越界 ${v}`)
+      assert.deepEqual(idxOf(a, key), idxOf(b, key), `${key} 同句同序号必须稳定`)
+      for (const v of idxOf(a, key)) assert.ok(v >= 0 && v < poolBig[key].length, `${key} 索引越界 ${v}`)
     }
-    // 不同句应整体轮换（四类 key 的索引分布至少一处不同；单 key 撞词概率 1/20，全撞 ~1/160000）
-    const flat = (ins) => Object.keys(poolBig).flatMap((k) => idxOf(ins, k))
-    assert.notDeepEqual(flat(a), flat(c), '不同句子应轮换到不同词（整体分布至少一处不同）')
+    // 课程内 20 句：时间词覆盖全部 20 个（B 方案核心保证）
+    const seenTime = new Set()
+    const seenPlace = new Set()
+    for (let ci = 0; ci < 20; ci++) {
+      const ins = buildCoreChainIntent({ sentence: 'S' + ci, tokens: ['Я', 'люблю', 'еду'], pool: poolBig, zh: '', chainIndex: ci, poolSeed: 'course_1::unit_1' })
+      for (const v of idxOf(ins, 'time')) seenTime.add(v)
+      for (const v of idxOf(ins, 'place')) seenPlace.add(v)
+    }
+    assert.equal(seenTime.size, 20, '20 句课程时间词必须覆盖全部 20 个')
+    assert.equal(seenPlace.size, 20, '20 句课程地点词必须覆盖全部 20 个')
+    // 不同课程（不同 poolSeed）同序号 → 起点不同（整体分布至少一处不同；单 key 撞 1/20）
+    const c1 = buildCoreChainIntent({ sentence: 'X', tokens: ['Я', 'люблю', 'еду'], pool: poolBig, zh: '', chainIndex: 0, poolSeed: 'course_1::unit_1' })
+    const c2 = buildCoreChainIntent({ sentence: 'X', tokens: ['Я', 'люблю', 'еду'], pool: poolBig, zh: '', chainIndex: 0, poolSeed: 'course_2::unit_9' })
+    const flat = (ins) => ['time', 'place', 'predicates', 'objects'].flatMap((k) => idxOf(ins, k))
+    assert.notDeepEqual(flat(c1), flat(c2), '不同课程起点应不同（整体分布）')
   })
 
   test('objects 轮换排除与句子重复的词（换宾语段不换到原词）', () => {
@@ -400,7 +410,7 @@ describe('jlTableEngine 5c：链生成（buildCoreChainIntent / buildShortChainI
       ],
       evaluation: [{ ru: 'важно', zh: '重要' }],
     }
-    const ins = buildCoreChainIntent({ sentence: 'Я люблю читать книгу', tokens: ['Я', 'люблю', 'читать', 'книгу'], pool: poolObj, zh: '' })
+    const ins = buildCoreChainIntent({ sentence: 'Я люблю читать книгу', tokens: ['Я', 'люблю', 'читать', 'книгу'], pool: poolObj, zh: '', chainIndex: 5, poolSeed: 'c1::u1' })
     const objIdx = ins.filter((x) => x.source === 'pool' && x.poolKey === 'objects').map((x) => x.poolIndex)
     assert.ok(objIdx.length >= 2, 'object_swap 段应有不定式+宾语两行 pool 引用')
     // 同一句内两行索引一致（搭配词条）
