@@ -657,6 +657,7 @@ export async function generateUnitTableAsync(units, opts = {}, deps = {}) {
   const pool = opts.pool
   const poolSeed = opts.poolSeed || ''
   const httpPost = opts.httpPost || (deps && deps.httpPost)
+  const onProgress = opts.onProgress || (deps && deps.onProgress)
   const list = Array.isArray(units) ? units : []
   const done = []
   const failed = []
@@ -692,6 +693,9 @@ export async function generateUnitTableAsync(units, opts = {}, deps = {}) {
       if (r.kind === 'done') done.push(r.item)
       else if (r.kind === 'pending') pending.push(r.item)
       else failed.push(r.item)
+    }
+    if (onProgress) {
+      try { onProgress({ done: done.length + pending.length + failed.length, total: list.length }) } catch (e) { /* 进度回调失败不影响生成 */ }
     }
   }
   return { done, failed, pending }

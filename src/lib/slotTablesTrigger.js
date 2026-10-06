@@ -140,7 +140,7 @@ export async function triggerUnitSlotTables({ courseId, unitId, sentences, deps 
     const pool = (deps && deps.pool) || DEFAULT_SLOT_POOL
     // poolSeed=课程级轮转起点（同课程稳定、不同课程不同起点 → 变体词课程内循环覆盖、跨课程不雷同）
     const poolSeed = deps && deps.courseId ? `${deps.courseId}::${deps.unitId || ''}` : ''
-    const r = await generateUnitTableAsync(units, { httpPost: deps.httpPost, pool, poolSeed }, deps)
+    const r = await generateUnitTableAsync(units, { httpPost: deps.httpPost, pool, poolSeed, onProgress: deps.onProgress }, deps)
     // hash → 原句 映射（save 需要 sentence 字段；与 generateUnitTableAsync 内部 hash 算法一致）
     const hashToSentence = {}
     for (const s of list) {

@@ -6,10 +6,8 @@ import { courseStatus, statusLabel, fmtSchedule } from '../utils/courseSchedule'
 import { saveCourseVersion, listCourseVersions, getCourseVersion, clearCourseVersions, rollbackCourse } from '../utils/courseVersions'
 import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
-import { splitTokens } from '../lib/snowballEngine'
 import { withRetry403 } from '../lib/segmentEngine'
 import { resolvePlayUrl } from '../lib/playUrl'
-import { generateSlotPaths, verifySlotPaths, generateVariantPool } from '../lib/slotEngine'
 import { collectUnitSentenceObjs } from '../lib/unitSentences'
 import { triggerUnitSegments, retryPendingSegments } from '../lib/segmentTrigger'
 import { triggerUnitSlotTables, retryPendingSlotTables } from '../lib/slotTablesTrigger'
@@ -222,10 +220,6 @@ export default function AdminDashboard() {
     setAiRenameBusy(idx)
     try {
       const parts = []
-      if (Array.isArray(u.scaffoldingPaths) && u.scaffoldingPaths.length) {
-        const samples = u.scaffoldingPaths.slice(0, 3).flatMap(p => (p.steps || []).slice(0, 3).map(s => s.russian || '')).filter(Boolean).slice(0, 8)
-        parts.push('滚雪球句子：' + samples.join('；'))
-      }
       if (Array.isArray(u.sentences) && u.sentences.length) {
         parts.push('例句：' + u.sentences.slice(0, 5).map(s => (s.ru || '') + (s.zh ? '(' + s.zh + ')' : '')).join('；'))
       }
@@ -553,13 +547,12 @@ export default function AdminDashboard() {
   // 更新 activeUnit 副本
   const patchUnit = (patch) => setActiveUnit(prev => ({ ...prev, ...patch }))
 
-  // 课时是否已挂内容（生词/例句/滚雪球路径/素材任一非空）
+  // 课时是否已挂内容（例句/素材任一非空）
   const unitHasContent = (u) =>
     (u.sentences && u.sentences.length) ||
-    (u.scaffoldingPaths && u.scaffoldingPaths.length) ||
     (u.materials && u.materials.length)
 
-  // ✨ 一键生成本课知识点：收集本课所有句子（例句 + 滚动路径完整句）→ AI 逐句生成 → 内嵌 unit.knowledge
+  // ✨ 一键生成本课知识点：收集本课所有句子 → AI 逐句生成 → 内嵌 unit.knowledge
   // 内嵌后随课时保存/同步云端 → 前端学习内容弹窗 100% 命中、零请求、永久缓存（后端再休眠也不失败）
   const collectUnitSentences = (u) => {
     const seen = new Set()
@@ -572,21 +565,16 @@ export default function AdminDashboard() {
       out.push(k)
     }
     ;(u.sentences || []).forEach((s) => push(s && (s.ru || s.russian || s.text)))
-    ;(u.scaffoldingPaths || []).forEach((p) => {
-      const steps = Array.isArray(p.steps) ? p.steps : []
-      const last = steps[steps.length - 1]
-      push(last && (last.russian || last.ru || last.text))
-    })
     return out
   }
 
-  // 课时句子收集器（例句 + 滚动路径末步）已提取到 src/lib/unitSentences.js 统一维护，
+  // 课时句子收集器已提取到 src/lib/unitSentences.js 统一维护，
   // 与本页 collectUnitSentenceObjs 调用点、校对页 AdminSegments 共用同一数据源。
 
   const genUnitKnowledge = async () => {
     if (!activeUnit) return
     const sents = collectUnitSentences(activeUnit)
-    if (!sents.length) { flash('本课时还没有例句或滚动路径，先挂内容再生成知识点'); return }
+    if (!sents.length) { flash('本课时还没有例句，先挂内容再生成知识点'); return }
     const existing = (activeUnit.knowledge && typeof activeUnit.knowledge === 'object') ? activeUnit.knowledge : {}
     const todo = sents.filter((ru) => !(existing[ru] && existing[ru]._ru))
     if (!todo.length) { flash('本课所有句子都已有知识点，无需再生成'); return }
@@ -647,9 +635,8 @@ export default function AdminDashboard() {
     const nextUnits = units.map(u => (u.id === activeUnit.id ? activeUnit : u))
     persistUnits(nextUnits)
     const sent = (activeUnit.sentences || []).length
-    const paths = (activeUnit.scaffoldingPaths || []).length
     const words = (activeUnit.words || []).length
-    const stats = [words ? words + ' 词' : '', sent ? sent + ' 句' : '', paths ? paths + ' 条路径' : ''].filter(Boolean).join(' · ')
+    const stats = [words ? words + ' 词' : '', sent ? sent + ' 句' : ''].filter(Boolean).join(' · ')
     const left = nextUnits.filter(u => !unitHasContent(u)).length
     setSaveBanner({ title: activeUnit.title, stats: stats || '（暂无内容）', left })
     flash(`已保存《${activeUnit.title}》` + (stats ? '：' + stats : '') + (left ? `，还有 ${left} 个课时未挂内容` : '，所有课时已就绪'))
@@ -706,88 +693,61 @@ export default function AdminDashboard() {
   const removeSentence = (idx) => {
     patchUnit({ sentences: (activeUnit.sentences || []).filter((_, i) => i !== idx) })
   }
-  // 删除一条滚动学习路径
-  const removePath = (pi) => {
-    const paths = [...(activeUnit.scaffoldingPaths || [])].filter((_, i) => i !== pi)
-    patchUnit({ scaffoldingPaths: paths })
-  }
 
-  // ========== P4：生成句乐部式滚雪球路径（AI 出增量词序列 → 电脑拼装 → 强校验 → 写回课时） ==========
-  const [slotBusy, setSlotBusy] = useState(false)
-  const [slotResult, setSlotResult] = useState(null) // {ok, total, done, failed:[{ru,reason}], backupKey}
-  // ① 生成/复用课程级变体词池（9 类各 2-4 词，存回课时 variantPool；可手动重新生成）
-  const ensureVariantPool = async () => {
-    if (activeUnit.variantPool && Object.keys(activeUnit.variantPool).length) {
-      return { pool: activeUnit.variantPool, reused: true }
+  // ========== 一键生成三档 6 列表格（唯一上传入口闭环：粘贴 → 点生成 → 本页完成，无需再去表格管理页） ==========
+  const [genBusy, setGenBusy] = useState(false)
+  const [genProgress, setGenProgress] = useState(null) // {done, total}
+  const generateTablesNow = async () => {
+    if (genBusy || !activeUnit) return
+    // ① 粘贴区还有未添加的句子 → 先并入（解析规则与「批量添加」一致）
+    let unit = activeUnit
+    const paste = String(batchSentText || '').trim()
+    if (paste) {
+      const added = []
+      for (const line of paste.split(/\r?\n/).map(l => l.trim()).filter(Boolean)) {
+        const parts = line.split(/\s*\|\|\s*|\s*[｜]\s*|\s*\|\s*|\t+/).map(s => s.trim())
+        if (parts[0]) added.push({ ru: parts[0], zh: parts[1] || '' })
+      }
+      if (added.length) {
+        unit = { ...unit, sentences: [...(unit.sentences || []), ...added] }
+        setBatchSentText('')
+      }
     }
-    const sentences = collectUnitSentenceObjs(activeUnit)
-    const r = await generateVariantPool({ sentences, httpPost: segHttpPost })
-    if (r.fallback) throw new Error('词池生成失败：' + (r.reason || 'fallback'))
-    patchUnit({ variantPool: r.pool })
-    return { pool: r.pool, reused: false }
-  }
-  const generateSlotPathsForUnit = async () => {
-    const sentences = collectUnitSentenceObjs(activeUnit)
-    if (!sentences.length) { flash('本课时没有句子（例句或路径末步均可作为数据源）'); return }
-    setSlotBusy(true); setSlotResult(null)
-    const backupKey = 'rb_slot_paths_backup_' + (activeUnit.id || 'unit')
+    const sentences = collectUnitSentenceObjs(unit)
+    if (!sentences.length) { flash('先粘贴句子（每行：俄语 || 中文）再点生成'); return }
+    // ② 落盘课时（保证句子入库；activeUnit 状态同步）
+    patchUnit(unit)
+    const nextUnits = units.map(u => (u.id === activeUnit.id ? unit : u))
+    persistUnits(nextUnits)
+    // ③ 同步等待三档表格生成（串行、带进度；失败项下次打开自动补跑）
+    setGenBusy(true)
+    setGenProgress({ done: 0, total: sentences.length })
     try {
-      const old = activeUnit.scaffoldingPaths || []
-      if (old.length) {
-        try { localStorage.setItem(backupKey, JSON.stringify(old)) } catch (e) { /* 忽略 */ }
-      }
-      // 词池：已有则复用，没有则生成一次（全课变体词统一，复刻句乐部）
-      let pool = null
-      try {
-        const pr = await ensureVariantPool()
-        pool = pr.pool
-      } catch (e) {
-        flash('⚠️ 变体词池生成失败，本次按无词池继续（变体词由 AI 自由选择）：' + String(e && e.message || e))
-      }
-      const BATCH = 4
-      const DIFFS = ['easy', 'medium', 'hard']
-      const allPaths = []
-      const failed = []
-      let done = 0
-      for (let i = 0; i < sentences.length; i += BATCH) {
-        const batch = sentences.slice(i, i + BATCH)
-        const results = await Promise.all(batch.map(async (s) => {
-          const ru = String(s.ru || s.russian || s.text || '').trim()
-          const zh = String(s.zh || s.chinese || s.translation || s.mean || '').trim()
-          if (!ru) return null
-          try {
-            // 三档难度：每句生成 easy/medium/hard 三套路径（块粒度不同，末步都是完整句）
-            const out = []
-            for (const d of DIFFS) {
-              const r = await generateSlotPaths({ sentence: ru, tokens: splitTokens(ru), difficulty: d, pool, httpPost: segHttpPost })
-              if (r.fallback) return { ok: false, ru, reason: `${d}: ${r.reason || 'fallback'}` }
-              if (r.pending) return { ok: false, ru, reason: `${d}: pending` }
-              const v = verifySlotPaths(r.paths, ru, zh)
-              if (!v.ok) return { ok: false, ru, reason: `${d}: ${v.errors.join(';')}` }
-              out.push(...r.paths.map((p) => ({ ...p, difficulty: d })))
-            }
-            done++
-            return { ok: true, paths: out }
-          } catch (e) {
-            return { ok: false, ru, reason: String(e && e.message || e).slice(0, 120) }
-          }
-        }))
-        results.filter(Boolean).forEach((r) => {
-          if (r.ok) allPaths.push(...r.paths); else failed.push({ ru: r.ru, reason: r.reason })
-        })
-      }
-      if (allPaths.length) {
-        patchUnit({ scaffoldingPaths: allPaths })
-        flash(`✅ 句乐部路径已生成：${done} 句成功` + (failed.length ? `，${failed.length} 句失败` : ''))
+      const r = await triggerUnitSlotTables({
+        courseId: active.id,
+        unitId: activeUnit.id,
+        sentences,
+        deps: {
+          httpPost: segHttpPost,
+          onProgress: (p) => setGenProgress({ done: p.done, total: p.total }),
+        },
+      })
+      if (r && r.skipped) { flash('表格生成已在运行中，稍候刷新查看结果'); return }
+      const ok = (r.done || []).length
+      const fail = (r.failed || []).length
+      const pend = (r.pending || []).length
+      if (ok) {
+        flash(`✅ 表格已生成：${ok} 项入库${fail ? `，${fail} 项失败（下次打开自动补跑）` : ''}${pend ? `，${pend} 项待校对` : ''}——本页即完成，无需再去表格管理页`)
+      } else if (pend) {
+        flash(`⚠️ ${pend} 项待校对（已入库），${fail} 项失败——可再点一次重试`)
       } else {
-        flash(`⚠️ 全部失败：${failed.length} 句（详见下方失败列表）`)
+        flash(`⚠️ 生成失败 ${fail} 项，可再点一次重试`)
       }
-      setSlotResult({ ok: allPaths.length > 0, total: sentences.length, done, failed, backupKey: old.length ? backupKey : null, poolReused: pool ? '（本课变体词池' + (activeUnit.variantPool ? '已复用' : '已生成') + '）' : '' })
     } catch (e) {
-      flash('生成句乐部路径失败：' + String(e && e.message || e))
-      setSlotResult({ ok: false, total: sentences.length, done: 0, failed: [], backupKey: null })
+      flash('生成出错：' + String(e && e.message || e))
     } finally {
-      setSlotBusy(false)
+      setGenBusy(false)
+      setGenProgress(null)
     }
   }
 
@@ -837,7 +797,7 @@ export default function AdminDashboard() {
             <div>
               <button className="btn btn-ghost btn-sm -ml-2 text-gray-500" onClick={() => setView('units')}>← 返回课程序</button>
               <h1 className="text-xl font-extrabold text-gray-900 mt-1">{active.title} · {activeUnit.title}</h1>
-              <p className="text-xs text-gray-400 mt-0.5">第三步 · 挂内容：例句 + 滚动路径 + 素材</p>
+              <p className="text-xs text-gray-400 mt-0.5">第三步 · 挂内容：例句 + 素材</p>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex flex-col items-end gap-1">
@@ -854,6 +814,14 @@ export default function AdminDashboard() {
                 )}
               </div>
               <button className="btn btn-primary btn-sm" onClick={saveUnit}>💾 保存课时内容</button>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={generateTablesNow}
+                disabled={genBusy}
+                title="一键：并入粘贴区句子 + 保存课时 + 三档 6 列表格本页生成完毕"
+              >
+                {genBusy ? `🚀 生成中 ${genProgress ? `${genProgress.done}/${genProgress.total}` : '…'}` : '🚀 生成表格'}
+              </button>
               {active && (
                 <button className="btn btn-outline btn-sm" onClick={() => navigate(`/admin/segments?course=${encodeURIComponent(active.id)}&unit=${encodeURIComponent(activeUnit.id)}`)}>
                   📑 语块管理
@@ -867,7 +835,7 @@ export default function AdminDashboard() {
             <div className="card-body p-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="text-sm font-bold text-gray-900">📤 上传课程 = 三步</span>
-                <span className="text-[11px] text-gray-400">本课时内容只有一个入口：贴句子 → 生成路径 → 保存</span>
+                <span className="text-[11px] text-gray-400">本课时内容只有一个入口：贴句子 → 点生成 → 表格本页生成完毕</span>
               </div>
               <ol className="mt-2 grid gap-1.5 text-xs text-gray-700 sm:grid-cols-3">
                 <li className="rounded-lg bg-white/70 px-3 py-2">
@@ -875,12 +843,12 @@ export default function AdminDashboard() {
                   在下方「① 例句」粘贴完整句子（每行：俄语 || 中文），点「批量添加」
                 </li>
                 <li className="rounded-lg bg-white/70 px-3 py-2">
-                  <b className="text-primary">② 生成路径</b><br />
-                  点「✨ 生成句乐部路径」，AI 自动把每句拆成学习关卡（初级/中级/高级）
+                  <b className="text-primary">② 生成表格</b><br />
+                  点「🚀 生成表格」，自动为每句生成 初级/中级/高级 三档 6 列表格（同步等待，带进度）
                 </li>
                 <li className="rounded-lg bg-white/70 px-3 py-2">
-                  <b className="text-primary">③ 保存</b><br />
-                  点「💾 保存课时内容」，语块自动生成，学生端即可学习
+                  <b className="text-primary">③ 完成</b><br />
+                  生成即入库，学生端四模式即可学习；无需再去表格管理页
                 </li>
               </ol>
             </div>
@@ -945,7 +913,17 @@ export default function AdminDashboard() {
               <div className="mt-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-xs font-semibold text-gray-700">📥 批量粘贴句子（每行一句：俄语 || 中文）</span>
-                  <button className="btn btn-primary btn-xs" onClick={addSentencesBatch}>批量添加</button>
+                  <div className="flex items-center gap-2">
+                    <button className="btn btn-primary btn-xs" onClick={addSentencesBatch} disabled={genBusy}>批量添加</button>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={generateTablesNow}
+                      disabled={genBusy}
+                      title="粘贴后一键完成：并入句子 + 保存课时 + 三档表格本页生成完毕"
+                    >
+                      {genBusy ? `🚀 生成中 ${genProgress ? `${genProgress.done}/${genProgress.total}` : '…'}` : '🚀 生成表格'}
+                    </button>
+                  </div>
                 </div>
                 <textarea
                   className="textarea textarea-bordered mt-2 w-full font-mono text-xs"
@@ -957,54 +935,19 @@ export default function AdminDashboard() {
                 <p className="mt-1 text-[11px] text-gray-400">支持分隔符：|| ｜ | Tab；建议中文必填（俄语 || 中文），缺中文可事后点例句「编」手动补齐</p>
               </div>
 
-              {/* ② 滚动学习路径（scaffoldingPaths）——连词成句滚雪球 */}
-              <div id="scaffold-section" className="card mt-4 border border-purple-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
-                <div className="card-body p-5">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <h2 className="card-title text-base text-gray-900">② 滚动学习路径（连词成句滚雪球）</h2>
-                    <button className="btn btn-primary btn-sm" onClick={generateSlotPathsForUnit} disabled={slotBusy}>
-                      {slotBusy ? '✨ 生成中…（AI 规划 + 电脑拼装）' : '✨ 生成句乐部路径（AI 规划 + 自动拼装）'}
-                    </button>
+              {/* ② 生成表格（一键：粘贴 → 生成 → 本页完成） */}
+              {genProgress && genProgress.total > 0 && (
+                <div className="card mt-4 border border-primary/20 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
+                  <div className="card-body p-5">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>三档表格生成中（{genProgress.done}/{genProgress.total} 句）…</span>
+                      <span className="text-primary">{Math.round((genProgress.done / genProgress.total) * 100)}%</span>
+                    </div>
+                    <progress className="progress progress-primary w-full" value={genProgress.done} max={genProgress.total} />
+                    <p className="mt-2 text-[11px] text-gray-400">生成完成后可直接查看学生端；失败项下次打开本课时自动补跑</p>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。点上方按钮即按「① 例句」的句子顺序自动生成。</p>
-                  {slotResult && (
-                    <div className="mt-2 rounded-lg border border-info/30 bg-info/5 p-2.5 text-xs text-gray-700 space-y-1">
-                      <div>共 {slotResult.total} 句：✅ 成功 {slotResult.done}（每句三档：初级/中级/高级），❌ 失败 {slotResult.failed.length} {slotResult.poolReused || ''}</div>
-                      {slotResult.backupKey && <div>🛟 旧路径已备份到本地（{slotResult.backupKey}），可随时回滚</div>}
-                      {slotResult.failed.length > 0 && (
-                        <div className="max-h-24 overflow-y-auto">
-                          {slotResult.failed.map((f, i) => (
-                            <div key={i} className="text-error"><span className="font-mono">{f.ru}</span> —— {f.reason}</div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {(!activeUnit.scaffoldingPaths || !activeUnit.scaffoldingPaths.length) ? (
-                    <p className="py-6 text-center text-sm text-gray-400">还没有路径。先在「① 例句」添加句子，再点上方「✨ 生成句乐部路径」即可自动生成。</p>
-                  ) : (
-                    <div className="mt-3 space-y-3 max-h-[480px] overflow-y-auto pr-1">
-                      {(activeUnit.scaffoldingPaths || []).map((p, pi) => (
-                        <div key={pi} className="rounded-xl border border-purple-200 bg-purple-50/50 px-3 py-2.5">
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <span className="text-xs font-bold text-purple-700">路径 {p.pathId} · {p.steps.length} 关</span>
-                            <button className="btn btn-error btn-xs btn-outline" onClick={() => removePath(pi)}>删路径</button>
-                          </div>
-                          <div className="mt-2 space-y-1">
-                            {(p.steps || []).map((st, si) => (
-                              <div key={si} className="flex items-center gap-2 text-xs rounded-lg bg-white/70 px-2 py-1.5">
-                                <span className="font-bold text-gray-400 w-7 shrink-0">{st.stepIndex || si + 1}</span>
-                                <span className="font-mono text-gray-800 min-w-0 truncate flex-1">{st.russian}</span>
-                                <span className="text-gray-400 shrink-0">{st.chinese}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              </div>
+              )}
 
             </div>
           </div>
