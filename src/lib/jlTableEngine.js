@@ -335,6 +335,18 @@ export function pickPoolIndex(listLen, seedText) {
   return (h >>> 0) % listLen
 }
 
+// 判断句检测：Это + 名词 / 名词 + 副词谓语（дома/здесь 等），无动词变位
+// 判断句不适用：不定式扩展 / 换谓语 / 换宾语（这些模板是为 Я+动词+宾语 结构设计的）
+// 判断句适用：否定 / 加时间 / 加地点 / 加频率 / 复习
+function isCopulaSentence(tokens) {
+  if (!Array.isArray(tokens) || !tokens.length) return false
+  // Это/это 开头 = 判断句（这是妈妈/这是爸爸）
+  if (/^[эЭ]то$/.test(tokens[0])) return true
+  // 名词 + дома（在家）/ здесь（在这里）/ тут（在这里）= 副词谓语判断句（Анна дома）
+  if (tokens.length >= 2 && /^(дома|здесь|тут|там)$/i.test(tokens[tokens.length - 1])) return true
+  return false
+}
+
 export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 'easy', chainIndex = 0, poolSeed = '' }) {
   const n = Array.isArray(tokens) ? tokens.length : 0
   if (!n) return []
@@ -342,7 +354,9 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 
   // 骨架占位：compose 空 → 后端按难度词级分组展开（easy 全显 / medium 隐藏主语谓语一词 / hard 全隐藏，喂词完整）
   intents.push({ kind: 'full', cardType: '完整句', template: 'skeleton', compose: [], groupId: 'G_01' })
   // 链顺序（对齐句乐部 01-40 节奏）；predicates 按出现次序递增消费词池
-  const CHAIN = [
+  // 判断句（Это + 名词 / 名词 +副词谓语）：跳过不定式/换谓语/换宾语，保留否定/时间/地点/频率/复习
+  const copula = isCopulaSentence(tokens)
+  const CHAIN_FULL = [
     { id: 'negation', g: 'G_02' },
     { id: 'infinitive', g: 'G_03' },
     { id: 'time', g: 'G_04' },
@@ -352,6 +366,14 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 
     { id: 'freq_every_day', g: 'G_08' },
     { id: 'review', g: 'G_09', hints: ['复习：object_pos', '复习：time_pos', '复习：time_neg', '复习：predicate_neg'] },
   ]
+  const CHAIN_COPULA = [
+    { id: 'negation', g: 'G_02' },
+    { id: 'time', g: 'G_03' },
+    { id: 'place', g: 'G_04' },
+    { id: 'freq_every_day', g: 'G_05' },
+    { id: 'review', g: 'G_06', hints: ['复习：negation', '复习：time_pos', '复习：place_pos', '复习：time_neg'] },
+  ]
+  const CHAIN = copula ? CHAIN_COPULA : CHAIN_FULL
   // B 方案轮转：课程级起点（poolSeed 哈希，同课程稳定、不同课程不同起点）+ 句子序号循环
   // → 一门课 N 句保证池内前 N 个词各用一遍（超出循环），不再依赖句子文本多样性
   const baseFor = (key, len) => pickPoolIndex(len || 1, String(poolSeed || '') + ':base:' + key)
