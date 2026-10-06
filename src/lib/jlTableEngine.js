@@ -292,24 +292,34 @@ export function buildSkeletonIntent(tokens, groups) {
 //   骨架→否定→不定式→时间→地点→换谓语→换宾语→频率→简短复习，
 //   关掉深层模板（something/it_is/for_me/to_do_eval/adj_rotate/clause/need/have_to）。
 //   ⚠️ 意图结构变更 → intents_fp 自动失效 → 已入库旧长链由补跑按新结构重生成（无需动后端）。
-// ============ 三档难度模式（2026-10-06：把三档真正拉开提示粒度） ============
-// easy   = 全量（现状 44 行）：积木全出、组合块全出、完整句全出
-// medium = 跳过"复用组合块"（не хочу / это 这类前面已学过的重复行，不重复学）
-// hard   = 只出"新词 + 完整句"：再跳过中间组合块（не хочу、делать это），高级直接整句
-// ⚠️ 骨架段（skeleton，核心句拆解）永远全保留——它是本句的基础零件，任何难度都要学。
+// ============ 三档难度模式（2026-10-06 用户定稿：提示粒度按档拉开） ============
+// easy   = 全量：一词积木 + 组合块 + 完整句全出（后端骨架词级分组展开）
+// medium = 只显示"≥2 词的组合积木"（не хочу / делать это / есть еду / Я хочу / читать книгу / каждый день），
+//          单个词积木（Я / хочу / не / это / сейчас / здесь / есть / еду / делать）隐藏但喂机器拼装 ctx；骨架后端短语级展开
+// hard   = 每步只显示完整句，全部积木隐藏（仍喂 ctx 保证完整句机器拼装正确）；骨架直接引用全句、不展开
+// ⚠️ hidden 机制：隐藏 ≠ 删除——后端仍对隐藏行做机器拼装 + ctx 更新，只是不出现在表格
+// （完整句的俄语由后端机器上下文拼出，删掉积木行会导致否定句/换宾语句拼错）
 export const DIFFICULTY_MODES = {
-  easy: { dropReuse: false, dropCombine: false },
-  medium: { dropReuse: true, dropCombine: false },
-  hard: { dropReuse: true, dropCombine: true },
+  easy: { dropSingle: false, dropAllParts: false },
+  medium: { dropSingle: true, dropAllParts: false },
+  hard: { dropSingle: true, dropAllParts: true },
 }
 
-// 按难度模式判断某步是否跳过；骨架段永不跳过。
+// 按难度模式判断某步如何处理。返回：
+// - false   = 正常显示
+// - 'hidden' = 隐藏（后端仍喂 ctx，不出现在表格）
+// - 'skip'  = 彻底删除（当前无此场景）
 function shouldSkipStep(st, secId, difficulty) {
   const opts = DIFFICULTY_MODES[difficulty]
   if (!opts) return false
-  if (secId === 'skeleton') return false
-  if (opts.dropReuse && st.source === 'reuse') return true
-  if (opts.dropCombine && st.role === '组合') return true
+  if (st.kind !== 'part') return false // 完整句永不隐藏
+  if (secId === 'skeleton' && difficulty !== 'hard') return false // 骨架段由后端按难度分组展开
+  if (opts.dropAllParts) return 'hidden' // hard：全部积木隐藏
+  if (opts.dropSingle) {
+    if (st.role === '组合') return false // 组合块（не хочу / делать это / есть еду）正常显示
+    if (st.templateText && st.templateText.trim().split(/\s+/).length >= 2) return false // 多词模板词（каждый день）正常显示
+    return 'hidden' // 单个词积木（Я / хочу / не / это / сейчас / здесь...）隐藏
+  }
   return false
 }
 
@@ -317,8 +327,11 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 
   const n = Array.isArray(tokens) ? tokens.length : 0
   if (!n) return []
   const intents = []
-  // 骨架占位（后端 LLM-1 分组 + 机器生成）
-  intents.push({ kind: 'full', cardType: '完整句', template: 'skeleton', compose: [], groupId: 'G_01' })
+  // 骨架占位：
+  // - easy/medium：compose 空 → 后端按难度分组展开（easy 词级 / medium 短语级）
+  // - hard：compose 带全句引用 → 后端不再分组展开，直接机器拼完整句（纯完整句档）
+  const skCompose = difficulty === 'hard' ? [{ source: 'core', tokensRef: [0, n - 1] }] : []
+  intents.push({ kind: 'full', cardType: '完整句', template: 'skeleton', compose: skCompose, groupId: 'G_01' })
   // 链顺序（对齐句乐部 01-40 节奏）；predicates 按出现次序递增消费词池
   const CHAIN = [
     { id: 'negation', g: 'G_02' },
@@ -337,8 +350,10 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 
     if (!sec) continue
     let hintCursor = 0
     for (const st of sec.steps) {
-      if (shouldSkipStep(st, item.id, difficulty)) continue
+      const skip = shouldSkipStep(st, item.id, difficulty)
+      if (skip === 'skip') continue
       const out = { ...st, groupId: item.g }
+      if (skip === 'hidden') out.hidden = true
       if (st.source === 'pool') {
         let idx = 0
         if (st.poolKey === 'predicates') idx = predicateIdx.n++
@@ -358,7 +373,8 @@ export function buildShortChainIntent({ sentence, tokens, zh, difficulty = 'easy
   const n = Array.isArray(tokens) ? tokens.length : 0
   if (!n) return []
   const intents = []
-  intents.push({ kind: 'full', cardType: '完整句', template: 'skeleton', compose: [], groupId: 'G_01' })
+  const skCompose = difficulty === 'hard' ? [{ source: 'core', tokensRef: [0, n - 1] }] : []
+  intents.push({ kind: 'full', cardType: '完整句', template: 'skeleton', compose: skCompose, groupId: 'G_01' })
   const CHAIN = [
     { id: 'negation', g: 'G_02' },
     { id: 'time', g: 'G_03' },
@@ -370,8 +386,10 @@ export function buildShortChainIntent({ sentence, tokens, zh, difficulty = 'easy
     const sec = sectionById[item.id]
     if (!sec) continue
     for (const st of sec.steps) {
-      if (shouldSkipStep(st, item.id, difficulty)) continue
+      const skip = shouldSkipStep(st, item.id, difficulty)
+      if (skip === 'skip') continue
       const out = { ...st, groupId: item.g }
+      if (skip === 'hidden') out.hidden = true
       if (st.source === 'pool') out.poolIndex = 0
       intents.push(out)
     }
@@ -530,12 +548,16 @@ export function verifyTable(rows, original, originalZh) {
     }
   }
   // 5. 零件全覆盖：原句每个 token 必须精确出现在某积木行（按词匹配，禁止子串误放行如 'еду' ⊂ 'едушки'）
-  const partText = arr.filter((r) => r.cardType === '积木').map((r) => normalizeTableText(r.ru)).filter(Boolean).join(' ')
-  const partTokens = new Set(splitTokens(partText))
-  for (const t of splitTokens(normOriginal)) {
-    const normT = normalizeTableText(t)
-    if (normT && !partTokens.has(normT)) {
-      errors.push(`零件未覆盖：token '${normT}' 未出现在任何积木行`)
+  //    ⚠️ 难度档表格若纯完整句（hard：零件积木隐藏喂 ctx、不出现在表里）→ 跳过本检查
+  const hasPartRows = arr.some((r) => r.cardType === '积木')
+  if (hasPartRows) {
+    const partText = arr.filter((r) => r.cardType === '积木').map((r) => normalizeTableText(r.ru)).filter(Boolean).join(' ')
+    const partTokens = new Set(splitTokens(partText))
+    for (const t of splitTokens(normOriginal)) {
+      const normT = normalizeTableText(t)
+      if (normT && !partTokens.has(normT)) {
+        errors.push(`零件未覆盖：token '${normT}' 未出现在任何积木行`)
+      }
     }
   }
   // 6/7. 变体完整句：不得重复原句；zh 不得照抄原句翻译

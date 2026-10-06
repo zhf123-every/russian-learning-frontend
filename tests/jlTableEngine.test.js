@@ -516,7 +516,7 @@ describe('jlTableEngine 5c：组合层 generateUnitTableAsync（并发分批 + �
   })
 })
 
-// ============ 2026-10-06：三档难度提示粒度拉开（easy 全量 / medium 去复用 / hard 去组合） ============
+// ============ 2026-10-06：三档难度提示粒度拉开（easy 全量 / medium 只出≥2词组合积木 / hard 纯完整句） ============
 describe('jlTableEngine 难度分档：三档步数与提示粒度不同', () => {
   const POOL = {
     negation: [{ ru: 'не', zh: '不' }],
@@ -532,35 +532,52 @@ describe('jlTableEngine 难度分档：三档步数与提示粒度不同', () =>
   const sentence = 'Я хочу читать книгу'
   const tokens = ['Я', 'хочу', 'читать', 'книгу']
 
-  test('三档核心链步数严格递减：easy > medium > hard，且骨架段永不裁剪', () => {
+  test('三档核心链可见行数严格递减：easy > medium > hard', () => {
     const easy = buildCoreChainIntent({ sentence, tokens, pool: POOL, zh: '我想读书', difficulty: 'easy' })
     const medium = buildCoreChainIntent({ sentence, tokens, pool: POOL, zh: '我想读书', difficulty: 'medium' })
     const hard = buildCoreChainIntent({ sentence, tokens, pool: POOL, zh: '我想读书', difficulty: 'hard' })
-    assert.ok(easy.length > medium.length, `easy(${easy.length}) > medium(${medium.length})`)
-    assert.ok(medium.length > hard.length, `medium(${medium.length}) > hard(${hard.length})`)
-    // 三档都含骨架占位行 G_01（skeleton 模板；后端按 tokens 展开成 5 步），任何难度不裁剪
-    const g01 = (its) => its.filter((i) => i.groupId === 'G_01')
-    assert.equal(g01(easy).length, 1)
-    assert.equal(g01(medium).length, 1)
-    assert.equal(g01(hard).length, 1)
-    assert.equal(g01(hard)[0].template, 'skeleton')
-    // easy 保留全部 reuse 行；medium/hard 全部去掉 reuse
-    const reuse = (its) => its.filter((i) => i.source === 'reuse').length
-    assert.ok(reuse(easy) > 0)
-    assert.equal(reuse(medium), 0)
-    assert.equal(reuse(hard), 0)
-    // hard 不再有中间组合块（не хочу / делать это 等 role=组合 的行）
-    const combine = (its) => its.filter((i) => i.role === '组合').length
-    assert.equal(combine(hard), 0)
-    assert.ok(combine(easy) > combine(hard))
+    const vis = (its) => its.filter((i) => !i.hidden)
+    assert.ok(vis(easy).length > vis(medium).length, `easy(${vis(easy).length}) > medium(${vis(medium).length})`)
+    assert.ok(vis(medium).length > vis(hard).length, `medium(${vis(medium).length}) > hard(${vis(hard).length})`)
+    // 完整句数量三档一致，差异全在积木
+    const fulls = (its) => its.filter((i) => i.kind === 'full').length
+    assert.equal(fulls(easy), fulls(medium))
+    assert.equal(fulls(medium), fulls(hard))
   })
 
-  test('短链三档同样分档：hard 步数最少且无 reuse/组合', () => {
-    const easy = buildShortChainIntent({ sentence, tokens, zh: '我想读书', difficulty: 'easy' })
+  test('medium：单个词积木隐藏（hidden），组合块正常显示', () => {
+    const medium = buildCoreChainIntent({ sentence, tokens, pool: POOL, zh: '我想读书', difficulty: 'medium' })
+    const parts = medium.filter((i) => i.kind === 'part')
+    // 显示的积木（非 hidden）只可能是组合块 / 多词模板词
+    const visible = parts.filter((i) => !i.hidden)
+    const visibleSingle = visible.filter((i) => i.role !== '组合' && (!i.templateText || i.templateText.trim().split(/\s+/).length < 2))
+    assert.equal(visibleSingle.length, 0, `medium 显示积木不应有单字：${JSON.stringify(visibleSingle.map((s) => s.role))}`)
+    // 单个词积木都在但标记 hidden（喂 ctx，不出表）
+    const hiddenParts = parts.filter((i) => i.hidden)
+    assert.ok(hiddenParts.length > 0, 'medium 有隐藏的一词积木')
+    // 骨架占位交给后端分组（compose 空）
+    const sk = medium.find((i) => i.template === 'skeleton')
+    assert.equal(sk.compose.length, 0)
+  })
+
+  test('hard：全部积木隐藏，只有完整句显示；骨架直接引用全句', () => {
+    const hard = buildCoreChainIntent({ sentence, tokens, pool: POOL, zh: '我想读书', difficulty: 'hard' })
+    const visible = hard.filter((i) => !i.hidden)
+    assert.equal(visible.filter((i) => i.kind === 'part').length, 0, 'hard 显示行不应有积木')
+    assert.ok(hard.filter((i) => i.kind === 'part').length > 0, 'hard 积木隐藏但仍在（喂 ctx）')
+    assert.ok(hard.filter((i) => i.kind === 'part' && i.hidden).length === hard.filter((i) => i.kind === 'part').length, 'hard 全部积木 hidden')
+    const sk = hard.find((i) => i.template === 'skeleton')
+    assert.equal(sk.compose.length, 1)
+    assert.deepEqual(sk.compose[0].tokensRef, [0, 3])
+  })
+
+  test('短链三档同样分档：medium 显示积木均为组合/多词、hard 纯完整句', () => {
+    const medium = buildShortChainIntent({ sentence, tokens, zh: '我想读书', difficulty: 'medium' })
     const hard = buildShortChainIntent({ sentence, tokens, zh: '我想读书', difficulty: 'hard' })
-    assert.ok(easy.length > hard.length)
-    assert.equal(hard.filter((i) => i.source === 'reuse').length, 0)
-    assert.equal(hard.filter((i) => i.role === '组合').length, 0)
+    const medVisible = medium.filter((i) => i.kind === 'part' && !i.hidden)
+    const medSingle = medVisible.filter((i) => i.role !== '组合' && (!i.templateText || i.templateText.trim().split(/\s+/).length < 2))
+    assert.equal(medSingle.length, 0, `medium 短链显示积木不应有单字：${JSON.stringify(medSingle.map((s) => s.role))}`)
+    assert.equal(hard.filter((i) => i.kind === 'part' && !i.hidden).length, 0)
   })
 
   test('默认难度（不传 difficulty）= easy 全量', () => {
