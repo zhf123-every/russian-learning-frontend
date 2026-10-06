@@ -560,15 +560,14 @@ describe('jlTableEngine 难度分档：三档步数与提示粒度不同', () =>
     assert.equal(sk.compose.length, 0)
   })
 
-  test('hard：全部积木隐藏，只有完整句显示；骨架直接引用全句', () => {
+  test('hard：全部积木隐藏，只有完整句显示；骨架交给后端展开喂词', () => {
     const hard = buildCoreChainIntent({ sentence, tokens, pool: POOL, zh: '我想读书', difficulty: 'hard' })
     const visible = hard.filter((i) => !i.hidden)
     assert.equal(visible.filter((i) => i.kind === 'part').length, 0, 'hard 显示行不应有积木')
     assert.ok(hard.filter((i) => i.kind === 'part').length > 0, 'hard 积木隐藏但仍在（喂 ctx）')
     assert.ok(hard.filter((i) => i.kind === 'part' && i.hidden).length === hard.filter((i) => i.kind === 'part').length, 'hard 全部积木 hidden')
     const sk = hard.find((i) => i.template === 'skeleton')
-    assert.equal(sk.compose.length, 1)
-    assert.deepEqual(sk.compose[0].tokensRef, [0, 3])
+    assert.equal(sk.compose.length, 0) // 后端展开（按难度裁剪隐藏 + 喂词）
   })
 
   test('短链三档同样分档：medium 显示积木均为组合/多词、hard 纯完整句', () => {

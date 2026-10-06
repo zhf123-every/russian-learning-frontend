@@ -327,11 +327,8 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 
   const n = Array.isArray(tokens) ? tokens.length : 0
   if (!n) return []
   const intents = []
-  // 骨架占位：
-  // - easy/medium：compose 空 → 后端按难度分组展开（easy 词级 / medium 短语级）
-  // - hard：compose 带全句引用 → 后端不再分组展开，直接机器拼完整句（纯完整句档）
-  const skCompose = difficulty === 'hard' ? [{ source: 'core', tokensRef: [0, n - 1] }] : []
-  intents.push({ kind: 'full', cardType: '完整句', template: 'skeleton', compose: skCompose, groupId: 'G_01' })
+  // 骨架占位：compose 空 → 后端按难度词级分组展开（easy 全显 / medium 隐藏主语谓语一词 / hard 全隐藏，喂词完整）
+  intents.push({ kind: 'full', cardType: '完整句', template: 'skeleton', compose: [], groupId: 'G_01' })
   // 链顺序（对齐句乐部 01-40 节奏）；predicates 按出现次序递增消费词池
   const CHAIN = [
     { id: 'negation', g: 'G_02' },
@@ -373,8 +370,7 @@ export function buildShortChainIntent({ sentence, tokens, zh, difficulty = 'easy
   const n = Array.isArray(tokens) ? tokens.length : 0
   if (!n) return []
   const intents = []
-  const skCompose = difficulty === 'hard' ? [{ source: 'core', tokensRef: [0, n - 1] }] : []
-  intents.push({ kind: 'full', cardType: '完整句', template: 'skeleton', compose: skCompose, groupId: 'G_01' })
+  intents.push({ kind: 'full', cardType: '完整句', template: 'skeleton', compose: [], groupId: 'G_01' })
   const CHAIN = [
     { id: 'negation', g: 'G_02' },
     { id: 'time', g: 'G_03' },
