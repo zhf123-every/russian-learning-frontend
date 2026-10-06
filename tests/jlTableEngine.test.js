@@ -515,3 +515,57 @@ describe('jlTableEngine 5c：组合层 generateUnitTableAsync（并发分批 + �
     assert.ok(peak <= 2, `并发峰值 ${peak}`)
   })
 })
+
+// ============ 2026-10-06：三档难度提示粒度拉开（easy 全量 / medium 去复用 / hard 去组合） ============
+describe('jlTableEngine 难度分档：三档步数与提示粒度不同', () => {
+  const POOL = {
+    negation: [{ ru: 'не', zh: '不' }],
+    time: [{ ru: 'сейчас', zh: '现在' }, { ru: 'сегодня', zh: '今天' }],
+    place: [{ ru: 'здесь', zh: '这里' }],
+    degree: [{ ru: 'очень', zh: '非常' }],
+    evaluation: [{ ru: 'важно', zh: '重要' }, { ru: 'хорошо', zh: '好' }, { ru: 'невозможно', zh: '不可能' }, { ru: 'возможно', zh: '可能' }],
+    predicates: [{ ru: 'хочу', zh: '想' }, { ru: 'нужно', zh: '需要' }, { ru: 'должен', zh: '必须' }],
+    objects: [{ ru: 'еду', zh: '食物', inf: 'есть' }],
+    preposition: [{ ru: 'для меня', zh: '对我来说' }],
+    connector: [{ ru: 'поэтому', zh: '所以' }],
+  }
+  const sentence = 'Я хочу читать книгу'
+  const tokens = ['Я', 'хочу', 'читать', 'книгу']
+
+  test('三档核心链步数严格递减：easy > medium > hard，且骨架段永不裁剪', () => {
+    const easy = buildCoreChainIntent({ sentence, tokens, pool: POOL, zh: '我想读书', difficulty: 'easy' })
+    const medium = buildCoreChainIntent({ sentence, tokens, pool: POOL, zh: '我想读书', difficulty: 'medium' })
+    const hard = buildCoreChainIntent({ sentence, tokens, pool: POOL, zh: '我想读书', difficulty: 'hard' })
+    assert.ok(easy.length > medium.length, `easy(${easy.length}) > medium(${medium.length})`)
+    assert.ok(medium.length > hard.length, `medium(${medium.length}) > hard(${hard.length})`)
+    // 三档都含骨架占位行 G_01（skeleton 模板；后端按 tokens 展开成 5 步），任何难度不裁剪
+    const g01 = (its) => its.filter((i) => i.groupId === 'G_01')
+    assert.equal(g01(easy).length, 1)
+    assert.equal(g01(medium).length, 1)
+    assert.equal(g01(hard).length, 1)
+    assert.equal(g01(hard)[0].template, 'skeleton')
+    // easy 保留全部 reuse 行；medium/hard 全部去掉 reuse
+    const reuse = (its) => its.filter((i) => i.source === 'reuse').length
+    assert.ok(reuse(easy) > 0)
+    assert.equal(reuse(medium), 0)
+    assert.equal(reuse(hard), 0)
+    // hard 不再有中间组合块（не хочу / делать это 等 role=组合 的行）
+    const combine = (its) => its.filter((i) => i.role === '组合').length
+    assert.equal(combine(hard), 0)
+    assert.ok(combine(easy) > combine(hard))
+  })
+
+  test('短链三档同样分档：hard 步数最少且无 reuse/组合', () => {
+    const easy = buildShortChainIntent({ sentence, tokens, zh: '我想读书', difficulty: 'easy' })
+    const hard = buildShortChainIntent({ sentence, tokens, zh: '我想读书', difficulty: 'hard' })
+    assert.ok(easy.length > hard.length)
+    assert.equal(hard.filter((i) => i.source === 'reuse').length, 0)
+    assert.equal(hard.filter((i) => i.role === '组合').length, 0)
+  })
+
+  test('默认难度（不传 difficulty）= easy 全量', () => {
+    const dft = buildCoreChainIntent({ sentence, tokens, pool: POOL, zh: '我想读书' })
+    const easy = buildCoreChainIntent({ sentence, tokens, pool: POOL, zh: '我想读书', difficulty: 'easy' })
+    assert.equal(dft.length, easy.length)
+  })
+})

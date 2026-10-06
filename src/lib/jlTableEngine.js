@@ -292,7 +292,28 @@ export function buildSkeletonIntent(tokens, groups) {
 //   骨架→否定→不定式→时间→地点→换谓语→换宾语→频率→简短复习，
 //   关掉深层模板（something/it_is/for_me/to_do_eval/adj_rotate/clause/need/have_to）。
 //   ⚠️ 意图结构变更 → intents_fp 自动失效 → 已入库旧长链由补跑按新结构重生成（无需动后端）。
-export function buildCoreChainIntent({ sentence, tokens, pool, zh }) {
+// ============ 三档难度模式（2026-10-06：把三档真正拉开提示粒度） ============
+// easy   = 全量（现状 44 行）：积木全出、组合块全出、完整句全出
+// medium = 跳过"复用组合块"（не хочу / это 这类前面已学过的重复行，不重复学）
+// hard   = 只出"新词 + 完整句"：再跳过中间组合块（не хочу、делать это），高级直接整句
+// ⚠️ 骨架段（skeleton，核心句拆解）永远全保留——它是本句的基础零件，任何难度都要学。
+export const DIFFICULTY_MODES = {
+  easy: { dropReuse: false, dropCombine: false },
+  medium: { dropReuse: true, dropCombine: false },
+  hard: { dropReuse: true, dropCombine: true },
+}
+
+// 按难度模式判断某步是否跳过；骨架段永不跳过。
+function shouldSkipStep(st, secId, difficulty) {
+  const opts = DIFFICULTY_MODES[difficulty]
+  if (!opts) return false
+  if (secId === 'skeleton') return false
+  if (opts.dropReuse && st.source === 'reuse') return true
+  if (opts.dropCombine && st.role === '组合') return true
+  return false
+}
+
+export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 'easy' }) {
   const n = Array.isArray(tokens) ? tokens.length : 0
   if (!n) return []
   const intents = []
@@ -316,6 +337,7 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh }) {
     if (!sec) continue
     let hintCursor = 0
     for (const st of sec.steps) {
+      if (shouldSkipStep(st, item.id, difficulty)) continue
       const out = { ...st, groupId: item.g }
       if (st.source === 'pool') {
         let idx = 0
@@ -332,7 +354,7 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh }) {
 }
 
 // ============ 短链意图（方案 A：非核心句；骨架 + 否定 + 时间 + 地点 + 频率，~20 步） ============
-export function buildShortChainIntent({ sentence, tokens, zh }) {
+export function buildShortChainIntent({ sentence, tokens, zh, difficulty = 'easy' }) {
   const n = Array.isArray(tokens) ? tokens.length : 0
   if (!n) return []
   const intents = []
@@ -348,6 +370,7 @@ export function buildShortChainIntent({ sentence, tokens, zh }) {
     const sec = sectionById[item.id]
     if (!sec) continue
     for (const st of sec.steps) {
+      if (shouldSkipStep(st, item.id, difficulty)) continue
       const out = { ...st, groupId: item.g }
       if (st.source === 'pool') out.poolIndex = 0
       intents.push(out)
@@ -577,8 +600,8 @@ export async function generateUnitTableAsync(units, opts = {}, deps = {}) {
       }
       try {
         const intents = isCore
-          ? buildCoreChainIntent({ sentence, tokens, pool, zh })
-          : buildShortChainIntent({ sentence, tokens, zh })
+          ? buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty })
+          : buildShortChainIntent({ sentence, tokens, zh, difficulty })
         const r = await aiFillTable(intents, { sentence, tokens, difficulty, pool, httpPost }, { zh })
         if (r.ok) return { kind: 'done', item: { sentenceHash: hash, difficulty, reviewStatus: 'ok', rows: r.rows } }
         if (r.pending) return { kind: 'pending', item: { sentenceHash: hash, difficulty, reason: r.reason, rows: r.rows } }
