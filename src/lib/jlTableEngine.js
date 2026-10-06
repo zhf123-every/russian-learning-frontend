@@ -554,7 +554,9 @@ export function verifyTable(rows, original, originalZh) {
 //         pending: [{sentenceHash, difficulty, reason, rows?}] }
 // 并发分批（slice + Promise.all，批大小 3-5）；单句失败不阻塞整批（catch 只包 HTTP/JSON 层，业务 fallback 不算失败）
 export async function generateUnitTableAsync(units, opts = {}, deps = {}) {
-  const batchSize = Math.min(Math.max(opts.batchSize || 3, 1), 5)
+  // ⚠️ 2026-10-06 修复：默认串行（batchSize=1）。此前默认并发 3，3 难度 × LLM 密集请求同时打生产
+  // （每请求 ~19s）→ 冷启动/限流导致部分难度生成失败；串行 + aiFillTable 重试后每个难度独立稳定生成。
+  const batchSize = Math.min(Math.max(opts.batchSize || 1, 1), 5)
   const pool = opts.pool
   const httpPost = opts.httpPost || (deps && deps.httpPost)
   const list = Array.isArray(units) ? units : []
