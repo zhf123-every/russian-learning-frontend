@@ -370,8 +370,7 @@ export function buildCoreChainIntent({ sentence, tokens, pool, zh, difficulty = 
     { id: 'negation', g: 'G_02' },
     { id: 'time', g: 'G_03' },
     { id: 'place', g: 'G_04' },
-    { id: 'freq_every_day', g: 'G_05' },
-    { id: 'review', g: 'G_06', hints: ['复习：negation', '复习：time_pos', '复习：place_pos', '复习：time_neg'] },
+    { id: 'review', g: 'G_05', hints: ['复习：negation', '复习：time_pos', '复习：place_pos', '复习：place_neg'] },
   ]
   const CHAIN = copula ? CHAIN_COPULA : CHAIN_FULL
   // B 方案轮转：课程级起点（poolSeed 哈希，同课程稳定、不同课程不同起点）+ 句子序号循环
