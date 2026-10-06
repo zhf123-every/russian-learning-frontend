@@ -143,6 +143,12 @@ export default function AdminSlotTables() {
     }
   }
   const todoCount = counts.pending + counts.missing
+  const countsByDiff = { easy: 0, medium: 0, hard: 0 }
+  for (const row of rows) {
+    for (const d of DIFFS) {
+      if (row.byDiff[d].status === 'ok') countsByDiff[d]++
+    }
+  }
   const filteredRows = rows.filter((row) => {
     if (statusFilter === 'all') return true
     return DIFFS.some((d) => row.byDiff[d].status === statusFilter)
@@ -213,7 +219,7 @@ export default function AdminSlotTables() {
                   <tr className="text-xs text-gray-400">
                     <th>俄语句子</th>
                     <th>中文</th>
-                    {DIFFS.map((d) => <th key={d} className="text-center">{DIFF_LABELS[d]}（{counts[d === 'easy' ? 'ok' : d]}）</th>)}
+                    {DIFFS.map((d) => <th key={d} className="text-center">{DIFF_LABELS[d]}（{countsByDiff[d]}）</th>)}
                   </tr>
                 </thead>
                 <tbody>
