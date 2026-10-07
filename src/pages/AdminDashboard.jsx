@@ -804,7 +804,7 @@ export default function AdminDashboard() {
       
       console.log('[debug] 新引擎：发送生成请求，句子数:', sentences.length)
       
-      const resp = await fetch('/api/admin/course/generate-async', {
+      const resp = await apiFetch('/api/admin/course/generate-async', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
