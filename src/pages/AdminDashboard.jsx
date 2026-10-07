@@ -8,6 +8,7 @@ import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
 import { withRetry403 } from '../lib/segmentEngine'
 import { resolvePlayUrl } from '../lib/playUrl'
+import CoursePreviewModal from '../components/CoursePreviewModal'
 import { collectUnitSentenceObjs } from '../lib/unitSentences'
 import { triggerUnitSegments, retryPendingSegments } from '../lib/segmentTrigger'
 import { triggerUnitSlotTables, retryPendingSlotTables } from '../lib/slotTablesTrigger'
@@ -151,6 +152,9 @@ export default function AdminDashboard() {
   const [newGenMsg, setNewGenMsg] = useState('')         // 新引擎提示信息
   const [newGenProgress, setNewGenProgress] = useState(null)  // 新引擎进度 {status, classified_count, total}
   const intervalRef = useRef(null)  // 轮询定时器
+  const [showPreview, setShowPreview] = useState(false)  // 预览弹窗
+  const [generatedSteps, setGeneratedSteps] = useState([])  // 生成的步骤
+  const [generatedStats, setGeneratedStats] = useState(null)  // 生成的统计
   // —— 唯一上传入口：批量粘贴句子（每行：俄语 || 中文）——
   const [batchSentText, setBatchSentText] = useState('')
 
@@ -886,7 +890,14 @@ export default function AdminDashboard() {
               setNewGenBusy(false)
               const result = statusData.result || {}
               setNewGenMsg(`✅ 生成完成！共 ${result.total_steps || 0} 步，${result.total_groups || 0} 组`)
-              alert(`生成完成！共 ${result.total_steps || 0} 步，${result.total_groups || 0} 组`)
+              // 打开预览弹窗
+              setGeneratedSteps(result.steps || [])
+              setGeneratedStats({
+                total_layers: result.total_layers || 0,
+                total_groups: result.total_groups || 0,
+                total_steps: result.total_steps || 0
+              })
+              setShowPreview(true)
             } else if (status === 'failed') {
               clearInterval(intervalRef.current)
               intervalRef.current = null
@@ -907,6 +918,12 @@ export default function AdminDashboard() {
       setNewGenMsg('⚠️ 创建任务异常: ' + ((e && e.message) || '网络错误'))
     }
     setNewGenBusy(false)
+  }
+
+  // 保存生成的课程步骤（3d 再实现真正的保存逻辑）
+  const handleSaveGenerated = () => {
+    alert('保存功能待实现（子任务3d）')
+    setShowPreview(false)
   }
 
   // ========== 渲染 ==========
@@ -1276,6 +1293,15 @@ export default function AdminDashboard() {
 
   return (
     <main className="min-h-full bg-base-100 px-6 py-7">
+      {/* 课程生成预览弹窗 */}
+      <CoursePreviewModal 
+        isOpen={showPreview}
+        steps={generatedSteps}
+        stats={generatedStats}
+        onCancel={() => setShowPreview(false)}
+        onSave={handleSaveGenerated}
+      />
+      
       <div className="mx-auto max-w-[1100px]">
         <h1 className="text-2xl font-extrabold text-gray-900">📚 课程管理</h1>
         <p className="mt-1 text-sm text-gray-400">第一步：建课程档案 → 第二步：搭课程序 → 第三步：挂内容 → 第四步：发布</p>
