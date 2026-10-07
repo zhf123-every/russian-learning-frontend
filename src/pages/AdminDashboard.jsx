@@ -807,11 +807,11 @@ export default function AdminDashboard() {
       const resp = await apiFetch('/api/admin/course/generate-async', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(authBody({
           course_id: active.id,
           unit_id: activeUnit.id || 'unit_01',
           sentences: sentences
-        })
+        }))
       })
       const data = await resp.json()
       
