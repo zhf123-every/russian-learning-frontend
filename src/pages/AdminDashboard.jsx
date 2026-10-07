@@ -849,7 +849,11 @@ export default function AdminDashboard() {
           }
           
           try {
-            const statusResp = await apiFetch(`/api/admin/course/task-status?task_id=${taskId}`)
+            const statusResp = await apiFetch(`/api/admin/course/task-status?task_id=${taskId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(authBody({})),
+            })
             const statusData = await statusResp.json()
             
             if (!statusData.ok) {
