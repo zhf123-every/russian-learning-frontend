@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { API_BASE, apiFetch } from '../lib/api'
@@ -149,6 +149,8 @@ export default function AdminDashboard() {
   const [newGenTaskId, setNewGenTaskId] = useState(null)  // 新引擎生成任务ID
   const [newGenBusy, setNewGenBusy] = useState(false)    // 新引擎生成中
   const [newGenMsg, setNewGenMsg] = useState('')         // 新引擎提示信息
+  const [newGenProgress, setNewGenProgress] = useState(null)  // 新引擎进度 {status, classified_count, total}
+  const intervalRef = useRef(null)  // 轮询定时器
   // —— 唯一上传入口：批量粘贴句子（每行：俄语 || 中文）——
   const [batchSentText, setBatchSentText] = useState('')
 
@@ -169,6 +171,16 @@ export default function AdminDashboard() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncFlag])
+
+  // 组件卸载时清理轮询定时器
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+  }, [])
 
   // P2-A：语块生成请求器——403（TiDB 冷启动）自动重试 1 次；POST 带 authBody 鉴权，GET 不带 body
   // 超时放宽到 120s：plan/词池/llm-segment 都要调 AI（glm-4-plus 慢 + Render 冷启动），默认 12s 会被 abort
@@ -818,10 +830,74 @@ export default function AdminDashboard() {
       
       if (data.task_id) {
         console.log('[debug] 新引擎：task_id 拿到:', data.task_id)
-        setNewGenTaskId(data.task_id)
-        setNewGenMsg(`✅ 任务已创建，task_id = ${data.task_id}`)
+        const taskId = data.task_id
+        setNewGenTaskId(taskId)
+        setNewGenMsg('任务已创建，等待开始...')
+        
+        // 开始轮询
+        const startTime = Date.now()
+        const maxWait = 5 * 60 * 1000  // 5分钟超时
+        
+        intervalRef.current = setInterval(async () => {
+          // 超时保护
+          if (Date.now() - startTime > maxWait) {
+            clearInterval(intervalRef.current)
+            intervalRef.current = null
+            setNewGenBusy(false)
+            setNewGenMsg('⚠️ 生成超时，请重试')
+            return
+          }
+          
+          try {
+            const statusResp = await apiFetch(`/api/admin/course/task-status?task_id=${taskId}`)
+            const statusData = await statusResp.json()
+            
+            if (!statusData.ok) {
+              setNewGenMsg('⚠️ 查询状态失败: ' + (statusData.error || ''))
+              return
+            }
+            
+            const status = statusData.status
+            const progress = statusData.progress || {}
+            
+            // 更新进度
+            setNewGenProgress({
+              status: status,
+              classified_count: progress.classified_count || 0,
+              total: progress.total || 0
+            })
+            
+            // 更新进度文字
+            if (status === 'pending') {
+              setNewGenMsg('任务已创建，等待开始...')
+            } else if (status === 'classifying') {
+              setNewGenMsg(`正在分类中... 已完成 ${progress.classified_count || 0}/${progress.total || 0} 句`)
+            } else if (status === 'planning') {
+              setNewGenMsg('正在分层编排...')
+            } else if (status === 'executing') {
+              setNewGenMsg('正在生成步骤...')
+            } else if (status === 'done') {
+              clearInterval(intervalRef.current)
+              intervalRef.current = null
+              setNewGenBusy(false)
+              const result = statusData.result || {}
+              setNewGenMsg(`✅ 生成完成！共 ${result.total_steps || 0} 步，${result.total_groups || 0} 组`)
+              alert(`生成完成！共 ${result.total_steps || 0} 步，${result.total_groups || 0} 组`)
+            } else if (status === 'failed') {
+              clearInterval(intervalRef.current)
+              intervalRef.current = null
+              setNewGenBusy(false)
+              setNewGenMsg('❌ 生成失败: ' + (statusData.error || '未知错误'))
+              alert('生成失败: ' + (statusData.error || '未知错误'))
+            }
+          } catch (e) {
+            console.error('[debug] 轮询出错:', e)
+          }
+        }, 3000)  // 每3秒轮询一次
+        
       } else {
         setNewGenMsg('⚠️ 创建任务失败: ' + (data.error || '未知错误'))
+        setNewGenBusy(false)
       }
     } catch (e) {
       setNewGenMsg('⚠️ 创建任务异常: ' + ((e && e.message) || '网络错误'))
