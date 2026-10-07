@@ -20,6 +20,8 @@ export default function AdminLessons() {
   const [toast, setToast] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
+  const [taskId, setTaskId] = useState(null)  // 一键生成任务ID
+  const [generating, setGenerating] = useState(false)  // 生成中状态
 
   useEffect(() => {
     const c = getCourses().find(x => x.id === id) || null
@@ -112,6 +114,51 @@ export default function AdminLessons() {
     setSaving(false)
   }
 
+  // 一键生成新课程：调后端异步接口
+  const handleGenerate = async () => {
+    if (!course) return
+    setGenerating(true)
+    setMsg('正在创建生成任务...')
+    
+    try {
+      // 收集所有句子（这里先简化：用 rows 里的句子，后续再改成真实的）
+      const sentences = rows.map((r, i) => ({
+        ru: r.ru || `Это предложение ${i+1}`,
+        zh: r.zh || `这是句子 ${i+1}`,
+      })).filter(s => s.ru)  // 过滤掉空句子
+      
+      if (sentences.length === 0) {
+        setMsg('⚠️ 没有句子，请先添加课时内容')
+        setGenerating(false)
+        return
+      }
+      
+      console.log('[debug] 发送生成请求，句子数:', sentences.length)
+      
+      const resp = await fetch('/api/admin/course/generate-async', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          course_id: course.id,
+          unit_id: 'unit_01',
+          sentences: sentences
+        })
+      })
+      const data = await resp.json()
+      
+      if (data.task_id) {
+        console.log('[debug] task_id 拿到:', data.task_id)
+        setTaskId(data.task_id)
+        setMsg(`✅ 任务已创建，task_id = ${data.task_id}`)
+      } else {
+        setMsg('⚠️ 创建任务失败: ' + (data.error || '未知错误'))
+      }
+    } catch (e) {
+      setMsg('⚠️ 创建任务异常: ' + ((e && e.message) || '网络错误'))
+    }
+    setGenerating(false)
+  }
+
   if (!course) {
     return (
       <div className="min-h-full bg-base-100 flex items-center justify-center" style={{ padding: 60 }}>
@@ -137,6 +184,9 @@ export default function AdminLessons() {
             <button className="btn btn-ghost btn-sm" onClick={() => navigate('/admin')}>← 返回后台</button>
             <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>
               {saving ? '保存中…' : '💾 保存大纲'}
+            </button>
+            <button className="btn btn-success btn-sm" onClick={handleGenerate} disabled={generating}>
+              {generating ? '创建中…' : '🚀 一键生成新课程'}
             </button>
           </div>
         </div>
