@@ -146,6 +146,9 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState('')
   const [saveBanner, setSaveBanner] = useState(null) // 保存课时后的成功横幅 + 下一步引导
   const [kpState, setKpState] = useState(null)       // 一键生成本课知识点进度 { done, total, cur }
+  const [newGenTaskId, setNewGenTaskId] = useState(null)  // 新引擎生成任务ID
+  const [newGenBusy, setNewGenBusy] = useState(false)    // 新引擎生成中
+  const [newGenMsg, setNewGenMsg] = useState('')         // 新引擎提示信息
   // —— 唯一上传入口：批量粘贴句子（每行：俄语 || 中文）——
   const [batchSentText, setBatchSentText] = useState('')
 
@@ -780,6 +783,51 @@ export default function AdminDashboard() {
     e.target.value = ''
   }
 
+  // 🚀 一键生成新课程（新引擎）：调后端异步接口
+  const handleNewGenerate = async () => {
+    if (!active || !activeUnit) return
+    setNewGenBusy(true)
+    setNewGenMsg('正在创建生成任务...')
+    
+    try {
+      // 收集当前课时的所有句子
+      const sentences = (activeUnit.sentences || []).map(s => ({
+        ru: s.ru || '',
+        zh: s.chinese || s.zh || ''
+      })).filter(s => s.ru.trim())
+      
+      if (sentences.length === 0) {
+        setNewGenMsg('⚠️ 没有句子，请先添加课时内容')
+        setNewGenBusy(false)
+        return
+      }
+      
+      console.log('[debug] 新引擎：发送生成请求，句子数:', sentences.length)
+      
+      const resp = await fetch('/api/admin/course/generate-async', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          course_id: active.id,
+          unit_id: activeUnit.id || 'unit_01',
+          sentences: sentences
+        })
+      })
+      const data = await resp.json()
+      
+      if (data.task_id) {
+        console.log('[debug] 新引擎：task_id 拿到:', data.task_id)
+        setNewGenTaskId(data.task_id)
+        setNewGenMsg(`✅ 任务已创建，task_id = ${data.task_id}`)
+      } else {
+        setNewGenMsg('⚠️ 创建任务失败: ' + (data.error || '未知错误'))
+      }
+    } catch (e) {
+      setNewGenMsg('⚠️ 创建任务异常: ' + ((e && e.message) || '网络错误'))
+    }
+    setNewGenBusy(false)
+  }
+
   // ========== 渲染 ==========
 
   // —— 视图三：课时内容管理 ——
@@ -822,6 +870,17 @@ export default function AdminDashboard() {
               >
                 {genBusy ? `🚀 生成中 ${genProgress ? `${genProgress.done}/${genProgress.total}` : '…'}` : '🚀 生成表格'}
               </button>
+              <button
+                className="btn btn-success btn-sm"
+                onClick={handleNewGenerate}
+                disabled={newGenBusy}
+                title="新引擎：整课分层编排，一键生成课程步骤"
+              >
+                {newGenBusy ? '创建中…' : '🚀 新引擎生成'}
+              </button>
+              {newGenMsg && (
+                <span className="text-[11px] text-gray-400 max-w-[300px] truncate">{newGenMsg}</span>
+              )}
               {active && (
                 <button className="btn btn-outline btn-sm" onClick={() => navigate(`/admin/segments?course=${encodeURIComponent(active.id)}&unit=${encodeURIComponent(activeUnit.id)}`)}>
                   📑 语块管理
