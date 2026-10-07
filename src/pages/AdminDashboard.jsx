@@ -889,15 +889,9 @@ export default function AdminDashboard() {
               intervalRef.current = null
               setNewGenBusy(false)
               const result = statusData.result || {}
-              setNewGenMsg(`✅ 生成完成！共 ${result.total_steps || 0} 步，${result.total_groups || 0} 组`)
-              // 打开预览弹窗
-              setGeneratedSteps(result.steps || [])
-              setGeneratedStats({
-                total_layers: result.total_layers || 0,
-                total_groups: result.total_groups || 0,
-                total_steps: result.total_steps || 0
-              })
-              setShowPreview(true)
+              setNewGenMsg(`✅ 生成完成！共 ${result.total_steps || 0} 步，${result.total_groups || 0} 组，正在跳转...`)
+              // 跳转到预览页面
+              navigate(`/admin/course-preview/${taskId}?course_id=${encodeURIComponent(active.id)}&unit_id=${encodeURIComponent(activeUnit.id || 'unit_01')}`)
             } else if (status === 'failed') {
               clearInterval(intervalRef.current)
               intervalRef.current = null
