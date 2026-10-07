@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { apiFetch, authBody } from '../lib/api'
+import { apiFetch } from '../lib/api'
+import { useAdminStore } from '../store/adminStore'
 
 function CoursePreviewPage() {
   const { taskId } = useParams()
@@ -8,6 +9,7 @@ function CoursePreviewPage() {
   const [searchParams] = useSearchParams()
   const courseId = searchParams.get('course_id') || ''
   const unitId = searchParams.get('unit_id') || ''
+  const { authBody } = useAdminStore()
   
   const [steps, setSteps] = useState([])
   const [stats, setStats] = useState(null)
