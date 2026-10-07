@@ -811,7 +811,8 @@ export default function AdminDashboard() {
           course_id: active.id,
           unit_id: activeUnit.id || 'unit_01',
           sentences: sentences
-        }))
+        })),
+        timeout: 120000  // 120秒，Render冷启动需要时间
       })
       const data = await resp.json()
       
