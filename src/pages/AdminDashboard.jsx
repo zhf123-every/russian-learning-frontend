@@ -902,7 +902,7 @@ export default function AdminDashboard() {
           } catch (e) {
             console.error('[debug] 轮询出错:', e)
           }
-        }, 3000)  // 每3秒轮询一次
+        }, 5000)  // 每5秒轮询一次
         
       } else {
         setNewGenMsg('⚠️ 创建任务失败: ' + (data.error || '未知错误'))
