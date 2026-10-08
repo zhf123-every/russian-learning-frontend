@@ -829,6 +829,7 @@ export default function AdminDashboard() {
           sentences: sentences
         })),
         timeout: 120000  // 120秒，Render冷启动需要时间
+
       })
       const data = await resp.json()
       
@@ -914,6 +915,43 @@ export default function AdminDashboard() {
     setNewGenBusy(false)
   }
 
+  // 📤 上传CSV课程：上传飞书表格导出的CSV文件
+  const handleUploadCsv = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (!active || !activeUnit) {
+      alert('请先选择课程和单元')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const csvContent = ev.target.result
+      try {
+        const resp = await apiFetch('/api/admin/course/upload-csv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(authBody({
+            course_id: active.id,
+            unit_id: activeUnit.id || 'unit_01',
+            csv_content: csvContent
+          })),
+        })
+        const data = await resp.json()
+        if (data.ok) {
+          alert(`✅ 上传成功！共 ${data.total_steps} 步`)
+        } else {
+          alert('❌ 上传失败: ' + (data.error || ''))
+        }
+      } catch (err) {
+        alert('❌ 上传失败: ' + err.message)
+      }
+    }
+    reader.readAsText(file, 'utf-8')
+    // 重置input，方便重复上传
+    e.target.value = ''
+  }
+
   // 保存生成的课程步骤（3d 再实现真正的保存逻辑）
   const handleSaveGenerated = () => {
     alert('保存功能待实现（子任务3d）')
@@ -970,6 +1008,15 @@ export default function AdminDashboard() {
               >
                 {newGenBusy ? '创建中…' : '🚀 新引擎生成'}
               </button>
+              <label className="btn btn-primary btn-sm" title="上传飞书表格导出的CSV文件">
+                📤 上传CSV课程
+                <input
+                  type="file"
+                  accept=".csv"
+                  style={{ display: 'none' }}
+                  onChange={handleUploadCsv}
+                />
+              </label>
               {newGenMsg && (
                 <span className="text-[11px] text-gray-400 max-w-[300px] truncate">{newGenMsg}</span>
               )}
