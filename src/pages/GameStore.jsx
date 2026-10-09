@@ -492,7 +492,40 @@ export default function GameStore() {
               )
             })}
             {ZONES.every(z => !z.items(allVideos, allGuides).length) && (
-              <div className="py-12 text-center text-gray-400 text-sm">还没有内容，管理员投稿后即可展示</div>
+              <section key="fallback">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-extrabold">全部课程</h2>
+                  <span className="text-xs text-gray-400">给课程设置角标后，将按角标自动分组展示</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                  {[...allVideos, ...allGuides].slice(0, 10).map(it => (
+                    <div key={it.id} className="group" onClick={() => it.kind === 'video' ? onVideoCardClick(it) : onCoverCardClick(it)} style={{ cursor: 'pointer' }}>
+                      <div
+                        className={`aspect-video rounded-xl overflow-hidden mb-2 flex items-center justify-center group-hover:shadow-lg transition relative ${
+                          it.thumbnail ? '' : `bg-gradient-to-br ${it.cover}`
+                        }`}
+                        style={it.thumbnail ? { backgroundImage: `url(${it.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                      >
+                        {!it.thumbnail && it.kind !== 'video' && (
+                          <span className={`font-extrabold text-base ${it.ink}`}>{it.word}</span>
+                        )}
+                        {!it.thumbnail && it.kind === 'video' && (
+                          <span className="w-9 h-9 rounded-full bg-white/25 backdrop-blur flex items-center justify-center">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="6 4 20 12 6 20 6 4" /></svg>
+                          </span>
+                        )}
+                        <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{it.eps || (it.kind === 'video' ? '1 集' : '1 关')}</span>
+                        {it.badge && (
+                          <span className="absolute top-1.5 left-2 text-[11px] text-white bg-primary/90 rounded px-1.5 py-0.5 font-bold shadow">{normBadge(it.badge)}</span>
+                        )}
+                      </div>
+                      <div className="text-sm font-semibold line-clamp-1 text-gray-900 dark:text-white">{it.title}</div>
+                      <div className="text-xs text-gray-400 mt-0.5 truncate">{it.total || 1} 课 · {fmtViews(it.views)} 人在学</div>
+                      <UnlockBar game={it} />
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
           </div>
         ) : (
