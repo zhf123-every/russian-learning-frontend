@@ -165,8 +165,8 @@ function normalize(raw, ru) {
   };
 }
 
-// 调后端 /api/ai 生成（后端自动用其 AI_API_KEY；走 apiFetch：生产自动拼后端域名，带 60s 超时——完整 JSON 解析生成常见 15~45s，30s 会误杀）
-const AI_TIMEOUT_MS = 60000
+// 调后端 /api/ai 生成（后端自动用其 AI_API_KEY；走 apiFetch：生产自动拼后端域名，带 90s 超时——完整 JSON 解析生成常见 15~60s，30s 会误杀）
+const AI_TIMEOUT_MS = 90000
 async function callAI(messages) {
   const res = await apiFetch('/api/ai', {
     method: 'POST',
