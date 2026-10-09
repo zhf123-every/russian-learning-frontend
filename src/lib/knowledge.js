@@ -165,8 +165,8 @@ function normalize(raw, ru) {
   };
 }
 
-// 调后端 /api/ai 生成（后端自动用其 AI_API_KEY；走 apiFetch：生产自动拼后端域名，带 30s 超时）
-const AI_TIMEOUT_MS = 30000
+// 调后端 /api/ai 生成（后端自动用其 AI_API_KEY；走 apiFetch：生产自动拼后端域名，带 60s 超时——完整 JSON 解析生成常见 15~45s，30s 会误杀）
+const AI_TIMEOUT_MS = 60000
 async function callAI(messages) {
   const res = await apiFetch('/api/ai', {
     method: 'POST',
@@ -180,8 +180,8 @@ async function callAI(messages) {
   return j.content || ''
 }
 
-// 按句生成知识点（失败自动重试：短间隔快速兜底，避免用户长时间等 AI）
-const RETRY_WAITS = [0, 2500, 6000]
+// 按句生成知识点（失败自动重试：首次立即 + 3s 后一次重试，避免用户长时间等 AI）
+const RETRY_WAITS = [0, 3000]
 export async function generateKnowledge(ru) {
   let lastErr = null;
   for (let attempt = 0; attempt < RETRY_WAITS.length; attempt++) {
