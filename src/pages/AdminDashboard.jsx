@@ -12,7 +12,6 @@ import { resolvePlayUrl } from '../lib/playUrl'
 import CoursePreviewModal from '../components/CoursePreviewModal'
 import { collectUnitSentenceObjs } from '../lib/unitSentences'
 import { triggerUnitSegments, retryPendingSegments } from '../lib/segmentTrigger'
-import { triggerUnitSlotTables, retryPendingSlotTables } from '../lib/slotTablesTrigger'
 import { useAdminStore } from '../store/adminStore'
 
 // ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
@@ -157,7 +156,7 @@ export default function AdminDashboard() {
   const [generatedSteps, setGeneratedSteps] = useState([])  // 生成的步骤
   const [generatedStats, setGeneratedStats] = useState(null)  // 生成的统计
   // —— 唯一上传入口：CSV / Excel 文件导入（文件行顺序 = 课时句子顺序 = 学习顺序）——
-  const [importFile, setImportFile] = useState(null)        // { name, size } 当前选择的文件
+  const [importFile, setImportFile] = useState(null)        // 当前选择的 File 对象（导入后自动保存原始文件用）
   const [importPreview, setImportPreview] = useState(null)  // { rows:[{ru,zh}], skipped, fileName } 解析预览（未落库）
   const [importErr, setImportErr] = useState('')
 
@@ -557,10 +556,6 @@ export default function AdminDashboard() {
       retryPendingSegments({ courseId: active.id, unitId: u.id, sentences: u.sentences, deps: { httpPost: segHttpPost } })
         .then((r) => { if (r && !r.skipped && (r.done || []).length) flash(`语块补跑完成：${r.done.length} 项`) })
         .catch((e) => console.warn('[segments] 打开课时补跑失败：', e && e.message))
-      // P2：6 列表格补跑（失败进本机待重试，下次打开自动补跑）
-      retryPendingSlotTables({ courseId: active.id, unitId: u.id, sentences: uTexts, deps: { httpPost: segHttpPost } })
-        .then((r) => { if (r && !r.skipped && (r.done || []).length) flash(`表格补跑完成：${r.done.length} 项`) })
-        .catch((e) => console.warn('[slot-tables] 打开课时补跑失败：', e && e.message))
     }
   }
 
@@ -666,8 +661,7 @@ export default function AdminDashboard() {
       triggerUnitSegments({ courseId: active.id, unitId: activeUnit.id, sentences: segSentences, deps: { httpPost: segHttpPost } })
         .then((r) => { if (r && !r.skipped) flash('已触发语块生成，完成后下次打开可见') })
         .catch((e) => console.warn('[segments] 语块生成触发失败（下次打开自动补跑）：', e && e.message))
-      // 注：6 列表格不再随保存自动生成——上传的 Excel 行顺序即学习页答题顺序，无需后端生成/轮换；
-      // 需要句乐部变体表格时，手动点「🚀 生成表格」即可（可选功能，保留）。
+      // 注：不再随保存生成 6 列表格——上传的 Excel 行顺序即学习页答题顺序，上传即用（无需后端生成/轮换）
     }
     setView('units')
   }
@@ -684,7 +678,7 @@ export default function AdminDashboard() {
       setImportFile(null)
       return
     }
-    setImportFile({ name: file.name, size: file.size })
+    setImportFile(file)  // 保留 File 引用：导入后自动保存原始文件到云端
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
@@ -720,64 +714,63 @@ export default function AdminDashboard() {
     reader.readAsArrayBuffer(file)
   }
 
-  // 确认导入：以文件内容为准替换本课时句子（顺序 = 文件行顺序）
-  const applyImportedSentences = () => {
+  // 确认导入：以文件内容为准替换本课时句子（顺序 = 文件行顺序），并自动保存原始 Excel 到云端
+  const fileToBase64 = (file) => new Promise((res, rej) => {
+    const r = new FileReader()
+    r.onload = () => res(String(r.result || '').split(',')[1] || '')
+    r.onerror = () => rej(new Error('读取文件失败'))
+    r.readAsDataURL(file)
+  })
+  const applyImportedSentences = async () => {
     if (!importPreview || !importPreview.rows.length || !activeUnit) return
     patchUnit({ sentences: importPreview.rows })
     const noZh = importPreview.rows.filter(s => !s.zh).length
-    flash(`✅ 已导入 ${importPreview.rows.length} 句（顺序=文件行顺序）` + (importPreview.skipped ? `，跳过 ${importPreview.skipped} 个空行` : '') + (noZh ? `，${noZh} 句缺中文可逐句「编」补齐` : '') + '，点「🚀 生成表格」完成剩余步骤')
+    // 自动保存原始文件（后台上传课程的唯一入口落库；以后可下载修改后重传覆盖）
+    const file = importFile
+    let savedCloud = false
+    if (file && active && activeUnit) {
+      try {
+        const b64 = await fileToBase64(file)
+        const r = await segHttpPost('/api/admin/units/source-file', {
+          course_id: active.id, unit_id: activeUnit.id, file_name: file.name, file_base64: b64,
+        })
+        savedCloud = !!(r && r.ok)
+      } catch (e) {
+        console.warn('[source-file] 云端自动保存失败（不影响本课使用）：', e && e.message)
+      }
+    }
+    flash(`✅ 已导入 ${importPreview.rows.length} 句（顺序=文件行顺序）` + (importPreview.skipped ? `，跳过 ${importPreview.skipped} 个空行` : '') + (noZh ? `，${noZh} 句缺中文可逐句「编」补齐` : '') + (savedCloud ? `，原始 Excel 已自动保存` : '，点「💾 保存课时内容」生效'))
     setImportFile(null)
     setImportPreview(null)
+  }
+
+  // 下载课时原始 Excel（云端自动保存的文件；本地修改后回到本页重新上传即覆盖更新，学习页自动跟随）
+  const downloadUnitSourceFile = async () => {
+    if (!active || !activeUnit) { flash('请先打开课时'); return }
+    try {
+      const url = `${API_BASE}/api/admin/units/source-file?course_id=${encodeURIComponent(active.id)}&unit_id=${encodeURIComponent(activeUnit.id)}&token=${encodeURIComponent(token || '')}`
+      const resp = await fetch(url)
+      if (!resp.ok) {
+        let msg = `下载失败（${resp.status}）`
+        try { const j = await resp.json(); if (j && j.error) msg = j.error } catch (e) { /* 非 JSON */ }
+        flash(msg)
+        return
+      }
+      const blob = await resp.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `${activeUnit.title || 'lesson'}.xlsx`
+      a.click()
+      URL.revokeObjectURL(a.href)
+      flash('已下载原始 Excel：本地修改后回到本页重新上传「📂 选择文件」即覆盖更新')
+    } catch (e) {
+      flash('下载失败：' + String(e && e.message || e))
+    }
   }
 
   // 删除例句
   const removeSentence = (idx) => {
     patchUnit({ sentences: (activeUnit.sentences || []).filter((_, i) => i !== idx) })
-  }
-
-  // ========== 一键生成三档 6 列表格（唯一上传入口闭环：导入文件 → 点生成 → 本页完成，无需再去表格管理页） ==========
-  const [genBusy, setGenBusy] = useState(false)
-  const [genProgress, setGenProgress] = useState(null) // {done, total}
-  const generateTablesNow = async () => {
-    if (genBusy || !activeUnit) return
-    // ① 句子来自 CSV/Excel 导入（顺序 = 文件行顺序），直接收集
-    const unit = activeUnit
-    const sentences = collectUnitSentenceObjs(unit)
-    if (!sentences.length) { flash('先上传 CSV/Excel 导入句子（文件行顺序 = 学习顺序）再点生成'); return }
-    // ② 落盘课时（保证句子入库；activeUnit 状态同步）
-    patchUnit(unit)
-    const nextUnits = units.map(u => (u.id === activeUnit.id ? unit : u))
-    persistUnits(nextUnits)
-    // ③ 同步等待三档表格生成（串行、带进度；失败项下次打开自动补跑）
-    setGenBusy(true)
-    setGenProgress({ done: 0, total: sentences.length })
-    try {
-      const r = await triggerUnitSlotTables({
-        courseId: active.id,
-        unitId: activeUnit.id,
-        sentences,
-        deps: {
-          httpPost: segHttpPost,
-          onProgress: (p) => setGenProgress({ done: p.done, total: p.total }),
-        },
-      })
-      if (r && r.skipped) { flash('表格生成已在运行中，稍候刷新查看结果'); return }
-      const ok = (r.done || []).length
-      const fail = (r.failed || []).length
-      const pend = (r.pending || []).length
-      if (ok) {
-        flash(`✅ 表格已生成：${ok} 项入库${fail ? `，${fail} 项失败（下次打开自动补跑）` : ''}${pend ? `，${pend} 项待校对` : ''}——本页即完成，无需再去表格管理页`)
-      } else if (pend) {
-        flash(`⚠️ ${pend} 项待校对（已入库），${fail} 项失败——可再点一次重试`)
-      } else {
-        flash(`⚠️ 生成失败 ${fail} 项，可再点一次重试`)
-      }
-    } catch (e) {
-      flash('生成出错：' + String(e && e.message || e))
-    } finally {
-      setGenBusy(false)
-      setGenProgress(null)
-    }
   }
 
 
@@ -966,12 +959,11 @@ export default function AdminDashboard() {
               </div>
               <button className="btn btn-primary btn-sm" onClick={saveUnit}>💾 保存课时内容</button>
               <button
-                className="btn btn-primary btn-sm"
-                onClick={generateTablesNow}
-                disabled={genBusy}
-                title="一键：并入粘贴区句子 + 保存课时 + 三档 6 列表格本页生成完毕"
+                className="btn btn-outline btn-sm"
+                onClick={downloadUnitSourceFile}
+                title="下载本课时云端自动保存的原始 Excel；本地修改后回到本页重新上传即覆盖更新，学习页自动跟随"
               >
-                {genBusy ? `🚀 生成中 ${genProgress ? `${genProgress.done}/${genProgress.total}` : '…'}` : '🚀 生成表格'}
+                📥 原始Excel
               </button>
               <button
                 className="btn btn-success btn-sm"
@@ -996,21 +988,17 @@ export default function AdminDashboard() {
           <div className="card mt-4 border border-primary/30 bg-primary/5 shadow-sm" style={{ borderRadius: 16 }}>
             <div className="card-body p-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-sm font-bold text-gray-900">📤 上传课程 = 三步</span>
-                <span className="text-[11px] text-gray-400">本课时内容只有一个入口：上传文件 → 生成表格 → 学习顺序 = 文件行顺序</span>
+                <span className="text-sm font-bold text-gray-900">📤 上传课程 = 两步</span>
+                <span className="text-[11px] text-gray-400">本课时内容只有一个入口：上传文件 → 保存；学习顺序 = 文件行顺序</span>
               </div>
-              <ol className="mt-2 grid gap-1.5 text-xs text-gray-700 sm:grid-cols-3">
+              <ol className="mt-2 grid gap-1.5 text-xs text-gray-700 sm:grid-cols-2">
                 <li className="rounded-lg bg-white/70 px-3 py-2">
                   <b className="text-primary">① 上传 CSV / Excel</b><br />
-                  选择 .csv 或 .xlsx 文件（表头 ru=俄语，zh=中文），文件行顺序 = 学生学习顺序
+                  选择 .csv 或 .xlsx 文件（表头兼容 ru/zh/俄语/中文），文件行顺序 = 学生学习顺序；上传后原始 Excel 自动保存到云端
                 </li>
                 <li className="rounded-lg bg-white/70 px-3 py-2">
-                  <b className="text-primary">② 生成表格</b><br />
-                  点「🚀 生成表格」，自动为每句生成 初级/中级/高级 三档 6 列表格（同步等待，带进度）
-                </li>
-                <li className="rounded-lg bg-white/70 px-3 py-2">
-                  <b className="text-primary">③ 完成</b><br />
-                  生成即入库，学生端四模式即可学习；无需再去表格管理页
+                  <b className="text-primary">② 保存课时</b><br />
+                  点「💾 保存课时内容」，学习页即按文件顺序出题；以后可在本页下载原始 Excel 修改，改完重新上传即覆盖更新
                 </li>
               </ol>
             </div>
@@ -1081,14 +1069,6 @@ export default function AdminDashboard() {
                 </label>
                 <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2">
                   <label htmlFor="unit-sent-file" className="btn btn-primary btn-sm cursor-pointer">📂 选择文件</label>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={generateTablesNow}
-                    disabled={genBusy}
-                    title="导入后一键完成：保存课时 + 三档表格本页生成完毕"
-                  >
-                    {genBusy ? `🚀 生成中 ${genProgress ? `${genProgress.done}/${genProgress.total}` : '…'}` : '🚀 生成表格'}
-                  </button>
                 </div>
               </div>
 
@@ -1115,21 +1095,7 @@ export default function AdminDashboard() {
                     ))}
                     {importPreview.rows.length > 6 && <div className="text-[11px] text-gray-400 pl-8">… 共 {importPreview.rows.length} 句</div>}
                   </div>
-                  <p className="mt-1.5 text-[11px] text-gray-400">导入将<u>替换</u>本课时现有句子，顺序严格等于文件行顺序；确认后点「🚀 生成表格」</p>
-                </div>
-              )}
-
-              {/* ② 生成表格（一键：导入 → 生成 → 本页完成） */}
-              {genProgress && genProgress.total > 0 && (
-                <div className="card mt-4 border border-primary/20 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
-                  <div className="card-body p-5">
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>三档表格生成中（{genProgress.done}/{genProgress.total} 句）…</span>
-                      <span className="text-primary">{Math.round((genProgress.done / genProgress.total) * 100)}%</span>
-                    </div>
-                    <progress className="progress progress-primary w-full" value={genProgress.done} max={genProgress.total} />
-                    <p className="mt-2 text-[11px] text-gray-400">生成完成后可直接查看学生端；失败项下次打开本课时自动补跑</p>
-                  </div>
+                  <p className="mt-1.5 text-[11px] text-gray-400">导入将<u>替换</u>本课时现有句子，顺序严格等于文件行顺序；原始 Excel 将<u>自动保存</u>到云端，确认后点「✅ 导入到本课时」，再点「💾 保存课时内容」即可生效</p>
                 </div>
               )}
 
