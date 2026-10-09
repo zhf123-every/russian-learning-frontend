@@ -114,40 +114,75 @@ const TYPE_TO_GRAN = {
   "句子": "sentence", "语块": "chunk",
 };
 
-/** 难度 key（beginner/intermediate/advanced/custom）+ custom 勾选（中文题型名数组）→ 允许的粒度集合
- * 简单 = 一题一句（完整句，题数=句数）；中等 = 短句 + 完整句（过滤单词）；困难 = 只完整句 */
+/** 难度 key（beginner/intermediate/advanced/custom）+ custom 勾选（中文题型名数组）→ 允许的粒度集合（仅 custom 用）
+ * 三档（简单/中等/困难）按「原句类型」过滤句子，见 filterSequencesByDifficulty */
 function allowedGranularities(difficultyKey, customTypes) {
-  if (!difficultyKey || difficultyKey === "beginner") return new Set(["sentence"]); // 简单：一题一句
-  if (difficultyKey === "intermediate") return new Set(["chunk", "sentence"]);      // 中等：短句 + 完整句
-  if (difficultyKey === "advanced") return new Set(["sentence"]);                   // 困难：只完整句
-  if (difficultyKey === "custom") {
-    const list = Array.isArray(customTypes) && customTypes.length
-      ? customTypes
-      : ["句子", "语块", "组合语块", "短语单词"];
-    const set = new Set(list.map((t) => TYPE_TO_GRAN[t]).filter(Boolean));
-    if (set.size === 0) return null; // 勾选异常时退回全部
-    return set;
-  }
-  return null;
+  if (difficultyKey !== "custom") return null; // 三档不走块步粒度
+  const list = Array.isArray(customTypes) && customTypes.length
+    ? customTypes
+    : ["句子", "语块", "组合语块", "短语单词"];
+  const set = new Set(list.map((t) => TYPE_TO_GRAN[t]).filter(Boolean));
+  if (set.size === 0) return null; // 勾选异常时退回全部
+  return set;
 }
+
+/** 原句类型（按原句词数：1词=单词、2~3词=短语、4+词=完整句）——三档过滤判定基准 */
+function sentenceTypeOfUnit(unit) {
+  const full = String(unit?.chunkFull || unit?.russian || "").trim();
+  const m = full.match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?/g);
+  const n = m ? m.length : 0;
+  if (n <= 1) return "word";
+  if (n <= 3) return "chunk";
+  return "sentence";
+}
+
+/** 三档 → 允许的原句类型：简单=全出、中等=短语+完整句、困难=只完整句 */
+const DIFF_TO_SENTENCE_TYPES = {
+  beginner: ["word", "chunk", "sentence"],
+  intermediate: ["chunk", "sentence"],
+  advanced: ["sentence"],
+};
 
 /** sequences（sequence→units 嵌套）按难度过滤；空序列剔除 */
 export function filterSequencesByDifficulty(sequences, difficultyKey, customTypes) {
-  const allowed = allowedGranularities(difficultyKey, customTypes);
-  if (!allowed) return sequences;
+  if (difficultyKey === "custom") {
+    const allowed = allowedGranularities("custom", customTypes);
+    if (!allowed) return sequences;
+    return (Array.isArray(sequences) ? sequences : [])
+      .map((seq) => {
+        const units = (seq.units || []).filter((u) => allowed.has(granularityOfUnit(u)));
+        return { ...seq, units, totalUnits: units.length };
+      })
+      .filter((seq) => (seq.units || []).length > 0);
+  }
+  // 三档：按「原句类型」过滤句子，每句一题（用整句/final 步代表）
+  const allowed = new Set(DIFF_TO_SENTENCE_TYPES[difficultyKey] || ["word", "chunk", "sentence"]);
   return (Array.isArray(sequences) ? sequences : [])
     .map((seq) => {
-      const units = (seq.units || []).filter((u) => allowed.has(granularityOfUnit(u)));
+      const bySentence = new Map();
+      for (const u of (seq.units || [])) {
+        if (u && u.spellWord) continue;
+        const full = String(u.chunkFull || u.russian || "").trim();
+        if (!full) continue;
+        const prev = bySentence.get(full);
+        if (!prev) { bySentence.set(full, u); continue; }
+        if (u.chunkIsFinal && !prev.chunkIsFinal) bySentence.set(full, u); // 用整句步代表
+      }
+      const units = [...bySentence.values()].filter((u) => allowed.has(sentenceTypeOfUnit(u)));
       return { ...seq, units, totalUnits: units.length };
     })
     .filter((seq) => (seq.units || []).length > 0);
 }
 
-/** 扁平 items（QuestDictation 用）按难度过滤 */
+/** 扁平 items（QuestDictation 用）按难度过滤：三档按原句类型、custom 按块步粒度 */
 export function filterItemsByDifficulty(items, difficultyKey, customTypes) {
-  const allowed = allowedGranularities(difficultyKey, customTypes);
-  if (!allowed) return items;
-  return (Array.isArray(items) ? items : []).filter((it) => allowed.has(granularityOfUnit(it)));
+  if (difficultyKey === "custom") {
+    const allowed = allowedGranularities("custom", customTypes);
+    if (!allowed) return items;
+    return (Array.isArray(items) ? items : []).filter((it) => allowed.has(granularityOfUnit(it)));
+  }
+  const allowed = new Set(DIFF_TO_SENTENCE_TYPES[difficultyKey] || ["word", "chunk", "sentence"]);
+  return (Array.isArray(items) ? items : []).filter((it) => allowed.has(sentenceTypeOfUnit(it)));
 }
 
 // paths → items（QuestDictation 听写页用：{id, russian, chinese, words, audio_url}）
