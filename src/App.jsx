@@ -39,6 +39,7 @@ import AdminStats from './pages/AdminStats'
 import AdminOrders from './pages/AdminOrders'
 import AdminCategories from './pages/AdminCategories'
 import AdminSettings from './pages/AdminSettings'
+import AdminExcels from './pages/AdminExcels'
 import AdminSegments from './pages/AdminSegments'
 import AdminSlotTables from './pages/AdminSlotTables'
 import CoursePreviewPage from './pages/CoursePreviewPage'
@@ -116,6 +117,7 @@ export default function App() {
         <Route path="/admin/orders" element={<AdminOrders />} />
         <Route path="/admin/categories" element={<AdminCategories />} />
         <Route path="/admin/settings" element={<AdminSettings />} />
+        <Route path="/admin/excels" element={<AdminExcels />} />
         <Route path="/admin/segments" element={<AdminSegments />} />
         <Route path="/admin/slot-tables" element={<AdminSlotTables />} />
         <Route path="/admin/course-preview/:taskId" element={<CoursePreviewPage />} />

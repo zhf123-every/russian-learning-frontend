@@ -14,8 +14,7 @@ import { useAdminStore } from '../../store/adminStore'
 const NAV_ITEMS = [
   { to: '/admin/stats', icon: '📊', title: '数据看板', roles: ['admin'] },
   { to: '/admin', icon: '📚', title: '课程管理', roles: ['admin', 'editor', 'viewer'], end: true },
-  { to: '/admin/segments', icon: '🧩', title: '语块管理', roles: ['admin', 'editor', 'viewer'] },
-  { to: '/admin/slot-tables', icon: '🗂', title: '表格管理', roles: ['admin', 'editor', 'viewer'] },
+  { to: '/admin/excels', icon: '📗', title: 'Excel 管理', roles: ['admin', 'editor', 'viewer'] },
   { to: '/admin/users', icon: '👥', title: '用户管理', roles: ['admin'] },
   { to: '/admin/orders', icon: '💰', title: '订单管理', roles: ['admin'] },
   { to: '/admin/categories', icon: '🏷️', title: '分类管理', roles: ['admin'] },
