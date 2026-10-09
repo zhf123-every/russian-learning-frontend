@@ -700,11 +700,14 @@ export default function AdminDashboard() {
         if (!ws) throw new Error('文件里没有工作表')
         const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
         if (!aoa.length) throw new Error('文件是空的')
-        // 表头校验：第一行必须包含 ru（俄语）；zh 建议有（可缺，事后逐句「编」补齐）
+        // 表头识别：兼容中英文表头 —— 俄语列（ru/russian/俄语/俄语原文…）、中文列（zh/chinese/中文/中文翻译…）
+        // 规则：含「俄」或等于 ru/russian 视为俄语列；含「中」或等于 zh/chinese 视为中文列；其余列忽略
         const head = (aoa[0] || []).map(h => String(h || '').trim().toLowerCase())
-        const ruIdx = head.indexOf('ru')
-        if (ruIdx === -1) throw new Error('第一行表头必须包含「ru」（俄语例句列），当前：' + head.join(', '))
-        const zhIdx = head.indexOf('zh')
+        const isRuHead = (h) => h === 'ru' || h === 'russian' || h.includes('俄')
+        const isZhHead = (h) => h === 'zh' || h === 'chinese' || h.includes('中')
+        const ruIdx = head.findIndex(isRuHead)
+        if (ruIdx === -1) throw new Error('第一行表头需含俄语列：ru / 俄语 / 俄语原文（当前：' + head.join(', ') + '）')
+        const zhIdx = head.findIndex(isZhHead)
         // 数据行：保序收集，过滤空 ru，统计跳过
         const rows = []
         let skipped = 0
@@ -1081,7 +1084,7 @@ export default function AdminDashboard() {
                 <label htmlFor="unit-sent-file" className="cursor-pointer block">
                   <div className="text-3xl">📄</div>
                   <div className="mt-1 text-sm font-semibold text-primary">点击选择 CSV / Excel 文件</div>
-                  <div className="mt-0.5 text-[11px] text-gray-400">支持 .csv / .xlsx · 表头：第一列 ru（俄语），第二列 zh（中文）· 文件行顺序即学习顺序 · CSV 请用 UTF-8 编码（Excel 另存时选 UTF-8）</div>
+                  <div className="mt-0.5 text-[11px] text-gray-400">支持 .csv / .xlsx · 表头兼容：俄语列（ru / 俄语 / 俄语原文）＋中文列（zh / 中文 / 中文翻译），其余列自动忽略 · 文件行顺序即学习顺序 · CSV 请用 UTF-8 编码</div>
                 </label>
                 <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2">
                   <label htmlFor="unit-sent-file" className="btn btn-primary btn-sm cursor-pointer">📂 选择文件</label>
