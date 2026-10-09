@@ -9,7 +9,6 @@ import { parseAIJSON, chat } from '../lib/ai'
 import { generateKnowledge } from '../lib/knowledge'
 import { withRetry403 } from '../lib/segmentEngine'
 import { resolvePlayUrl } from '../lib/playUrl'
-import CoursePreviewModal from '../components/CoursePreviewModal'
 import { collectUnitSentenceObjs } from '../lib/unitSentences'
 import { triggerUnitSegments, retryPendingSegments } from '../lib/segmentTrigger'
 import { useAdminStore } from '../store/adminStore'
@@ -147,14 +146,6 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState('')
   const [saveBanner, setSaveBanner] = useState(null) // 保存课时后的成功横幅 + 下一步引导
   const [kpState, setKpState] = useState(null)       // 一键生成本课知识点进度 { done, total, cur }
-  const [newGenTaskId, setNewGenTaskId] = useState(null)  // 新引擎生成任务ID
-  const [newGenBusy, setNewGenBusy] = useState(false)    // 新引擎生成中
-  const [newGenMsg, setNewGenMsg] = useState('')         // 新引擎提示信息
-  const [newGenProgress, setNewGenProgress] = useState(null)  // 新引擎进度 {status, classified_count, total}
-  const intervalRef = useRef(null)  // 轮询定时器
-  const [showPreview, setShowPreview] = useState(false)  // 预览弹窗
-  const [generatedSteps, setGeneratedSteps] = useState([])  // 生成的步骤
-  const [generatedStats, setGeneratedStats] = useState(null)  // 生成的统计
   // —— 唯一上传入口：CSV / Excel 文件导入（文件行顺序 = 课时句子顺序 = 学习顺序）——
   const [importFile, setImportFile] = useState(null)        // 当前选择的 File 对象（导入后自动保存原始文件用）
   const [importPreview, setImportPreview] = useState(null)  // { rows:[{ru,zh}], skipped, fileName } 解析预览（未落库）
@@ -177,16 +168,6 @@ export default function AdminDashboard() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncFlag])
-
-  // 组件卸载时清理轮询定时器
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
-    }
-  }, [])
 
   // P2-A：语块生成请求器——403（TiDB 冷启动）自动重试 1 次；POST 带 authBody 鉴权，GET 不带 body
   // 超时放宽到 120s：plan/词池/llm-segment 都要调 AI（glm-4-plus 慢 + Render 冷启动），默认 12s 会被 abort
@@ -546,8 +527,6 @@ export default function AdminDashboard() {
   // 进入课时内容
   const openUnit = (u) => {
     setActiveUnit({ ...u })
-    setNewSentRu('')
-    setNewSentZh('')
     setView('unit')
     window.scrollTo({ top: 0 })
     // P2-A：打开课时自动补跑上次失败的语块（本机增强；无记录 / 失败静默，不打扰）
@@ -802,128 +781,6 @@ export default function AdminDashboard() {
     e.target.value = ''
   }
 
-  // 🚀 一键生成新课程（新引擎）：调后端异步接口
-  const handleNewGenerate = async () => {
-    if (!active || !activeUnit) return
-    setNewGenBusy(true)
-    setNewGenMsg('正在创建生成任务...')
-    
-    try {
-      // 收集当前课时的所有句子
-      const sentences = (activeUnit.sentences || []).map(s => ({
-        ru: s.ru || '',
-        zh: s.chinese || s.zh || ''
-      })).filter(s => s.ru.trim())
-      
-      if (sentences.length === 0) {
-        setNewGenMsg('⚠️ 没有句子，请先添加课时内容')
-        setNewGenBusy(false)
-        return
-      }
-      
-      console.log('[debug] 新引擎：发送生成请求，句子数:', sentences.length)
-      
-      const resp = await apiFetch('/api/admin/course/generate-async', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authBody({
-          course_id: active.id,
-          unit_id: activeUnit.id || 'unit_01',
-          sentences: sentences
-        })),
-        timeout: 120000  // 120秒，Render冷启动需要时间
-
-      })
-      const data = await resp.json()
-      
-      if (data.task_id) {
-        console.log('[debug] 新引擎：task_id 拿到:', data.task_id)
-        const taskId = data.task_id
-        setNewGenTaskId(taskId)
-        setNewGenMsg('任务已创建，等待开始...')
-        
-        // 开始轮询
-        const startTime = Date.now()
-        const maxWait = 5 * 60 * 1000  // 5分钟超时
-        
-        intervalRef.current = setInterval(async () => {
-          // 超时保护
-          if (Date.now() - startTime > maxWait) {
-            clearInterval(intervalRef.current)
-            intervalRef.current = null
-            setNewGenBusy(false)
-            setNewGenMsg('⚠️ 生成超时，请重试')
-            return
-          }
-          
-          try {
-            const statusResp = await apiFetch(`/api/admin/course/task-status`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(authBody({ task_id: taskId })),
-            })
-            const statusData = await statusResp.json()
-            
-            if (!statusData.ok) {
-              setNewGenMsg('⚠️ 查询状态失败: ' + (statusData.error || ''))
-              return
-            }
-            
-            const status = statusData.status
-            const progress = statusData.progress || {}
-            
-            // 更新进度
-            setNewGenProgress({
-              status: status,
-              classified_count: progress.classified_count || 0,
-              total: progress.total || 0
-            })
-            
-            // 更新进度文字
-            if (status === 'pending') {
-              setNewGenMsg('任务已创建，等待开始...')
-            } else if (status === 'classifying') {
-              setNewGenMsg(`正在分类中... 已完成 ${progress.classified_count || 0}/${progress.total || 0} 句`)
-            } else if (status === 'planning') {
-              setNewGenMsg('正在分层编排...')
-            } else if (status === 'executing') {
-              setNewGenMsg('正在生成步骤...')
-            } else if (status === 'done') {
-              clearInterval(intervalRef.current)
-              intervalRef.current = null
-              setNewGenBusy(false)
-              const result = statusData.result || {}
-              setNewGenMsg(`✅ 生成完成！共 ${result.total_steps || 0} 步，${result.total_groups || 0} 组，正在跳转...`)
-              // 跳转到预览页面
-              navigate(`/admin/course-preview/${taskId}?course_id=${encodeURIComponent(active.id)}&unit_id=${encodeURIComponent(activeUnit.id || 'unit_01')}`)
-            } else if (status === 'failed') {
-              clearInterval(intervalRef.current)
-              intervalRef.current = null
-              setNewGenBusy(false)
-              setNewGenMsg('❌ 生成失败: ' + (statusData.error || '未知错误'))
-              alert('生成失败: ' + (statusData.error || '未知错误'))
-            }
-          } catch (e) {
-            console.error('[debug] 轮询出错:', e)
-          }
-        }, 5000)  // 每5秒轮询一次
-        
-      } else {
-        setNewGenMsg('⚠️ 创建任务失败: ' + (data.error || '未知错误'))
-        setNewGenBusy(false)
-      }
-    } catch (e) {
-      setNewGenMsg('⚠️ 创建任务异常: ' + ((e && e.message) || '网络错误'))
-    }
-    setNewGenBusy(false)
-  }
-
-  // 保存生成的课程步骤（3d 再实现真正的保存逻辑）
-  const handleSaveGenerated = () => {
-    alert('保存功能待实现（子任务3d）')
-    setShowPreview(false)
-  }
-
   // ========== 渲染 ==========
 
   // —— 视图三：课时内容管理 ——
@@ -965,17 +822,6 @@ export default function AdminDashboard() {
               >
                 📥 原始Excel
               </button>
-              <button
-                className="btn btn-success btn-sm"
-                onClick={handleNewGenerate}
-                disabled={newGenBusy}
-                title="新引擎：整课分层编排，一键生成课程步骤"
-              >
-                {newGenBusy ? '创建中…' : '🚀 新引擎生成'}
-              </button>
-              {newGenMsg && (
-                <span className="text-[11px] text-gray-400 max-w-[300px] truncate">{newGenMsg}</span>
-              )}
               {active && (
                 <button className="btn btn-outline btn-sm" onClick={() => navigate(`/admin/segments?course=${encodeURIComponent(active.id)}&unit=${encodeURIComponent(activeUnit.id)}`)}>
                   📑 语块管理
@@ -1286,14 +1132,6 @@ export default function AdminDashboard() {
 
   return (
     <main className="min-h-full bg-base-100 px-6 py-7">
-      {/* 课程生成预览弹窗 */}
-      <CoursePreviewModal 
-        isOpen={showPreview}
-        steps={generatedSteps}
-        stats={generatedStats}
-        onCancel={() => setShowPreview(false)}
-        onSave={handleSaveGenerated}
-      />
       
       <div className="mx-auto max-w-[1100px]">
         <h1 className="text-2xl font-extrabold text-gray-900">📚 课程管理</h1>
