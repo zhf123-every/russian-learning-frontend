@@ -95,33 +95,26 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
     if (!s) { setK(null); return }
     const ru = typeof s === 'string' ? s : (s.ru || s.russian || s.text || '')
     let alive = true
-    setLoading(true)
-    setError('')
-    // 先查缓存，未命中走 AI 生成
+    // 先查缓存，命中直接用（秒开）
     const cached = readKnowledgeCache(unitId)[ru]
     if (cached && cached._ru) {
       setK(cached)
       setLoading(false)
       return () => { alive = false }
     }
+    // 立即出本地解析（词典+形态规则，秒出，不等 AI），AI 后台生成成功后自动替换增强
+    setLoading(false)
+    setError('')
+    ensureDictFull().then(() => {
+      if (!alive) return
+      setK(buildLocalKnowledge(ru))
+    }).catch(() => {
+      if (!alive) return
+      setK(buildLocalKnowledge(ru))
+    })
     getKnowledge(unitId, ru)
       .then((kk) => { if (alive) { setK(kk); setLoading(false) } })
-      .catch((e) => {
-        if (!alive) return
-        const msg = String((e && e.message) || e)
-        // 本地兜底：词典就位后生成逐词注解，保证弹窗不白屏
-        ensureDictFull().then(() => {
-          if (!alive) return
-          setK(buildLocalKnowledge(ru))
-          setError('AI 生成失败（' + msg + '），已显示本地词典注解')
-          setLoading(false)
-        }).catch(() => {
-          if (!alive) return
-          setK(buildLocalKnowledge(ru))
-          setError('AI 生成失败（' + msg + '），已显示本地词典注解')
-          setLoading(false)
-        })
-      })
+      .catch(() => { /* 本地已显示，保持 */ })
     return () => { alive = false }
   }, [s && (s.ru || s.russian || s.text), unitId, activeIdx])
 
