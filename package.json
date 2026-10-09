@@ -20,6 +20,7 @@
     "react-router-dom": "^6.28.0",
     "three": "^0.186.1",
     "ts-fsrs": "^4.5.1",
+    "xlsx": "^0.18.5",
     "zustand": "^4.5.5"
   },
   "devDependencies": {

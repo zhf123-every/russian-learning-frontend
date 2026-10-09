@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import * as XLSX from 'xlsx'
 import { getCourses, saveCourses, deleteCourse } from '../utils/storage'
 import { API_BASE, apiFetch } from '../lib/api'
 import { courseStatus, statusLabel, fmtSchedule } from '../utils/courseSchedule'
@@ -155,8 +156,10 @@ export default function AdminDashboard() {
   const [showPreview, setShowPreview] = useState(false)  // 预览弹窗
   const [generatedSteps, setGeneratedSteps] = useState([])  // 生成的步骤
   const [generatedStats, setGeneratedStats] = useState(null)  // 生成的统计
-  // —— 唯一上传入口：批量粘贴句子（每行：俄语 || 中文）——
-  const [batchSentText, setBatchSentText] = useState('')
+  // —— 唯一上传入口：CSV / Excel 文件导入（文件行顺序 = 课时句子顺序 = 学习顺序）——
+  const [importFile, setImportFile] = useState(null)        // { name, size } 当前选择的文件
+  const [importPreview, setImportPreview] = useState(null)  // { rows:[{ru,zh}], skipped, fileName } 解析预览（未落库）
+  const [importErr, setImportErr] = useState('')
 
   // —— 云端同步状态 ——
   const { adminKey, token, user, loginPassword, register, logout, authBody } = useAdminStore()
@@ -199,8 +202,6 @@ export default function AdminDashboard() {
 
   // —— 课时内容管理状态 ——
   const [activeUnit, setActiveUnit] = useState(null) // 当前编辑内容的课时
-  const [newSentRu, setNewSentRu] = useState('')
-  const [newSentZh, setNewSentZh] = useState('')
   const [editSentIdx, setEditSentIdx] = useState(-1)      // 正在行内编辑的例句下标（-1=未编辑）
   const [editSent, setEditSent] = useState({ ru: '', zh: '', chunks: '' })
   const [aiUnitTitleBusy, setAiUnitTitleBusy] = useState(false) // AI 生成课时名（手动添加表单）
@@ -678,34 +679,59 @@ export default function AdminDashboard() {
     setView('units')
   }
 
-  // 手动添加例句
-  const addSentence = () => {
-    const ru = newSentRu.trim()
-    const zh = newSentZh.trim()
-    if (!ru || !zh) { flash('例句需同时填写俄语和中文'); return }
-    patchUnit({ sentences: [...(activeUnit.sentences || []), { ru, zh }] })
-    setNewSentRu('')
-    setNewSentZh('')
+  // —— 唯一上传入口：解析 CSV / Excel 文件（保序；文件行顺序 = 课时句子顺序 = 学习顺序 = chainIndex 轮换下标）——
+  const handleImportFile = (file) => {
+    if (!file) return
+    setImportErr('')
+    setImportPreview(null)
+    const isCsv = /\.csv$/i.test(file.name)
+    const isXlsx = /\.xlsx$/i.test(file.name)
+    if (!isCsv && !isXlsx) {
+      setImportErr('仅支持 .csv 或 .xlsx 文件')
+      setImportFile(null)
+      return
+    }
+    setImportFile({ name: file.name, size: file.size })
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        if (!ws) throw new Error('文件里没有工作表')
+        const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+        if (!aoa.length) throw new Error('文件是空的')
+        // 表头校验：第一行必须包含 ru（俄语）；zh 建议有（可缺，事后逐句「编」补齐）
+        const head = (aoa[0] || []).map(h => String(h || '').trim().toLowerCase())
+        const ruIdx = head.indexOf('ru')
+        if (ruIdx === -1) throw new Error('第一行表头必须包含「ru」（俄语例句列），当前：' + head.join(', '))
+        const zhIdx = head.indexOf('zh')
+        // 数据行：保序收集，过滤空 ru，统计跳过
+        const rows = []
+        let skipped = 0
+        for (let i = 1; i < aoa.length; i++) {
+          const ru = String(aoa[i][ruIdx] ?? '').trim()
+          if (!ru) { skipped++; continue }
+          const zh = zhIdx >= 0 ? String(aoa[i][zhIdx] ?? '').trim() : ''
+          rows.push({ ru, zh })
+        }
+        if (!rows.length) throw new Error('没有解析到有效句子：第二行起需填写俄语例句')
+        setImportPreview({ rows, skipped, fileName: file.name })
+      } catch (err) {
+        setImportErr(String(err && err.message || err))
+        setImportFile(null)
+      }
+    }
+    reader.readAsArrayBuffer(file)
   }
 
-  // 批量粘贴添加（唯一上传入口主路径）：每行 "俄语 || 中文"（支持 || ｜ | Tab）
-  const addSentencesBatch = () => {
-    const lines = String(batchSentText || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-    if (!lines.length) { flash('请先粘贴句子（每行一句：俄语 || 中文）'); return }
-    const added = []
-    const skipped = []
-    for (const line of lines) {
-      const parts = line.split(/\s*\|\|\s*|\s*[｜]\s*|\s*\|\s*|\t+/).map(s => s.trim())
-      const ru = parts[0] || ''
-      const zh = parts[1] || ''
-      if (!ru) { skipped.push(line); continue }
-      added.push({ ru, zh })
-    }
-    if (!added.length) { flash('没有解析到有效句子：每行需以俄语开头，格式「俄语 || 中文」'); return }
-    patchUnit({ sentences: [...(activeUnit.sentences || []), ...added] })
-    const noZh = added.filter(s => !s.zh).length
-    flash(`已批量添加 ${added.length} 句` + (noZh ? `（其中 ${noZh} 句缺中文，可逐句点「编」补齐）` : ''))
-    setBatchSentText('')
+  // 确认导入：以文件内容为准替换本课时句子（顺序 = 文件行顺序）
+  const applyImportedSentences = () => {
+    if (!importPreview || !importPreview.rows.length || !activeUnit) return
+    patchUnit({ sentences: importPreview.rows })
+    const noZh = importPreview.rows.filter(s => !s.zh).length
+    flash(`✅ 已导入 ${importPreview.rows.length} 句（顺序=文件行顺序）` + (importPreview.skipped ? `，跳过 ${importPreview.skipped} 个空行` : '') + (noZh ? `，${noZh} 句缺中文可逐句「编」补齐` : '') + '，点「🚀 生成表格」完成剩余步骤')
+    setImportFile(null)
+    setImportPreview(null)
   }
 
   // 删除例句
@@ -713,27 +739,15 @@ export default function AdminDashboard() {
     patchUnit({ sentences: (activeUnit.sentences || []).filter((_, i) => i !== idx) })
   }
 
-  // ========== 一键生成三档 6 列表格（唯一上传入口闭环：粘贴 → 点生成 → 本页完成，无需再去表格管理页） ==========
+  // ========== 一键生成三档 6 列表格（唯一上传入口闭环：导入文件 → 点生成 → 本页完成，无需再去表格管理页） ==========
   const [genBusy, setGenBusy] = useState(false)
   const [genProgress, setGenProgress] = useState(null) // {done, total}
   const generateTablesNow = async () => {
     if (genBusy || !activeUnit) return
-    // ① 粘贴区还有未添加的句子 → 先并入（解析规则与「批量添加」一致）
-    let unit = activeUnit
-    const paste = String(batchSentText || '').trim()
-    if (paste) {
-      const added = []
-      for (const line of paste.split(/\r?\n/).map(l => l.trim()).filter(Boolean)) {
-        const parts = line.split(/\s*\|\|\s*|\s*[｜]\s*|\s*\|\s*|\t+/).map(s => s.trim())
-        if (parts[0]) added.push({ ru: parts[0], zh: parts[1] || '' })
-      }
-      if (added.length) {
-        unit = { ...unit, sentences: [...(unit.sentences || []), ...added] }
-        setBatchSentText('')
-      }
-    }
+    // ① 句子来自 CSV/Excel 导入（顺序 = 文件行顺序），直接收集
+    const unit = activeUnit
     const sentences = collectUnitSentenceObjs(unit)
-    if (!sentences.length) { flash('先粘贴句子（每行：俄语 || 中文）再点生成'); return }
+    if (!sentences.length) { flash('先上传 CSV/Excel 导入句子（文件行顺序 = 学习顺序）再点生成'); return }
     // ② 落盘课时（保证句子入库；activeUnit 状态同步）
     patchUnit(unit)
     const nextUnits = units.map(u => (u.id === activeUnit.id ? unit : u))
@@ -915,43 +929,6 @@ export default function AdminDashboard() {
     setNewGenBusy(false)
   }
 
-  // 📤 上传CSV课程：上传飞书表格导出的CSV文件
-  const handleUploadCsv = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    if (!active || !activeUnit) {
-      alert('请先选择课程和单元')
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = async (ev) => {
-      const csvContent = ev.target.result
-      try {
-        const resp = await apiFetch('/api/admin/course/upload-csv', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(authBody({
-            course_id: active.id,
-            unit_id: activeUnit.id || 'unit_01',
-            csv_content: csvContent
-          })),
-        })
-        const data = await resp.json()
-        if (data.ok) {
-          alert(`✅ 上传成功！共 ${data.total_steps} 步`)
-        } else {
-          alert('❌ 上传失败: ' + (data.error || ''))
-        }
-      } catch (err) {
-        alert('❌ 上传失败: ' + err.message)
-      }
-    }
-    reader.readAsText(file, 'utf-8')
-    // 重置input，方便重复上传
-    e.target.value = ''
-  }
-
   // 保存生成的课程步骤（3d 再实现真正的保存逻辑）
   const handleSaveGenerated = () => {
     alert('保存功能待实现（子任务3d）')
@@ -1008,15 +985,6 @@ export default function AdminDashboard() {
               >
                 {newGenBusy ? '创建中…' : '🚀 新引擎生成'}
               </button>
-              <label className="btn btn-primary btn-sm" title="上传飞书表格导出的CSV文件">
-                📤 上传CSV课程
-                <input
-                  type="file"
-                  accept=".csv"
-                  style={{ display: 'none' }}
-                  onChange={handleUploadCsv}
-                />
-              </label>
               {newGenMsg && (
                 <span className="text-[11px] text-gray-400 max-w-[300px] truncate">{newGenMsg}</span>
               )}
@@ -1033,12 +1001,12 @@ export default function AdminDashboard() {
             <div className="card-body p-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="text-sm font-bold text-gray-900">📤 上传课程 = 三步</span>
-                <span className="text-[11px] text-gray-400">本课时内容只有一个入口：贴句子 → 点生成 → 表格本页生成完毕</span>
+                <span className="text-[11px] text-gray-400">本课时内容只有一个入口：上传文件 → 生成表格 → 学习顺序 = 文件行顺序</span>
               </div>
               <ol className="mt-2 grid gap-1.5 text-xs text-gray-700 sm:grid-cols-3">
                 <li className="rounded-lg bg-white/70 px-3 py-2">
-                  <b className="text-primary">① 粘贴句子</b><br />
-                  在下方「① 例句」粘贴完整句子（每行：俄语 || 中文），点「批量添加」
+                  <b className="text-primary">① 上传 CSV / Excel</b><br />
+                  选择 .csv 或 .xlsx 文件（表头 ru=俄语，zh=中文），文件行顺序 = 学生学习顺序
                 </li>
                 <li className="rounded-lg bg-white/70 px-3 py-2">
                   <b className="text-primary">② 生成表格</b><br />
@@ -1055,15 +1023,16 @@ export default function AdminDashboard() {
           {/* ① 例句 */}
           <div className="card mt-4 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
             <div className="card-body p-5">
-              <h2 className="card-title text-base text-gray-900">① 例句（可手动添加 / 编辑）</h2>
+              <h2 className="card-title text-base text-gray-900">① 课时句子（CSV/Excel 导入 · 顺序 = 文件行顺序）</h2>
 
               {(!activeUnit.sentences || !activeUnit.sentences.length) ? (
-                <p className="py-8 text-center text-sm text-gray-400">还没有句子，用下方「📥 批量粘贴句子」添加完整句子（俄语 || 中文）。</p>
+                <p className="py-8 text-center text-sm text-gray-400">还没有句子，用下方「选择文件」上传 .csv / .xlsx（每行一句，顺序即学习顺序）。</p>
               ) : (
                 <>
                   <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                     <span className="badge badge-success badge-sm">{activeUnit.sentences.length} 句</span>
                     <span className="badge badge-ghost badge-sm">{((activeUnit.words || []).length) || '-'} 词</span>
+                    <span className="text-[11px] text-gray-400">行顺序 = 文件导入顺序 = 学生学习顺序</span>
                   </div>
                   <div className="mt-3 space-y-2 max-h-[420px] overflow-y-auto pr-1">
                     {(activeUnit.sentences || []).map((s, i) => (
@@ -1100,40 +1069,61 @@ export default function AdminDashboard() {
                 </>
               )}
 
-              {/* 手动添加例句 */}
-              <div className="mt-4 flex flex-col sm:flex-row gap-2">
-                <input className="input input-bordered flex-1 text-sm" placeholder="俄语例句" value={newSentRu} onChange={e => setNewSentRu(e.target.value)} />
-                <input className="input input-bordered flex-1 text-sm" placeholder="中文翻译" value={newSentZh} onChange={e => setNewSentZh(e.target.value)} />
-                <button className="btn btn-outline btn-sm" onClick={addSentence}>+ 添加</button>
-              </div>
-
-              {/* 📥 批量粘贴（唯一上传入口主路径） */}
-              <div className="mt-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-xs font-semibold text-gray-700">📥 批量粘贴句子（每行一句：俄语 || 中文）</span>
-                  <div className="flex items-center gap-2">
-                    <button className="btn btn-primary btn-xs" onClick={addSentencesBatch} disabled={genBusy}>批量添加</button>
-                    <button
-                      className="btn btn-primary btn-sm"
-                      onClick={generateTablesNow}
-                      disabled={genBusy}
-                      title="粘贴后一键完成：并入句子 + 保存课时 + 三档表格本页生成完毕"
-                    >
-                      {genBusy ? `🚀 生成中 ${genProgress ? `${genProgress.done}/${genProgress.total}` : '…'}` : '🚀 生成表格'}
-                    </button>
-                  </div>
-                </div>
-                <textarea
-                  className="textarea textarea-bordered mt-2 w-full font-mono text-xs"
-                  rows={5}
-                  placeholder={'Улица Чистые пруды — это старая улица в центре Москвы. || 清水池街是莫斯科市中心的一条老街。\nЭта улица небольшая, но известная. || 这条街不大，但很有名。'}
-                  value={batchSentText}
-                  onChange={e => setBatchSentText(e.target.value)}
+              {/* 文件上传（唯一入口）：CSV / Excel，行顺序 = 学习顺序 */}
+              <div className="mt-3 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-4 text-center">
+                <input
+                  id="unit-sent-file"
+                  type="file"
+                  accept=".csv,.xlsx"
+                  className="hidden"
+                  onChange={e => { const f = e.target.files && e.target.files[0]; handleImportFile(f); e.target.value = '' }}
                 />
-                <p className="mt-1 text-[11px] text-gray-400">支持分隔符：|| ｜ | Tab；建议中文必填（俄语 || 中文），缺中文可事后点例句「编」手动补齐</p>
+                <label htmlFor="unit-sent-file" className="cursor-pointer block">
+                  <div className="text-3xl">📄</div>
+                  <div className="mt-1 text-sm font-semibold text-primary">点击选择 CSV / Excel 文件</div>
+                  <div className="mt-0.5 text-[11px] text-gray-400">支持 .csv / .xlsx · 表头：第一列 ru（俄语），第二列 zh（中文）· 文件行顺序即学习顺序 · CSV 请用 UTF-8 编码（Excel 另存时选 UTF-8）</div>
+                </label>
+                <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2">
+                  <label htmlFor="unit-sent-file" className="btn btn-primary btn-sm cursor-pointer">📂 选择文件</label>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={generateTablesNow}
+                    disabled={genBusy}
+                    title="导入后一键完成：保存课时 + 三档表格本页生成完毕"
+                  >
+                    {genBusy ? `🚀 生成中 ${genProgress ? `${genProgress.done}/${genProgress.total}` : '…'}` : '🚀 生成表格'}
+                  </button>
+                </div>
               </div>
 
-              {/* ② 生成表格（一键：粘贴 → 生成 → 本页完成） */}
+              {importErr && (
+                <div className="mt-3 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-xs text-error">⚠️ {importErr}</div>
+              )}
+
+              {importPreview && (
+                <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-xs font-semibold text-gray-700">📎 {importPreview.fileName}：解析到 <b className="text-primary">{importPreview.rows.length} 句</b>{importPreview.skipped ? `（跳过 ${importPreview.skipped} 个空行）` : ''}</span>
+                    <div className="flex items-center gap-2">
+                      <button className="btn btn-ghost btn-xs" onClick={() => { setImportFile(null); setImportPreview(null) }}>取消</button>
+                      <button className="btn btn-primary btn-xs" onClick={applyImportedSentences}>✅ 导入到本课时（替换现有句子）</button>
+                    </div>
+                  </div>
+                  <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                    {importPreview.rows.slice(0, 6).map((s, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <span className="font-bold text-gray-400 w-6 shrink-0 text-right">{i + 1}</span>
+                        <span className="font-mono text-gray-800 min-w-0 truncate flex-1">{s.ru}</span>
+                        <span className="text-gray-400 shrink-0 max-w-[40%] truncate">{s.zh}</span>
+                      </div>
+                    ))}
+                    {importPreview.rows.length > 6 && <div className="text-[11px] text-gray-400 pl-8">… 共 {importPreview.rows.length} 句</div>}
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-gray-400">导入将<u>替换</u>本课时现有句子，顺序严格等于文件行顺序；确认后点「🚀 生成表格」</p>
+                </div>
+              )}
+
+              {/* ② 生成表格（一键：导入 → 生成 → 本页完成） */}
               {genProgress && genProgress.total > 0 && (
                 <div className="card mt-4 border border-primary/20 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
                   <div className="card-body p-5">
