@@ -666,15 +666,8 @@ export default function AdminDashboard() {
       triggerUnitSegments({ courseId: active.id, unitId: activeUnit.id, sentences: segSentences, deps: { httpPost: segHttpPost } })
         .then((r) => { if (r && !r.skipped) flash('已触发语块生成，完成后下次打开可见') })
         .catch((e) => console.warn('[segments] 语块生成触发失败（下次打开自动补跑）：', e && e.message))
-      // P2：6 列表格生成（第 1 句核心长链 + 其余短链 + 三档难度；异步触发，失败下次打开补跑）
-      triggerUnitSlotTables({ courseId: active.id, unitId: activeUnit.id, sentences: segSentences, deps: { httpPost: segHttpPost } })
-        .then((r) => {
-          if (!r || r.skipped) return
-          const ok = (r.done || []).length
-          const fail = (r.failed || []).length
-          flash(ok ? `已触发表格生成：${ok} 项入库${fail ? `，${fail} 项待补跑` : ''}` : (fail ? `表格生成失败 ${fail} 项，下次打开自动补跑` : ''))
-        })
-        .catch((e) => console.warn('[slot-tables] 表格生成触发失败（下次打开自动补跑）：', e && e.message))
+      // 注：6 列表格不再随保存自动生成——上传的 Excel 行顺序即学习页答题顺序，无需后端生成/轮换；
+      // 需要句乐部变体表格时，手动点「🚀 生成表格」即可（可选功能，保留）。
     }
     setView('units')
   }
