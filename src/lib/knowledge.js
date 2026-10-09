@@ -164,21 +164,29 @@ function normalize(raw, ru) {
   };
 }
 
-// 调后端 /api/ai 生成（后端自动用其 AI_API_KEY）
+// 调后端 /api/ai 生成（后端自动用其 AI_API_KEY）；带 30s 超时，防止后端冷启动/网络抖动时 fetch 永久挂起
+const AI_TIMEOUT_MS = 30000
 async function callAI(messages) {
-  const res = await fetch('/api/ai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages }),
-  });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const j = await res.json();
-  if (!j || !j.ok) throw new Error((j && j.error) || 'AI 接口失败');
-  return j.content || '';
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), AI_TIMEOUT_MS)
+  try {
+    const res = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
+      signal: ctrl.signal,
+    })
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const j = await res.json()
+    if (!j || !j.ok) throw new Error((j && j.error) || 'AI 接口失败')
+    return j.content || ''
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
-// 按句生成知识点（失败自动重试：指数退避，容忍后端冷启动/瞬时重启）
-const RETRY_WAITS = [0, 4000, 12000, 25000]
+// 按句生成知识点（失败自动重试：短间隔快速兜底，避免用户长时间等 AI）
+const RETRY_WAITS = [0, 2500, 6000]
 export async function generateKnowledge(ru) {
   let lastErr = null;
   for (let attempt = 0; attempt < RETRY_WAITS.length; attempt++) {

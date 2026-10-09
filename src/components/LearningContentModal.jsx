@@ -269,6 +269,12 @@ export default function LearningContentModal({ title, sentences, unitId = '', on
                       </div>
                     </div>
 
+                    {loading && !k && (
+                      <div className="mb-4 rounded-lg border border-purple-100 bg-purple-50 p-3 text-xs text-purple-600">
+                        ⏳ AI 正在生成知识点解析（首次约需 5~30 秒，取决于模型响应）… 生成后会缓存在本地，下次秒开
+                      </div>
+                    )}
+
                     {/* 主句卡片 */}
                     <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
                       <div className="flex items-start justify-between gap-3">
