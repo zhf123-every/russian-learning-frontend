@@ -390,6 +390,10 @@ export default function QuestPractice() {
   const currentSequence = sequences[currentSequenceIndex];
   const currentStatement = currentSequence?.units?.[currentUnitIndex];
 
+  // ---- 顶部句子进度：当前句子序号 / 该难度总句子数（跨序列累计）----
+  const sentenceTotal = sequences.reduce((s, sq) => s + ((sq && sq.units) ? sq.units.length : 0), 0);
+  const sentenceNo = sequences.slice(0, currentSequenceIndex).reduce((s, sq) => s + ((sq && sq.units) ? sq.units.length : 0), 0) + (currentUnitIndex + 1);
+
   // ---- 悟空 AI 助手：模式中文名（按 URL mode 参数映射）----
   const aiModeLabel = useMemo(() => {
     const k = new URLSearchParams(window.location.search).get('mode') || 'chinese_to_english';
@@ -1254,7 +1258,7 @@ export default function QuestPractice() {
             </svg>
           </button>
           <div style={styles.progress}>
-            （{currentSequenceIndex + 1}/{sequences.length}）
+            （{sentenceNo}/{sentenceTotal}）
           </div>
         </div>
         <div style={styles.toolbarRight}>
