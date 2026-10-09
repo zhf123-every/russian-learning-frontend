@@ -114,11 +114,12 @@ const TYPE_TO_GRAN = {
   "句子": "sentence", "语块": "chunk",
 };
 
-/** 难度 key（beginner/intermediate/advanced/custom）+ custom 勾选（中文题型名数组）→ 允许的粒度集合 */
+/** 难度 key（beginner/intermediate/advanced/custom）+ custom 勾选（中文题型名数组）→ 允许的粒度集合
+ * 简单 = 一题一句（完整句，题数=句数）；中等 = 短句 + 完整句（过滤单词）；困难 = 只完整句 */
 function allowedGranularities(difficultyKey, customTypes) {
-  if (!difficultyKey || difficultyKey === "beginner") return null; // null = 全部
-  if (difficultyKey === "intermediate") return new Set(["chunk", "comb", "sentence"]);
-  if (difficultyKey === "advanced") return new Set(["sentence"]);
+  if (!difficultyKey || difficultyKey === "beginner") return new Set(["sentence"]); // 简单：一题一句
+  if (difficultyKey === "intermediate") return new Set(["chunk", "sentence"]);      // 中等：短句 + 完整句
+  if (difficultyKey === "advanced") return new Set(["sentence"]);                   // 困难：只完整句
   if (difficultyKey === "custom") {
     const list = Array.isArray(customTypes) && customTypes.length
       ? customTypes

@@ -222,7 +222,25 @@ export function expandUnitToChunkSteps(unit, zhIdx) {
   const chunks = rawChunks
     ? rawChunks.map((c) => (typeof c === "string" ? c : (c?.ru || c?.text || ""))).filter(Boolean)
     : splitSentenceToChunks(ru);
-  if (chunks.length < 2) return null;
+  // 单块句 = 整句一步：标记 sentence 粒度（避免被中等/困难按 word 过滤掉），保证"简单=一题一句"时句数=题数
+  if (chunks.length < 2) {
+    return [{
+      ...unit,
+      id: `${unit.id}#full`,
+      russian: ru,
+      fullRussian: ru,
+      stressMarked: ru,
+      chinese: String(unit.chinese || unit.zh || "").trim(),
+      chunkOf: unit.id,
+      chunkKey: `${unit.id}#full`,
+      chunkStepIndex: 0,
+      chunkN: 1,
+      chunkIsNew: true,
+      chunkIsCumulative: false,
+      chunkIsFinal: true,
+      chunkFull: ru,
+    }];
+  }
 
   const N = chunks.length;
   // 整句中文：数据预处理好的正确译文（sentence.chinese / zh），前端直接展示，绝不逐词拼接
