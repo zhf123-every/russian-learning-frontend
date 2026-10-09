@@ -156,6 +156,7 @@ export function filterSequencesByDifficulty(sequences, difficultyKey, customType
       .filter((seq) => (seq.units || []).length > 0);
   }
   // 三档：按「原句类型」过滤句子，每句一题（用整句/final 步代表）
+  // 分组 key = 原句行 id（chunkOf 或 unit.id）——Excel 每行一句，重复内容的不同行也是独立题，不按内容去重
   const allowed = new Set(DIFF_TO_SENTENCE_TYPES[difficultyKey] || ["word", "chunk", "sentence"]);
   return (Array.isArray(sequences) ? sequences : [])
     .map((seq) => {
@@ -164,9 +165,10 @@ export function filterSequencesByDifficulty(sequences, difficultyKey, customType
         if (u && u.spellWord) continue;
         const full = String(u.chunkFull || u.russian || "").trim();
         if (!full) continue;
-        const prev = bySentence.get(full);
-        if (!prev) { bySentence.set(full, u); continue; }
-        if (u.chunkIsFinal && !prev.chunkIsFinal) bySentence.set(full, u); // 用整句步代表
+        const key = u.chunkOf || u.id || full;
+        const prev = bySentence.get(key);
+        if (!prev) { bySentence.set(key, u); continue; }
+        if (u.chunkIsFinal && !prev.chunkIsFinal) bySentence.set(key, u); // 用整句步代表
       }
       const units = [...bySentence.values()].filter((u) => allowed.has(sentenceTypeOfUnit(u)));
       return { ...seq, units, totalUnits: units.length };
