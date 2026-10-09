@@ -2,6 +2,7 @@
 // 1. 调后端 /api/ai（后端已配置大模型，走其 AI_API_KEY）
 // 2. 严格 JSON schema + 容错解析（剥 markdown 包裹、截取首尾大括号）
 // 3. localStorage 缓存（按课程ID，key: rlearn_knowledge_v1_<unitId>）
+import { apiFetch } from './api'
 
 const KNOWLEDGE_PROMPT = `你是一位资深的中国俄语教育专家。请对用户给出的俄语句子做完整的「学习内容」解析，输出严格 JSON（不要 markdown 代码块，不要任何注释，不要多余文字）。
 
@@ -164,25 +165,19 @@ function normalize(raw, ru) {
   };
 }
 
-// 调后端 /api/ai 生成（后端自动用其 AI_API_KEY）；带 30s 超时，防止后端冷启动/网络抖动时 fetch 永久挂起
+// 调后端 /api/ai 生成（后端自动用其 AI_API_KEY；走 apiFetch：生产自动拼后端域名，带 30s 超时）
 const AI_TIMEOUT_MS = 30000
 async function callAI(messages) {
-  const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), AI_TIMEOUT_MS)
-  try {
-    const res = await fetch('/api/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages }),
-      signal: ctrl.signal,
-    })
-    if (!res.ok) throw new Error('HTTP ' + res.status)
-    const j = await res.json()
-    if (!j || !j.ok) throw new Error((j && j.error) || 'AI 接口失败')
-    return j.content || ''
-  } finally {
-    clearTimeout(timer)
-  }
+  const res = await apiFetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
+    timeout: AI_TIMEOUT_MS,
+  })
+  if (!res.ok) throw new Error('HTTP ' + res.status)
+  const j = await res.json()
+  if (!j || !j.ok) throw new Error((j && j.error) || 'AI 接口失败')
+  return j.content || ''
 }
 
 // 按句生成知识点（失败自动重试：短间隔快速兜底，避免用户长时间等 AI）
