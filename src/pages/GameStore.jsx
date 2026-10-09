@@ -81,13 +81,15 @@ const mapSub = (v) => {
   return (CAT_MAP[key] || ['基础俄语', '全部'])[1]
 }
 
-// ===== 推荐页运营分区（对标句乐部"本周主编精选"等主题分区；items 从数据实时计算） =====
-const ZONES = [
-  { key: 'z1', title: '本周主编精选', items: (vs, gs) => [...vs, ...gs].slice(0, 5) },
-  { key: 'z2', title: '从零开始俄语入门', sub: '基础俄语', items: (vs, gs) => [...vs, ...gs].filter(x => mapCat(x) === '基础俄语') },
-  { key: 'z3', title: '备考冲刺专区', sub: '考试备考', items: (vs, gs) => [...vs, ...gs].filter(x => mapCat(x) === '考试备考') },
-  { key: 'z4', title: '影视音乐精选', sub: '影视俄语', items: (vs, gs) => [...vs, ...gs].filter(x => mapCat(x) === '影视俄语') },
-]
+// ===== 推荐页运营分区（上传课程时选择的角标真实分组展示：主编精选/本周热门/本月课程排行/备考必学/阶段衔接） =====
+// 旧角标兼容映射：旧数据（精选/热销/新/备考/衔接）归入对应新角标
+const normBadge = (b) => ({ '精选': '主编精选', '热销': '本周热门', '备考': '备考必学', '衔接': '阶段衔接' }[b] || b || '')
+const BADGE_ZONES = ['主编精选', '本周热门', '本月课程排行', '备考必学', '阶段衔接']
+const ZONES = BADGE_ZONES.map((b, i) => ({
+  key: 'zb' + (i + 1),
+  title: b,
+  items: (vs, gs) => [...vs, ...gs].filter(x => normBadge(x.badge) === b),
+}))
 // 学习人数格式化：12345 → 1.2万
 const fmtViews = (n) => { const x = n || 0; return x >= 10000 ? (x / 10000).toFixed(1) + '万' : String(x) }
 
@@ -476,6 +478,9 @@ export default function GameStore() {
                             </span>
                           )}
                           <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{it.eps || (it.kind === 'video' ? '1 集' : '1 关')}</span>
+                          {it.badge && (
+                            <span className="absolute top-1.5 left-2 text-[11px] text-white bg-primary/90 rounded px-1.5 py-0.5 font-bold shadow">{normBadge(it.badge)}</span>
+                          )}
                         </div>
                         <div className="text-sm font-semibold line-clamp-1 text-gray-900 dark:text-white">{it.title}</div>
                         <div className="text-xs text-gray-400 mt-0.5 truncate">{it.total || 1} 课 · {fmtViews(it.views)} 人在学</div>
@@ -602,9 +607,14 @@ export default function GameStore() {
                         )
                       )}
                       <span className="absolute bottom-1.5 right-2 text-[11px] text-white bg-black/40 rounded px-1.5 py-0.5">{it.eps || (isVideo ? '1 集' : '1 关')}</span>
-                      {uploaded && (
-                        <span className="absolute top-1.5 left-2 text-[10px] text-white bg-primary/80 rounded px-1.5 py-0.5">投稿</span>
-                      )}
+                      <div className="absolute top-1.5 left-2 flex gap-1">
+                        {uploaded && (
+                          <span className="text-[10px] text-white bg-primary/80 rounded px-1.5 py-0.5">投稿</span>
+                        )}
+                        {it.badge && (
+                          <span className="text-[11px] text-white bg-primary/90 rounded px-1.5 py-0.5 font-bold shadow">{normBadge(it.badge)}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="text-sm font-semibold line-clamp-1 text-gray-900 dark:text-white">{it.title}</div>
                     <div className="text-xs text-gray-400 mt-0.5 truncate">{it.total || 1} 课 · {fmtViews(it.views)} 人在学</div>
