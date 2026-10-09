@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { splitSentenceToChunks } from '../lib/chunking'
+import { filterSentencesByDifficulty } from '../lib/scaffolding'
 import { getKnowledge, readKnowledgeCache } from '../lib/knowledge'
 import { annotateWords, ensureDictFull } from '../lib/wordAnnotate'
 import { inferRoles } from '../lib/roleRules'
@@ -64,27 +64,23 @@ function playTTS(text) {
     .catch(() => {})
 }
 
-export default function LearningContentModal({ title, sentences, unitId = '', onClose, onPractice }) {
+export default function LearningContentModal({ title, sentences, unitId = '', onClose, onPractice, difficulty }) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [k, setK] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // 左栏 chunking 渐进块（每句拆块，显示累积文本）
+  // 左栏：按当前难度过滤后的句子列表（每句一条，数量=该难度出题数）
   const chunkItems = useMemo(() => {
     const items = []
-    ;(Array.isArray(sentences) ? sentences : []).forEach((s) => {
+    const filtered = filterSentencesByDifficulty(sentences, difficulty || 'beginner')
+    ;(Array.isArray(filtered) ? filtered : []).forEach((s, i) => {
       const ru = typeof s === 'string' ? s : (s && (s.ru || s.russian || s.text))
       if (!ru) return
-      const chunks = splitSentenceToChunks(ru)
-      let acc = ''
-      chunks.forEach((c, k) => {
-        acc = k === 0 ? c : acc + ' ' + c
-        items.push({ sentence: s, text: acc, chunkKey: k, isFinal: k === chunks.length - 1 })
-      })
+      items.push({ sentence: s, text: String(ru).trim(), chunkKey: i, isFinal: true, idx: i })
     })
     return items
-  }, [sentences])
+  }, [sentences, difficulty])
 
   const item = chunkItems[activeIdx] || null
   const s = item?.sentence || null

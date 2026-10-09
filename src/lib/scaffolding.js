@@ -127,7 +127,7 @@ function allowedGranularities(difficultyKey, customTypes) {
 }
 
 /** 原句类型（按原句词数：1词=单词、2~3词=短语、4+词=完整句）——三档过滤判定基准 */
-function sentenceTypeOfUnit(unit) {
+export function sentenceTypeOfUnit(unit) {
   const full = String(unit?.chunkFull || unit?.russian || "").trim();
   const m = full.match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?/g);
   const n = m ? m.length : 0;
@@ -142,6 +142,16 @@ const DIFF_TO_SENTENCE_TYPES = {
   intermediate: ["chunk", "sentence"],
   advanced: ["sentence"],
 };
+
+/** 原始句子数组按难度过滤（弹窗学习内容列表等场景；每句一条） */
+export function filterSentencesByDifficulty(sentences, difficultyKey) {
+  const allowed = new Set(DIFF_TO_SENTENCE_TYPES[difficultyKey] || ["word", "chunk", "sentence"]);
+  return (Array.isArray(sentences) ? sentences : []).filter((s) => {
+    const ru = typeof s === "string" ? s : (s && (s.ru || s.russian || s.text));
+    if (!ru) return false;
+    return allowed.has(sentenceTypeOfUnit({ russian: String(ru).trim() }));
+  });
+}
 
 /** sequences（sequence→units 嵌套）按难度过滤；空序列剔除 */
 export function filterSequencesByDifficulty(sequences, difficultyKey, customTypes) {

@@ -1311,6 +1311,7 @@ export default function QuestPractice() {
           title={unitMeta?.title || "学习内容"}
           sentences={bookSentences}
           unitId={effectiveCourseId || ''}
+          difficulty={diffKey}
           onClose={() => setShowLearning(false)}
           onPractice={practiceSentence}
         />

@@ -1045,6 +1045,7 @@ export default function QuestDictation() {
           title={localLesson?.title || "学习内容"}
           sentences={bookSentences}
           unitId={effectiveCourseId || ''}
+          difficulty={diffKey}
           onClose={() => setShowLearning(false)}
           onPractice={practiceSentence}
         />
