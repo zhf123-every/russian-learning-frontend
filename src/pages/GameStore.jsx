@@ -235,12 +235,15 @@ export default function GameStore() {
         applyCloud(mem.videos) // 不 await：立即渲染内存名单（封面已就绪 → 秒出）
       }
       let cloud = []
+      let cloudOk = false
       try {
         const r = await apiFetch('/api/videos/list')
         const j = await r.json()
-        if (j.ok && Array.isArray(j.videos)) cloud = j.videos
+        if (j.ok && Array.isArray(j.videos)) { cloud = j.videos; cloudOk = true }
       } catch (e) { /* 后端不可用时仅显示本地 */ }
-      if (cloud.length) await applyCloud(cloud)
+      // 云端请求成功（含返回 0 项=商城已清空）都要刷新本地缓存；
+      // 否则「清空商城课程」后缓存仍保留旧课程，商城永远显示清不掉的课程
+      if (cloudOk) await applyCloud(cloud)
       // 注：投稿上云由投稿弹窗（投稿视频/投稿课程）负责；商城页不再自动把本地投稿推上云
     }
     loadCloud()
