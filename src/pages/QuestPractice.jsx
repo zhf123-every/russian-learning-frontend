@@ -600,8 +600,8 @@ export default function QuestPractice() {
             if (!cancelled) {
               setUnitMeta(pre.unit || null);
               const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
-              const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, cloudWords);
+              // 直接按课时步骤展开（上传即用），不读后端旧 segments
+              const seqs = expandSequencesWithChunks(adapted, cloudWords);
               setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
               setLoading(false);
             }
@@ -619,8 +619,8 @@ export default function QuestPractice() {
               if (hasPaths) {
                 seqs = seqsFromPaths(pre.scaffoldingPaths, pre.title || "本课", diffKeyRef.current);
               } else {
-                const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
-                seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, pre?.words);
+                // 课时有 sentences（Excel 上传即用）：直接按表格顺序展开，不读后端旧 segments（覆盖不全会丢句）
+                seqs = expandSequencesWithChunks(adapted, pre?.words);
               }
               setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
               setLoading(false);
@@ -649,8 +649,8 @@ export default function QuestPractice() {
               window.__unitKnowledge = window.__unitKnowledge || {};
               window.__unitKnowledge[effectiveCourseId] = (stored && stored.knowledge) || {};
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
-              const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
-              const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, stored?.words);
+              // 课时有 sentences：直接按表格顺序展开（上传即用），不读后端旧 segments
+              const seqs = expandSequencesWithChunks(adapted, stored?.words);
               setSequences(applyDiff(seqs));
               setCurrentSequenceIndex(0);
               setCurrentUnitIndex(0);
@@ -678,8 +678,8 @@ export default function QuestPractice() {
                     setLocalLesson(u)
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
-                    const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId)
-                    const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, u?.words)
+                    // 课时有 sentences：直接按表格顺序展开（上传即用），不读后端旧 segments
+                    const seqs = expandSequencesWithChunks(adapted, u?.words)
                     setSequences(applyDiff(seqs))
                     setCurrentSequenceIndex(0)
                     setCurrentUnitIndex(0)
@@ -706,8 +706,8 @@ export default function QuestPractice() {
             setUnitMeta(data.unit || null);
             // 云端词表：从各句 words 提取 {ru, zh}，供 chunking 块中文翻译（缺词不再兜底俄语）
             const cloudWords = adapted.flatMap((sq) => (sq.units || []).flatMap((u) => (u.words || []).map((w) => ({ ru: w.lemma || w.word || w.ru || "", zh: w.zh || w.chinese || w.mean || "" }))));
-            const segSeqs = await loadSegmentsForUnit(effectiveCourseId, studyCourseId);
-            const seqs = (segSeqs && segSeqs.length) ? segSeqs : expandSequencesWithChunks(adapted, cloudWords);
+            // 直接按课时步骤展开（上传即用），不读后端旧 segments
+            const seqs = expandSequencesWithChunks(adapted, cloudWords);
             setSequences(applyDiff(seqs));
             setCurrentSequenceIndex(0);
             setCurrentUnitIndex(0);
