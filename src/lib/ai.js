@@ -6,6 +6,7 @@ export async function chat({ messages } = {}) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages }),
+    timeout: 90000, // Render 免费层冷启动 30-50s + 大模型生成 10-30s，12s 默认超时会误判失败
   })
   const j = await r.json()
   if (!j.ok) throw new Error(j.error || 'AI 接口错误')
@@ -17,7 +18,8 @@ export async function callAI(messages) {
   const r = await apiFetch('/api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages })
+    body: JSON.stringify({ messages }),
+    timeout: 90000,
   })
   const j = await r.json()
   if (!j.ok) throw new Error(j.error || 'AI 接口错误')
@@ -59,6 +61,7 @@ export async function explainSentence(text) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sentence: text }),
+    timeout: 90000,
   })
   if (!r.ok) {
     let errMsg = '语法解析失败（HTTP ' + r.status + '）'
@@ -112,6 +115,7 @@ export async function analyzeSentence(sentence) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sentence }),
+    timeout: 90000,
   })
   if (!r.ok) throw new Error('句子解析失败（HTTP ' + r.status + '）')
   const j = await r.json()
