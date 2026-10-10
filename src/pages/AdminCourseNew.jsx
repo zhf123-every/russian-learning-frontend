@@ -82,13 +82,33 @@ export default function AdminCourseNew() {
       scheduledPublishAt: tsToLocalInput(c.scheduledPublishAt),
       scheduledUnpublishAt: tsToLocalInput(c.scheduledUnpublishAt),
     })
-    // b2:// 云端封面 → 解析为预签名可显示链接（<img> 不认 b2:// 协议，否则编辑页封面预览空白）
-    if (c.cover && String(c.cover).startsWith('b2://')) {
-      resolvePlayUrl(c.cover).then((u) => {
-        if (u && u !== c.cover) setForm(prev => ({ ...prev, coverUrl: u }))
-      }).catch(() => { /* 解析失败保留原值 */ })
-    }
     setEditingId(id)
+
+    // 封面解析：本地 cover 优先；本地为空则从云端课程列表按 id 补查；b2:// 转预签名可显示链接
+    const resolveEditCover = async () => {
+      let src = c.cover || ''
+      if (!src) {
+        try {
+          const r = await apiFetch('/api/videos/list')
+          const j = await r.json()
+          if (j.ok && Array.isArray(j.videos)) {
+            const cloud = j.videos.find(v => v.id === id)
+            src = (cloud && (cloud.cover || cloud.thumbnail || cloud.posterUrl)) || ''
+          }
+        } catch (e) { /* 云端不可用忽略 */ }
+      }
+      if (!src) return
+      if (String(src).startsWith('b2://')) {
+        try {
+          const u = await resolvePlayUrl(src)
+          if (u && u !== src) setForm(prev => ({ ...prev, coverUrl: u, cover: src }))
+        } catch (e) { /* 解析失败保留 */ }
+      } else {
+        // http/https/data 可直接显示
+        setForm(prev => ({ ...prev, coverUrl: src }))
+      }
+    }
+    resolveEditCover()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
