@@ -183,23 +183,39 @@ export default function GameStore() {
     return c
   })
 
+  // 图片 URL 稳定缓存：按 B2 key（thumbs/xxx.jpg）缓存签好的 https URL，6 天内复用。
+  // 否则后端每次 list 都重签（签名串变化），浏览器把同一图片当新 URL 每次重新下载。
+  const THUMB_URL_CACHE = 'rlearn_thumb_url_cache_v1'
+  const readThumbCache = () => { try { return JSON.parse(localStorage.getItem(THUMB_URL_CACHE) || '{}') } catch { return {} } }
+  const writeThumbCache = (m) => { try { localStorage.setItem(THUMB_URL_CACHE, JSON.stringify(m)) } catch { /* 容量满忽略 */ } }
+
   // 批量把 b2:// 云端封面解析为可显示链接（后台发布课程走 B2 存储，<img>/CSS 不认 b2:// 协议）；并行解析，多课程同时请求更快
   const resolveCloudThumbs = async (courses) => {
+    const cache = readThumbCache()
+    let changed = false
     const entries = await Promise.all(courses.map(async (c) => {
-      let item = c
-      const src = c.thumbnail || c.posterUrl || c.cover
-      if (src && String(src).startsWith('b2://')) {
-        try {
-          const u = await resolvePlayUrl(src)
-          if (u && u !== src) {
-            const pick = (v) => (v && String(v).startsWith('b2://')) ? u : v
-            // 修复：cover-only 课程（无 thumbnail）黑图 —— 解析成功后若 thumbnail 为空，用解析出的 URL 补位
-            item = { ...c, thumbnail: c.thumbnail ? pick(c.thumbnail) : u, posterUrl: pick(c.posterUrl), cover: pick(c.cover) }
-          }
-        } catch (e) { /* 单张解析失败保留原值 */ }
+      // b2 key 作为稳定缓存键（posterUrl/cover 通常是 b2://）
+      const b2src = c.posterUrl || c.cover
+      const key = (b2src && String(b2src).startsWith('b2://')) ? b2src : ''
+      // 期望的最终 https URL：优先后端 list 已签好的 thumbnail；没有则现场解析 b2://
+      let desiredUrl = (c.thumbnail && String(c.thumbnail).startsWith('http')) ? c.thumbnail : ''
+      if (!desiredUrl && key) {
+        try { desiredUrl = await resolvePlayUrl(key) } catch { desiredUrl = '' }
       }
-      return item
+      // 6 天内复用缓存里的稳定 URL（避免预签名 7 天到期，留 1 天余量）
+      if (key && desiredUrl && String(desiredUrl).startsWith('http')) {
+        const hit = cache[key]
+        if (hit && hit.url && (Date.now() - (hit.ts || 0)) < 6 * 24 * 3600 * 1000) {
+          desiredUrl = hit.url
+        } else {
+          cache[key] = { url: desiredUrl, ts: Date.now() }
+          changed = true
+        }
+      }
+      // 修复：cover-only 课程（无 thumbnail）黑图 —— 解析成功后若 thumbnail 为空，用解析出的 URL 补位
+      return { ...c, thumbnail: desiredUrl || c.thumbnail || '' }
     }))
+    if (changed) writeThumbCache(cache)
     return entries
   }
 
