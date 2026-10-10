@@ -173,7 +173,8 @@ export default function GameStore() {
 
   const adminKey = useAdminStore(s => s.adminKey)
   // 云端名单本地缓存：二次打开商城即时渲染，不等待云端大 JSON 下载
-  const CLOUD_CACHE_KEY = 'rlearn_cloud_list_cache'
+  // v2：旧版缓存（大学俄语等课程封面缺失/为 b2:// 坏值）一次性作废，强制重拉云端最新名单
+  const CLOUD_CACHE_KEY = 'rlearn_cloud_list_cache_v2'
   // 云端名单清洗：去掉 dataURL 大字段，保证 sync body 小且干净
   const sanitizeForCloud = (list) => list.map(v => {
     const c = { ...v }

@@ -32,7 +32,7 @@ export async function getCourseById(courseId) {
   if (m && Date.now() - m.t < 30e3) return m.v
   // 0) 本地缓存优先（商城页已把云端名单缓存到 localStorage，二次访问即时）
   try {
-    const cached = localStorage.getItem('rlearn_cloud_list_cache')
+    const cached = localStorage.getItem('rlearn_cloud_list_cache_v2')
     if (cached) {
       const j = JSON.parse(cached)
       if (j && Array.isArray(j.list)) {
@@ -56,11 +56,11 @@ export async function getCourseById(courseId) {
         _courseMemo.set(courseId, { v: resolved, t: Date.now() })
         // 顺手合并写回本地缓存，下次进入（含刷新页面）直接命中
         try {
-          const cj = JSON.parse(localStorage.getItem('rlearn_cloud_list_cache') || '{"list":[]}')
+          const cj = JSON.parse(localStorage.getItem('rlearn_cloud_list_cache_v2') || '{"list":[]}')
           if (!Array.isArray(cj.list)) cj.list = []
           const idx = cj.list.findIndex(v => v.id === hit.id)
           if (idx >= 0) cj.list[idx] = hit; else cj.list.push(hit)
-          localStorage.setItem('rlearn_cloud_list_cache', JSON.stringify(cj))
+          localStorage.setItem('rlearn_cloud_list_cache_v2', JSON.stringify(cj))
         } catch (e2) { /* ignore */ }
         return resolved
       }

@@ -17,7 +17,7 @@ import { getPeaks, getDailyExp, getExpSummary, getStudyDays, getStreakDays, getC
 import { apiFetch } from '../lib/api'
 
 const LEARNING_KEY = 'rlearn_learning_stats'
-const CLOUD_CACHE = 'rlearn_cloud_list_cache'
+const CLOUD_CACHE = 'rlearn_cloud_list_cache_v2'
 
 // ---------- 数据源：本地统计 ----------
 function readLocalLearning() {
