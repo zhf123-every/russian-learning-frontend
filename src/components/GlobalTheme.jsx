@@ -61,6 +61,11 @@ html[data-theme="dark"] .bg-purple-50, html[data-theme="dark"] .bg-purple-100 { 
 html[data-theme="dark"] .bg-purple-50\/40, html[data-theme="dark"] .bg-purple-50\/60 { background-color: #211a2e !important; }
 html[data-theme="dark"] .bg-gray-50\/40, html[data-theme="dark"] .bg-gray-50\/60, html[data-theme="dark"] .bg-gray-50\/80 { background-color: #161618 !important; }
 html[data-theme="dark"] .bg-white\/40, html[data-theme="dark"] .bg-white\/50, html[data-theme="dark"] .bg-white\/60, html[data-theme="dark"] .bg-white\/80 { background-color: #121214 !important; }
+/* 带斜杠的 Tailwind 透明度类（bg-white/50 等）转义选择器匹配不可靠，改用属性选择器兜底：大面积半透明白块深夜改纯黑 */
+html[data-theme="dark"] [class~="bg-white/40"], html[data-theme="dark"] [class~="bg-white/50"], html[data-theme="dark"] [class~="bg-white/60"], html[data-theme="dark"] [class~="bg-white/80"] { background-color: #000000 !important; }
+html[data-theme="dark"] [class~="bg-gray-50/40"], html[data-theme="dark"] [class~="bg-gray-50/60"], html[data-theme="dark"] [class~="bg-gray-50/80"] { background-color: #161618 !important; }
+html[data-theme="dark"] [class~="bg-purple-50/40"], html[data-theme="dark"] [class~="bg-purple-50/60"] { background-color: #211a2e !important; }
+html[data-theme="dark"] [class~="bg-amber-50"], html[data-theme="dark"] [class~="bg-amber-50/60"], html[data-theme="dark"] [class~="bg-amber-100"] { background-color: #241f16 !important; }
 html[data-theme="dark"] .hover\\:bg-purple-50:hover, html[data-theme="dark"] .hover\\:bg-purple-50\\/40:hover { background-color: #2a2136 !important; }
 html[data-theme="dark"] .border-purple-100, html[data-theme="dark"] .border-purple-200, html[data-theme="dark"] .border-purple-300, html[data-theme="dark"] .border-purple-400 { border-color: #3b2f4d !important; }
 html[data-theme="dark"] .text-purple-500, html[data-theme="dark"] .text-purple-600, html[data-theme="dark"] .text-purple-700 { color: #c4b5fd !important; }
