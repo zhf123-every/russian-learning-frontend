@@ -697,6 +697,7 @@ html[data-theme="dark"] .course-card:hover{background:#1a1a1d!important}
 html[data-theme="dark"] .course-btn:hover{background:#333338!important}
 
 html[data-theme="dark"] .exp-chart{border-color:#3b2a5c!important}
+html[data-theme="dark"] .xp-track{background:#27272a!important}
 
 /* 深夜模式：半透明白顶栏/底栏/空状态 → 深色半透明 */
 html[data-theme="dark"] .db-topbar{background:rgba(18,18,20,.94)!important}
