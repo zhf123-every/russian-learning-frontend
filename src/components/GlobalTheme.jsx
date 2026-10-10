@@ -64,6 +64,15 @@ html[data-theme="dark"] .bg-white\/40, html[data-theme="dark"] .bg-white\/50, ht
 html[data-theme="dark"] .hover\\:bg-purple-50:hover, html[data-theme="dark"] .hover\\:bg-purple-50\\/40:hover { background-color: #2a2136 !important; }
 html[data-theme="dark"] .border-purple-100, html[data-theme="dark"] .border-purple-200, html[data-theme="dark"] .border-purple-300, html[data-theme="dark"] .border-purple-400 { border-color: #3b2f4d !important; }
 html[data-theme="dark"] .text-purple-500, html[data-theme="dark"] .text-purple-600, html[data-theme="dark"] .text-purple-700 { color: #c4b5fd !important; }
+/* 商城试学/简介页：可试学条目浅橙底、锁定时浅灰条目深色化 */
+html[data-theme="dark"] .bg-amber-50, html[data-theme="dark"] .bg-amber-50\/60, html[data-theme="dark"] .bg-amber-100 { background-color: #241f16 !important; }
+html[data-theme="dark"] .hover\\:bg-amber-50:hover { background-color: #2d2719 !important; }
+html[data-theme="dark"] .border-amber-100, html[data-theme="dark"] .border-amber-200 { border-color: #4a3f24 !important; }
+/* 通关之路（/journey）：所有紫色文字深夜模式改为白色 */
+html[data-theme="dark"] .section-title, html[data-theme="dark"] .stat-value, html[data-theme="dark"] .rpg-card-link,
+html[data-theme="dark"] .chart-total, html[data-theme="dark"] .radar-name, html[data-theme="dark"] .bar-head,
+html[data-theme="dark"] .awaken-note, html[data-theme="dark"] .section-sub::before { color: #ffffff !important; }
+html[data-theme="dark"] .peak, html[data-theme="dark"] .peak-num, html[data-theme="dark"] .talent-label { fill: #ffffff !important; }
 `;
 
 export default function GlobalTheme() {
