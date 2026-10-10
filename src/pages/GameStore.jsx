@@ -551,7 +551,7 @@ export default function GameStore() {
         {activeCat === '教材同步' && (
           <div className="flex items-center gap-2 mb-6 flex-wrap">
             <span className="text-sm text-gray-400 mr-1">年级</span>
-            {['全部', '一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '七年级', '八年级', '九年级', '高中'].map((st) => (
+            {['全部', '一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '七年级', '八年级', '九年级', '高中', '大学'].map((st) => (
               <button
                 key={st}
                 type="button"
