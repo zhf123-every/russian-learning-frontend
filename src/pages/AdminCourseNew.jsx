@@ -8,6 +8,7 @@ import { GRADES, TEXTBOOKS } from '../data/gameMallData'
 import { apiFetch } from '../lib/api'
 import { localInputToTs, tsToLocalInput } from '../utils/courseSchedule'
 import { chat } from '../lib/ai'
+import { resolvePlayUrl } from '../lib/playUrl'
 import { useAdminStore } from '../store/adminStore'
 
 // —— 与原 AdminDashboard 相同的常量 ——
@@ -81,6 +82,12 @@ export default function AdminCourseNew() {
       scheduledPublishAt: tsToLocalInput(c.scheduledPublishAt),
       scheduledUnpublishAt: tsToLocalInput(c.scheduledUnpublishAt),
     })
+    // b2:// 云端封面 → 解析为预签名可显示链接（<img> 不认 b2:// 协议，否则编辑页封面预览空白）
+    if (c.cover && String(c.cover).startsWith('b2://')) {
+      resolvePlayUrl(c.cover).then((u) => {
+        if (u && u !== c.cover) setForm(prev => ({ ...prev, coverUrl: u }))
+      }).catch(() => { /* 解析失败保留原值 */ })
+    }
     setEditingId(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
