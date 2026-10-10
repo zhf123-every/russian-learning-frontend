@@ -640,7 +640,7 @@ html[data-theme="dark"]{
   background: var(--db-card); border: 1px solid var(--db-border); border-radius: 16px; padding: 24px;
 }
 @media (max-width: 900px) { .talent-layout { grid-template-columns: 1fr; } }
-.radar-wrap { max-width: 420px; margin: 0 auto; width: 100%; border: 1px solid var(--db-border); border-radius: 12px; background: #fdfcff; padding: 16px; }
+.radar-wrap { max-width: 420px; margin: 0 auto; width: 100%; border: 1px solid var(--db-border); border-radius: 12px; background: transparent; padding: 16px; }
 .radar-name { text-align: center; font-size: 13px; color: #6d28d9; font-weight: 700; margin-top: 8px; }
 .talent-label { font-size: 11px; fill: #6d28d9; font-weight: 600; }
 .radar-fill { fill: rgba(124,58,237,.16); stroke: #7c3aed; stroke-width: 2; filter: drop-shadow(0 0 6px rgba(124,58,237,.35)); }
@@ -658,7 +658,7 @@ html[data-theme="dark"]{
   0%, 100% { opacity: 1; }
   50%      { opacity: .55; }
 }
-.talent-bars { border: 1px solid var(--db-border); border-radius: 12px; background: #fdfcff; padding: 16px; }
+.talent-bars { border: 1px solid var(--db-border); border-radius: 12px; background: transparent; padding: 16px; }
 .bar-group { margin-bottom: 12px; }
 .bar-head { display: flex; justify-content: space-between; font-size: 12px; color: #6d28d9; font-weight: 600; margin-bottom: 4px; }
 .low-num { color: #dc2626; }
