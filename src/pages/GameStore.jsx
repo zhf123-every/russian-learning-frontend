@@ -192,7 +192,8 @@ export default function GameStore() {
           const u = await resolvePlayUrl(src)
           if (u && u !== src) {
             const pick = (v) => (v && String(v).startsWith('b2://')) ? u : v
-            item = { ...c, thumbnail: pick(c.thumbnail), posterUrl: pick(c.posterUrl), cover: pick(c.cover) }
+            // 修复：cover-only 课程（无 thumbnail）黑图 —— 解析成功后若 thumbnail 为空，用解析出的 URL 补位
+            item = { ...c, thumbnail: c.thumbnail ? pick(c.thumbnail) : u, posterUrl: pick(c.posterUrl), cover: pick(c.cover) }
           }
         } catch (e) { /* 单张解析失败保留原值 */ }
       }
@@ -465,7 +466,7 @@ export default function GameStore() {
                       <div key={it.id} className="group" onClick={() => it.kind === 'video' ? onVideoCardClick(it) : onCoverCardClick(it)} style={{ cursor: 'pointer' }}>
                         <div
                           className={`aspect-video rounded-xl overflow-hidden mb-2 flex items-center justify-center group-hover:shadow-lg transition relative ${
-                            it.thumbnail ? '' : `bg-gradient-to-br ${it.cover}`
+                            it.thumbnail ? '' : (it.cover && !String(it.cover).includes('://') ? `bg-gradient-to-br ${it.cover}` : 'bg-base-200')
                           }`}
                           style={it.thumbnail ? { backgroundImage: `url(${it.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
                         >
@@ -502,7 +503,7 @@ export default function GameStore() {
                     <div key={it.id} className="group" onClick={() => it.kind === 'video' ? onVideoCardClick(it) : onCoverCardClick(it)} style={{ cursor: 'pointer' }}>
                       <div
                         className={`aspect-video rounded-xl overflow-hidden mb-2 flex items-center justify-center group-hover:shadow-lg transition relative ${
-                          it.thumbnail ? '' : `bg-gradient-to-br ${it.cover}`
+                          it.thumbnail ? '' : (it.cover && !String(it.cover).includes('://') ? `bg-gradient-to-br ${it.cover}` : 'bg-base-200')
                         }`}
                         style={it.thumbnail ? { backgroundImage: `url(${it.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
                       >
@@ -626,7 +627,7 @@ export default function GameStore() {
                   <div key={it.id} className="group" onClick={() => (isVideo ? onVideoCardClick(it) : onCoverCardClick(it))} style={{ cursor: unlocked ? 'pointer' : 'default' }}>
                     <div
                       className={`aspect-video rounded-xl overflow-hidden mb-2 flex items-center justify-center group-hover:shadow-lg transition relative ${
-                        showThumb ? '' : `bg-gradient-to-br ${it.cover}`
+                        showThumb ? '' : (it.cover && !String(it.cover).includes('://') ? `bg-gradient-to-br ${it.cover}` : 'bg-base-200')
                       }`}
                       style={showThumb ? { backgroundImage: `url(${it.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
                     >

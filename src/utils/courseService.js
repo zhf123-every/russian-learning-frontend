@@ -13,7 +13,8 @@ async function resolveCourseCover(course) {
   const u = await resolvePlayUrl(src)
   if (!u || u === src) return course
   const pick = (v) => (v && String(v).startsWith('b2://')) ? u : v
-  return { ...course, posterUrl: pick(course.posterUrl), thumbnail: pick(course.thumbnail), cover: pick(course.cover) }
+  // 修复：cover-only 课程（无 thumbnail）黑图 —— 解析成功后若 thumbnail 为空，用解析出的 URL 补位
+  return { ...course, posterUrl: pick(course.posterUrl), thumbnail: course.thumbnail ? pick(course.thumbnail) : u, cover: pick(course.cover) }
 }
 
 // 会话内课程内存缓存（30 秒时效）：详情页/大纲页来回跳转秒回，避免每次重新拉云端全量列表
