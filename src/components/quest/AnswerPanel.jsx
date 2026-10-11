@@ -301,7 +301,13 @@ export default function AnswerPanel({
                             const plainWord = displayWord.replace(/\u0301/g, ""); // 大字不带重音，重音只保留在灰色小字
                             const posLabel = getPosLabel(w.pos);
                             const grammarLabel = w.grammarLabel || buildGrammarLabel(w);
-                            const chinese = w.chinese || w.zh || w.meaning || w.translation || "";
+                            // 清洗释义：去掉夹带的拼音/拉丁转写（如"爱 ài"、"爱(ai)"），只保留纯中文
+                            const rawChinese = w.chinese || w.zh || w.meaning || w.translation || "";
+                            const chinese = String(rawChinese || "")
+                              .replace(/[（(][^）)]*[a-zA-Zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü][^）)]*[）)]/g, "")
+                              .replace(/[a-zA-Zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü]+/g, "")
+                              .replace(/\s+/g, " ")
+                              .trim();
                             const cellStyle = {
                               display: "flex", flexDirection: "column", alignItems: "center",
                               padding: "0 14px", minWidth: 100, minHeight: 190, justifyContent: "flex-start",
@@ -315,6 +321,8 @@ export default function AnswerPanel({
                                   onClick={() => speakRussian(displayWord, w.audio_url, w.id, "word")}
                                   title="点击发音"
                                 >
+                                  {/* 重音符（灰色小字，带重音） */}
+                                  <div style={styles.phonetic}>{displayWord}</div>
                                   {/* 大字单词 */}
                                   <div className="word-card-bigword" style={{ ...styles.bigWord, color: "var(--qs-text, #1F2937)" }}>
                                     {plainWord}
