@@ -205,8 +205,25 @@ export function segmentsToItems(items) {
       const diffKey = cleanText(it.difficulty) || "medium";
       const segments = [...it.segments].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       const russian = segments.map((s) => cleanText(s.text)).filter(Boolean).join(" ");
-      const tokens = russian.split(/\s+/).filter(Boolean);
-      const words = tokens.map((w) => ({ ru: w, zh: cleanText(it.translation) }));
+      // 优先用后端 quest_words 表返回的逐词标注（有 form/pos/性数格/句法角色）；没有再简单 split 兜底
+      let words;
+      if (Array.isArray(it.words) && it.words.length) {
+        words = it.words.map((w) => ({
+          ru: w.form || w.lemma || "",
+          form: w.form || w.lemma || "",
+          lemma: w.lemma || "",
+          pos: w.pos || "",
+          gender: w.gender || "",
+          number: w.number || "",
+          grammarCase: w.grammarCase || "",
+          syntacticRole: w.syntacticRole || "",
+          zh: cleanText(it.translation),
+          chinese: cleanText(it.translation),
+        }));
+      } else {
+        const tokens = russian.split(/\s+/).filter(Boolean);
+        words = tokens.map((w) => ({ ru: w, zh: cleanText(it.translation), chinese: cleanText(it.translation) }));
+      }
       const chunks = segments.map((s) => ({ ru: cleanText(s.text), zh: cleanText(s.chinese) })).filter((c) => c.ru);
       out.push({
         id: `seg_${cleanText(it.sentence_hash) || sentenceNo}_${diffKey}`,
