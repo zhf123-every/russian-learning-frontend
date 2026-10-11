@@ -140,8 +140,10 @@ export function slotTablesToItems(items) {
       for (const row of rows) {
         const russian = cleanText(row.ru);
         if (!russian) continue;
-        const tokens = russian.split(/\s+/).filter(Boolean);
+        // 听写页只出"完整句"行（与中译俄题数一致）；积木行是分步练习，不单独出题
         const isFull = cleanText(row.cardType) === "完整句";
+        if (!isFull) continue;
+        const tokens = russian.split(/\s+/).filter(Boolean);
         out.push({
           id: `slot_${cleanText(it.sentence_hash) || sentenceNo}_${diffKey}_${row.seq || 0}`,
           russian,
@@ -152,9 +154,9 @@ export function slotTablesToItems(items) {
           fullChinese,
           fullWords,
           audio_url: "",
-          chunks: [], // 单行整句听写（无分段提示）
+          chunks: [],
           segDifficulty: diffKey,
-          ...(isFull ? { chunkIsFinal: true } : { chunkIsNew: true }),
+          chunkIsFinal: true,
         });
       }
     }
