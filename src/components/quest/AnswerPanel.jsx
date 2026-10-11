@@ -315,15 +315,13 @@ export default function AnswerPanel({
                                   onClick={() => speakRussian(displayWord, w.audio_url, w.id, "word")}
                                   title="点击发音"
                                 >
-                                  {/* 重音符（灰色小字） */}
-                                  <div style={styles.phonetic}>{displayWord}</div>
-                                  {/* 大字单词（不带重音） */}
+                                  {/* 大字单词 */}
                                   <div className="word-card-bigword" style={{ ...styles.bigWord, color: "var(--qs-text, #1F2937)" }}>
                                     {plainWord}
                                   </div>
                                   {/* 彩色下划线（词性色） */}
                                   <div style={{ ...styles.underline, background: effColor }} />
-                                  {/* 中文释义 */}
+                                  {/* 中文释义（直接用课程上传的中文） */}
                                   {uiCfg.showWordTrans !== false && chinese && <div style={styles.chinese}>{chinese}</div>}
                                   {/* 语法标注（性数格） */}
                                   {grammarLabel && <div style={{ ...styles.pos, fontSize: "10px", color: "var(--qs-sub, #9CA3AF)", marginTop: "2px" }}>{grammarLabel}</div>}
