@@ -301,13 +301,21 @@ export default function AnswerPanel({
                             const plainWord = displayWord.replace(/\u0301/g, ""); // 大字不带重音，重音只保留在灰色小字
                             const posLabel = getPosLabel(w.pos);
                             const grammarLabel = w.grammarLabel || buildGrammarLabel(w);
-                            // 清洗释义：去掉夹带的拼音/拉丁转写（如"爱 ài"、"爱(ai)"），只保留纯中文
+                            // 释义清洗：优先用课程上传的逐词中文；词典兜底时只留第一个义项核心中文，
+                            // 去掉 разг./в знач./со словами 等俄语语法标注、多余义项、拉丁/西里尔字母
                             const rawChinese = w.chinese || w.zh || w.meaning || w.translation || "";
-                            const chinese = String(rawChinese || "")
-                              .replace(/[（(][^）)]*[a-zA-Zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü][^）)]*[）)]/g, "")
-                              .replace(/[a-zA-Zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü]+/g, "")
-                              .replace(/\s+/g, " ")
-                              .trim();
+                            const chinese = (() => {
+                              let t = String(rawChinese || "").trim();
+                              if (!t) return "";
+                              // 去掉开头的俄语语体/语法标注（разг. / в знач. частицы / со словами... / книжн. / офиц. / шутл. 等）
+                              t = t.replace(/^(разг|в знач[^\n;]*|со словами[^\n;]*|информ|книжн|офиц|шутл|пренебр|брань|выс|спец)[.;,\s]*/gi, "");
+                              // 只取第一个分号/竖线/换行前的第一个义项
+                              t = t.split(/[;；\n|]/)[0];
+                              // 去掉残留拉丁字母和西里尔字母
+                              t = t.replace(/[a-zA-Zа-яА-ЯёЁāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü]+/g, "");
+                              t = t.replace(/\s+/g, " ").trim();
+                              return t;
+                            })();
                             const cellStyle = {
                               display: "flex", flexDirection: "column", alignItems: "center",
                               padding: "0 14px", minWidth: 100, minHeight: 190, justifyContent: "flex-start",
