@@ -442,24 +442,7 @@ export default function QuestDictation() {
         setLoading(false);
         return;
       }
-      // P4：句乐部路径优先——课时有 scaffoldingPaths → 按难度取档，每个教学块 = 一道听写题（分步零件顺序）
-      try {
-        const pre = getCachedLesson(effectiveCourseId);
-        const hasPaths = pre && Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length;
-        if (hasPaths) {
-          const items = itemsFromPaths(pre.scaffoldingPaths, diffKeyRef.current);
-          if (items.length && !cancelled) {
-            setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
-            setLocalLesson(pre); setIsLocalMode(true);
-            window.__unitKnowledge = window.__unitKnowledge || {};
-            window.__unitKnowledge[effectiveCourseId] = (pre && pre.knowledge) || {};
-            setStatements(applyDiffItems(items)); // 不分步展开：路径步骤即听写题序
-            setLoading(false);
-          }
-          return;
-        }
-      } catch (e) { /* 缓存不可用 → 走原逻辑 */ }
-      // P3：语块优先——课时有 ok 语块 → 整句听写（C 混合），不再走旧分支；无则降级老路径
+      // P3：语块优先（与中译俄同一数据源，按句为单位 = 上传的行数）→ 整句听写
       try {
         const segItems = await loadSegmentsItemsForUnit(effectiveCourseId, studyCourseId);
         if (segItems && segItems.length && !cancelled) {
@@ -475,6 +458,23 @@ export default function QuestDictation() {
           return;
         }
       } catch (e) { /* 语块不可用 → 走原逻辑 */ }
+      // P4：句乐部路径兜底——课时有 scaffoldingPaths → 按难度取档（仅当语块不可用时）
+      try {
+        const pre = getCachedLesson(effectiveCourseId);
+        const hasPaths = pre && Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length;
+        if (hasPaths) {
+          const items = itemsFromPaths(pre.scaffoldingPaths, diffKeyRef.current);
+          if (items.length && !cancelled) {
+            setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
+            setLocalLesson(pre); setIsLocalMode(true);
+            window.__unitKnowledge = window.__unitKnowledge || {};
+            window.__unitKnowledge[effectiveCourseId] = (pre && pre.knowledge) || {};
+            setStatements(applyDiffItems(items));
+            setLoading(false);
+          }
+          return;
+        }
+      } catch (e) { /* 缓存不可用 → 走原逻辑 */ }
       // 预加载页已预载课时数据 → 无遮罩直接消费
       try {
         const pre = getCachedLesson(effectiveCourseId);
