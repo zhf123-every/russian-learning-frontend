@@ -452,8 +452,8 @@ export default function QuestDictation() {
           setUnitMeta({ title, description: desc });
           setLocalLesson({ id: effectiveCourseId, title });
           setIsLocalMode(false);
-          const stmts = expandStatements(segItems, []);
-          setStatements(applyDiffItems(stmts));
+          // 听写页按句为单位：不展开积木步骤，直接用语块原题（与中译俄题数一致）
+          setStatements(applyDiffItems(segItems));
           setLoading(false);
           return;
         }
