@@ -704,6 +704,13 @@ export default function QuestDictation() {
     }
   }, [loading, loadError, questionIndex, currentStatement, ensureTtsUrl]);
 
+  // ---- 数据加载完后后台全量预载本单元所有 TTS（并发，用户点开始时已预载大半 → 进题秒播） ----
+  useEffect(() => {
+    if (!loading && !loadError && statements.length) {
+      preloadUnit(statements);
+    }
+  }, [loading, loadError, statements]);
+
   // ---- 自动聚焦输入框 ----
   useEffect(() => {
     if (!loading && !loadError && currentStatement && !showAnswerPanel && !showSummary) {
