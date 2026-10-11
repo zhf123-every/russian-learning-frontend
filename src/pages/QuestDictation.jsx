@@ -92,11 +92,8 @@ function itemsFromPaths(paths, diffKey) {
 // P3：语块题自带 chunks 分段（该档语块顺序）→ 展开器优先用语块分段生成"零件→累积→整句"；
 //     老数据无 chunks → 本地规则切块；hard 档整句一块 → 展开器判 <2 块直接整句听写
 function expandStatements(items, wordList) {
-  const zhIdx = buildZhIndex(wordList);
-  return (Array.isArray(items) ? items : []).flatMap((it) => {
-    const steps = expandUnitToChunkSteps(it, zhIdx);
-    return steps || [it];
-  });
+  // 听写页按句为单位：不展开积木步骤，直接用原题（与中译俄题数一致）
+  return (Array.isArray(items) ? items : []).slice();
 }
 
 export default function QuestDictation() {
