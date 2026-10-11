@@ -108,6 +108,20 @@ export default function QuestionInput({
           padding-bottom: 2px;
         }
 
+        /* 已给人名/专有名词：纯文字显示，无下划线、无槽位 */
+        .quest-word-fixed {
+          height: 4rem;
+          font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          font-size: 3em;
+          line-height: 1;
+          font-weight: 400;
+          color: var(--qs-sub, rgba(32, 32, 32, 0.6));
+          display: inline-flex;
+          align-items: flex-end;
+          justify-content: center;
+          padding-bottom: 2px;
+        }
+
         /* 隐藏的真实输入框 —— 绝对定位覆盖在单词行上方 */
         .quest-input-real {
           position: absolute;
@@ -159,8 +173,13 @@ export default function QuestionInput({
             const isPunct = isPunctuation(word.text);
 
             let className = isPunct ? "quest-word-punct" : "quest-word";
-            if (word.isActive) className += " quest-word-active";
-            if (isError) className += " quest-word-error";
+            if (word.fixed) {
+              // 已给人名/专有名词：纯文字显示，无下划线、不参与输入
+              className = "quest-word-fixed";
+            } else if (word.isActive) {
+              className += " quest-word-active";
+            }
+            if (!word.fixed && isError) className += " quest-word-error";
 
             return (
               <div
