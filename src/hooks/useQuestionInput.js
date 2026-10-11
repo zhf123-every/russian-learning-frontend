@@ -431,14 +431,15 @@ export function useQuestionInput({
     const stripPunct = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, '');
     const userWords = inputValue.toLowerCase().trim().split(/\s+/).filter(Boolean).map(stripPunct).filter(Boolean);
     const allAnswerWords = (answerText || "").toLowerCase().trim().split(/\s+/).filter(Boolean).map(stripPunct).filter(Boolean);
-    // 已给人名/专有名词：从标准答案中排除（用户不打，也不应计入判题词数）
+    // 已给人名/专有名词：从标准答案和用户输入中都排除（用户多打了人名也不误判）
     const fixedSet = new Set(
       userInputWords.filter(w => w.fixed).map(w => stripPunct(w.text).toLowerCase())
     );
     const answerWords = allAnswerWords.filter(w => !fixedSet.has(w));
+    const userWordsFiltered = userWords.filter(w => !fixedSet.has(w));
 
     // 词数不同 → 立即判定错误（已给人名不算错）
-    if (userWords.length !== answerWords.length) {
+    if (userWordsFiltered.length !== answerWords.length) {
       setUserInputWords((prevWords) => prevWords.map((w) => ({ ...w, incorrect: w.fixed ? false : true })));
       enteredFixModeRef.current = true;
       setMode(MODES.FIX);
@@ -451,7 +452,7 @@ export function useQuestionInput({
     }
 
     // 词数相同 → 排序后比较词集合（忽略语序）
-    const sortedUser = [...userWords].sort();
+    const sortedUser = [...userWordsFiltered].sort();
     const sortedAnswer = [...answerWords].sort();
     const setMatch = sortedUser.every((w, i) => w === sortedAnswer[i]);
 
@@ -480,7 +481,7 @@ export function useQuestionInput({
         if (w.fixed) { w.incorrect = false; return; }
         // 非 fixed 词按用户输入顺序比较
         const idx = newWords.filter(x => !x.fixed).findIndex(x => x.id === w.id);
-        const userWord = userWords[idx] || "";
+        const userWord = userWordsFiltered[idx] || "";
         if (!answerSet.has(userWord.toLowerCase())) w.incorrect = true;
       });
       return newWords;
@@ -492,7 +493,7 @@ export function useQuestionInput({
     submitToBackend(inputValue).then((result) => {
       if (result && result.errors) markIncorrectFromErrors(result.errors);
     });
-  }, [mode, inputValue, answerText, isJudging, submitToBackend, markIncorrectFromErrors, onCorrect, onWrong, computeResultType]);
+  }, [mode, inputValue, answerText, isJudging, userInputWords, submitToBackend, markIncorrectFromErrors, onCorrect, onWrong, computeResultType]);
 
   // ==========================================================
   // 键盘事件处理（绑定在 input 元素的 onKeyDown 上）
