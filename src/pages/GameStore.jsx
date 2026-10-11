@@ -224,13 +224,20 @@ export default function GameStore() {
     let alive = true
     const loadCloud = async () => {
       // ① 先读本地缓存 → 立即渲染卡片（不白屏不等待）
+      // 修复：旧缓存可能封面为空/b2://，直接渲染会导致首次进网站封面不显示；
+      // 只有缓存里有有效 https 封面的课程才立即渲染，其余等 applyCloud 拉最新数据
       try {
         const cached = localStorage.getItem(CLOUD_CACHE_KEY)
         if (cached) {
           const j = JSON.parse(cached)
           if (j && Array.isArray(j.list) && j.list.length) {
+            const cachedCourses = j.list.filter(v => v && v.kind === 'course' && v.title)
+            // 只有缓存里已有有效 https 封面的才立即渲染；没有的等 applyCloud
+            const coursesWithThumb = cachedCourses.filter(v => v.thumbnail && String(v.thumbnail).startsWith('http'))
+            if (coursesWithThumb.length) {
+              setCloudCourses(coursesWithThumb)
+            }
             setCloudVideos(j.list.filter(v => v && v.title && (v.videoUrl || v.kind === 'course') && v.kind !== 'course'))
-            setCloudCourses(await resolveCloudThumbs(j.list.filter(v => v && v.kind === 'course' && v.title)))
           }
         }
       } catch (e) { /* 缓存损坏忽略 */ }
