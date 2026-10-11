@@ -918,7 +918,15 @@ export default function QuestDictation() {
   if (showAnswerPanel) {
     return (
       <AnswerPanel
-        statement={currentStatement}
+        statement={{
+          ...currentStatement,
+          // 答对后显示整句所有词卡（与中译俄一致），而非当前步的单个词
+          words: (currentStatement?.fullWords && currentStatement.fullWords.length)
+            ? currentStatement.fullWords
+            : currentStatement?.words,
+          russian: currentStatement?.fullRussian || currentStatement?.russian,
+          chinese: currentStatement?.fullChinese || currentStatement?.chinese,
+        }}
         onRetry={handleRetry}
         onNext={handleNextFromAnswer}
         isLast={questionIndex === statements.length - 1}

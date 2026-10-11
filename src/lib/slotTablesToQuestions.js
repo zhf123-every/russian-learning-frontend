@@ -125,6 +125,18 @@ export function slotTablesToItems(items) {
     for (const it of group) {
       const diffKey = cleanText(it.difficulty) || "medium";
       const rows = [...it.rows].sort((a, b) => (a.seq || 0) - (b.seq || 0));
+      // 预聚合整句所有词（AnswerPanel 答对后显示整句词卡，与中译俄一致）
+      const fullRussian = cleanText(it.sentence) || rows[rows.length - 1]?.ru || "";
+      const fullChinese = cleanText(rows[rows.length - 1]?.zh) || "";
+      const fullWords = [];
+      for (const r of rows) {
+        const ru = cleanText(r.ru);
+        if (!ru) continue;
+        for (const tok of ru.split(/\s+/).filter(Boolean)) {
+          // 字段对齐 AnswerPanel：form/lemma/chinese（中译俄格式）
+          fullWords.push({ order: fullWords.length, form: tok, lemma: tok, pos: "", chinese: cleanText(r.zh) });
+        }
+      }
       for (const row of rows) {
         const russian = cleanText(row.ru);
         if (!russian) continue;
@@ -135,6 +147,10 @@ export function slotTablesToItems(items) {
           russian,
           chinese: cleanText(row.zh),
           words: tokens.map((w) => ({ ru: w, zh: cleanText(row.zh) })),
+          // 整句信息（答对后 AnswerPanel 显示整句词卡）
+          fullRussian,
+          fullChinese,
+          fullWords,
           audio_url: "",
           chunks: [], // 单行整句听写（无分段提示）
           segDifficulty: diffKey,
