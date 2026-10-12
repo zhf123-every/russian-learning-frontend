@@ -25,6 +25,7 @@ import { inferRoles } from "../../lib/roleRules";
 import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQuestSettings";
 
 import { playGlobalAudio, stopGlobalAudio } from "../../utils/audioService";
+import { useSettingsStore } from "../../store/settingsStore";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 内存缓存：text -> audio_url，避免重复请求
 const ttsCache = new Map();
@@ -118,9 +119,12 @@ export default function AnswerPanel({
 
   // ---- 俄语发音（Yandex 真人发音）----
   const audioRef = useRef(null);
+  const settings = useSettingsStore((s) => s.settings);
 
   const speakRussian = useCallback(async (text, audioUrl = null, itemId = null, itemType = null) => {
     if (!text) return;
+    // 检查答案页自动播放设置
+    if (!settings.answerAutoPlay && itemType === "answer") return;
     try {
       // 停止当前播放
       if (audioRef.current) {
@@ -153,7 +157,7 @@ export default function AnswerPanel({
 
       if (url) {
         // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play（杜绝与答题页发音重叠）
-        playGlobalAudio(url, { rate: ui?.rate || 1 });
+        playGlobalAudio(url, { rate: ui?.rate || 1, volume: settings.ttsVolume ?? 1 });
       }
     } catch (e) {
       console.warn("发音失败:", e);
