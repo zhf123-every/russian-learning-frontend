@@ -260,23 +260,27 @@ export default function QuestDictation() {
     // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
     const preUrl = getCachedTtsUrl(text);
     if (preUrl) { ttsUrlCacheRef.current[text] = preUrl; return preUrl; }
+    // 直接从 store 读最新设置
+    const storeSettings = useSettingsStore.getState().settings;
     // 发音源切换：system=浏览器系统发音 / premium=后端高级发音人
-    const ttsSource = useSettingsStore.getState().settings.ttsSource || "premium";
+    const ttsSource = storeSettings.ttsSource || "premium";
     if (ttsSource === "system" && window.speechSynthesis) {
       try { window.speechSynthesis.cancel(); } catch (e) {}
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "ru-RU";
-      const volume = useSettingsStore.getState().settings.ttsVolume ?? 1;
+      const volume = (storeSettings.vol ?? 100) / 100; // 设置弹窗保存的是 vol (0-100)
       u.volume = volume;
       window.speechSynthesis.speak(u);
       return "system://" + text; // 返回伪 URL，标记为系统发音
     }
+    // 发音类型：female=女（alena）/ male=男
+    const voice = storeSettings.ttsVoice === "male" ? "dmitry" : "alena";
     let url = "";
     try {
       const res = await fetch(`${API_BASE}/api/tts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: "alena", id: effectiveCourseId, type: "statement" }),
+        body: JSON.stringify({ text, voice: voice, id: effectiveCourseId, type: "statement" }),
       });
       const data = await res.json();
       if (data.ok && data.audio_url) url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
