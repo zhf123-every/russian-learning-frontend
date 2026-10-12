@@ -145,9 +145,20 @@ function useAudioPreview() {
       src.start(t); src.stop(t + dur + 0.02)
     } catch (e) { /* 忽略 */ }
   }
+  const keyAudioRef = useRef(null)
   const playKey = (type, vol = 0.7) => {
+    // 「默认」= 官方键盘打字音 typing.mp3（与答题页打字音一致，恢复原默认键盘声）
+    if (type === 'soft') {
+      try {
+        if (!keyAudioRef.current) keyAudioRef.current = new Audio('/sounds/typing.mp3')
+        const a = keyAudioRef.current
+        a.pause(); a.currentTime = 0
+        a.volume = Math.min(1, Math.max(0, vol))
+        a.play().catch(() => {})
+      } catch (e) { /* 忽略 */ }
+      return
+    }
     const fx = {
-      soft: () => tone(1560, 0.03, 'sine', 0.05, 0, null, vol),
       drum: () => { noise(0.06, 0.07, 0, vol); tone(120, 0.07, 'sine', 0.09, 0, 80, vol) },
       bubble: () => tone(420, 0.07, 'sine', 0.06, 0, 1300, vol),
       typewriter: () => { tone(950, 0.02, 'square', 0.035, 0, null, vol); noise(0.015, 0.025, 0, vol) },
@@ -155,7 +166,7 @@ function useAudioPreview() {
       cherryBlue: () => { tone(1650, 0.018, 'square', 0.05, 0, null, vol); tone(720, 0.03, 'triangle', 0.04, 0.03, null, vol) },
       cherryRed: () => { tone(1050, 0.015, 'square', 0.04, 0, null, vol); noise(0.012, 0.018, 0, vol) },
     }
-    ;(fx[type] || fx.soft)()
+    ;(fx[type] || fx.bubble)()
   }
   const playFeedback = (vol = 0.7) => {
     tone(523, 0.09, 'sine', 0.09, 0, null, vol); tone(659, 0.09, 'sine', 0.09, 0.06, null, vol); tone(784, 0.09, 'sine', 0.09, 0.12, null, vol); tone(1046, 0.18, 'sine', 0.1, 0.18, null, vol)

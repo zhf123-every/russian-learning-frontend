@@ -42,6 +42,14 @@ export const setSfxConfig = (patch) => {
 }
 loadSfxConfig() // 模块加载即同步最新设置
 
+// 设置弹窗/答题页保存 rlearn_quest_sfx 后实时刷新（打字音效类型/音量、反馈音量等即时生效）
+// 否则各页 sfxKey()/playRightSound 等会一直用模块加载时的旧配置
+if (typeof window !== 'undefined') {
+  const __refreshSfx = () => { loadSfxConfig() }
+  window.addEventListener('quest-ui-changed', __refreshSfx)
+  window.addEventListener('storage', __refreshSfx)
+}
+
 let ctx = null;        // 全局 AudioContext
 let bus = null;        // 音效总线（feedbackBus，与语音播放隔离）
 let buffers = {};      // name -> AudioBuffer
