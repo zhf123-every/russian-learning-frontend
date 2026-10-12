@@ -188,7 +188,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
 
   const set = (k, v) => setS(prev => ({ ...prev, [k]: v }))
   const applyKeys = (id, k) => { const n = { ...hk, [id]: k }; setHk(n); saveHotkeys(n); setRecId(null); toast('快捷键已更新并保存') }
-  const patchSfx = (p) => { const n = saveSfx(p); setSfx(n) }
+  const patchSfx = (p) => { const n = saveSfx(p); setSfx(n); try { window.dispatchEvent(new Event('quest-ui-changed')) } catch (e) {} }
   const patchUi = (p) => { const n = saveUi(p); setUi(n); try { window.dispatchEvent(new Event('quest-ui-changed')) } catch (e) {} }
 
   // 录制监听：捕获任意按键，Esc 取消，检测冲突
