@@ -172,8 +172,13 @@ export default function AnswerPanel({
   // 本地即时标注：词典（重音/词性/性数格）+ 形态规则引擎（句子成分）整句同步推断
   // 覆盖课程数据里残留的无效标签（default 等），答对瞬间成分/重音即完整，无闪烁无延迟
   const words = useMemo(() => {
-    const raw = statement?.words || [];
-    console.log("[AnswerPanel DEBUG] words.length =", raw.length, "| raw =", raw, "| russian =", statement?.russian, "| statement keys =", Object.keys(statement || {}));
+    let raw = statement?.words || [];
+    // 兜底：如果 words 为空，用 russian 自动 split 并调词典补全（听写页/本地数据无逐词标注时）
+    if ((!raw || raw.length === 0) && statement?.russian) {
+      const tokens = String(statement.russian).split(/\s+/).filter(Boolean);
+      raw = tokens.map((t) => ({ ru: t, chinese: statement.chinese || "" }));
+    }
+    console.log("[AnswerPanel DEBUG] words.length =", raw.length, "| raw =", raw, "| russian =", statement?.russian);
     const needRules = raw.some((w) => !w.pos || w.pos === "default" || !w.roleLabel || w.roleLabel === "default" || !w.syntacticRole || w.syntacticRole === "default");
     if (needRules && statement?.russian) {
       const dictWords = annotateWords(statement.russian);
