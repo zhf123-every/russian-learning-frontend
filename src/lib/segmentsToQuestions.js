@@ -187,7 +187,7 @@ export function filterSegmentsByDifficulty(sequences, difficultyKey, customTypes
  *   优先用语块分段生成"零件→累积→整句"步骤；hard 档整句一块 → 展开器判 <2 块直接整句听写。
  * - chunkIsFinal:true → 现有 granularityOfUnit 判 sentence（粒度过滤复用）。
  */
-export function segmentsToItems(items) {
+export function segmentsToItems(items, wordsMap) {
   const out = [];
   const ok = (Array.isArray(items) ? items : []).filter(
     (it) => it && it.status === "ok" && Array.isArray(it.segments) && it.segments.length
@@ -205,7 +205,8 @@ export function segmentsToItems(items) {
       const diffKey = cleanText(it.difficulty) || "medium";
       const segments = [...it.segments].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       const russian = segments.map((s) => cleanText(s.text)).filter(Boolean).join(" ");
-      // 优先用后端 quest_words 表返回的逐词标注（有 form/pos/性数格/句法角色）；没有再简单 split 兜底
+      const zhText = cleanText(it.translation);
+      // 优先用后端 quest_words 表返回的逐词标注；其次用传入的 wordsMap（前端调 statements 接口拿的）；最后简单 split 兜底
       let words;
       if (Array.isArray(it.words) && it.words.length) {
         words = it.words.map((w) => ({
@@ -217,12 +218,26 @@ export function segmentsToItems(items) {
           number: w.number || "",
           grammarCase: w.grammarCase || "",
           syntacticRole: w.syntacticRole || "",
-          zh: cleanText(it.translation),
-          chinese: cleanText(it.translation),
+          zh: zhText,
+          chinese: zhText,
+        }));
+      } else if (wordsMap && wordsMap[zhText]) {
+        // 从 statements 接口拿的 words，按中文匹配补全
+        words = wordsMap[zhText].map((w) => ({
+          ru: w.form || w.lemma || "",
+          form: w.form || w.lemma || "",
+          lemma: w.lemma || "",
+          pos: w.pos || "",
+          gender: w.gender || "",
+          number: w.number || "",
+          grammarCase: w.grammaticalCase || "",
+          syntacticRole: w.syntacticRole || "",
+          zh: zhText,
+          chinese: zhText,
         }));
       } else {
         const tokens = russian.split(/\s+/).filter(Boolean);
-        words = tokens.map((w) => ({ ru: w, zh: cleanText(it.translation), chinese: cleanText(it.translation) }));
+        words = tokens.map((w) => ({ ru: w, zh: zhText, chinese: zhText }));
       }
       const chunks = segments.map((s) => ({ ru: cleanText(s.text), zh: cleanText(s.chinese) })).filter((c) => c.ru);
       out.push({

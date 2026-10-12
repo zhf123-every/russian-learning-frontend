@@ -68,7 +68,25 @@ async function loadSegmentsItemsForUnit(unitId, courseId) {
     if (!res.ok) return null;
     const data = await res.json();
     if (!data || !data.ok) return null;
-    const items = segmentsToItems(data.items || []);
+    // 同时调 statements 接口拿逐词标注，按中文匹配补全 words（后端 segments 接口可能没关联 quest_words）
+    let wordsMap = null;
+    if (courseId) {
+      try {
+        const sres = await fetch(`${API_BASE}/api/courses/${courseId}/statements`);
+        if (sres.ok) {
+          const sdata = await sres.json();
+          if (sdata && sdata.statements && sdata.statements.length) {
+            wordsMap = {};
+            for (const s of sdata.statements) {
+              if (s.chinese && s.words && s.words.length) {
+                wordsMap[s.chinese.trim()] = s.words;
+              }
+            }
+          }
+        }
+      } catch (e) { /* 忽略，后端没关联就简单 split 兜底 */ }
+    }
+    const items = segmentsToItems(data.items || [], wordsMap);
     return items && items.length ? items : null;
   } catch (e) {
     return null;
