@@ -264,10 +264,6 @@ export default function QuestDictation() {
     const voice = storeSettings.ttsVoice || (ttsSource === "system" ? "female" : "alena");
     // 缓存 key 包含发音源和发音人，切换设置时自动命中新 key（旧缓存作废）
     const cacheKey = `${ttsSource}_${voice}_${text}`;
-    // 发音源=系统发音人：永远走浏览器语音合成，不查任何后端缓存（预载/旧音色缓存不得绕过本设置）
-    if (ttsSource === "system" && window.speechSynthesis) {
-      return "system://" + encodeURIComponent(text);
-    }
     if (ttsUrlCacheRef.current[cacheKey]) return ttsUrlCacheRef.current[cacheKey];
     // 预加载页已按当前音色真实生成该句 TTS → 直接复用（免再请求后端）
     const preUrl = getCachedTtsUrl(text, `${ttsSource}:${voice}`);
@@ -283,6 +279,10 @@ export default function QuestDictation() {
       if (data.ok && data.audio_url) url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
     } catch (e) { console.warn("TTS 获取失败:", e); }
     if (url) ttsUrlCacheRef.current[cacheKey] = url;
+    // 后端不可用 → 系统发音人兜底浏览器语音合成（播放层 system:// 分支处理）
+    if (!url && ttsSource === "system" && window.speechSynthesis) {
+      return "system://" + encodeURIComponent(text);
+    }
     return url;
   }, [effectiveCourseId]);
 

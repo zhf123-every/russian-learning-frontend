@@ -4,7 +4,6 @@ import { exportBackup, importBackup } from '../lib/backup'
 import { toast } from '../lib/toast'
 import { PET_SKIN_LIST, isVipUser } from '../lib/petSkins'
 import { API_BASE } from '../lib/api'
-import { playGlobalAudio } from '../utils/audioService'
 
 /* ================= 快捷键定义（quest 俄语闯关页生效；设置弹窗全站可改） ================= */
 export const HOTKEY_DEFS = [
@@ -165,24 +164,35 @@ function useAudioPreview() {
 }
 
 /* 发音试听：按当前「发音源/发音类型」真实试听（与答题页发音一致）
-   高级发音人 → 后端 /api/tts 当前音色（Alena/Filipp…）；
-   系统发音人 → 浏览器语音合成 */
+   高级发音人=后端 Alena/Filipp；系统发音人=微软神经 Svetlana/Dmitry；
+   后端不可用时系统发音人兜底浏览器语音合成 */
 const speakPreview = (text, vol = 1, rate = 1) => {
   const st = useSettingsStore.getState().settings
   const ttsSource = st.ttsSource || 'premium'
   const voice = st.ttsVoice || (ttsSource === 'system' ? 'female' : 'alena')
   try {
-    if (ttsSource === 'system' && ('speechSynthesis' in window)) {
-      const u = new SpeechSynthesisUtterance(text || 'Привет! Это проверка звука.')
-      u.lang = 'ru-RU'; u.volume = vol; u.rate = rate
-      const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('ru'))
-      if (v) u.voice = v
-      speechSynthesis.cancel(); speechSynthesis.speak(u)
-      return
-    }
-    // 高级发音人 → 后端当前音色试听（音色/音量/倍速全部生效）
     const url = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text || 'Привет! Это проверка звука.') + '&_=' + Date.now() + '&voice=' + encodeURIComponent(voice) + (rate != null && rate !== 1 ? '&rate=' + rate : '')
-    playGlobalAudio(url, { volume: vol })
+    fetch(url)
+      .then(r => { if (!r.ok) throw new Error('tts ' + r.status); return r.blob() })
+      .then(blob => {
+        const u = URL.createObjectURL(blob)
+        const a = new Audio()
+        a.src = u
+        a.volume = vol
+        a.onended = () => URL.revokeObjectURL(u)
+        a.play().catch(() => {})
+      })
+      .catch(() => {
+        // 后端不可用 → 系统发音人兜底浏览器语音合成
+        if (ttsSource === 'system' && ('speechSynthesis' in window)) {
+          speechSynthesis.cancel()
+          const u = new SpeechSynthesisUtterance(text || 'Привет! Это проверка звука.')
+          u.lang = 'ru-RU'; u.volume = vol; u.rate = rate
+          const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('ru'))
+          if (v) u.voice = v
+          speechSynthesis.speak(u)
+        }
+      })
   } catch (e) { /* 忽略 */ }
 }
 

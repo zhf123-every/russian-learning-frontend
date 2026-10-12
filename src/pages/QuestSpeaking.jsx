@@ -511,10 +511,6 @@ export default function QuestSpeaking() {
     const ttsSource = storeSettings.ttsSource || "premium";
     const voice = storeSettings.ttsVoice || (ttsSource === "system" ? "female" : "alena");
     const cacheKey = `${ttsSource}_${voice}_${text}`;
-    // 发音源=系统发音人：永远走浏览器语音合成，不查任何后端缓存（预载/旧音色缓存不得绕过本设置）
-    if (ttsSource === "system" && window.speechSynthesis) {
-      return "system://" + encodeURIComponent(text);
-    }
     if (ttsUrlCacheRef.current[cacheKey]) return ttsUrlCacheRef.current[cacheKey];
     // 预加载页已按当前音色真实生成该句 TTS → 直接复用（免再请求后端）
     const preUrl = getCachedTtsUrl(text, `${ttsSource}:${voice}`);
@@ -531,6 +527,10 @@ export default function QuestSpeaking() {
       if (data.ok && data.audio_url) url = data.audio_url;
     } catch (e) { /* 忽略 */ }
     if (!url) url = (current && current.audio_url) || ""; // 兜底：后端不可用时用课程自带音频
+    // 后端不可用且无自带音频 → 系统发音人兜底浏览器语音合成（播放层 system:// 分支处理）
+    if (!url && ttsSource === "system" && window.speechSynthesis) {
+      return "system://" + encodeURIComponent(text);
+    }
     if (!url) return "";
     if (!url.startsWith("http")) url = `${API_BASE}${url}`;
     ttsUrlCacheRef.current[cacheKey] = url;

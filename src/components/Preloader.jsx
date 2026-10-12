@@ -178,24 +178,20 @@ export default function Preloader() {
         inc();
 
         // 5) 首屏句子音频并发预载（每句成功/失败都推进，进度真实）
-        //    发音源=系统发音人：不预载后端音频（答题页走浏览器语音合成，缓存不绕过发音源设置）
-        const { source, voice, voiceKey } = ttsVoiceConfig();
+        //    发音源=系统发音人时 voice=female/male → 微软神经音色（Svetlana/Dmitry）
+        const { voice, voiceKey } = ttsVoiceConfig();
         let i = 0;
         const workers = Array.from({ length: TTS_CONCURRENCY }, async () => {
           while (i < audioTexts.length) {
             const idx = i++;
             const text = audioTexts[idx];
             try {
-              if (source === "system") {
-                // 系统发音人：跳过后端 TTS 生成与缓存
+              const url = await fetchTtsUrl(text, voice);
+              if (url) {
+                cacheTtsUrl(text, url, voiceKey); // 答题页 ensureTts 命中即免再请求
+                await warmAudio(text, url, voiceKey);   // 预载并存入共享缓存，答题页秒播
               } else {
-                const url = await fetchTtsUrl(text, voice);
-                if (url) {
-                  cacheTtsUrl(text, url, voiceKey); // 答题页 ensureTts 命中即免再请求
-                  await warmAudio(text, url, voiceKey);   // 预载并存入共享缓存，答题页秒播
-                } else {
-                  console.warn("[Preloader] TTS 无返回:", text.slice(0, 24));
-                }
+                console.warn("[Preloader] TTS 无返回:", text.slice(0, 24));
               }
             } catch (e) {
               console.warn("[Preloader] TTS 失败:", text.slice(0, 24), String(e && e.message || e));

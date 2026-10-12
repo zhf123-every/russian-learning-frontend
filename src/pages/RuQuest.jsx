@@ -652,7 +652,8 @@ export default function RuQuest() {
     }
   }, [phase, qi, done])
 
-  // —— 发音（与设置弹窗「声音」页联动：发音源 premium/system、发音类型、音量、倍速实时生效） ——
+  // —— 发音（与设置弹窗「声音」页联动：发音源/发音类型/音量/倍速实时生效） ——
+  //    高级发音人=后端 Yandex（Alena/Filipp）；系统发音人=后端微软神经（Svetlana/Dmitry）
   const speak = useCallback((text, speed) => {
     if (!text) return
     const st = useSettingsStore.getState().settings
@@ -660,26 +661,27 @@ export default function RuQuest() {
     const voice = st.ttsVoice || (ttsSource === 'system' ? 'female' : 'alena')
     const vol = (st.vol ?? 100) / 100
     const rate = speed != null ? speed : (st.rate ?? 1)
-    // 发音源=系统发音人 → 浏览器语音合成（音量/倍速生效）
-    if (ttsSource === 'system' && ('speechSynthesis' in window)) {
-      try { window.speechSynthesis.cancel() } catch (e) { /* 忽略 */ }
-      const u = new SpeechSynthesisUtterance(text)
-      u.lang = 'ru-RU'
-      u.volume = vol
-      u.rate = rate
-      const v = window.speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('ru'))
-      if (v) u.voice = v
-      window.speechSynthesis.speak(u)
-      return
-    }
-    // 发音源=高级发音人 → 后端 /api/tts（voice 切换 Alena/Filipp 等；音量/倍速生效）
     if (!audioRef.current) audioRef.current = new Audio()
     const a = audioRef.current
     a.pause()
     a.volume = vol
     const sp = rate != null && rate !== 1 ? rate : null
     a.src = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now() + (sp ? '&rate=' + sp : '') + '&voice=' + encodeURIComponent(voice)
-    a.play().catch(() => {})
+    a.play().catch(() => {
+      // 后端不可用/自动播放拦截 → 系统发音人兜底浏览器语音合成
+      if (ttsSource === 'system' && ('speechSynthesis' in window)) {
+        try {
+          window.speechSynthesis.cancel()
+          const u = new SpeechSynthesisUtterance(text)
+          u.lang = 'ru-RU'
+          u.volume = vol
+          u.rate = rate
+          const v = window.speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('ru'))
+          if (v) u.voice = v
+          window.speechSynthesis.speak(u)
+        } catch (e) { /* 忽略 */ }
+      }
+    })
   }, [])
 
   const playCur = useCallback(() => {

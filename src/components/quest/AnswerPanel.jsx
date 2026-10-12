@@ -135,16 +135,11 @@ export default function AnswerPanel({
         audioRef.current.currentTime = 0;
       }
 
-      // 发音源=系统发音人 → 浏览器语音合成（音量/倍速生效）
-      if (ttsSource === "system" && ("speechSynthesis" in window)) {
-        speakText(text, { rate: ui?.rate || 1, volume, times: 1, gap: 600 });
-        return;
-      }
-
       let url = audioUrl;
       const cacheKey = `${ttsSource}:${voice}::${text}`;
 
       // 没有缓存的 audio_url，调用后端 TTS 合成
+      // 发音源=系统发音人时 voice=female/male → 微软神经音色（Svetlana/Dmitry）
       if (!url) {
         // 先查内存缓存（按音色隔离）
         if (ttsCache.has(cacheKey)) {
@@ -168,6 +163,9 @@ export default function AnswerPanel({
       if (url) {
         // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play（杜绝与答题页发音重叠）
         playGlobalAudio(url, { rate: ui?.rate || 1, volume });
+      } else if (ttsSource === "system" && ("speechSynthesis" in window)) {
+        // 后端不可用 → 系统发音人兜底浏览器语音合成
+        speakText(text, { rate: ui?.rate || 1, volume, times: 1, gap: 600 });
       }
     } catch (e) {
       console.warn("发音失败:", e);

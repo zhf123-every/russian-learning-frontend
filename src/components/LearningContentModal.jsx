@@ -50,11 +50,7 @@ function playTTS(text) {
   const ttsSource = st.ttsSource || 'premium'
   const voice = st.ttsVoice || (ttsSource === 'system' ? 'female' : 'alena')
   const volume = (st.vol ?? 100) / 100
-  // 发音源=系统发音人 → 浏览器语音合成（音量/倍速生效）
-  if (ttsSource === 'system' && ('speechSynthesis' in window)) {
-    speakText(text, { rate: st.rate || 1, volume, times: 1, gap: 600 })
-    return
-  }
+  // 统一走后端 /api/tts：高级发音人=Alena/Filipp；系统发音人=微软神经 Svetlana/Dmitry
   fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -71,6 +67,12 @@ function playTTS(text) {
           : 'https://russian-learning-jetq.onrender.com' + u;
       }
       playGlobalAudio(u, { volume }) // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play
+    })
+    .catch(() => {
+      // 后端不可用 → 系统发音人兜底浏览器语音合成
+      if (ttsSource === 'system' && ('speechSynthesis' in window)) {
+        speakText(text, { rate: st.rate || 1, volume, times: 1, gap: 600 })
+      }
     })
     .catch(() => {})
 }

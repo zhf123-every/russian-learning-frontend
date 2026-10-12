@@ -836,11 +836,6 @@ export default function QuestPractice() {
     const ttsSource = storeSettings.ttsSource || "premium";
     const voice = storeSettings.ttsVoice || (ttsSource === "system" ? "female" : "alena");
     const vk = `${ttsSource}_${voice}`;
-    // 发音源=系统发音人：永远走浏览器语音合成，不查任何后端缓存（预载/旧音色缓存不得绕过本设置）
-    if (ttsSource === "system" && window.speechSynthesis) {
-      ttsUrlCacheRef.current[`${vk}_${stmt.id}`] = "system://" + encodeURIComponent(stmt.russian);
-      return "system://" + encodeURIComponent(stmt.russian);
-    }
     if (ttsUrlCacheRef.current[`${vk}_${stmt.id}`]) return ttsUrlCacheRef.current[`${vk}_${stmt.id}`];
     // 预加载页已按当前音色真实生成该句 TTS → 直接复用（免再请求后端）
     const preUrl = getCachedTtsUrl(stmt.russian, `${ttsSource}:${voice}`);
@@ -863,6 +858,10 @@ export default function QuestPractice() {
       url = `${API_BASE}${url}`;
     }
     if (url) ttsUrlCacheRef.current[`${vk}_${stmt.id}`] = url;
+    // 后端不可用 → 系统发音人兜底浏览器语音合成（播放层 system:// 分支处理）
+    if (!url && ttsSource === "system" && window.speechSynthesis) {
+      return "system://" + encodeURIComponent(stmt.russian);
+    }
     return url;
   }, []);
 
