@@ -457,61 +457,54 @@ export default function QuestDictation() {
         setLoading(false);
         return;
       }
-      // P3：直接读 statements（和中译俄同一接口，按上传的句子出题，不走语块）
-      try {
-        const sres = await fetch(`${API_BASE}/api/courses/${studyCourseId || effectiveCourseId}/statements`);
-        if (sres.ok) {
-          const sdata = await sres.json();
-          // 后端返回结构：{ok: true, data: {statements: [...]}}
-          const stmts = sdata?.data?.statements || sdata?.statements || [];
-          if (stmts.length && !cancelled) {
-            let title = "本课", desc = "";
-            try { const pre = getCachedLesson(effectiveCourseId); if (pre) { title = pre.title || pre.name || title; desc = pre.description || ""; } } catch (e) { /* 忽略 */ }
-            if (title === "本课") { try { const lu = findLocalUnitById(effectiveCourseId); if (lu) { title = lu.title || title; desc = lu.description || ""; } } catch (e) { /* 忽略 */ } }
-            // statements → items：直接用后端返回的 words（完整标注）
-            const items = stmts.map((s, i) => ({
-              id: `stmt_${s.id || i}`,
-              russian: s.russian || "",
-              chinese: s.chinese || "",
-              words: (s.words || []).map((w) => ({
-                ru: w.form || w.lemma || "",
-                form: w.form || w.lemma || "",
-                lemma: w.lemma || "",
-                pos: w.pos || "",
-                gender: w.gender || "",
-                number: w.number || "",
-                grammarCase: w.grammaticalCase || "",
-                syntacticRole: w.syntacticRole || "",
-                zh: s.chinese || "",
-                chinese: s.chinese || "",
-              })),
-              audio_url: "",
-              chunks: [],
-            }));
-            setUnitMeta({ title, description: desc });
-            setLocalLesson({ id: effectiveCourseId, title });
-            setIsLocalMode(false);
-            setStatements(applyDiffItems(items));
-            setLoading(false);
-            return;
-          }
-        }
-      } catch (e) { /* statements 不可用 → 走兜底 */ }
-      // P4：句乐部路径兜底——课时有 scaffoldingPaths → 按难度取档（仅当语块不可用时）
+      // P4：本地数据（和中译俄同一数据源）—— 直接用 getCachedLesson 的本地 lesson
+      // 关键：必须传 pre.words，否则词卡没有完整标注（form/pos/性数格/句法角色）
       try {
         const pre = getCachedLesson(effectiveCourseId);
-        const hasPaths = pre && Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length;
-        if (hasPaths) {
-          const items = itemsFromPaths(pre.scaffoldingPaths, diffKeyRef.current);
-          if (items.length && !cancelled) {
-            setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
-            setLocalLesson(pre); setIsLocalMode(true);
-            window.__unitKnowledge = window.__unitKnowledge || {};
-            window.__unitKnowledge[effectiveCourseId] = (pre && pre.knowledge) || {};
-            setStatements(applyDiffItems(items));
-            setLoading(false);
+        if (pre) {
+          if (Array.isArray(pre.scaffoldingPaths) && pre.scaffoldingPaths.length) {
+            const items = scaffoldingToItems(pre.scaffoldingPaths);
+            if (!cancelled) {
+              setLocalLesson(pre); setIsLocalMode(true);
+              const stmts = expandStatements(items, pre.words);
+              setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
+              setStatements(applyDiffItems(stmts));
+              setLoading(false);
+            }
+            return;
           }
-          return;
+          // 本地 lesson 有 sentences（Excel 上传）：直接用
+          if (Array.isArray(pre.sentences) && pre.sentences.length) {
+            if (!cancelled) {
+              setLocalLesson(pre); setIsLocalMode(true);
+              window.__unitKnowledge = window.__unitKnowledge || {};
+              window.__unitKnowledge[effectiveCourseId] = (pre && pre.knowledge) || {};
+              setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
+              // 直接用本地 sentences，每个 sentence 的 words 保留完整标注
+              const items = pre.sentences.map((s, i) => ({
+                id: `local_${i}`,
+                russian: s.russian || s.ru || "",
+                chinese: s.chinese || s.zh || "",
+                words: (s.words || []).map((w) => ({
+                  ru: w.form || w.lemma || w.ru || "",
+                  form: w.form || w.lemma || "",
+                  lemma: w.lemma || "",
+                  pos: w.pos || "",
+                  gender: w.gender || "",
+                  number: w.number || "",
+                  grammarCase: w.grammarCase || w.grammaticalCase || "",
+                  syntacticRole: w.syntacticRole || w.syntactic_role || "",
+                  zh: s.chinese || s.zh || "",
+                  chinese: s.chinese || s.zh || "",
+                })),
+                audio_url: "",
+                chunks: [],
+              }));
+              setStatements(applyDiffItems(items));
+              setLoading(false);
+            }
+            return;
+          }
         }
       } catch (e) { /* 缓存不可用 → 走原逻辑 */ }
       // 预加载页已预载课时数据 → 无遮罩直接消费
