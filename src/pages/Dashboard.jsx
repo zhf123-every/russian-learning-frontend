@@ -320,7 +320,7 @@ export default function Dashboard() {
               </div>
             </div>
           </Link>
-          <Link to="/unlocked-games" className="group flex-1 cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white p-4 transition-all hover:bg-gray-50 shadow-sm hover:shadow-md">
+          <Link to="/save/unknown" className="group flex-1 cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white p-4 transition-all hover:bg-gray-50 shadow-sm hover:shadow-md">
             <div className="flex items-center">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50">
                 <svg className="h-5 w-5 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -328,9 +328,8 @@ export default function Dashboard() {
                 </svg>
               </div>
               <div className="ml-3 min-w-0 flex-1">
-                <h3 className="text-sm font-medium text-gray-900">陌生关卡</h3>
-                <p className="mt-1 truncate text-xs text-gray-500">记录闯关失败的关卡</p>
-                <p className="mt-1 text-xs text-gray-500">预习关卡 1/30</p>
+                <h3 className="text-sm font-medium text-gray-900">生词本</h3>
+                <p className="mt-1 truncate text-xs text-gray-500">答错 3 次以上的单词自动收录</p>
               </div>
             </div>
           </Link>

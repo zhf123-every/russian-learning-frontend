@@ -1,28 +1,25 @@
 /**
- * WordDetailCard.jsx —— 答题页点击单词弹出的单词卡（生词本收录入口）
+ * WordDetailCard.jsx —— 答题页点击单词弹出的单词卡（生词/陌生关卡收录入口）
  * 设计：跟随全局主题（白天/深夜自动切换），质感来自排版层次、渐变点缀、柔和阴影与微动效
  */
 import { useState } from 'react'
-import { addVocabWord, isInVocab } from '../../lib/vocabBook'
+import { markWordUnknown, isInUnknown } from '../../lib/wordStats'
 import { toast } from '../../lib/toast'
 
 export default function WordDetailCard({ word = {}, example = '', course = '', lesson = '', onSpeak, onClose }) {
-  const [added, setAdded] = useState(() => isInVocab(word.plain || word.form || word.lemma || ''))
+  const [added, setAdded] = useState(() => isInUnknown(word.plain || word.form || word.lemma || ''))
   const display = word.plain || word.form || word.lemma || word.word || ''
   const chinese = word.chinese || word.zh || word.meaning || word.translation || ''
 
   const addToBook = () => {
-    addVocabWord({
+    markWordUnknown({
       word: display,
       pos: word.posLabel || word.pos || '',
       chinese,
       reading: word.reading || '',
-      example,
-      course,
-      lesson,
     })
     setAdded(true)
-    toast('已加入生词本')
+    toast('已加入生词本（陌生关卡）')
   }
 
   return (
@@ -104,7 +101,7 @@ export default function WordDetailCard({ word = {}, example = '', course = '', l
                   ? 'cursor-default bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
                   : 'cursor-pointer bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-600/25 hover:-translate-y-px hover:shadow-violet-600/35'
               }`}
-            >{added ? '✓ 已在生词本' : '添加到生词本'}</button>
+            >{added ? '✓ 已在生词本' : '加入陌生关卡'}</button>
           </div>
         </div>
       </div>

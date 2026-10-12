@@ -35,9 +35,8 @@ export const NAV_GROUPS = [
     items: [
       { to: '/save/proficiency', icon: ICONS.barChart, label: '关卡熟练度' },
       { to: '/vocab', icon: ICONS.book, label: '复习关卡', badgeKey: 'vocabDue' },
-      { to: '/vocab-book', icon: ICONS.star, label: '生词本' },
+      { to: '/save/unknown', icon: ICONS.star, label: '生词本' },
       { to: '/save/notes', icon: ICONS.fileText, label: '关卡笔记' },
-      { to: '/save/unknown', icon: ICONS.help, label: '陌生关卡' },
     ],
   },
 ]
@@ -75,7 +74,7 @@ export const LEARN_CARDS = [
 // 工具落地页
 export const TOOLS_CARDS = [
   {
-    icon: '📒', to: '/vocab-book', title: '生词本',
+    icon: '📒', to: '/save/unknown', title: '生词本',
     desc: '学习中收藏的生词，按间隔重复算法安排复习，到期词会在导航中提醒。',
     tags: ['间隔重复 SRS'],
     tone: { bg: 'var(--db-danger-soft)', color: 'var(--db-danger)' },

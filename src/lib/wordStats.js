@@ -82,6 +82,28 @@ export function clearWrongCount(key) {
   }
 }
 
+// 手动把单词标记为生词（答题页单词卡「加入陌生关卡」）：错误次数直接置 3 → 进入陌生关卡
+export function markWordUnknown({ word, chinese, pos, reading } = {}) {
+  const key = normKey(word)
+  if (!key) return
+  const map = load()
+  map[key] = {
+    key, word: String(word || key).trim(), chinese: chinese || '', pos: pos || '', reading: reading || '',
+    correctCount: 0, wrongCount: 3, learnedAt: Date.now(), lastAt: Date.now(),
+  }
+  save(map)
+}
+
+export function isWordTracked(word) {
+  return !!load()[normKey(word)]
+}
+
+// 是否已在生词本（陌生关卡：答错 >=3 次）
+export function isInUnknown(word) {
+  const e = load()[normKey(word)]
+  return !!e && (e.wrongCount || 0) >= 3
+}
+
 // 从统计中移除（复习/陌生关卡 🗑）
 export function removeWord(key) {
   const map = load()

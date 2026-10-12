@@ -1,10 +1,10 @@
-// ================= 生词本（只收录单词，不收录句子）=================
-// 路由：/vocab-book（侧边栏「通关存档 → 生词本」）
-// 数据源：rlearn_vocab_book（答题页点词弹窗「添加到生词本」收录）
-// 页眉：筛选 / 导出(9种模板) / 选择 / 开始练习 —— 全部真实交互
+// ================= 生词本（= 陌生关卡：答错 3 次以上的单词自动收录）=================
+// 路由：/save/unknown（侧边栏「通关存档 → 生词本」）
+// 数据源：rlearn_word_stats（答题答错累计 ≥3 次的单词；答题页单词卡也可手动加入）
+// 页眉：筛选 / 导出(9种模板) / 选择 / 开始练习 —— 全部真实交互；练熟后可移回复习关卡
 // 设计：跟随全局主题（白天/深夜自动切换），质感来自渐变点缀、层次阴影、微动效与排版
 import { useState, useMemo } from 'react'
-import { getVocabWords, removeVocabWord, incrementVocabPractice } from '../lib/vocabBook'
+import { getUnknownWords, clearWrongCount, removeWord, trackWords } from '../lib/wordStats'
 import { speak } from '../lib/tts'
 import { toast } from '../lib/toast'
 
@@ -37,7 +37,7 @@ const tplBg = t => t.bgStops ? `linear-gradient(160deg, ${t.bgStops.join(', ')})
 
 // ---------------- 页面 ----------------
 export default function VocabBook() {
-  const [list, setList] = useState(() => getVocabWords())
+  const [list, setList] = useState(() => getUnknownWords())
   const [sortBy, setSortBy] = useState('added') // added | alpha | times
   const [sortDir, setSortDir] = useState('desc') // desc | asc
   const [timeRange, setTimeRange] = useState('all') // all | today | 7d | 30d
@@ -59,27 +59,26 @@ export default function VocabBook() {
   const [practiceCount, setPracticeCount] = useState(0)
   const [practiceAll, setPracticeAll] = useState(true) // false → practiceCount
 
-  const refresh = () => setList(getVocabWords())
+  const refresh = () => setList(getUnknownWords())
   const total = list.length
-  const practiced = list.filter(w => (w.practiceCount || 0) > 0).length
 
   const inTimeRange = w => {
     if (timeRange === 'all') return true
-    const d = new Date(w.addedAt || 0).getTime()
+    const d = new Date(w.learnedAt || w.lastAt || 0).getTime()
     const now = Date.now()
     if (timeRange === 'today') return now - d < 86400000
     if (timeRange === '7d') return now - d < 7 * 86400000
     return now - d < 30 * 86400000
   }
-  const passesMinTimes = w => !minTimesOn || (w.practiceCount || 0) >= minTimes
+  const passesMinTimes = w => !minTimesOn || (w.correctCount || 0) + (w.wrongCount || 0) >= minTimes
 
   const sorted = useMemo(() => {
     const arr = list.filter(w => inTimeRange(w) && passesMinTimes(w))
     arr.sort((a, b) => {
       let va = 0, vb = 0
       if (sortBy === 'alpha') { va = norm(a.word); vb = norm(b.word); return sortDir === 'desc' ? vb.localeCompare(va, 'ru') : va.localeCompare(vb, 'ru') }
-      if (sortBy === 'times') { va = a.practiceCount || 0; vb = b.practiceCount || 0 }
-      else { va = a.addedAt || 0; vb = b.addedAt || 0 }
+      if (sortBy === 'times') { va = (a.correctCount || 0) + (a.wrongCount || 0); vb = (b.correctCount || 0) + (b.wrongCount || 0) }
+      else { va = a.learnedAt || a.lastAt || 0; vb = b.learnedAt || b.lastAt || 0 }
       return sortDir === 'desc' ? vb - va : va - vb
     })
     return arr
@@ -89,9 +88,9 @@ export default function VocabBook() {
   const exportList = useMemo(() => {
     let arr = sorted
     if (exportCourse !== 'all') arr = arr.filter(w => w.course === exportCourse)
-    if (exportTime === 'today') arr = arr.filter(w => Date.now() - (w.addedAt || 0) < 86400000)
-    if (exportTime === '7d') arr = arr.filter(w => Date.now() - (w.addedAt || 0) < 7 * 86400000)
-    if (exportTime === '30d') arr = arr.filter(w => Date.now() - (w.addedAt || 0) < 30 * 86400000)
+    if (exportTime === 'today') arr = arr.filter(w => Date.now() - (w.learnedAt || w.lastAt || 0) < 86400000)
+    if (exportTime === '7d') arr = arr.filter(w => Date.now() - (w.learnedAt || w.lastAt || 0) < 7 * 86400000)
+    if (exportTime === '30d') arr = arr.filter(w => Date.now() - (w.learnedAt || w.lastAt || 0) < 30 * 86400000)
     return arr
   }, [sorted, exportCourse, exportTime])
 
@@ -102,14 +101,14 @@ export default function VocabBook() {
   const selectedWords = useMemo(() => sorted.filter(w => selected.has(w.key)), [sorted, selected])
   const exportTarget = selecting && selected.size ? selectedWords : exportList
 
-  // ---- 标记学会 / 删除 ----
-  const markLearned = keys => {
-    keys.forEach(k => removeVocabWord(k))
-    refresh(); clearSelect(); toast(`已标记学会 ${keys.length} 个单词`)
+  // ---- 移回复习 / 删除 ----
+  const backToReview = keys => {
+    keys.forEach(k => clearWrongCount(k))
+    refresh(); clearSelect(); toast(`已移回复习关卡 ${keys.length} 个单词`)
   }
   const removeMany = keys => {
     if (!window.confirm(`确定删除选中的 ${keys.length} 个生词吗？`)) return
-    keys.forEach(k => removeVocabWord(k))
+    keys.forEach(k => removeWord(k))
     refresh(); clearSelect()
   }
 
@@ -136,17 +135,16 @@ export default function VocabBook() {
     if (!p || p.showAns || !p.input) return
     const cur = p.words[p.i]
     const ok = norm(p.input) === norm(cur.word)
+    // 答对 → 学会，自动移回复习关卡；答错 → 错误次数继续累计，留在生词本
+    if (ok) { clearWrongCount(cur.key) } else { trackWords([{ word: cur.word }], 'wrong') }
     const next = { ...p, result: ok ? 'correct' : 'wrong', showAns: true, correct: p.correct + (ok ? 1 : 0) }
-    incrementVocabPractice(cur.key)
     setPractice(next)
     refresh()
   }
   const revealAnswer = () => {
     if (!p || p.showAns) return
     const cur = p.words[p.i]
-    incrementVocabPractice(cur.key)
     setPractice({ ...p, showAns: true, result: 'reveal' })
-    refresh()
   }
   const practiceNext = () => {
     if (!p) return
@@ -193,29 +191,25 @@ export default function VocabBook() {
             >🔊</button>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-600 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-400">答错 {w.wrongCount || 0} 次</span>
             {w.pos && (
               <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-600 dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-300">{w.pos}</span>
             )}
             {w.chinese && <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{w.chinese}</span>}
           </div>
-          {w.example && (
-            <div className="mt-2.5 flex items-start gap-2 border-l-2 border-violet-300 pl-2.5 dark:border-violet-500/40">
-              <span className="truncate font-['PT_Serif',Georgia,serif] text-[13px] text-gray-500 dark:text-gray-400">{w.example}</span>
-            </div>
-          )}
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 dark:text-gray-500">
-            {(w.course || w.lesson) && <span>{(w.course || '') + (w.course && w.lesson ? ' / ' : '') + (w.lesson || '')}</span>}
-            <span>· {fmtDate(w.addedAt)} 添加</span>
-            <span>· 练习 {w.practiceCount || 0} 次</span>
+            <span>{fmtDate(w.learnedAt)} 添加</span>
+            <span>· 练习 {(w.correctCount || 0) + (w.wrongCount || 0)} 次</span>
+            <span>· 上次: {fmtDate(w.lastAt)}</span>
           </div>
         </div>
 
-        {/* 右：学会了（选择模式隐藏，进底栏） */}
+        {/* 右：移回复习（选择模式隐藏，进底栏） */}
         {!selecting && (
           <button
-            onClick={e => { e.stopPropagation(); markLearned([w.key]) }}
+            onClick={e => { e.stopPropagation(); backToReview([w.key]) }}
             className="shrink-0 cursor-pointer rounded-full border border-emerald-300 px-3.5 py-1.5 text-xs font-semibold text-emerald-600 transition-all hover:bg-emerald-500 hover:text-white dark:border-emerald-500/40 dark:text-emerald-400 dark:hover:bg-emerald-500 dark:hover:text-white"
-          >学会了</button>
+          >移回复习</button>
         )}
       </div>
     </div>
@@ -246,7 +240,7 @@ export default function VocabBook() {
           <div className="rounded-3xl border border-gray-200 bg-white px-8 py-14 text-center shadow-sm dark:border-white/10 dark:bg-[#151519]">
             <div className="text-5xl">🎉</div>
             <h3 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">练习完成！</h3>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">共练习 {p.words.length} 个生词 · 答对 {p.correct} 个</p>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">共练习 {p.words.length} 个生词 · 答对 {p.correct} 个（答对的已自动移回复习关卡）</p>
             <button onClick={() => setPractice(null)} className="mt-6 cursor-pointer rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-8 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/25">返回生词本</button>
           </div>
         ) : (
@@ -291,7 +285,7 @@ export default function VocabBook() {
               {p.showAns ? (
                 <div className="mt-5">
                   <div className={`text-base font-bold ${p.result === 'correct' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {p.result === 'correct' ? '✓ 答对了！' : p.result === 'wrong' ? '✗ 再想想' : ''}
+                    {p.result === 'correct' ? '✓ 学会啦，已移回复习关卡' : p.result === 'wrong' ? '✗ 再想想' : ''}
                   </div>
                   <div className="mt-2">
                     <span className="font-['PT_Serif',Georgia,serif] text-lg font-bold text-gray-900 dark:text-white">{cur.word}</span>
@@ -339,7 +333,7 @@ export default function VocabBook() {
             生词本
             <span className="ml-2 inline-block h-1.5 w-10 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400 align-middle" />
           </h1>
-          <p className="mt-1 text-[13px] text-gray-400 dark:text-gray-500">共 {total} 个生词 · 已练习 {practiced} 个</p>
+          <p className="mt-1 text-[13px] text-gray-400 dark:text-gray-500">答错 3 次以上的单词自动收录 · 共 {total} 个</p>
         </div>
         {!selecting && (
           <>
@@ -366,9 +360,9 @@ export default function VocabBook() {
       {total === 0 ? (
         <div className="mt-10 rounded-3xl border border-dashed border-gray-200 bg-white py-24 text-center dark:border-white/15 dark:bg-[#151519]">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-100 to-fuchsia-100 text-4xl dark:from-violet-500/20 dark:to-fuchsia-500/20">📒</div>
-          <h3 className="mt-5 text-lg font-bold text-gray-900 dark:text-white">生词本还是空的</h3>
+          <h3 className="mt-5 text-lg font-bold text-gray-900 dark:text-white">还没有生词</h3>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-gray-400 dark:text-gray-500">
-            在答题页点击句子里的单词，会弹出单词卡，点「添加到生词本」即可收录到这里
+            答题答错 3 次以上的单词会自动收录到这里，也可以答题页点词标记为生词
           </p>
         </div>
       ) : sorted.length === 0 ? (
@@ -389,7 +383,7 @@ export default function VocabBook() {
             <div className="flex-1" />
             <button onClick={() => removeMany([...selected])} className="cursor-pointer rounded-xl border border-rose-200 px-4 py-2 text-sm font-medium text-rose-500 transition-colors hover:bg-rose-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10">删除</button>
             <button onClick={() => setShowExport(true)} className="cursor-pointer rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/5">导出</button>
-            <button onClick={() => markLearned([...selected])} className="cursor-pointer rounded-xl border border-emerald-300 px-4 py-2 text-sm font-medium text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-400 dark:hover:bg-emerald-500/10">标记为学会</button>
+            <button onClick={() => backToReview([...selected])} className="cursor-pointer rounded-xl border border-emerald-300 px-4 py-2 text-sm font-medium text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-400 dark:hover:bg-emerald-500/10">移回复习</button>
             <button onClick={() => startPractice(selectedWords)} className="cursor-pointer rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2 text-sm font-bold text-white shadow-lg shadow-violet-600/25">练习所选({selected.size})</button>
           </div>
         </div>

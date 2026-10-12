@@ -30,7 +30,6 @@ import Journey from './pages/Journey'
 import VideoStudy from './pages/VideoStudy'
 import SaveNotes from './pages/SaveNotes'
 import SaveProficiency from './pages/SaveProficiency'
-import SaveUnknown from './pages/SaveUnknown'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminCourseNew from './pages/AdminCourseNew'
 import AdminLessons from './pages/AdminLessons'
@@ -92,10 +91,9 @@ export default function App() {
 
         {/* 工具 */}
         <Route path="/vocab" element={<Vocab />} />
-        <Route path="/vocab-book" element={<VocabBook />} />
         <Route path="/save/notes" element={<SaveNotes />} />
         <Route path="/save/proficiency" element={<SaveProficiency />} />
-        <Route path="/save/unknown" element={<SaveUnknown />} />
+        <Route path="/save/unknown" element={<VocabBook />} />
         <Route path="/dictionary" element={<Dictionary />} />
         <Route path="/profile" element={<Profile />} />
 
