@@ -399,6 +399,19 @@ export default function QuestDictation() {
     }
   }, [currentStatement?.russian, loading]);
 
+  // 监听设置变化事件，重新读取设置
+  useEffect(() => {
+    const handleSettingsChanged = () => {
+      console.log('[quest-ui-changed] 收到设置变化事件，重新读取设置');
+      // 重新播放当前题目，让新设置生效
+      if (currentStatement?.russian && !loading) {
+        setTimeout(() => playAudio(), 100);
+      }
+    };
+    window.addEventListener('quest-ui-changed', handleSettingsChanged);
+    return () => window.removeEventListener('quest-ui-changed', handleSettingsChanged);
+  }, [currentStatement?.russian, loading, playAudio]);
+
   // ---- 输入状态机 ----
   const {
     mode,
