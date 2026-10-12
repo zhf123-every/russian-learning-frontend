@@ -3,8 +3,9 @@
 // 页眉：筛选 / 复习设置 / 选择 / 开始复习，条目卡片包裹式
 // 数据源：rlearn_review_items（中译俄/听写/听力/口语评测 答题时自动记录）
 // 设计：简约大气有质感 —— 无渐变装饰，细边框 + 柔和阴影 + 单一强调色，跟随全局主题（与生词本同款设计语言）
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { getReviewSentences, removeSentence } from '../lib/reviewItems'
+import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { speak } from '../lib/tts'
 
 const MODES = ['中译俄', '听写', '听力', '口语评测']
@@ -59,6 +60,42 @@ export default function Vocab() {
   const [dailyDone, setDailyDone] = useState(() => loadDaily())
 
   const refresh = () => setList(getReviewSentences())
+
+  // ---- 页眉工具栏：全部复习/按课程包 + 筛选/复习设置/选择/开始复习 全部在页眉上（内容页不再重复标题）----
+  const { setHeaderRight } = usePageHeader()
+  useEffect(() => {
+    setHeaderRight(
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        {selecting ? (
+          <>
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">管理复习项</span>
+            <button onClick={selectAll} className="cursor-pointer text-xs font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
+            <button onClick={clearSelect} className="cursor-pointer text-xs font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
+            <div className="flex-1" />
+            <span className="text-xs text-gray-400 dark:text-gray-500">已选择 {selected.size} 题</span>
+          </>
+        ) : (
+          <>
+            <div className="flex overflow-hidden rounded-lg border border-gray-200 dark:border-white/10">
+              {[['all', '全部复习'], ['pack', '按课程包']].map(([k, label]) => (
+                <button key={k} onClick={() => setTab(k)}
+                  className={`cursor-pointer px-3 py-1.5 text-xs font-medium transition-colors ${
+                    tab === k ? 'bg-violet-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
+                  }`}>{label}</button>
+              ))}
+            </div>
+            <div className="flex-1" />
+            <button onClick={() => setShowFilter(true)} className={ghostSm}>筛选</button>
+            <button onClick={() => setShowSettings(true)} className={ghostSm}>复习设置</button>
+            <button onClick={() => setSelecting(true)} className={ghostSm}>选择</button>
+            <button onClick={() => setShowStart(true)} className={primarySm}>开始复习({total})</button>
+          </>
+        )}
+      </div>
+    )
+    return () => setHeaderRight(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, total, selecting, selected.size, setHeaderRight, setShowFilter, setShowSettings, setSelecting, setShowStart, setTab, selectAll, clearSelect])
 
   const sorted = useMemo(() => {
     const arr = [...list]
@@ -220,50 +257,21 @@ export default function Vocab() {
 
   // ---- 复习本主页面 ----
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      {/* 页眉栏：标题 + 子标签 + 功能按钮同行，页眉下为今日进度 */}
-      <div className="mb-6 border-b border-gray-200 pb-5 dark:border-white/10">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">复习本</h1>
-          {!selecting && (
-            <>
-              <div className="flex overflow-hidden rounded-lg border border-gray-200 dark:border-white/10">
-                {[['all', '全部复习'], ['pack', '按课程包']].map(([k, label]) => (
-                  <button key={k} onClick={() => setTab(k)}
-                    className={`cursor-pointer px-3 py-1.5 text-xs font-medium transition-colors ${
-                      tab === k ? 'bg-violet-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
-                    }`}>{label}</button>
-                ))}
-              </div>
-              <div className="flex-1" />
-              <button onClick={() => setShowFilter(true)} className={ghostSm}>筛选</button>
-              <button onClick={() => setShowSettings(true)} className={ghostSm}>复习设置</button>
-              <button onClick={() => setSelecting(true)} className={ghostSm}>选择</button>
-              <button onClick={() => setShowStart(true)} className={primarySm}>开始复习({total})</button>
-            </>
-          )}
-          {selecting && (
-            <>
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">管理复习项</span>
-              <button onClick={selectAll} className="cursor-pointer text-xs font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
-              <button onClick={clearSelect} className="cursor-pointer text-xs font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
-              <div className="flex-1" />
-              <span className="text-xs text-gray-400 dark:text-gray-500">已选择 {selected.size} 题</span>
-            </>
-          )}
-        </div>
-        {/* 今日进度（页眉下） */}
-        {!selecting && (
-          <div className="mt-3.5 flex max-w-sm items-center gap-3">
+    <>
+      {/* 今日进度（与页眉等长，横贯内容区顶部；tabs/按钮已在页眉上） */}
+      {!selecting && (
+        <div className="border-b border-gray-200 px-6 py-3 dark:border-white/10">
+          <div className="flex items-center gap-3">
             <span className="shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400">今日进度</span>
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
               <div className="h-full rounded-full bg-violet-600 transition-all duration-300" style={{ width: `${total ? Math.min(100, (dailyDone / total) * 100) : 0}%` }} />
             </div>
             <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">{dailyDone} / {total}</span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
+      <div className="mx-auto max-w-5xl p-6">
       {/* 空态 */}
       {total === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-gray-200 bg-white py-24 text-center dark:border-white/15 dark:bg-[#151519]">
@@ -400,7 +408,8 @@ export default function Vocab() {
           </div>
         </Modal>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 

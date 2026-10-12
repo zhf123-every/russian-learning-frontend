@@ -3,8 +3,9 @@
 // 收录方式：答题页点词卡 → 单词卡「添加到生词本」
 // 页眉：筛选 / 导出(9种模板) / 选择 / 开始练习 —— 全部真实交互
 // 设计：简约大气有质感 —— 无渐变装饰，细边框 + 柔和阴影 + 单一强调色，跟随全局主题
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { getVocabWords, removeVocabWord, incrementVocabPractice } from '../lib/vocabBook'
+import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { speak } from '../lib/tts'
 import { toast } from '../lib/toast'
 
@@ -126,6 +127,35 @@ export default function VocabBook() {
 
   const refresh = () => setList(getVocabWords())
   const total = list.length
+
+  // ---- 页眉工具栏：生词汇总 + 筛选/导出/选择/开始练习 全部在页眉上（内容页不再重复标题）----
+  const { setHeaderRight } = usePageHeader()
+  useEffect(() => {
+    setHeaderRight(
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        {selecting ? (
+          <>
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">管理生词</span>
+            <button onClick={selectAll} className="cursor-pointer text-xs font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
+            <button onClick={clearSelect} className="cursor-pointer text-xs font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
+            <div className="flex-1" />
+            <span className="text-xs text-gray-400 dark:text-gray-500">已选择 {selected.size} 个</span>
+          </>
+        ) : (
+          <>
+            <span className="text-xs text-gray-400 dark:text-gray-500">共 {total} 个生词</span>
+            <div className="flex-1" />
+            <button onClick={() => setShowFilter(true)} className={ghostSm}>筛选</button>
+            <button onClick={() => { setExportCourse('all'); setExportTime('all'); setShowExport(true) }} className={ghostSm}>导出</button>
+            <button onClick={() => setSelecting(true)} className={ghostSm}>选择</button>
+            <button onClick={() => setShowStart(true)} className={primarySm}>开始练习</button>
+          </>
+        )}
+      </div>
+    )
+    return () => setHeaderRight(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total, selecting, selected.size, setHeaderRight, setShowFilter, setExportCourse, setExportTime, setShowExport, setSelecting, setShowStart, selectAll, clearSelect])
 
   const inTimeRange = w => {
     if (timeRange === 'all') return true
@@ -373,31 +403,6 @@ export default function VocabBook() {
   // ================= 主页面 =================
   return (
     <div className="mx-auto max-w-5xl p-6">
-      {/* 页眉栏：标题 + 副标题 + 功能按钮同行（筛选/导出/选择/开始练习都在页眉上） */}
-      <div className="mb-6 border-b border-gray-200 pb-5 dark:border-white/10">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">生词本</h1>
-          <span className="text-xs text-gray-400 dark:text-gray-500">共 {total} 个生词</span>
-          {!selecting ? (
-            <>
-              <div className="flex-1" />
-              <button onClick={() => setShowFilter(true)} className={ghostSm}>筛选</button>
-              <button onClick={() => { setExportCourse('all'); setExportTime('all'); setShowExport(true) }} className={ghostSm}>导出</button>
-              <button onClick={() => setSelecting(true)} className={ghostSm}>选择</button>
-              <button onClick={() => setShowStart(true)} className={primarySm}>开始练习</button>
-            </>
-          ) : (
-            <>
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">管理生词</span>
-              <button onClick={selectAll} className="cursor-pointer text-xs font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
-              <button onClick={clearSelect} className="cursor-pointer text-xs font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
-              <div className="flex-1" />
-              <span className="text-xs text-gray-400 dark:text-gray-500">已选择 {selected.size} 个</span>
-            </>
-          )}
-        </div>
-      </div>
-
       {/* 空态 */}
       {total === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-gray-200 bg-white py-24 text-center dark:border-white/15 dark:bg-[#151519]">
