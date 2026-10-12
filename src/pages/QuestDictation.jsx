@@ -390,6 +390,14 @@ export default function QuestDictation() {
     enabled: !loading && !loadError,
   });
 
+  // 进答题页时自动播放发音
+  useEffect(() => {
+    if (currentStatement?.russian && !loading) {
+      const timer = setTimeout(() => playAudio(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStatement?.russian, loading]);
+
   // ---- 输入状态机 ----
   const {
     mode,
