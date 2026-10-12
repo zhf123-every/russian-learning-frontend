@@ -462,12 +462,14 @@ export default function QuestDictation() {
         const sres = await fetch(`${API_BASE}/api/courses/${studyCourseId || effectiveCourseId}/statements`);
         if (sres.ok) {
           const sdata = await sres.json();
-          if (sdata && sdata.statements && sdata.statements.length && !cancelled) {
+          // 后端返回结构：{ok: true, data: {statements: [...]}}
+          const stmts = sdata?.data?.statements || sdata?.statements || [];
+          if (stmts.length && !cancelled) {
             let title = "本课", desc = "";
             try { const pre = getCachedLesson(effectiveCourseId); if (pre) { title = pre.title || pre.name || title; desc = pre.description || ""; } } catch (e) { /* 忽略 */ }
             if (title === "本课") { try { const lu = findLocalUnitById(effectiveCourseId); if (lu) { title = lu.title || title; desc = lu.description || ""; } } catch (e) { /* 忽略 */ } }
-            // statements → items：直接用后端返回的 words（完整标注），按中文过滤难度
-            const items = sdata.statements.map((s, i) => ({
+            // statements → items：直接用后端返回的 words（完整标注）
+            const items = stmts.map((s, i) => ({
               id: `stmt_${s.id || i}`,
               russian: s.russian || "",
               chinese: s.chinese || "",
