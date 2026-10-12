@@ -3,6 +3,8 @@ import { useSettingsStore } from '../store/settingsStore'
 import { exportBackup, importBackup } from '../lib/backup'
 import { toast } from '../lib/toast'
 import { PET_SKIN_LIST, isVipUser } from '../lib/petSkins'
+import { API_BASE } from '../lib/api'
+import { playGlobalAudio } from '../utils/audioService'
 
 /* ================= 快捷键定义（quest 俄语闯关页生效；设置弹窗全站可改） ================= */
 export const HOTKEY_DEFS = [
@@ -162,14 +164,25 @@ function useAudioPreview() {
   return { playKey, playFeedback, tone }
 }
 
-/* 发音试听：浏览器语音合成（俄语） */
+/* 发音试听：按当前「发音源/发音类型」真实试听（与答题页发音一致）
+   高级发音人 → 后端 /api/tts 当前音色（Alena/Filipp…）；
+   系统发音人 → 浏览器语音合成 */
 const speakPreview = (text, vol = 1, rate = 1) => {
+  const st = useSettingsStore.getState().settings
+  const ttsSource = st.ttsSource || 'premium'
+  const voice = st.ttsVoice || (ttsSource === 'system' ? 'female' : 'alena')
   try {
-    const u = new SpeechSynthesisUtterance(text || 'Привет! Это проверка звука.')
-    u.lang = 'ru-RU'; u.volume = vol; u.rate = rate
-    const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('ru'))
-    if (v) u.voice = v
-    speechSynthesis.cancel(); speechSynthesis.speak(u)
+    if (ttsSource === 'system' && ('speechSynthesis' in window)) {
+      const u = new SpeechSynthesisUtterance(text || 'Привет! Это проверка звука.')
+      u.lang = 'ru-RU'; u.volume = vol; u.rate = rate
+      const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('ru'))
+      if (v) u.voice = v
+      speechSynthesis.cancel(); speechSynthesis.speak(u)
+      return
+    }
+    // 高级发音人 → 后端当前音色试听（音色/音量/倍速全部生效）
+    const url = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text || 'Привет! Это проверка звука.') + '&_=' + Date.now() + '&voice=' + encodeURIComponent(voice) + (rate != null && rate !== 1 ? '&rate=' + rate : '')
+    playGlobalAudio(url, { volume: vol })
   } catch (e) { /* 忽略 */ }
 }
 
@@ -843,7 +856,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
                     <div className="qs-item">
                       <div className="qs-item-left"><div className="qs-item-label">AI 朗读声音</div></div>
                       <div className="qs-item-right">
-                        <select value={s.ttsVoice || 'female'} onChange={e => save({ ttsVoice: e.target.value })}>
+                        <select value={s.aiVoice || 'female'} onChange={e => save({ aiVoice: e.target.value })}>
                           <option value="female">女声</option>
                           <option value="male">男声（Dmitry）</option>
                         </select>

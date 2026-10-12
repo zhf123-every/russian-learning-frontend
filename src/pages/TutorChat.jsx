@@ -335,7 +335,7 @@ export default function TutorChat() {
       if (ttsTokenRef.current !== token) return
       audio.play().catch(() => { setTtsPlaying(false); resumeMicAfterTts() })
     }
-    audio.src = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text) + '&voice=' + encodeURIComponent(settings.ttsVoice || 'female') + '&_=' + Date.now()
+    audio.src = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text) + '&voice=' + encodeURIComponent(settings.aiVoice || 'female') + '&_=' + Date.now()
     audio.load()
     setTtsPlaying(true)
   }

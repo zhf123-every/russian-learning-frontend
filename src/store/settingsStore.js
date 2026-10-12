@@ -8,6 +8,7 @@ const defaults = {
   vol: 100, // 音量 0-100
   rate: 1.0,
   loopTimes: 3,
+  aiVoice: 'female', // AI 朗读声音（与答题页发音类型 ttsVoice 解耦，避免互相覆盖）
 }
 
 export const useSettingsStore = create((set, get) => ({
