@@ -294,15 +294,17 @@ export default function QuestDictation() {
   const ttsAudioCacheRef = useRef({});
   const ensureTtsAudio = useCallback((text) => {
     if (!text) return null;
-    // 缓存 key 包含发音源和发音人，切换设置时自动清旧缓存
+    // 缓存 key 包含发音源、发音人和音量，切换设置时自动清旧缓存
     const storeSettings = useSettingsStore.getState().settings;
     const ttsSource = storeSettings.ttsSource || "premium";
     const voice = storeSettings.ttsVoice || "female";
-    const cacheKey = `${ttsSource}_${voice}_${text}`;
+    const vol = storeSettings.vol ?? 100;
+    const cacheKey = `${ttsSource}_${voice}_${vol}_${text}`;
     if (ttsAudioCacheRef.current[cacheKey]) return ttsAudioCacheRef.current[cacheKey];
     // 预加载页已预载内容就绪的 Audio → 直接复用（秒播）
     const preAudio = getCachedTtsAudio(text);
     if (preAudio) {
+      preAudio.volume = vol / 100; // 设置音量
       const entry = { audio: preAudio, promise: Promise.resolve() };
       ttsAudioCacheRef.current[cacheKey] = entry;
       return entry;
