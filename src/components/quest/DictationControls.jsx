@@ -17,8 +17,15 @@ export default function DictationControls({
   const [toolbar, setToolbar] = useState(() => loadToolbarData())
   const playTimers = useRef([])
 
+  // 设置弹窗「播放设置」/游戏内设置保存后即时刷新（倍速/次数/间隔实时生效）
   useEffect(() => {
-    setToolbar(loadToolbarData())
+    const refresh = () => setToolbar(loadToolbarData())
+    window.addEventListener('quest-ui-changed', refresh)
+    window.addEventListener('storage', refresh)
+    return () => {
+      window.removeEventListener('quest-ui-changed', refresh)
+      window.removeEventListener('storage', refresh)
+    }
   }, [])
 
   // 清理定时器

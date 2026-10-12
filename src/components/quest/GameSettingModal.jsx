@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useSettingsStore } from '../../store/settingsStore'
 
 // ================= 游戏内设置弹窗（倍速 / 播放次数 / 播放间隔） =================
-// 主要服务听写模式与自动朗读，对齐官方 GameSettingModal.vue
+// 与设置弹窗「播放设置」页读写同一套键（settings.rate + rlearn_quest_ui.speakTimes/speakGap），
+// 双向同步、修改后派发 quest-ui-changed 让答题页立即生效
 
 const TOOLBAR_DEFAULTS = {
   rate: '1',       // 倍速
@@ -9,14 +11,26 @@ const TOOLBAR_DEFAULTS = {
   interval: '3000',// 播放间隔(ms)
 }
 
+/** 从统一配置读取（设置弹窗播放页 = 游戏内设置，同一份数据） */
 export function loadToolbarData() {
-  try {
-    const s = JSON.parse(localStorage.getItem('rlearn_quest_toolbar') || 'null')
-    return { ...TOOLBAR_DEFAULTS, ...(s || {}) }
-  } catch { return { ...TOOLBAR_DEFAULTS } }
+  const st = useSettingsStore.getState().settings
+  let ui = {}
+  try { ui = JSON.parse(localStorage.getItem('rlearn_quest_ui') || '{}') || {} } catch { /* 忽略 */ }
+  return {
+    rate: String(st.rate ?? 1),
+    times: String(ui.speakTimes ?? 2),
+    interval: String(Math.round((ui.speakGap ?? 1) * 1000)),
+  }
 }
+/** 写入统一配置（settings.rate + rlearn_quest_ui；save() 自带 quest-ui-changed 广播） */
 export function saveToolbarData(data) {
-  try { localStorage.setItem('rlearn_quest_toolbar', JSON.stringify(data)) } catch { /* 忽略 */ }
+  try {
+    const ui = JSON.parse(localStorage.getItem('rlearn_quest_ui') || '{}') || {}
+    ui.speakTimes = parseInt(data.times, 10) || 2
+    ui.speakGap = (parseInt(data.interval, 10) || 1000) / 1000
+    localStorage.setItem('rlearn_quest_ui', JSON.stringify(ui))
+  } catch { /* 忽略 */ }
+  useSettingsStore.getState().save({ rate: parseFloat(data.rate) || 1 })
 }
 
 const RATE_OPTIONS = [

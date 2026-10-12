@@ -708,33 +708,24 @@ export default function RuQuest() {
   hotActionsRef.current = { playWordByWord, playCurrentWordFn, playRecordingFn, startRec: () => startRec(), stopRec: () => stopRec(), showAnswerNow: () => showAnswerNow() }
 
   // —— 先读后写：进入新题自动朗读（听写模式默认自动播；autoSpeak 开关控制其他模式） ——
-  // P5 听写模式自动播放读取游戏设置工具栏（倍速/次数/间隔），其他模式用外观页朗读设置
+  // 播放参数统一读「播放设置」：倍速 settings.rate / 次数 uiCfg.speakTimes / 间隔 uiCfg.speakGap
+  // （设置弹窗播放页修改后经 quest-ui-changed/响应式 rate 立即重播生效）
+  const settingsRate = useSettingsStore((s) => s.settings.rate ?? 1)
   useEffect(() => {
     if (phase !== 'game' || !cur) return
     if (done || mode === 'speaking') return
     const needAuto = mode === 'dictation' || uiCfg.autoSpeak
     if (!needAuto) return
-    let times, speed, gap
-    if (mode === 'dictation') {
-      // P5 听写模式：从游戏设置工具栏读取配置
-      try {
-        const tb = JSON.parse(localStorage.getItem('rlearn_quest_toolbar') || 'null') || { times: '2', rate: '1', interval: '3000' }
-        times = parseInt(tb.times) || 2
-        speed = parseFloat(tb.rate) || 1
-        gap = (parseInt(tb.interval) || 3000) / 1000
-      } catch { times = 2; speed = 1; gap = 3 }
-    } else {
-      times = uiCfg.speakTimes || 1
-      speed = uiCfg.speakSpeed
-      gap = uiCfg.speakGap
-    }
+    const times = uiCfg.speakTimes || 1
+    const speed = settingsRate ?? uiCfg.speakSpeed ?? 1
+    const gap = uiCfg.speakGap ?? 1
     const timers = []
     for (let i = 0; i < times; i++) {
       timers.push(setTimeout(() => speak(cur.s.russian, speed), i * ((gap * 1000) + 600)))
     }
     return () => timers.forEach(clearTimeout)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, cur?.id, done, mode, uiCfg.autoSpeak, uiCfg.speakTimes, uiCfg.speakGap, uiCfg.speakSpeed])
+  }, [phase, cur?.id, done, mode, uiCfg.autoSpeak, uiCfg.speakTimes, uiCfg.speakGap, uiCfg.speakSpeed, settingsRate])
 
   // —— AI 拆解（答案卡） ——
   const fetchAnalysis = useCallback(async (q) => {
