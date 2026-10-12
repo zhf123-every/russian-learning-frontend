@@ -76,8 +76,25 @@ export default function AppShell() {
                   type="button"
                   className="shell-card-toggle"
                   onClick={() => setCollapsed(v => !v)}
-                  aria-label="收起侧边栏"
-                >◧</button>
+                  aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'}
+                  title={collapsed ? '展开侧边栏' : '收起侧边栏'}
+                >
+                  {collapsed ? (
+                    // 展开侧边栏（面板-左 打开）
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <path d="M9 3v18" />
+                      <path d="m14 9 3 3-3 3" />
+                    </svg>
+                  ) : (
+                    // 收起侧边栏（面板-左 关闭）
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <path d="M9 3v18" />
+                      <path d="m16 9-3 3 3 3" />
+                    </svg>
+                  )}
+                </button>
               )}
               {titleOverride || <h1 className="shell-card-title">{pageTitle}</h1>}
               {/* 页面注入的标题右侧工具栏（分类标签/搜索等，紧贴标题） */}

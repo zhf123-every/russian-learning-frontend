@@ -39,6 +39,9 @@ function saveDaily(n) {
 // 统一按钮样式（与生词本一致）
 const ghost = 'cursor-pointer rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 dark:border-white/10 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
 const primary = 'cursor-pointer rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700'
+// 页眉栏小按钮
+const ghostSm = 'cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 dark:border-white/10 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
+const primarySm = 'cursor-pointer rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-700'
 
 export default function Vocab() {
   const [list, setList] = useState(() => getReviewSentences())
@@ -218,42 +221,48 @@ export default function Vocab() {
   // ---- 复习本主页面 ----
   return (
     <div className="mx-auto max-w-5xl p-6">
-      {/* 页眉 */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="mr-auto">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">复习本</h1>
-          <p className="mt-1 text-[13px] text-gray-400 dark:text-gray-500">
-            {tab === 'all' ? '学过的句子自动收录 · 共 ' : '按课程包分组 · 共 '}{total} 条 · 今日进度 {dailyDone}
-          </p>
+      {/* 页眉栏：标题 + 子标签 + 功能按钮同行，页眉下为今日进度 */}
+      <div className="mb-6 border-b border-gray-200 pb-5 dark:border-white/10">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">复习本</h1>
+          {!selecting && (
+            <>
+              <div className="flex overflow-hidden rounded-lg border border-gray-200 dark:border-white/10">
+                {[['all', '全部复习'], ['pack', '按课程包']].map(([k, label]) => (
+                  <button key={k} onClick={() => setTab(k)}
+                    className={`cursor-pointer px-3 py-1.5 text-xs font-medium transition-colors ${
+                      tab === k ? 'bg-violet-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
+                    }`}>{label}</button>
+                ))}
+              </div>
+              <div className="flex-1" />
+              <button onClick={() => setShowFilter(true)} className={ghostSm}>筛选</button>
+              <button onClick={() => setShowSettings(true)} className={ghostSm}>复习设置</button>
+              <button onClick={() => setSelecting(true)} className={ghostSm}>选择</button>
+              <button onClick={() => setShowStart(true)} className={primarySm}>开始复习({total})</button>
+            </>
+          )}
+          {selecting && (
+            <>
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">管理复习项</span>
+              <button onClick={selectAll} className="cursor-pointer text-xs font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
+              <button onClick={clearSelect} className="cursor-pointer text-xs font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
+              <div className="flex-1" />
+              <span className="text-xs text-gray-400 dark:text-gray-500">已选择 {selected.size} 题</span>
+            </>
+          )}
         </div>
+        {/* 今日进度（页眉下） */}
         {!selecting && (
-          <>
-            <div className="flex overflow-hidden rounded-lg border border-gray-200 dark:border-white/10">
-              {[['all', '全部复习'], ['pack', '按课程包']].map(([k, label]) => (
-                <button key={k} onClick={() => setTab(k)}
-                  className={`cursor-pointer px-4 py-2 text-sm transition-colors ${
-                    tab === k ? 'bg-violet-600 font-medium text-white' : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
-                  }`}>{label}</button>
-              ))}
+          <div className="mt-3.5 flex max-w-sm items-center gap-3">
+            <span className="shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400">今日进度</span>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+              <div className="h-full rounded-full bg-violet-600 transition-all duration-300" style={{ width: `${total ? Math.min(100, (dailyDone / total) * 100) : 0}%` }} />
             </div>
-            <button onClick={() => setShowFilter(true)} className={ghost}>筛选</button>
-            <button onClick={() => setShowSettings(true)} className={ghost}>复习设置</button>
-            <button onClick={() => setSelecting(true)} className={ghost}>选择</button>
-            <button onClick={() => setShowStart(true)} className={primary}>开始复习({total})</button>
-          </>
+            <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">{dailyDone} / {total}</span>
+          </div>
         )}
       </div>
-
-      {/* 选择模式页眉 */}
-      {selecting && (
-        <div className="mb-4 flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50/50 px-4 py-3 dark:border-violet-500/25 dark:bg-violet-500/10">
-          <span className="text-base font-bold text-gray-900 dark:text-white">管理复习项</span>
-          <button onClick={selectAll} className="cursor-pointer text-sm font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
-          <button onClick={clearSelect} className="cursor-pointer text-sm font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
-          <div className="flex-1" />
-          <span className="text-sm text-gray-500 dark:text-gray-400">已选择 {selected.size} 题</span>
-        </div>
-      )}
 
       {/* 空态 */}
       {total === 0 ? (

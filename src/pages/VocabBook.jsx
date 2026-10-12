@@ -95,6 +95,9 @@ const SAMPLE = [
 // 统一按钮样式
 const ghost = 'cursor-pointer rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 dark:border-white/10 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
 const primary = 'cursor-pointer rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700'
+// 页眉栏小按钮
+const ghostSm = 'cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 dark:border-white/10 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
+const primarySm = 'cursor-pointer rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-700'
 
 // ---------------- 页面 ----------------
 export default function VocabBook() {
@@ -370,32 +373,30 @@ export default function VocabBook() {
   // ================= 主页面 =================
   return (
     <div className="mx-auto max-w-5xl p-6">
-      {/* 页眉 */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="mr-auto">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">生词本</h1>
-          <p className="mt-1 text-[13px] text-gray-400 dark:text-gray-500">手动添加的生词 · 共 {total} 个</p>
+      {/* 页眉栏：标题 + 副标题 + 功能按钮同行（筛选/导出/选择/开始练习都在页眉上） */}
+      <div className="mb-6 border-b border-gray-200 pb-5 dark:border-white/10">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">生词本</h1>
+          <span className="text-xs text-gray-400 dark:text-gray-500">共 {total} 个生词</span>
+          {!selecting ? (
+            <>
+              <div className="flex-1" />
+              <button onClick={() => setShowFilter(true)} className={ghostSm}>筛选</button>
+              <button onClick={() => { setExportCourse('all'); setExportTime('all'); setShowExport(true) }} className={ghostSm}>导出</button>
+              <button onClick={() => setSelecting(true)} className={ghostSm}>选择</button>
+              <button onClick={() => setShowStart(true)} className={primarySm}>开始练习</button>
+            </>
+          ) : (
+            <>
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">管理生词</span>
+              <button onClick={selectAll} className="cursor-pointer text-xs font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
+              <button onClick={clearSelect} className="cursor-pointer text-xs font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
+              <div className="flex-1" />
+              <span className="text-xs text-gray-400 dark:text-gray-500">已选择 {selected.size} 个</span>
+            </>
+          )}
         </div>
-        {!selecting && (
-          <>
-            <button onClick={() => setShowFilter(true)} className={ghost}>筛选</button>
-            <button onClick={() => { setExportCourse('all'); setExportTime('all'); setShowExport(true) }} className={ghost}>导出</button>
-            <button onClick={() => setSelecting(true)} className={ghost}>选择</button>
-            <button onClick={() => setShowStart(true)} className={primary}>开始练习</button>
-          </>
-        )}
       </div>
-
-      {/* 选择模式页眉 */}
-      {selecting && (
-        <div className="mb-4 flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50/50 px-4 py-3 dark:border-violet-500/25 dark:bg-violet-500/10">
-          <span className="text-base font-bold text-gray-900 dark:text-white">管理生词</span>
-          <button onClick={selectAll} className="cursor-pointer text-sm font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
-          <button onClick={clearSelect} className="cursor-pointer text-sm font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
-          <div className="flex-1" />
-          <span className="text-sm text-gray-500 dark:text-gray-400">已选择 {selected.size} 个</span>
-        </div>
-      )}
 
       {/* 空态 */}
       {total === 0 ? (
