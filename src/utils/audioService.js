@@ -49,7 +49,7 @@ export function stopGlobalAudio() {
  * @returns {{ token: number, url: string }}
  */
 export function playGlobalAudio(url, opts = {}) {
-  const { times = 1, rate = 1, gap = 600, onFinished, onBlocked, el: elOpt } = opts
+  const { times = 1, rate = 1, volume = 1, gap = 600, onFinished, onBlocked, el: elOpt } = opts
   if (!url && !elOpt) return { token: 0, url: '' }
 
   stopGlobalAudio()                    // 1) 先停旧、复位（任何时候只有一个音频在发声）
@@ -57,6 +57,7 @@ export function playGlobalAudio(url, opts = {}) {
 
   const el = (elOpt && typeof elOpt.play === 'function') ? elOpt : globalAudio
   _currentEl = el
+  el.volume = volume; // 设置音量
 
   if (el === globalAudio) {
     globalAudio.preload = 'auto'       // 2) 预加载策略
