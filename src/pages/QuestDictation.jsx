@@ -316,9 +316,7 @@ export default function QuestDictation() {
   const playAudio = useCallback((text, times) => {
     // 检查答题页自动播放设置
     if (!useSettingsStore.getState().settings.questionAutoPlay) return;
-    // 发音音量
     const volume = useSettingsStore.getState().settings.ttsVolume ?? 1;
-    // ... 原有逻辑
     const textToPlay = text || currentStatement?.russian;
     if (!textToPlay) return;
     const n = times ?? (ui.speakTimes ?? 2); // 进题自动播放次数（与播放设置关联）
@@ -409,6 +407,10 @@ export default function QuestDictation() {
   // ---- 听写模式：包装键盘事件，输入为空时 Space 重播发音（所有模式优先）----
   const wrappedHandleKeyDown = useCallback(
     (e) => {
+      // 打字音效（排除空格/回车等特殊键）
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+        playTypingSound();
+      }
       // 听写模式：输入框为空 + 非输入法组合状态 → Space 重播发音
       // 优先级高于状态机：Input 模式下不输入空格，Fix_Input 模式下不跳下一个错词
       // 输入框有内容时，Space 才交给状态机处理（Input 输入空格 / Fix_Input 跳下一个错词）
@@ -426,7 +428,7 @@ export default function QuestDictation() {
       }
       handleInputKeyDown(e);
     },
-    [inputValue, isComposingRef, playAudio, handleInputKeyDown]
+    [inputValue, isComposingRef, playAudio, handleInputKeyDown, playTypingSound]
   );
 
   // ---- 付费单元守卫：带 ?pack= 进入时校验是否解锁，锁定则回课程详情并弹购买窗 ----
