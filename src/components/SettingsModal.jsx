@@ -309,7 +309,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
             <div className="qs-item-label">发音源</div>
           </div>
           <div className="qs-item-right">
-            <select value={s.ttsSource || 'premium'} onChange={e => { const v = e.target.value; set('ttsSource', v); save({ ...s, ttsSource: v }) }}>
+            <select value={s.ttsSource || 'premium'} onChange={e => { const v = e.target.value; set('ttsSource', v); save({ ttsSource: v }) }}>
               <option value="premium">高级发音人</option>
               <option value="system">系统发音人</option>
             </select>
@@ -321,7 +321,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
             <div className="qs-item-label">发音类型</div>
           </div>
           <div className="qs-item-right">
-            <select value={s.ttsVoice || 'female'} onChange={e => { const v = e.target.value; set('ttsVoice', v); save({ ...s, ttsVoice: v }) }}>
+            <select value={s.ttsVoice || 'female'} onChange={e => { const v = e.target.value; set('ttsVoice', v); save({ ttsVoice: v }) }}>
               {s.ttsSource === 'system' ? (
                 <>
                   <option value="female">Svetlana（俄语-女）</option>
@@ -343,7 +343,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
             <div className="qs-item-label">音量</div>
           </div>
           <div className="qs-item-right">
-            <Slider value={s.vol ?? 100} onChange={v => { set('vol', v); save({ ...s, vol: v }) }} />
+            <Slider value={s.vol ?? 100} onChange={v => { set('vol', v); save({ vol: v }) }} />
           </div>
         </div>
 
@@ -547,7 +547,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
                       <div className="qs-item-label">倍速</div>
                     </div>
                     <div className="qs-item-right">
-                      <QSlider min={0.5} max={2} step={0.1} value={s.rate ?? 1} display={(s.rate ?? 1) + 'x'} onChange={v => { set('rate', v); save({ ...s, rate: v }) }} />
+                      <QSlider min={0.5} max={2} step={0.1} value={s.rate ?? 1} display={(s.rate ?? 1) + 'x'} onChange={v => { set('rate', v); save({ rate: v }) }} />
                     </div>
                   </div>
 
