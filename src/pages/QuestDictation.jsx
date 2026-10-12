@@ -256,14 +256,17 @@ export default function QuestDictation() {
   const ttsUrlCacheRef = useRef({});
   const ensureTtsUrl = useCallback(async (text) => {
     if (!text) return "";
-    if (ttsUrlCacheRef.current[text]) return ttsUrlCacheRef.current[text];
-    // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
-    const preUrl = getCachedTtsUrl(text);
-    if (preUrl) { ttsUrlCacheRef.current[text] = preUrl; return preUrl; }
     // 直接从 store 读最新设置
     const storeSettings = useSettingsStore.getState().settings;
     // 发音源切换：system=浏览器系统发音 / premium=后端高级发音人
     const ttsSource = storeSettings.ttsSource || "premium";
+    const voice = storeSettings.ttsVoice || "female";
+    // 缓存 key 包含发音源和发音人，切换设置时自动清旧缓存
+    const cacheKey = `${ttsSource}_${voice}_${text}`;
+    if (ttsUrlCacheRef.current[cacheKey]) return ttsUrlCacheRef.current[cacheKey];
+    // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
+    const preUrl = getCachedTtsUrl(text);
+    if (preUrl) { ttsUrlCacheRef.current[cacheKey] = preUrl; return preUrl; }
     if (ttsSource === "system" && window.speechSynthesis) {
       try { window.speechSynthesis.cancel(); } catch (e) {}
       const u = new SpeechSynthesisUtterance(text);
@@ -271,10 +274,8 @@ export default function QuestDictation() {
       const volume = (storeSettings.vol ?? 100) / 100; // 设置弹窗保存的是 vol (0-100)
       u.volume = volume;
       window.speechSynthesis.speak(u);
-      return "system://" + text; // 返回伪 URL，标记为系统发音
+      return "system://" + cacheKey; // 返回伪 URL，标记为系统发音
     }
-    // 发音类型：根据 ttsVoice 切换（支持微软神经和 Yandex 神经）
-    const voice = storeSettings.ttsVoice || "female";
     let url = "";
     try {
       const res = await fetch(`${API_BASE}/api/tts`, {
@@ -285,7 +286,7 @@ export default function QuestDictation() {
       const data = await res.json();
       if (data.ok && data.audio_url) url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
     } catch (e) { console.warn("TTS 获取失败:", e); }
-    if (url) ttsUrlCacheRef.current[text] = url;
+    if (url) ttsUrlCacheRef.current[cacheKey] = url;
     return url;
   }, [effectiveCourseId]);
 
