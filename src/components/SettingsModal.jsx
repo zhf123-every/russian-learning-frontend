@@ -322,15 +322,17 @@ export default function SettingsModal({ onClose, defaultTab }) {
           </div>
           <div className="qs-item-right">
             <select value={s.ttsVoice || 'female'} onChange={e => { const v = e.target.value; set('ttsVoice', v); save({ ...s, ttsVoice: v }) }}>
-              <option value="female">Svetlana（俄语-女，微软神经）</option>
-              <option value="male">Dmitry（俄语-男，微软神经）</option>
-              <option value="alena">Alena（俄语-女，Yandex神经）</option>
-              <option value="filipp">Filipp（俄语-男，Yandex神经）</option>
-              <option value="ermil">Ermil（俄语-男童，Yandex神经）</option>
-              <option value="jane">Jane（俄语-女，Yandex神经）</option>
-              <option value="madirus">Madirus（俄语-男，Yandex神经）</option>
-              <option value="omazh">Omazh（俄语-女，Yandex神经）</option>
-              <option value="zahar">Zahar（俄语-男，Yandex神经）</option>
+              {s.ttsSource === 'system' ? (
+                <>
+                  <option value="female">Svetlana（俄语-女）</option>
+                  <option value="male">Dmitry（俄语-男）</option>
+                </>
+              ) : (
+                <>
+                  <option value="alena">Alena（俄语-女）</option>
+                  <option value="filipp">Filipp（俄语-男）</option>
+                </>
+              )}
             </select>
             <button type="button" className="qs-preview-btn" title="试听发音人" onClick={() => speakPreview('Привет! Это проверка звука.', (s.vol ?? 100) / 100, s.rate || 1)}>🔊</button>
           </div>
@@ -355,7 +357,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
           </div>
         </div>
 
-        <button type="button" className="qs-grad-btn" onClick={() => toast('更多发音人正在接入中，敬请期待')}>✨ 解锁更多媲美真人的发音人</button>
+        <button type="button" className="qs-grad-btn" onClick={() => toast('请充值会员后解锁更多发音人（Ermil/Jane/Madirus/Omazh/Zahar）')}>✨ 解锁更多媲美真人的发音人</button>
       </div>
 
       {/* 区块2：声音开关设置 */}
