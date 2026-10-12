@@ -21,5 +21,7 @@ export const useSettingsStore = create((set, get) => ({
       console.warn('[settingsStore] localStorage 保存失败，仅更新内存:', e)
     }
     set({ settings: next })
+    // 触发 quest-ui-changed 事件，让答题页重新读取设置
+    try { window.dispatchEvent(new Event('quest-ui-changed')) } catch (e) {}
   },
 }))
