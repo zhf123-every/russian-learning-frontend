@@ -223,6 +223,16 @@ export default function AnswerPanel({
       // 兜底：用 lemma/word/ru/text/form 任意一个字段查词典
       const lookupKey = w.lemma || w.word || w.ru || w.text || w.form || "";
       const single = annotateWords(lookupKey)[0] || {};
+      // 硬编码兜底：常见代词/副词词典查不到时手动补
+      const lower = String(lookupKey).toLowerCase().replace(/[^а-яёa-z]/g, "");
+      if ((!single.pos || single.pos === "default") && /меня|тебя|его|её|нас|вас|их|мне|тебе|ним|ней/.test(lower)) {
+        single.pos = "pronoun";
+        single.posColor = getPosColor("pronoun");
+      }
+      if ((!single.pos || single.pos === "default") && /днём|утром|вечером|сегодня|завтра|сейчас|тут|там|здесь/.test(lower)) {
+        single.pos = "adverb";
+        single.posColor = getPosColor("adverb");
+      }
       if (!single.form && !single.pos) return w;
       return {
         ...w,
