@@ -325,12 +325,13 @@ export default function QuestDictation() {
   }, [ensureTtsAudio]);
 
   const playAudio = useCallback((text, times) => {
-    // 检查答题页自动播放设置
-    if (!useSettingsStore.getState().settings.questionAutoPlay) return;
-    const volume = useSettingsStore.getState().settings.ttsVolume ?? 1;
+    // 检查答题页自动播放设置（ui.autoSpeak）
+    if (ui.autoSpeak === false) return;
+    // 发音音量（settings.vol 0-100）
+    const volume = (settings.vol ?? 100) / 100;
     const textToPlay = text || currentStatement?.russian;
     if (!textToPlay) return;
-    const n = times ?? (ui.speakTimes ?? 2); // 进题自动播放次数（与播放设置关联）
+    const n = times ?? (ui.speakTimes ?? 2);
     (async () => {
       let url = "";
       let readyEl = null; // 已内容就绪的预载 Audio → 直接播（零延迟，跳过重新加载）
