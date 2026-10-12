@@ -61,42 +61,6 @@ export default function Vocab() {
 
   const refresh = () => setList(getReviewSentences())
 
-  // ---- 页眉工具栏：全部复习/按课程包 + 筛选/复习设置/选择/开始复习 全部在页眉上（内容页不再重复标题）----
-  const { setHeaderRight } = usePageHeader()
-  useEffect(() => {
-    setHeaderRight(
-      <div className="flex min-w-0 flex-1 items-center gap-2.5">
-        {selecting ? (
-          <>
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">管理复习项</span>
-            <button onClick={selectAll} className="cursor-pointer text-xs font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
-            <button onClick={clearSelect} className="cursor-pointer text-xs font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
-            <div className="flex-1" />
-            <span className="text-xs text-gray-400 dark:text-gray-500">已选择 {selected.size} 题</span>
-          </>
-        ) : (
-          <>
-            <div className="flex overflow-hidden rounded-lg border border-gray-200 dark:border-white/10">
-              {[['all', '全部复习'], ['pack', '按课程包']].map(([k, label]) => (
-                <button key={k} onClick={() => setTab(k)}
-                  className={`cursor-pointer px-3 py-1.5 text-xs font-medium transition-colors ${
-                    tab === k ? 'bg-violet-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
-                  }`}>{label}</button>
-              ))}
-            </div>
-            <div className="flex-1" />
-            <button onClick={() => setShowFilter(true)} className={ghostSm}>筛选</button>
-            <button onClick={() => setShowSettings(true)} className={ghostSm}>复习设置</button>
-            <button onClick={() => setSelecting(true)} className={ghostSm}>选择</button>
-            <button onClick={() => setShowStart(true)} className={primarySm}>开始复习({total})</button>
-          </>
-        )}
-      </div>
-    )
-    return () => setHeaderRight(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, total, selecting, selected.size, setHeaderRight, setShowFilter, setShowSettings, setSelecting, setShowStart, setTab, selectAll, clearSelect])
-
   const sorted = useMemo(() => {
     const arr = [...list]
     arr.sort((a, b) => {
@@ -254,6 +218,43 @@ export default function Vocab() {
       </div>
     )
   }
+
+  // ---- 页眉工具栏：全部复习/按课程包 + 筛选/复习设置/选择/开始复习 全部在页眉上（内容页不再重复标题）----
+  // 注：必须放在所有 const 声明之后，否则 deps 数组求值触发 TDZ
+  const { setHeaderRight } = usePageHeader()
+  useEffect(() => {
+    setHeaderRight(
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        {selecting ? (
+          <>
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">管理复习项</span>
+            <button onClick={selectAll} className="cursor-pointer text-xs font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
+            <button onClick={clearSelect} className="cursor-pointer text-xs font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
+            <div className="flex-1" />
+            <span className="text-xs text-gray-400 dark:text-gray-500">已选择 {selected.size} 题</span>
+          </>
+        ) : (
+          <>
+            <div className="flex overflow-hidden rounded-lg border border-gray-200 dark:border-white/10">
+              {[['all', '全部复习'], ['pack', '按课程包']].map(([k, label]) => (
+                <button key={k} onClick={() => setTab(k)}
+                  className={`cursor-pointer px-3 py-1.5 text-xs font-medium transition-colors ${
+                    tab === k ? 'bg-violet-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
+                  }`}>{label}</button>
+              ))}
+            </div>
+            <div className="flex-1" />
+            <button onClick={() => setShowFilter(true)} className={ghostSm}>筛选</button>
+            <button onClick={() => setShowSettings(true)} className={ghostSm}>复习设置</button>
+            <button onClick={() => setSelecting(true)} className={ghostSm}>选择</button>
+            <button onClick={() => setShowStart(true)} className={primarySm}>开始复习({total})</button>
+          </>
+        )}
+      </div>
+    )
+    return () => setHeaderRight(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, total, selecting, selected.size, setHeaderRight, setShowFilter, setShowSettings, setSelecting, setShowStart, setTab, selectAll, clearSelect])
 
   // ---- 复习本主页面 ----
   return (

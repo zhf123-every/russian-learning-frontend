@@ -128,35 +128,6 @@ export default function VocabBook() {
   const refresh = () => setList(getVocabWords())
   const total = list.length
 
-  // ---- 页眉工具栏：生词汇总 + 筛选/导出/选择/开始练习 全部在页眉上（内容页不再重复标题）----
-  const { setHeaderRight } = usePageHeader()
-  useEffect(() => {
-    setHeaderRight(
-      <div className="flex min-w-0 flex-1 items-center gap-2.5">
-        {selecting ? (
-          <>
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">管理生词</span>
-            <button onClick={selectAll} className="cursor-pointer text-xs font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
-            <button onClick={clearSelect} className="cursor-pointer text-xs font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
-            <div className="flex-1" />
-            <span className="text-xs text-gray-400 dark:text-gray-500">已选择 {selected.size} 个</span>
-          </>
-        ) : (
-          <>
-            <span className="text-xs text-gray-400 dark:text-gray-500">共 {total} 个生词</span>
-            <div className="flex-1" />
-            <button onClick={() => setShowFilter(true)} className={ghostSm}>筛选</button>
-            <button onClick={() => { setExportCourse('all'); setExportTime('all'); setShowExport(true) }} className={ghostSm}>导出</button>
-            <button onClick={() => setSelecting(true)} className={ghostSm}>选择</button>
-            <button onClick={() => setShowStart(true)} className={primarySm}>开始练习</button>
-          </>
-        )}
-      </div>
-    )
-    return () => setHeaderRight(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [total, selecting, selected.size, setHeaderRight, setShowFilter, setExportCourse, setExportTime, setShowExport, setSelecting, setShowStart, selectAll, clearSelect])
-
   const inTimeRange = w => {
     if (timeRange === 'all') return true
     const d = new Date(w.addedAt || 0).getTime()
@@ -399,6 +370,36 @@ export default function VocabBook() {
       </div>
     )
   }
+
+  // ---- 页眉工具栏：生词汇总 + 筛选/导出/选择/开始练习 全部在页眉上（内容页不再重复标题）----
+  // 注：必须放在所有 const 声明之后，否则 deps 数组求值触发 TDZ
+  const { setHeaderRight } = usePageHeader()
+  useEffect(() => {
+    setHeaderRight(
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        {selecting ? (
+          <>
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">管理生词</span>
+            <button onClick={selectAll} className="cursor-pointer text-xs font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
+            <button onClick={clearSelect} className="cursor-pointer text-xs font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
+            <div className="flex-1" />
+            <span className="text-xs text-gray-400 dark:text-gray-500">已选择 {selected.size} 个</span>
+          </>
+        ) : (
+          <>
+            <span className="text-xs text-gray-400 dark:text-gray-500">共 {total} 个生词</span>
+            <div className="flex-1" />
+            <button onClick={() => setShowFilter(true)} className={ghostSm}>筛选</button>
+            <button onClick={() => { setExportCourse('all'); setExportTime('all'); setShowExport(true) }} className={ghostSm}>导出</button>
+            <button onClick={() => setSelecting(true)} className={ghostSm}>选择</button>
+            <button onClick={() => setShowStart(true)} className={primarySm}>开始练习</button>
+          </>
+        )}
+      </div>
+    )
+    return () => setHeaderRight(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total, selecting, selected.size, setHeaderRight, setShowFilter, setExportCourse, setExportTime, setShowExport, setSelecting, setShowStart, selectAll, clearSelect])
 
   // ================= 主页面 =================
   return (
