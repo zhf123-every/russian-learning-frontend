@@ -457,22 +457,44 @@ export default function QuestDictation() {
         setLoading(false);
         return;
       }
-      // P3：语块优先（与中译俄同一数据源，按句为单位 = 上传的行数）→ 整句听写
+      // P3：直接读 statements（和中译俄同一接口，按上传的句子出题，不走语块）
       try {
-        const segItems = await loadSegmentsItemsForUnit(effectiveCourseId, studyCourseId);
-        if (segItems && segItems.length && !cancelled) {
-          let title = "本课", desc = "";
-          try { const pre = getCachedLesson(effectiveCourseId); if (pre) { title = pre.title || pre.name || title; desc = pre.description || ""; } } catch (e) { /* 忽略 */ }
-          if (title === "本课") { try { const lu = findLocalUnitById(effectiveCourseId); if (lu) { title = lu.title || title; desc = lu.description || ""; } } catch (e) { /* 忽略 */ } }
-          setUnitMeta({ title, description: desc });
-          setLocalLesson({ id: effectiveCourseId, title });
-          setIsLocalMode(false);
-          // 听写页按句为单位：不展开积木步骤，直接用语块原题（与中译俄题数一致）
-          setStatements(applyDiffItems(segItems));
-          setLoading(false);
-          return;
+        const sres = await fetch(`${API_BASE}/api/courses/${studyCourseId || effectiveCourseId}/statements`);
+        if (sres.ok) {
+          const sdata = await sres.json();
+          if (sdata && sdata.statements && sdata.statements.length && !cancelled) {
+            let title = "本课", desc = "";
+            try { const pre = getCachedLesson(effectiveCourseId); if (pre) { title = pre.title || pre.name || title; desc = pre.description || ""; } } catch (e) { /* 忽略 */ }
+            if (title === "本课") { try { const lu = findLocalUnitById(effectiveCourseId); if (lu) { title = lu.title || title; desc = lu.description || ""; } } catch (e) { /* 忽略 */ } }
+            // statements → items：直接用后端返回的 words（完整标注），按中文过滤难度
+            const items = sdata.statements.map((s, i) => ({
+              id: `stmt_${s.id || i}`,
+              russian: s.russian || "",
+              chinese: s.chinese || "",
+              words: (s.words || []).map((w) => ({
+                ru: w.form || w.lemma || "",
+                form: w.form || w.lemma || "",
+                lemma: w.lemma || "",
+                pos: w.pos || "",
+                gender: w.gender || "",
+                number: w.number || "",
+                grammarCase: w.grammaticalCase || "",
+                syntacticRole: w.syntacticRole || "",
+                zh: s.chinese || "",
+                chinese: s.chinese || "",
+              })),
+              audio_url: "",
+              chunks: [],
+            }));
+            setUnitMeta({ title, description: desc });
+            setLocalLesson({ id: effectiveCourseId, title });
+            setIsLocalMode(false);
+            setStatements(applyDiffItems(items));
+            setLoading(false);
+            return;
+          }
         }
-      } catch (e) { /* 语块不可用 → 走原逻辑 */ }
+      } catch (e) { /* statements 不可用 → 走兜底 */ }
       // P4：句乐部路径兜底——课时有 scaffoldingPaths → 按难度取档（仅当语块不可用时）
       try {
         const pre = getCachedLesson(effectiveCourseId);
