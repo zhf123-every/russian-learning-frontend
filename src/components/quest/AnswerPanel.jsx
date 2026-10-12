@@ -200,14 +200,16 @@ export default function AnswerPanel({
       }
     }
     return raw.map((w) => {
-      if (w.form && w.pos) return w; // 已有完整标注直接复用
-      const single = annotateWords(w.lemma || w.word || w.ru || w.text || "")[0] || {};
+      if (w.form && w.pos && w.pos !== "default") return w; // 已有完整标注直接复用
+      // 兜底：用 lemma/word/ru/text/form 任意一个字段查词典
+      const lookupKey = w.lemma || w.word || w.ru || w.text || w.form || "";
+      const single = annotateWords(lookupKey)[0] || {};
       if (!single.form && !single.pos) return w;
       return {
         ...w,
-        form: w.form || single.form,
-        lemma: w.lemma || single.lemma || "",
-        pos: w.pos || single.pos || "",
+        form: w.form || single.form || lookupKey,
+        lemma: w.lemma || single.lemma || lookupKey,
+        pos: w.pos && w.pos !== "default" ? w.pos : single.pos || "",
         posColor: w.posColor || single.posColor || "",
         gender: w.gender || single.gender || "",
         grammarCase: w.grammarCase || single.grammarCase || "",
