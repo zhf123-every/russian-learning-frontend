@@ -829,52 +829,60 @@ export default function QuestPractice() {
   const ttsAudioRef = useRef(null);
   const ttsAudioPoolRef = useRef(new Set()); // 所有播放中的 Audio 实例，打断时全部暂停（防旧实例漏停）
   const playTokenRef = useRef(0); // 播放令牌：新播放/切题递增，作废所有在途播放
-  const ttsUrlCacheRef = useRef({}); // id -> url，同一句只请求一次
+  const ttsUrlCacheRef = useRef({}); // id -> url，同一句只请求一次（key 含音色，切换设置即作废）
   const ensureTts = useCallback(async (stmt) => {
     if (!stmt || !stmt.russian) return "";
     const storeSettings = useSettingsStore.getState().settings;
     const ttsSource = storeSettings.ttsSource || "premium";
     const voice = storeSettings.ttsVoice || (ttsSource === "system" ? "female" : "alena");
-    // 发音源=系统发音人：预载不发声，返回标记；播放时走 speechSynthesis
+    const vk = `${ttsSource}_${voice}`;
+    // 发音源=系统发音人：永远走浏览器语音合成，不查任何后端缓存（预载/旧音色缓存不得绕过本设置）
     if (ttsSource === "system" && window.speechSynthesis) {
-      ttsUrlCacheRef.current[stmt.id] = "system://" + encodeURIComponent(stmt.russian);
+      ttsUrlCacheRef.current[`${vk}_${stmt.id}`] = "system://" + encodeURIComponent(stmt.russian);
       return "system://" + encodeURIComponent(stmt.russian);
     }
-    if (ttsUrlCacheRef.current[stmt.id]) return ttsUrlCacheRef.current[stmt.id];
-    // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
-    const preUrl = getCachedTtsUrl(stmt.russian);
-    if (preUrl) { ttsUrlCacheRef.current[stmt.id] = preUrl; return preUrl; }
-    let url = stmt.audio_url;
-    if (!url) {
-      try {
-        const res = await fetch(`${API_BASE}/api/tts`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: stmt.russian, voice, id: stmt.id, type: "statement" }),
-        });
-        const data = await res.json();
-        if (data.ok && data.audio_url) {
-          url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
-        }
-      } catch (e) { console.warn("TTS 获取失败:", e); }
-    } else if (!url.startsWith("http")) {
+    if (ttsUrlCacheRef.current[`${vk}_${stmt.id}`]) return ttsUrlCacheRef.current[`${vk}_${stmt.id}`];
+    // 预加载页已按当前音色真实生成该句 TTS → 直接复用（免再请求后端）
+    const preUrl = getCachedTtsUrl(stmt.russian, `${ttsSource}:${voice}`);
+    if (preUrl) { ttsUrlCacheRef.current[`${vk}_${stmt.id}`] = preUrl; return preUrl; }
+    let url = "";
+    // 优先按当前音色合成（预载缓存/后端缓存命中即免请求）；课程自带 audio_url 仅作兜底
+    try {
+      const res = await fetch(`${API_BASE}/api/tts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: stmt.russian, voice, id: stmt.id, type: "statement" }),
+      });
+      const data = await res.json();
+      if (data.ok && data.audio_url) {
+        url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
+      }
+    } catch (e) { console.warn("TTS 获取失败:", e); }
+    if (!url) url = stmt.audio_url; // 兜底：后端不可用时用课程自带音频
+    if (url && !url.startsWith("http")) {
       url = `${API_BASE}${url}`;
     }
-    if (url) ttsUrlCacheRef.current[stmt.id] = url;
+    if (url) ttsUrlCacheRef.current[`${vk}_${stmt.id}`] = url;
     return url;
   }, []);
 
   // 预载音频内容：拿到 URL 后立即创建 Audio 并等 canplay（内容就绪），播放时秒开
-  const ttsAudioCacheRef = useRef({}); // id -> { audio, promise }，同句复用已预载 Audio
+  const ttsAudioCacheRef = useRef({}); // (音色,id) -> { audio, promise }，同句复用已预载 Audio
   const ensureTtsAudio = useCallback((stmt) => {
     const cid = stmt?.id || stmt?.russian || "";
     if (!cid) return null;
-    if (ttsAudioCacheRef.current[cid]) return ttsAudioCacheRef.current[cid];
-    // 预加载页已预载内容就绪的 Audio → 直接复用（秒播）
-    const preAudio = getCachedTtsAudio(stmt.russian || "");
+    const storeSettings = useSettingsStore.getState().settings;
+    const ttsSource = storeSettings.ttsSource || "premium";
+    const voice = storeSettings.ttsVoice || (ttsSource === "system" ? "female" : "alena");
+    const vol = storeSettings.vol ?? 100;
+    const cacheKey = `${ttsSource}_${voice}_${vol}_${cid}`;
+    if (ttsAudioCacheRef.current[cacheKey]) return ttsAudioCacheRef.current[cacheKey];
+    // 预加载页已按当前音色预载内容就绪的 Audio → 直接复用（秒播）
+    const preAudio = getCachedTtsAudio(stmt.russian || "", `${ttsSource}:${voice}`);
     if (preAudio) {
+      preAudio.volume = vol / 100; // 设置音量
       const entry = { audio: preAudio, promise: Promise.resolve() };
-      ttsAudioCacheRef.current[cid] = entry;
+      ttsAudioCacheRef.current[cacheKey] = entry;
       return entry;
     }
     const entry = { audio: null, promise: null };
@@ -891,7 +899,7 @@ export default function QuestPractice() {
         entry.audio = audio;
       } catch (e) { /* 预载失败，播放时再兜底 */ }
     })();
-    ttsAudioCacheRef.current[cid] = entry;
+    ttsAudioCacheRef.current[cacheKey] = entry;
     return entry;
   }, [ensureTts]);
   ensureTtsAudioRef.current = ensureTtsAudio;

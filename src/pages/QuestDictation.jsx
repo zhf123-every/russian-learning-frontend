@@ -251,7 +251,7 @@ export default function QuestDictation() {
     if (maxCombo > 0) recordPeak({ maxCombo })
   }, [maxCombo])
 
-  // ---- 俄语发音（与中译俄一致：/api/tts voice=alena/type=statement，同句缓存）----
+  // ---- 俄语发音（与中译俄一致：/api/tts voice/type=statement，同句缓存，按音色隔离）----
   const ttsAudioRef = useRef(null);
   const playTokenRef = useRef(0); // 播放令牌：新播放/切题递增，作废所有在途播放
   const ttsUrlCacheRef = useRef({});
@@ -261,17 +261,17 @@ export default function QuestDictation() {
     const storeSettings = useSettingsStore.getState().settings;
     // 发音源切换：system=浏览器系统发音 / premium=后端高级发音人
     const ttsSource = storeSettings.ttsSource || "premium";
-    const voice = storeSettings.ttsVoice || "female";
-    // 缓存 key 包含发音源和发音人，切换设置时自动清旧缓存
+    const voice = storeSettings.ttsVoice || (ttsSource === "system" ? "female" : "alena");
+    // 缓存 key 包含发音源和发音人，切换设置时自动命中新 key（旧缓存作废）
     const cacheKey = `${ttsSource}_${voice}_${text}`;
-    if (ttsUrlCacheRef.current[cacheKey]) return ttsUrlCacheRef.current[cacheKey];
-    // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
-    const preUrl = getCachedTtsUrl(text);
-    if (preUrl) { ttsUrlCacheRef.current[cacheKey] = preUrl; return preUrl; }
+    // 发音源=系统发音人：永远走浏览器语音合成，不查任何后端缓存（预载/旧音色缓存不得绕过本设置）
     if (ttsSource === "system" && window.speechSynthesis) {
-      // 系统发音：预载阶段不发声，仅返回标记；播放时走 speechSynthesis（音量/倍速/次数生效）
       return "system://" + encodeURIComponent(text);
     }
+    if (ttsUrlCacheRef.current[cacheKey]) return ttsUrlCacheRef.current[cacheKey];
+    // 预加载页已按当前音色真实生成该句 TTS → 直接复用（免再请求后端）
+    const preUrl = getCachedTtsUrl(text, `${ttsSource}:${voice}`);
+    if (preUrl) { ttsUrlCacheRef.current[cacheKey] = preUrl; return preUrl; }
     let url = "";
     try {
       const res = await fetch(`${API_BASE}/api/tts`, {
@@ -286,19 +286,19 @@ export default function QuestDictation() {
     return url;
   }, [effectiveCourseId]);
 
-  // 音频内容预载缓存：text -> { audio, promise }，同句复用已就绪 Audio
+  // 音频内容预载缓存：key(text,音色) -> { audio, promise }，同句复用已就绪 Audio
   const ttsAudioCacheRef = useRef({});
   const ensureTtsAudio = useCallback((text) => {
     if (!text) return null;
-    // 缓存 key 包含发音源、发音人和音量，切换设置时自动清旧缓存
+    // 缓存 key 包含发音源、发音人和音量，切换设置时自动命中新 key（旧缓存作废）
     const storeSettings = useSettingsStore.getState().settings;
     const ttsSource = storeSettings.ttsSource || "premium";
-    const voice = storeSettings.ttsVoice || "female";
+    const voice = storeSettings.ttsVoice || (ttsSource === "system" ? "female" : "alena");
     const vol = storeSettings.vol ?? 100;
     const cacheKey = `${ttsSource}_${voice}_${vol}_${text}`;
     if (ttsAudioCacheRef.current[cacheKey]) return ttsAudioCacheRef.current[cacheKey];
-    // 预加载页已预载内容就绪的 Audio → 直接复用（秒播）
-    const preAudio = getCachedTtsAudio(text);
+    // 预加载页已按当前音色预载内容就绪的 Audio → 直接复用（秒播）
+    const preAudio = getCachedTtsAudio(text, `${ttsSource}:${voice}`);
     if (preAudio) {
       preAudio.volume = vol / 100; // 设置音量
       const entry = { audio: preAudio, promise: Promise.resolve() };
@@ -319,7 +319,7 @@ export default function QuestDictation() {
         entry.audio = audio;
       } catch (e) { /* 预载失败，播放时兜底 */ }
     })();
-    ttsAudioCacheRef.current[text] = entry;
+    ttsAudioCacheRef.current[cacheKey] = entry;
     return entry;
   }, [ensureTtsUrl]);
 

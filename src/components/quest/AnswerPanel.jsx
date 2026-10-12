@@ -28,7 +28,7 @@ import { playGlobalAudio, stopGlobalAudio } from "../../utils/audioService";
 import { speakText } from "../../lib/tts";
 import { useSettingsStore } from "../../store/settingsStore";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
-// 内存缓存：text -> audio_url，避免重复请求
+// 内存缓存：音色::text -> audio_url，避免重复请求（切换音色后自动命中新 key，旧缓存作废）
 const ttsCache = new Map();
 
 // 句法角色 → 颜色映射（对齐句乐部实测：边框/标签用角色色，主语橙/谓语红/宾语蓝）
@@ -142,12 +142,13 @@ export default function AnswerPanel({
       }
 
       let url = audioUrl;
+      const cacheKey = `${ttsSource}:${voice}::${text}`;
 
       // 没有缓存的 audio_url，调用后端 TTS 合成
       if (!url) {
-        // 先查内存缓存
-        if (ttsCache.has(text)) {
-          url = ttsCache.get(text);
+        // 先查内存缓存（按音色隔离）
+        if (ttsCache.has(cacheKey)) {
+          url = ttsCache.get(cacheKey);
         } else {
           const res = await fetch(`${API_BASE}/api/tts`, {
             method: "POST",
@@ -157,7 +158,7 @@ export default function AnswerPanel({
           const data = await res.json();
           if (data.ok && data.audio_url) {
             url = data.audio_url.startsWith("http") ? data.audio_url : `${API_BASE}${data.audio_url}`;
-            ttsCache.set(text, url);
+            ttsCache.set(cacheKey, url);
           }
         }
       } else if (!url.startsWith("http")) {

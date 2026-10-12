@@ -29,12 +29,18 @@ const MODE_TO_PATH = {
   speaking: "quest-speaking",
 };
 
+/** 当前发音源+音色配置（实时读取设置，保证预载与设置弹窗一致） */
+function ttsVoiceConfig() {
+  const st = useSettingsStore.getState().settings
+  const source = st.ttsSource || "premium"
+  const voice = st.ttsVoice || (source === "system" ? "female" : "alena")
+  return { source, voice, voiceKey: source + ":" + voice }
+}
+
 /** POST /api/tts 取真实音频 URL（带超时，失败返回空串）；发音类型跟随设置，预载与答题页同音色 */
-async function fetchTtsUrl(text) {
+async function fetchTtsUrl(text, voice) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TTS_TIMEOUT);
-  const st = useSettingsStore.getState().settings;
-  const voice = (st.ttsSource === "system" ? st.ttsVoice || "female" : st.ttsVoice) || "alena";
   try {
     const res = await fetch(`${API_BASE}/api/tts`, {
       method: "POST",
@@ -53,7 +59,7 @@ async function fetchTtsUrl(text) {
 }
 
 /** 预热音频内容并存入共享缓存（答题页 ensureTtsAudio 直接复用已 canplay 的 Audio → 秒播）；6s 超时强制返回 */
-function warmAudio(text, url) {
+function warmAudio(text, url, voiceKey) {
   return new Promise((resolve) => {
     const audio = new Audio();
     audio.preload = "auto";
@@ -68,8 +74,8 @@ function warmAudio(text, url) {
       resolve();
     };
     const timer = setTimeout(finish, 6000);
-    audio.oncanplay = () => { cacheTtsAudio(text, audio); finish(); };
-    audio.onloadeddata = () => { cacheTtsAudio(text, audio); finish(); };
+    audio.oncanplay = () => { cacheTtsAudio(text, audio, voiceKey); finish(); };
+    audio.onloadeddata = () => { cacheTtsAudio(text, audio, voiceKey); finish(); };
     audio.onerror = finish;
     audio.src = url;
     audio.load();
@@ -172,18 +178,24 @@ export default function Preloader() {
         inc();
 
         // 5) 首屏句子音频并发预载（每句成功/失败都推进，进度真实）
+        //    发音源=系统发音人：不预载后端音频（答题页走浏览器语音合成，缓存不绕过发音源设置）
+        const { source, voice, voiceKey } = ttsVoiceConfig();
         let i = 0;
         const workers = Array.from({ length: TTS_CONCURRENCY }, async () => {
           while (i < audioTexts.length) {
             const idx = i++;
             const text = audioTexts[idx];
             try {
-              const url = await fetchTtsUrl(text);
-              if (url) {
-                cacheTtsUrl(text, url); // 答题页 ensureTts 命中即免再请求
-                await warmAudio(text, url);   // 预载并存入共享缓存，答题页秒播
+              if (source === "system") {
+                // 系统发音人：跳过后端 TTS 生成与缓存
               } else {
-                console.warn("[Preloader] TTS 无返回:", text.slice(0, 24));
+                const url = await fetchTtsUrl(text, voice);
+                if (url) {
+                  cacheTtsUrl(text, url, voiceKey); // 答题页 ensureTts 命中即免再请求
+                  await warmAudio(text, url, voiceKey);   // 预载并存入共享缓存，答题页秒播
+                } else {
+                  console.warn("[Preloader] TTS 无返回:", text.slice(0, 24));
+                }
               }
             } catch (e) {
               console.warn("[Preloader] TTS 失败:", text.slice(0, 24), String(e && e.message || e));

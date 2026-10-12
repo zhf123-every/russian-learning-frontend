@@ -497,46 +497,53 @@ export default function QuestListening() {
 
   // ---- TTS 发音源（与设置弹窗「声音」页联动：发音源/发音类型/音量实时生效） ----
   const ttsUrlCacheRef = useRef({});
-  const ttsAudioCacheRef = useRef({}); // text -> { audio, promise }，同句复用已预载 Audio
+  const ttsAudioCacheRef = useRef({}); // (音色,text) -> { audio, promise }，同句复用已预载 Audio
   const ensureTtsUrl = useCallback(async (text) => {
     if (!text) return "";
     const storeSettings = useSettingsStore.getState().settings;
     const ttsSource = storeSettings.ttsSource || "premium";
     const voice = storeSettings.ttsVoice || (ttsSource === "system" ? "female" : "alena");
-    // 发音源=系统发音人：预载不发声，返回标记；播放时走 speechSynthesis
+    const cacheKey = `${ttsSource}_${voice}_${text}`;
+    // 发音源=系统发音人：永远走浏览器语音合成，不查任何后端缓存（预载/旧音色缓存不得绕过本设置）
     if (ttsSource === "system" && window.speechSynthesis) {
       return "system://" + encodeURIComponent(text);
     }
-    if (ttsUrlCacheRef.current[text]) return ttsUrlCacheRef.current[text];
-    // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
-    const preUrl = getCachedTtsUrl(text);
-    if (preUrl) { ttsUrlCacheRef.current[text] = preUrl; return preUrl; }
-    let url = (current && current.audio_url) || "";
-    if (!url) {
-      try {
-        const res = await fetch(`${API_BASE}/api/tts`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voice, id: effectiveCourseId, type: "statement" }),
-        });
-        const data = await res.json();
-        if (data.ok && data.audio_url) url = data.audio_url;
-      } catch (e) { /* 忽略 */ }
-    }
+    if (ttsUrlCacheRef.current[cacheKey]) return ttsUrlCacheRef.current[cacheKey];
+    // 预加载页已按当前音色真实生成该句 TTS → 直接复用（免再请求后端）
+    const preUrl = getCachedTtsUrl(text, `${ttsSource}:${voice}`);
+    if (preUrl) { ttsUrlCacheRef.current[cacheKey] = preUrl; return preUrl; }
+    let url = "";
+    // 优先按当前音色合成（预载缓存/后端缓存命中即免请求）；课程自带 audio_url 仅作兜底
+    try {
+      const res = await fetch(`${API_BASE}/api/tts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice, id: effectiveCourseId, type: "statement" }),
+      });
+      const data = await res.json();
+      if (data.ok && data.audio_url) url = data.audio_url;
+    } catch (e) { /* 忽略 */ }
+    if (!url) url = (current && current.audio_url) || ""; // 兜底：后端不可用时用课程自带音频
     if (!url) return "";
     if (!url.startsWith("http")) url = `${API_BASE}${url}`;
-    ttsUrlCacheRef.current[text] = url;
+    ttsUrlCacheRef.current[cacheKey] = url;
     return url;
   }, [current, effectiveCourseId]);
 
   const ensureTtsAudio = useCallback((text) => {
     if (!text) return null;
-    if (ttsAudioCacheRef.current[text]) return ttsAudioCacheRef.current[text];
-    // 预加载页已预载内容就绪的 Audio → 直接复用（秒播）
-    const preAudio = getCachedTtsAudio(text);
+    const storeSettings = useSettingsStore.getState().settings;
+    const ttsSource = storeSettings.ttsSource || "premium";
+    const voice = storeSettings.ttsVoice || (ttsSource === "system" ? "female" : "alena");
+    const vol = storeSettings.vol ?? 100;
+    const cacheKey = `${ttsSource}_${voice}_${vol}_${text}`;
+    if (ttsAudioCacheRef.current[cacheKey]) return ttsAudioCacheRef.current[cacheKey];
+    // 预加载页已按当前音色预载内容就绪的 Audio → 直接复用（秒播）
+    const preAudio = getCachedTtsAudio(text, `${ttsSource}:${voice}`);
     if (preAudio) {
+      preAudio.volume = vol / 100; // 设置音量
       const entry = { audio: preAudio, promise: Promise.resolve() };
-      ttsAudioCacheRef.current[text] = entry;
+      ttsAudioCacheRef.current[cacheKey] = entry;
       return entry;
     }
     const entry = { audio: null, promise: null };
@@ -553,7 +560,7 @@ export default function QuestListening() {
         entry.audio = a;
       } catch (e) { /* 预载失败不阻塞 */ }
     })();
-    ttsAudioCacheRef.current[text] = entry;
+    ttsAudioCacheRef.current[cacheKey] = entry;
     return entry;
   }, [ensureTtsUrl]);
 
