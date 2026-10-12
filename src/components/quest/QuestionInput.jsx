@@ -31,6 +31,7 @@ export default function QuestionInput({
   onKeyDown,
   errors = [],
   isJudging = false,
+  inputStyle = "underline",
   placeholder = "输入俄语句子，按 Enter 提交",
 }) {
   // 构建 wordIndex → error 的映射
@@ -42,8 +43,11 @@ export default function QuestionInput({
     return map;
   }, [errors]);
 
+  // 带边框词槽样式（单词长度/固定宽度）：错误时整框变色 + 浅色底
+  const boxed = inputStyle === "dynamic" || inputStyle === "fixed";
+
   return (
-    <div className="quest-input-wrapper">
+    <div className="quest-input-wrapper" data-style={inputStyle}>
       <style>{`
         /* 外层：无卡片，纯文本居中 */
         .quest-input-wrapper {
@@ -63,7 +67,7 @@ export default function QuestionInput({
           min-height: 4rem;
         }
 
-        /* 单词槽：只有底部下划线，无背景无边框无圆角 */
+        /* 单词槽：只有底部下划线，无背景无边框无圆角（极简横线） */
         .quest-word {
           height: 4rem;
           border-bottom: 2px solid var(--qs-border, #D1D5DB);
@@ -79,6 +83,32 @@ export default function QuestionInput({
           align-items: flex-end;
           justify-content: center;
           padding-bottom: 2px;
+        }
+
+        /* 「单词长度」/「固定宽度」：带边框词槽（对齐答题输入框样式设置） */
+        .quest-input-wrapper[data-style="dynamic"] .quest-word,
+        .quest-input-wrapper[data-style="fixed"] .quest-word {
+          border: 2px solid var(--qs-border, #D1D5DB);
+          border-radius: 10px;
+          background: #FFFFFF;
+          min-width: 0;
+          padding: 0 12px;
+          align-items: center;
+        }
+        .quest-input-wrapper[data-style="dynamic"] .quest-word { min-width: 5rem; }
+        .quest-input-wrapper[data-style="fixed"] .quest-word { width: 96px; min-width: 96px; }
+        .quest-input-wrapper[data-style="dynamic"] .quest-word-active,
+        .quest-input-wrapper[data-style="fixed"] .quest-word-active {
+          color: var(--qs-active, #5B21B6);
+          border-color: var(--qs-active, #5B21B6);
+          background: rgba(91, 33, 182, 0.08);
+          font-weight: 700;
+        }
+        .quest-input-wrapper[data-style="dynamic"] .quest-word-fixed,
+        .quest-input-wrapper[data-style="fixed"] .quest-word-fixed {
+          background: transparent;
+          border: none;
+          border-radius: 0;
         }
 
         /* 激活词：紫色文字 + 紫色下划线 + Bold（深夜模式自动用亮紫 var(--qs-active)） */
@@ -159,6 +189,14 @@ export default function QuestionInput({
             min-height: 2.5rem;
             gap: 6px;
           }
+          .quest-input-wrapper[data-style="dynamic"] .quest-word {
+            min-width: 4.5rem;
+            padding: 0 8px;
+          }
+          .quest-input-wrapper[data-style="fixed"] .quest-word {
+            width: 80px;
+            min-width: 80px;
+          }
         }
       `}</style>
 
@@ -185,7 +223,13 @@ export default function QuestionInput({
               <div
                 key={word.id}
                 className={className}
-                style={isError ? { color: errorColor, borderBottomColor: errorColor } : undefined}
+                style={
+                  isError
+                    ? boxed
+                      ? { color: errorColor, borderColor: errorColor, background: errorColor + "1A" }
+                      : { color: errorColor, borderBottomColor: errorColor }
+                    : undefined
+                }
               >
                 {/* 已输入的文字显示在下划线上方；未输入时为空（只显示下划线） */}
                 {word.userInput ? word.userInput : isPunct ? word.text : ""}

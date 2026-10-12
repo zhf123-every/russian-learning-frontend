@@ -217,6 +217,24 @@ export default function QuestDictation() {
   const [showSettings, setShowSettings] = useState(false);
   const [showExit, setShowExit] = useState(false);
   const { ui, sfx, settings, refreshSettings } = useQuestSettings();
+  // 「自动显示答案」/「记录到错题本」阈值（答题设置页：错误N次后 / 不显示 / 总是）
+  const recThreshold = { '3': 3, '2': 2, '1': 1, always: 1 }[ui.wrongRec || '3'] || 3
+  const revealThreshold = { '3': 3, '2': 2, '1': 1, off: 99 }[ui.autoReveal || '3'] || 3
+  // 「记录到错题本」：连续答错达到阈值时收录进错题本（按句子 id 去重，最多 300 条）
+  const recordWrongBook = useCallback((stmt, userText) => {
+    if (!stmt) return
+    try {
+      const wb = JSON.parse(localStorage.getItem('rlearn_quest_wrongbook') || '[]') || []
+      if (wb.some(x => x.id === stmt.id)) return
+      const now = Date.now()
+      wb.unshift({
+        id: stmt.id, lesson: effectiveCourseId, qText: stmt.fullRussian || stmt.russian || '',
+        zh: stmt.fullChinese || stmt.chinese || '', user: userText || '（答题错误）',
+        correct: stmt.fullRussian || stmt.russian || '', reason: '答题错误', ts: now,
+      })
+      localStorage.setItem('rlearn_quest_wrongbook', JSON.stringify(wb.slice(0, 300)))
+    } catch (e) { /* 忽略 */ }
+  }, [effectiveCourseId])
   const [showModePicker, setShowModePicker] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [showAnswerMode, setShowAnswerMode] = useState(false);
@@ -437,6 +455,7 @@ export default function QuestDictation() {
     apiBaseUrl: API_BASE,
     inputRef,
     isComposingRef,
+    ignoreCase: ui.ignoreCase !== false, // 「忽略大小写」设置（默认开）
     onCorrect: (result) => {
       setCurrentErrors([]);
       setWrongStreak(0); // 答对清零连续答错计数（悟空主动求助逻辑）
@@ -453,8 +472,13 @@ export default function QuestDictation() {
     },
     onWrong: (result) => {
       setCurrentErrors(result.errors || []);
-      setWrongStreak((s) => s + 1); // 答错累计连续答错（悟空主动求助逻辑）
+      const wc = wrongStreak + 1;
+      setWrongStreak(wc); // 答错累计连续答错（悟空主动求助逻辑）
       recordWrong();
+      // 「自动显示答案」：连续答错 N 次后自动展示答案（off=不显示）
+      if (wc >= revealThreshold) setShowAnswerPanel(true);
+      // 「记录到错题本」：连续答错达到阈值后收录（always=总是）
+      if (wc >= recThreshold) recordWrongBook(currentStatement, inputValue || '（答题错误）');
       if (sfx.answerOn !== false) playErrorSound();
       // 通关之路：六格天赋树（答错 → 该句各词格的答题数+1，不计正确）
       if (Array.isArray(currentStatement?.words)) {
@@ -1227,6 +1251,7 @@ export default function QuestDictation() {
             onChange={handleChange}
             onKeyDown={wrappedHandleKeyDown}
             errors={currentErrors}
+            inputStyle={ui.inputStyle || 'dynamic'}
           />
         </div>
 

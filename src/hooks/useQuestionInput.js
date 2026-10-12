@@ -78,6 +78,7 @@ export function useQuestionInput({
   isComposingRef,
   onCorrect,
   onWrong,
+  ignoreCase = true,
 }) {
   // ---- 状态 ----
   const [mode, setMode] = useState(MODES.INPUT);
@@ -404,18 +405,27 @@ export function useQuestionInput({
   /**
    * 根据后端返回的 errors 标记错误词
    * 后端 errors[].wordIndex 对应用户输入词的位置索引
+   * 「忽略大小写」开启时：纯大小写差异不标红（后端可能按严格大小写判题）
    */
   const markIncorrectFromErrors = useCallback((errors) => {
     setUserInputWords((prevWords) => {
+      const stripPunct = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, '');
+      const norm = (s) => (ignoreCase ? s.toLowerCase() : s);
+      const ans = (answerText || "").trim().split(/\s+/).filter(Boolean).map(stripPunct).map(norm);
       const newWords = prevWords.map((w) => ({ ...w, incorrect: false }));
       (errors || []).forEach((err) => {
         if (err.wordIndex >= 0 && err.wordIndex < newWords.length) {
-          newWords[err.wordIndex].incorrect = true;
+          const w = newWords[err.wordIndex];
+          if (w.fixed) return;
+          const uw = norm(stripPunct(w.userInput));
+          const aw = ans[err.wordIndex];
+          if (ignoreCase && uw && aw && uw === aw) return;
+          w.incorrect = true;
         }
       });
       return newWords;
     });
-  }, []);
+  }, [answerText, ignoreCase]);
 
   /**
    * 提交答案
@@ -428,12 +438,14 @@ export function useQuestionInput({
 
     // ===== 前端快速判题：词集合匹配（忽略语序），瞬间出结果 =====
     // 去掉词首尾的标点符号，避免 "друг." != "друг" 的误判
+    // 「忽略大小写」设置：开→小写归一；关→严格大小写
     const stripPunct = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, '');
-    const userWords = inputValue.toLowerCase().trim().split(/\s+/).filter(Boolean).map(stripPunct).filter(Boolean);
-    const allAnswerWords = (answerText || "").toLowerCase().trim().split(/\s+/).filter(Boolean).map(stripPunct).filter(Boolean);
+    const norm = (s) => (ignoreCase ? s.toLowerCase() : s);
+    const userWords = inputValue.trim().split(/\s+/).filter(Boolean).map(stripPunct).map(norm).filter(Boolean);
+    const allAnswerWords = (answerText || "").trim().split(/\s+/).filter(Boolean).map(stripPunct).map(norm).filter(Boolean);
     // 已给人名/专有名词：从标准答案和用户输入中都排除（用户多打了人名也不误判）
     const fixedSet = new Set(
-      userInputWords.filter(w => w.fixed).map(w => stripPunct(w.text).toLowerCase())
+      userInputWords.filter(w => w.fixed).map(w => norm(stripPunct(w.text)))
     );
     const answerWords = allAnswerWords.filter(w => !fixedSet.has(w));
     const userWordsFiltered = userWords.filter(w => !fixedSet.has(w));
@@ -482,7 +494,7 @@ export function useQuestionInput({
         // 非 fixed 词按用户输入顺序比较
         const idx = newWords.filter(x => !x.fixed).findIndex(x => x.id === w.id);
         const userWord = userWordsFiltered[idx] || "";
-        if (!answerSet.has(userWord.toLowerCase())) w.incorrect = true;
+        if (!answerSet.has(norm(userWord))) w.incorrect = true;
       });
       return newWords;
     });
@@ -493,7 +505,7 @@ export function useQuestionInput({
     submitToBackend(inputValue).then((result) => {
       if (result && result.errors) markIncorrectFromErrors(result.errors);
     });
-  }, [mode, inputValue, answerText, isJudging, userInputWords, submitToBackend, markIncorrectFromErrors, onCorrect, onWrong, computeResultType]);
+  }, [mode, inputValue, answerText, isJudging, userInputWords, submitToBackend, markIncorrectFromErrors, onCorrect, onWrong, computeResultType, ignoreCase]);
 
   // ==========================================================
   // 键盘事件处理（绑定在 input 元素的 onKeyDown 上）
