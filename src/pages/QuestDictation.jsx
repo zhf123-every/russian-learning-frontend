@@ -273,8 +273,8 @@ export default function QuestDictation() {
       window.speechSynthesis.speak(u);
       return "system://" + text; // 返回伪 URL，标记为系统发音
     }
-    // 发音类型：female=女（alena）/ male=男
-    const voice = storeSettings.ttsVoice === "male" ? "dmitry" : "alena";
+    // 发音类型：根据 ttsVoice 切换（支持微软神经和 Yandex 神经）
+    const voice = storeSettings.ttsVoice || "female";
     let url = "";
     try {
       const res = await fetch(`${API_BASE}/api/tts`, {
