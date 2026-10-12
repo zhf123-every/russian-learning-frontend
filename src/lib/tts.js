@@ -33,6 +33,31 @@ export function speakAll(sentences, { from = 0, rate = 1, voice = null, onIndex,
   next()
 }
 
+/**
+ * 系统发音播放器（发音源=系统发音人时使用）：按次数循环朗读，支持音量/倍速/间隔。
+ * 与后端 TTS 的 playGlobalAudio 语义对齐：times 次数、gap 间隔、onDone 全部播完回调。
+ */
+export function speakText(text, { rate = 1, volume = 1, times = 1, gap = 600, onDone } = {}) {
+  if (!text) { onDone?.(); return }
+  if (!('speechSynthesis' in window)) { onDone?.(); return }
+  try { window.speechSynthesis.cancel() } catch (e) { /* 忽略 */ }
+  const ru = getRuVoice()
+  let i = 0
+  const next = () => {
+    if (i >= (times || 1)) { onDone?.(); return }
+    i += 1
+    const u = new SpeechSynthesisUtterance(text)
+    u.lang = 'ru-RU'
+    u.rate = rate || 1
+    u.volume = volume == null ? 1 : volume
+    if (ru) u.voice = ru
+    u.onend = () => setTimeout(next, gap || 600)
+    u.onerror = () => setTimeout(next, gap || 600)
+    try { window.speechSynthesis.speak(u) } catch (e) { setTimeout(next, gap || 600) }
+  }
+  next()
+}
+
 export function loopSentence(sentences, i, times = 3, { rate = 1, voice = null, onIndex, onDone } = {}) {
   let n = 0
   const next = () => {

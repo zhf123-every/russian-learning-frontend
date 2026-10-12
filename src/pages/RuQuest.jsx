@@ -4,6 +4,7 @@ import { getLevelVideos, LEVELS } from '../data/courseLibrary'
 import { callAI } from '../lib/ai'
 import { API_BASE } from '../lib/api'
 import { toast } from '../lib/toast'
+import { useSettingsStore } from '../store/settingsStore'
 import { loadHotkeys, keysOfEvent } from '../components/SettingsModal'
 import SettingsModal from '../components/SettingsModal'
 import SummaryModal from '../components/quest/SummaryModal'           // P4 结算弹窗（评级+环形图+错题+撒花）
@@ -363,11 +364,25 @@ export default function RuQuest() {
     setUi(n)
     try { localStorage.setItem('rlearn_quest_ui', JSON.stringify(n)) } catch { /* 忽略 */ }
   }, [uiCfg])
-  // 设置弹窗/其他标签页保存 rlearn_quest_ui 后实时刷新（背景色/词性颜色等即时生效）
+  // 设置弹窗/其他标签页保存 rlearn_quest_ui 后实时刷新（背景色/词性颜色/自动播放开关等即时生效）
   useEffect(() => {
     const h = () => { try { setUi({ ...UI_DEFAULT, ...(JSON.parse(localStorage.getItem('rlearn_quest_ui') || '{}') || {}) }) } catch (e) { /* 忽略 */ } }
     window.addEventListener('storage', h)
-    return () => window.removeEventListener('storage', h)
+    window.addEventListener('quest-ui-changed', h)
+    return () => {
+      window.removeEventListener('storage', h)
+      window.removeEventListener('quest-ui-changed', h)
+    }
+  }, [])
+  // 设置弹窗保存 rlearn_quest_sfx 后实时重载音效配置（打字音效/音效类型/打字音量/反馈音效/反馈音量即时生效）
+  useEffect(() => {
+    const h = () => { loadSfxCfg() }
+    window.addEventListener('quest-ui-changed', h)
+    window.addEventListener('storage', h)
+    return () => {
+      window.removeEventListener('quest-ui-changed', h)
+      window.removeEventListener('storage', h)
+    }
   }, [])
   // 选择 Fredoka 时动态加载字体（加载失败自动回退系统字体）
   useEffect(() => {
@@ -637,14 +652,33 @@ export default function RuQuest() {
     }
   }, [phase, qi, done])
 
-  // —— 发音（speed: 0.5~2.0，走后端 /api/tts?rate=） ——
+  // —— 发音（与设置弹窗「声音」页联动：发音源 premium/system、发音类型、音量、倍速实时生效） ——
   const speak = useCallback((text, speed) => {
     if (!text) return
+    const st = useSettingsStore.getState().settings
+    const ttsSource = st.ttsSource || 'premium'
+    const voice = st.ttsVoice || (ttsSource === 'system' ? 'female' : 'alena')
+    const vol = (st.vol ?? 100) / 100
+    const rate = speed != null ? speed : (st.rate ?? 1)
+    // 发音源=系统发音人 → 浏览器语音合成（音量/倍速生效）
+    if (ttsSource === 'system' && ('speechSynthesis' in window)) {
+      try { window.speechSynthesis.cancel() } catch (e) { /* 忽略 */ }
+      const u = new SpeechSynthesisUtterance(text)
+      u.lang = 'ru-RU'
+      u.volume = vol
+      u.rate = rate
+      const v = window.speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('ru'))
+      if (v) u.voice = v
+      window.speechSynthesis.speak(u)
+      return
+    }
+    // 发音源=高级发音人 → 后端 /api/tts（voice 切换 Alena/Filipp 等；音量/倍速生效）
     if (!audioRef.current) audioRef.current = new Audio()
     const a = audioRef.current
     a.pause()
-    const sp = speed != null && speed !== 1 ? speed : null
-    a.src = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now() + (sp ? '&rate=' + sp : '')
+    a.volume = vol
+    const sp = rate != null && rate !== 1 ? rate : null
+    a.src = (API_BASE || '') + '/api/tts?text=' + encodeURIComponent(text) + '&_=' + Date.now() + (sp ? '&rate=' + sp : '') + '&voice=' + encodeURIComponent(voice)
     a.play().catch(() => {})
   }, [])
 

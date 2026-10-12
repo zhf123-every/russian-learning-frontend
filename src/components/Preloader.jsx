@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { cacheLesson, cacheTtsUrl, cacheTtsAudio } from "../utils/ttsPreloadShared";
 import { ensureDictFull, warmUpIndex } from "../lib/wordAnnotate";
 import { apiFetch } from "../lib/api";
+import { useSettingsStore } from "../store/settingsStore";
 
 // 后端基址（与各答题页一致：dev 走本地 8000，生产走 VITE_API_BASE）
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -28,15 +29,17 @@ const MODE_TO_PATH = {
   speaking: "quest-speaking",
 };
 
-/** POST /api/tts 取真实音频 URL（带超时，失败返回空串） */
+/** POST /api/tts 取真实音频 URL（带超时，失败返回空串）；发音类型跟随设置，预载与答题页同音色 */
 async function fetchTtsUrl(text) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TTS_TIMEOUT);
+  const st = useSettingsStore.getState().settings;
+  const voice = (st.ttsSource === "system" ? st.ttsVoice || "female" : st.ttsVoice) || "alena";
   try {
     const res = await fetch(`${API_BASE}/api/tts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, voice: "alena", id: "preload", type: "statement" }),
+      body: JSON.stringify({ text, voice, id: "preload", type: "statement" }),
       signal: ctrl.signal,
     });
     const data = await res.json();

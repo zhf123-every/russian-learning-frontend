@@ -16,6 +16,8 @@ import { segmentsToSequences, filterSegmentsByDifficulty } from "../lib/segments
 import { loadSlotTablesForUnit } from "../lib/loadSlotTables";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { preloadTtsAll } from "../lib/ttsPreload";
+import { speakText } from "../lib/tts";
+import { useSettingsStore } from "../store/settingsStore";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
 import SettingsModal, { loadHotkeys, keysOfEvent } from "../components/SettingsModal";
 import { useQuestSettings, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings";
@@ -500,11 +502,18 @@ export default function QuestSpeaking() {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  // ---- TTS 发音源（与中译俄一致：voice=alena / type=statement；优先数据自带音频；同句缓存） ----
+  // ---- TTS 发音源（与设置弹窗「声音」页联动：发音源/发音类型/音量实时生效） ----
   const ttsUrlCacheRef = useRef({});
   const ttsAudioCacheRef = useRef({}); // text -> { audio, promise }，同句复用已预载 Audio
   const ensureTtsUrl = useCallback(async (text) => {
     if (!text) return "";
+    const storeSettings = useSettingsStore.getState().settings;
+    const ttsSource = storeSettings.ttsSource || "premium";
+    const voice = storeSettings.ttsVoice || (ttsSource === "system" ? "female" : "alena");
+    // 发音源=系统发音人：预载不发声，返回标记；播放时走 speechSynthesis
+    if (ttsSource === "system" && window.speechSynthesis) {
+      return "system://" + encodeURIComponent(text);
+    }
     if (ttsUrlCacheRef.current[text]) return ttsUrlCacheRef.current[text];
     // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
     const preUrl = getCachedTtsUrl(text);
@@ -515,7 +524,7 @@ export default function QuestSpeaking() {
         const res = await fetch(`${API_BASE}/api/tts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voice: "alena", id: effectiveCourseId, type: "statement" }),
+          body: JSON.stringify({ text, voice, id: effectiveCourseId, type: "statement" }),
         });
         const data = await res.json();
         if (data.ok && data.audio_url) url = data.audio_url;
@@ -575,6 +584,20 @@ export default function QuestSpeaking() {
 
   const playTimes = useCallback((url, speed, times, onDone) => {
     let left = times;
+    const storeSettings = useSettingsStore.getState().settings;
+    const volume = (storeSettings.vol ?? 100) / 100; // 发音音量（设置弹窗「音量」滑块）
+    // 发音源=系统发音人：走浏览器语音合成（音量/倍速/次数生效）
+    if (url.startsWith("system://")) {
+      const systemText = decodeURIComponent(url.slice("system://".length));
+      speakText(systemText, {
+        rate: speed || 1,
+        volume,
+        times,
+        gap: 500,
+        onDone: () => { if (seqPlayRef.current === 'running') onDone && onDone(); },
+      });
+      return;
+    }
     const step = () => {
       if (seqPlayRef.current !== 'running') return;
       if (left <= 0) { onDone && onDone(); return; }
@@ -582,6 +605,7 @@ export default function QuestSpeaking() {
       const a = new Audio(url);
       a.preload = "auto";
       a.playbackRate = speed;
+      a.volume = volume;
       ttsRef.current = a;
       a.onended = () => setTimeout(step, 500);
       a.play().catch(() => setTimeout(step, 300)); // 播放失败（含自动播放拦截）也推进

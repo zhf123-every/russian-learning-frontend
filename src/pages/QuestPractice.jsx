@@ -49,9 +49,11 @@ import ShortcutTips from "../components/quest/ShortcutTips";
 import FeedbackPopup from "../components/quest/FeedbackPopup";
 import ExitConfirmModal from "../components/quest/ExitConfirmModal";
 ;
-import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
+import { sfxKey, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 import { preloadTtsAll } from "../lib/ttsPreload";
+import { speakText } from "../lib/tts";
 import { playGlobalAudio, stopGlobalAudio, preloadGlobalAudio } from "../utils/audioService";
+import { useSettingsStore } from "../store/settingsStore";
 import { useQuestSettings, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -515,10 +517,10 @@ export default function QuestPractice() {
     },
   });
 
-  // 包装键盘事件：播放打字音
+  // 包装键盘事件：播放打字音（开关/风格/音量统一走 sfxKey）
   const handleInputKeyDown = (e) => {
     if (checkPlayTypingSound(e) && sfx.keyOn !== false) {
-      playTypingSound();
+      sfxKey();
     }
     _rawHandleInputKeyDown(e);
   };
@@ -823,13 +825,21 @@ export default function QuestPractice() {
     }, 0);
   }, [currentSequenceIndex, currentUnitIndex, sequences, ensureTtsAudioRef, correctCount, effectiveCourseId]);
 
-  // ---- 发音（Yandex 真人俄语发音）：TTS 缓存 + 即时播放 ----
+  // ---- 发音（Yandex 真人俄语发音）：TTS 缓存 + 即时播放（发音源/发音类型/音量实时生效） ----
   const ttsAudioRef = useRef(null);
   const ttsAudioPoolRef = useRef(new Set()); // 所有播放中的 Audio 实例，打断时全部暂停（防旧实例漏停）
   const playTokenRef = useRef(0); // 播放令牌：新播放/切题递增，作废所有在途播放
   const ttsUrlCacheRef = useRef({}); // id -> url，同一句只请求一次
   const ensureTts = useCallback(async (stmt) => {
     if (!stmt || !stmt.russian) return "";
+    const storeSettings = useSettingsStore.getState().settings;
+    const ttsSource = storeSettings.ttsSource || "premium";
+    const voice = storeSettings.ttsVoice || (ttsSource === "system" ? "female" : "alena");
+    // 发音源=系统发音人：预载不发声，返回标记；播放时走 speechSynthesis
+    if (ttsSource === "system" && window.speechSynthesis) {
+      ttsUrlCacheRef.current[stmt.id] = "system://" + encodeURIComponent(stmt.russian);
+      return "system://" + encodeURIComponent(stmt.russian);
+    }
     if (ttsUrlCacheRef.current[stmt.id]) return ttsUrlCacheRef.current[stmt.id];
     // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
     const preUrl = getCachedTtsUrl(stmt.russian);
@@ -840,7 +850,7 @@ export default function QuestPractice() {
         const res = await fetch(`${API_BASE}/api/tts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: stmt.russian, voice: "alena", id: stmt.id, type: "statement" }),
+          body: JSON.stringify({ text: stmt.russian, voice, id: stmt.id, type: "statement" }),
         });
         const data = await res.json();
         if (data.ok && data.audio_url) {
@@ -934,10 +944,26 @@ export default function QuestPractice() {
       if (callIdRef.current !== myCallId) return;   // 已被更新播放/切题取代 → 不播（防旧覆盖新）
       if (currentStmtRef.current !== stmt) return;  // 当前题已变 → 放弃
       if (!url && !readyEl) return;
+      const storeSettings = useSettingsStore.getState().settings;
+      const volume = (storeSettings.vol ?? 100) / 100; // 发音音量（设置弹窗「音量」滑块）
+      // 发音源=系统发音人：走浏览器语音合成（音量/倍速/次数/间隔生效）
+      if (url.startsWith("system://")) {
+        const systemText = decodeURIComponent(url.slice("system://".length)) || stmt.russian;
+        speakText(systemText, {
+          rate: storeSettings.rate || 1,
+          volume,
+          times,
+          gap: (ui.speakGap ?? 1) * 1000,
+          onDone: () => setAudioBlocked(false),
+        });
+        setAudioBlocked(false);
+        return;
+      }
       playGlobalAudio(url, {
         el: readyEl, // 已预载就绪 → 直接播；未就绪 → globalAudio 流式播
         times,
-        rate: settings.rate || 1,
+        rate: storeSettings.rate || 1,
+        volume,
         gap: (ui.speakGap ?? 1) * 1000,
         onBlocked: () => setAudioBlocked(true), // 自动播放策略拦截 → 点亮提示
       });

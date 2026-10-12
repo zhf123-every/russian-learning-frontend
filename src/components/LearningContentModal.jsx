@@ -5,6 +5,8 @@ import { annotateWords, ensureDictFull } from '../lib/wordAnnotate'
 import { inferRoles } from '../lib/roleRules'
 import { getPosLabel } from '../constants/posColors'
 import { playGlobalAudio } from '../utils/audioService'
+import { useSettingsStore } from '../store/settingsStore'
+import { speakText } from '../lib/tts'
 
 
 // 学习内容弹窗 —— 对标句乐部「查看课程学习内容 Ctrl+1」
@@ -42,12 +44,21 @@ function buildLocalKnowledge(ru) {
   }
 }
 
-// 音频播放（后端 /api/tts；相对路径音频：dev 走 vite 代理，生产拼线上后端）
+// 音频播放（与设置弹窗「声音」页联动：发音源/发音类型/音量实时生效）
 function playTTS(text) {
+  const st = useSettingsStore.getState().settings
+  const ttsSource = st.ttsSource || 'premium'
+  const voice = st.ttsVoice || (ttsSource === 'system' ? 'female' : 'alena')
+  const volume = (st.vol ?? 100) / 100
+  // 发音源=系统发音人 → 浏览器语音合成（音量/倍速生效）
+  if (ttsSource === 'system' && ('speechSynthesis' in window)) {
+    speakText(text, { rate: st.rate || 1, volume, times: 1, gap: 600 })
+    return
+  }
   fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, voice }),
   })
     .then((r) => r.json())
     .then((d) => {
@@ -59,7 +70,7 @@ function playTTS(text) {
           ? u
           : 'https://russian-learning-jetq.onrender.com' + u;
       }
-      playGlobalAudio(u) // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play
+      playGlobalAudio(u, { volume }) // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play
     })
     .catch(() => {})
 }

@@ -47,8 +47,9 @@ import ShortcutTips from "../components/quest/ShortcutTips";
 import ExitConfirmModal from "../components/quest/ExitConfirmModal";
 import WukongAiAssistant from "../components/quest/WukongAiAssistant";
 ;
-import { playTypingSound, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
+import { sfxKey, playRightSound, playErrorSound, ensureTypingSound, checkPlayTypingSound } from "../lib/questSounds";
 import { preloadTtsAll } from "../lib/ttsPreload";
+import { speakText } from "../lib/tts";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { playGlobalAudio, stopGlobalAudio } from "../utils/audioService";
 
@@ -268,13 +269,8 @@ export default function QuestDictation() {
     const preUrl = getCachedTtsUrl(text);
     if (preUrl) { ttsUrlCacheRef.current[cacheKey] = preUrl; return preUrl; }
     if (ttsSource === "system" && window.speechSynthesis) {
-      try { window.speechSynthesis.cancel(); } catch (e) {}
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "ru-RU";
-      const volume = (storeSettings.vol ?? 100) / 100; // 设置弹窗保存的是 vol (0-100)
-      u.volume = volume;
-      window.speechSynthesis.speak(u);
-      return "system://" + cacheKey; // 返回伪 URL，标记为系统发音
+      // 系统发音：预载阶段不发声，仅返回标记；播放时走 speechSynthesis（音量/倍速/次数生效）
+      return "system://" + encodeURIComponent(text);
     }
     let url = "";
     try {
@@ -340,9 +336,6 @@ export default function QuestDictation() {
     // 直接从 store 读最新设置（不用闭包，避免设置改了但闭包还是旧的）
     const ui = loadUi();
     const settings = useSettingsStore.getState().settings;
-    console.log('[playAudio] 最新设置:', settings); // 调试：确认设置到底有没有保存
-    // 检查答题页自动播放设置（ui.autoSpeak）
-    if (ui.autoSpeak === false) return;
     // 发音音量（settings.vol 0-100）
     const volume = (settings.vol ?? 100) / 100;
     const textToPlay = text || currentStatement?.russian;
@@ -360,6 +353,19 @@ export default function QuestDictation() {
         if (!url) url = await ensureTtsUrl(textToPlay);
       } catch (e) { /* ignore */ }
       if (!url && !readyEl) return;
+      // 发音源=系统发音人：走浏览器语音合成（音量/倍速/次数/间隔生效）
+      if (url.startsWith("system://")) {
+        const systemText = decodeURIComponent(url.slice("system://".length)) || textToPlay;
+        speakText(systemText, {
+          rate: settings.rate || 1,
+          volume,
+          times: n,
+          gap: (ui.speakGap ?? 1) * 1000,
+          onDone: () => setIsPlaying(false),
+        });
+        setIsPlaying(true);
+        return;
+      }
       // 全局唯一音频控制器：暂停旧 → 复位 → 播放（预载就绪直接播；未就绪走 globalAudio）
       playGlobalAudio(url, {
         el: readyEl,
@@ -390,19 +396,21 @@ export default function QuestDictation() {
     enabled: !loading && !loadError,
   });
 
-  // 进答题页时自动播放发音
+  // 进答题页时自动播放发音（受「答题页自动播放声音」开关控制；手动重播不受影响）
   useEffect(() => {
-    console.log('[useEffect] currentStatement?.russian:', currentStatement?.russian, 'loading:', loading); // 调试：确认useEffect有没有执行
     if (currentStatement?.russian && !loading) {
+      const uiNow = loadUi();
+      if (uiNow.autoSpeak === false) return;
       const timer = setTimeout(() => playAudio(), 500);
       return () => clearTimeout(timer);
     }
   }, [currentStatement?.russian, loading]);
 
-  // 监听设置变化事件，重新读取设置
+  // 监听设置变化事件，重新读取设置（仅自动播放开启时重播，让新设置即时生效）
   useEffect(() => {
     const handleSettingsChanged = () => {
-      console.log('[quest-ui-changed] 收到设置变化事件，重新读取设置');
+      const uiNow = loadUi();
+      if (uiNow.autoSpeak === false) return;
       // 重新播放当前题目，让新设置生效
       if (currentStatement?.russian && !loading) {
         setTimeout(() => playAudio(), 100);
@@ -458,9 +466,9 @@ export default function QuestDictation() {
   // ---- 听写模式：包装键盘事件，输入为空时 Space 重播发音（所有模式优先）----
   const wrappedHandleKeyDown = useCallback(
     (e) => {
-      // 打字音效（排除空格/回车等特殊键）
+      // 打字音效（排除空格/回车等特殊键；开关/风格/音量统一走 sfxKey）
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-        playTypingSound();
+        sfxKey();
       }
       // 听写模式：输入框为空 + 非输入法组合状态 → Space 重播发音
       // 优先级高于状态机：Input 模式下不输入空格，Fix_Input 模式下不跳下一个错词
@@ -475,11 +483,11 @@ export default function QuestDictation() {
         return;
       }
       if (checkPlayTypingSound(e) && sfx.keyOn !== false) {
-        playTypingSound();
+        sfxKey();
       }
       handleInputKeyDown(e);
     },
-    [inputValue, isComposingRef, playAudio, handleInputKeyDown, playTypingSound]
+    [inputValue, isComposingRef, playAudio, handleInputKeyDown, sfxKey]
   );
 
   // ---- 付费单元守卫：带 ?pack= 进入时校验是否解锁，锁定则回课程详情并弹购买窗 ----
@@ -763,7 +771,7 @@ export default function QuestDictation() {
   // 组件卸载：立即停止全局音频（离开答题页/切换模式后不再残留任何声音）
   useEffect(() => () => { stopGlobalAudio(); }, []);
 
-  // ---- 进入题目自动播放发音（需用户先交互一次）----
+  // ---- 进入题目自动播放发音（需用户先交互一次；受「答题页自动播放声音」开关控制）----
   useEffect(() => {
     if (
       currentStatement?.russian &&
@@ -773,6 +781,8 @@ export default function QuestDictation() {
       !showSummary &&
       hasInteractedRef.current
     ) {
+      const uiNow = loadUi();
+      if (uiNow.autoSpeak === false) return;
       const timer = setTimeout(() => playAudio(), 500);
       return () => clearTimeout(timer);
     }

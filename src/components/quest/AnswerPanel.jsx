@@ -25,6 +25,7 @@ import { inferRoles } from "../../lib/roleRules";
 import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQuestSettings";
 
 import { playGlobalAudio, stopGlobalAudio } from "../../utils/audioService";
+import { speakText } from "../../lib/tts";
 import { useSettingsStore } from "../../store/settingsStore";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 内存缓存：text -> audio_url，避免重复请求
@@ -119,17 +120,25 @@ export default function AnswerPanel({
 
   // ---- 俄语发音（Yandex 真人发音）----
   const audioRef = useRef(null);
-  const settings = useSettingsStore((s) => s.settings);
 
   const speakRussian = useCallback(async (text, audioUrl = null, itemId = null, itemType = null) => {
     if (!text) return;
-    // 检查答案页自动播放设置
-    if (!settings.answerAutoPlay && itemType === "answer") return;
+    // 发音源/发音类型/音量实时读取（设置弹窗「声音」页）
+    const st = useSettingsStore.getState().settings;
+    const ttsSource = st.ttsSource || "premium";
+    const voice = st.ttsVoice || (ttsSource === "system" ? "female" : "alena");
+    const volume = (st.vol ?? 100) / 100;
     try {
       // 停止当前播放
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
+      }
+
+      // 发音源=系统发音人 → 浏览器语音合成（音量/倍速生效）
+      if (ttsSource === "system" && ("speechSynthesis" in window)) {
+        speakText(text, { rate: ui?.rate || 1, volume, times: 1, gap: 600 });
+        return;
       }
 
       let url = audioUrl;
@@ -143,7 +152,7 @@ export default function AnswerPanel({
           const res = await fetch(`${API_BASE}/api/tts`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text, voice: "alena", id: itemId, type: itemType }),
+            body: JSON.stringify({ text, voice, id: itemId, type: itemType }),
           });
           const data = await res.json();
           if (data.ok && data.audio_url) {
@@ -157,7 +166,7 @@ export default function AnswerPanel({
 
       if (url) {
         // 全局唯一音频控制器：暂停旧 → 复位 → 赋新 src → play（杜绝与答题页发音重叠）
-        playGlobalAudio(url, { rate: ui?.rate || 1, volume: settings.ttsVolume ?? 1 });
+        playGlobalAudio(url, { rate: ui?.rate || 1, volume });
       }
     } catch (e) {
       console.warn("发音失败:", e);
