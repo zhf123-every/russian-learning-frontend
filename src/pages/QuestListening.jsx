@@ -7,6 +7,7 @@ import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
+import { trackWords } from "../lib/wordStats";
 import { touchSync } from "../lib/cloudProgress";
 import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
@@ -305,6 +306,17 @@ export default function QuestListening() {
   const realIdx = order.length ? (order[currentIdx] ?? currentIdx) : currentIdx;
   const current = flatItems[realIdx];
   const currentSequence = current ? sequences[current.si] : null;
+
+  // 单词统计：进入「答案」阶段（听完本句）→ 记为学过（复习关卡），每句只记一次
+  const listeningLearnedRef = useRef(new Set());
+  useEffect(() => {
+    if (phase === "answer" && current?.id && Array.isArray(current.words) && current.words.length) {
+      if (!listeningLearnedRef.current.has(current.id)) {
+        listeningLearnedRef.current.add(current.id);
+        trackWords(current.words, "correct");
+      }
+    }
+  }, [phase, current]);
 
   // ---- 加载单元数据 ----
   useEffect(() => {

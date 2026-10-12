@@ -35,6 +35,7 @@ import { useQuestionInput } from "../hooks/useQuestionInput";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useGameStats } from "../hooks/useGameStats";
 import QuestionInput from "../components/quest/QuestionInput";
+import { trackWords } from "../lib/wordStats";
 import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
@@ -462,6 +463,8 @@ export default function QuestDictation() {
       // Chunking：每一步答对都显示答对面板（含中间步），用户点「下一题」进入下一步
       setShowAnswerPanel(true);
       recordCorrect();
+      // 单词统计：答对 → 记为学过（复习关卡）
+      trackWords(currentStatement?.fullWords || currentStatement?.words, 'correct');
       // 答对后播放一遍标准发音（与播放设置「答对自动播放」关联）
       if (ui.answerSpeak !== false) playAudio(null, 1);
       if (sfx.answerOn !== false) playRightSound();
@@ -475,6 +478,8 @@ export default function QuestDictation() {
       const wc = wrongStreak + 1;
       setWrongStreak(wc); // 答错累计连续答错（悟空主动求助逻辑）
       recordWrong();
+      // 单词统计：答错次数累计（答错 ≥3 次 → 陌生关卡）
+      trackWords(currentStatement?.fullWords || currentStatement?.words, 'wrong');
       // 「自动显示答案」：连续答错 N 次后自动展示答案（off=不显示）
       if (wc >= revealThreshold) setShowAnswerPanel(true);
       // 「记录到错题本」：连续答错达到阈值后收录（always=总是）

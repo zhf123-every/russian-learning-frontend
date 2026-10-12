@@ -19,6 +19,7 @@ import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
+import { trackWords } from "../lib/wordStats";
 import { touchSync } from "../lib/cloudProgress";
 import { addStudyTime } from "../lib/learningStats";
 import { getCourseById } from "../utils/courseService";
@@ -517,6 +518,8 @@ export default function QuestPractice() {
       // Chunking：每一步答对都显示答对面板（含中间步），用户点「下一题」进入下一步
       setShowAnswerPanel(true);
       recordCorrect();
+      // 单词统计：答对 → 记为学过（复习关卡）
+      trackWords(currentStatement?.fullWords || currentStatement?.words, 'correct');
       if (sfx.answerOn !== false) playRightSound();
       ensureAnalysis(currentStatement);
       // 通关之路：六格天赋树（答对当前句，句中各词的格 → 正确+1）
@@ -529,6 +532,8 @@ export default function QuestPractice() {
       const wc = wrongStreak + 1;
       setWrongStreak(wc); // 答错累计连续答错（悟空主动求助逻辑）
       recordWrong();
+      // 单词统计：答错次数累计（答错 ≥3 次 → 陌生关卡）
+      trackWords(currentStatement?.fullWords || currentStatement?.words, 'wrong');
       // 「自动显示答案」：连续答错 N 次后自动展示答案（off=不显示）
       if (wc >= revealThreshold) setShowAnswerPanel(true);
       // 「记录到错题本」：连续答错达到阈值后收录（always=总是）
