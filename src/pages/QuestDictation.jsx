@@ -340,6 +340,7 @@ export default function QuestDictation() {
     // 直接从 store 读最新设置（不用闭包，避免设置改了但闭包还是旧的）
     const ui = loadUi();
     const settings = useSettingsStore.getState().settings;
+    console.log('[playAudio] 最新设置:', settings); // 调试：确认设置到底有没有保存
     // 检查答题页自动播放设置（ui.autoSpeak）
     if (ui.autoSpeak === false) return;
     // 发音音量（settings.vol 0-100）
@@ -370,7 +371,7 @@ export default function QuestDictation() {
       });
       setIsPlaying(true);
     })();
-  }, [currentStatement?.russian, ensureTtsUrl, ensureTtsAudio, ui.speakTimes, ui.speakGap, settings.rate]);
+  }, [currentStatement?.russian, ensureTtsUrl, ensureTtsAudio]);
 
   // 立即停止全局唯一音频（切题/重试/暂停时调用；在途重播循环一并作废）
   const stopPlayback = useCallback(() => {
