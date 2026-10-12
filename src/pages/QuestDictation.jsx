@@ -21,6 +21,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
+import { useSettingsStore } from "../store/settingsStore";
 import { markUnitDone } from "../lib/lessonProgress";
 import { touchSync } from "../lib/cloudProgress";
 import { addStudyTime } from "../lib/learningStats";
@@ -313,6 +314,11 @@ export default function QuestDictation() {
   }, [ensureTtsAudio]);
 
   const playAudio = useCallback((text, times) => {
+    // 检查答题页自动播放设置
+    if (!useSettingsStore.getState().settings.questionAutoPlay) return;
+    // 发音音量
+    const volume = useSettingsStore.getState().settings.ttsVolume ?? 1;
+    // ... 原有逻辑
     const textToPlay = text || currentStatement?.russian;
     if (!textToPlay) return;
     const n = times ?? (ui.speakTimes ?? 2); // 进题自动播放次数（与播放设置关联）
