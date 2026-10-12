@@ -48,22 +48,23 @@ const ROLE_COLORS = {
   default: "#9CA3AF",
 };
 
-// 边框色（与词性下划线完全不同色相，不重合）
-// 词性下划线：名词蓝#3B82F6、动词绿#22C55E、形容词紫#A855F7、副词黄#EAB308、代词红#EF4444、介词靛蓝、连词粉#EC4899、感叹词橙#F97316、助词青#06B6D4
+// 边框色（与所有词性下划线完全不重合）
+// 词性下划线：名词蓝#3B82F6、动词绿#22C55E、形容词紫#A855F7、副词黄#EAB308、代词红#EF4444、
+//            介词靛蓝、连词粉#EC4899、感叹词橙#F97316、助词青#06B6D4、数词紫#A855F7
 const ROLE_BORDER_COLORS = {
-  subject: "#B45309",      // 主语（代词红下划线）→ 棕边框（和红不重合）
-  predicate: "#7C3AED",    // 谓语（动词绿下划线）→ 紫边框（和绿不重合）
-  object: "#C026D3",       // 宾语（名词蓝下划线）→ 品红边框（和蓝不重合）
-  adverbial: "#06B6D4",    // 状语（副词黄下划线）→ 青边框（和黄不重合）
-  attribute: "#F97316",    // 定语（形容词紫下划线）→ 橙边框（和紫不重合）
-  predicative: "#EC4899",  // 表语 → 粉边框
-  complement: "#0EA5E9",   // 补语 → 天蓝边框
-  negation: "#6B7280",     // 否定 → 深灰边框
-  preposition: "#BE185D",  // 前置词 → 玫红边框
-  conjunction: "#84CC16",  // 连接词 → 黄绿边框
-  particle: "#F59E0B",     // 语气词 → 金边框
-  interjection: "#16A34A", // 感叹词 → 深绿边框
-  numeral: "#D97706",      // 数词 → 深金边框
+  subject: "#B45309",      // 主语（代词红）→ 棕
+  predicate: "#7C3AED",    // 谓语（动词绿）→ 深紫
+  object: "#C026D3",       // 宾语（名词蓝）→ 品红
+  adverbial: "#14B8A6",    // 状语（副词黄）→ 青
+  attribute: "#BE185D",    // 定语（形容词紫）→ 玫红
+  predicative: "#D97706",  // 表语 → 深金
+  complement: "#0EA5E9",   // 补语 → 天蓝
+  negation: "#6B7280",     // 否定 → 深灰
+  preposition: "#84CC16",  // 前置词（介词靛蓝）→ 黄绿
+  conjunction: "#16A34A",  // 连接词（连词粉）→ 深绿
+  particle: "#DB2777",     // 语气词（助词青）→ 洋红
+  interjection: "#9333EA", // 感叹词（感叹词橙）→ 深紫
+  numeral: "#B45309",      // 数词（数词紫）→ 棕
   default: "#9CA3AF",
 };
 
