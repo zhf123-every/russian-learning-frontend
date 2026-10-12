@@ -349,6 +349,7 @@ export default function QuestDictation() {
         el: readyEl,
         times: n,
         rate: settings.rate || 1,
+        volume: volume,
         gap: (ui.speakGap ?? 1) * 1000,
         onFinished: () => setIsPlaying(false),
       });
