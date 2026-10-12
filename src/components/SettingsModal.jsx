@@ -189,6 +189,13 @@ export default function SettingsModal({ onClose, defaultTab }) {
   const set = (k, v) => setS(prev => ({ ...prev, [k]: v }))
   const applyKeys = (id, k) => { const n = { ...hk, [id]: k }; setHk(n); saveHotkeys(n); setRecId(null); toast('快捷键已更新并保存') }
   const patchSfx = (p) => { const n = saveSfx(p); setSfx(n); try { window.dispatchEvent(new Event('quest-ui-changed')) } catch (e) {} }
+
+  // 调试：保存设置时打印 localStorage 的值
+  const debugSave = () => {
+    console.log('[DEBUG] localStorage rlearn_v1_settings:', localStorage.getItem('rlearn_v1_settings'));
+    console.log('[DEBUG] localStorage rlearn_quest_ui:', localStorage.getItem('rlearn_quest_ui'));
+    console.log('[DEBUG] localStorage rlearn_quest_sfx:', localStorage.getItem('rlearn_quest_sfx'));
+  };
   const patchUi = (p) => { const n = saveUi(p); setUi(n); try { window.dispatchEvent(new Event('quest-ui-changed')) } catch (e) {} }
 
   // 录制监听：捕获任意按键，Esc 取消，检测冲突
@@ -343,7 +350,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
             <div className="qs-item-label">音量</div>
           </div>
           <div className="qs-item-right">
-            <Slider value={s.vol ?? 100} onChange={v => { save({ vol: v }) }} />
+            <Slider value={s.vol ?? 100} onChange={v => { save({ vol: v }); debugSave(); }} />
           </div>
         </div>
 
