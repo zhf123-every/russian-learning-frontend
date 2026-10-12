@@ -16,7 +16,8 @@ export function saveLS(key, val) {
     localStorage.setItem(key, JSON.stringify(val))
     return true
   } catch (e) {
-    console.error('[persistence] save failed', key, e)
+    // localStorage 配额超限时，静默失败，不打印错误，设置仍然保存在内存里
+    console.warn('[persistence] save failed (quota exceeded, still in memory):', key)
     return false
   }
 }
