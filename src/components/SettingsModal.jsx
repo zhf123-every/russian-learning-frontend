@@ -443,7 +443,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
             <select value={sfx.keyType} onChange={e => patchSfx({ keyType: e.target.value })}>
               {KEY_TYPES.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
-            <button type="button" className="qs-preview-btn" title="试听按键音" onClick={() => playKey(sfx.keyType, sfx.keyVol * 0.7)}>🔊</button>
+            <button type="button" className="qs-preview-btn" title="试听按键音" onClick={() => playKey(sfx.keyType, sfx.keyVol || 1)}>🔊</button>
           </div>
         </div>
 

@@ -124,7 +124,7 @@ export function playTypingSound() {
     const src = ctx.createBufferSource();
     src.buffer = buffers.typing;
     const g = ctx.createGain();
-    g.gain.value = 0.35 * (SFX_CFG.keyVol ?? 1);
+    g.gain.value = 0.9 * (SFX_CFG.keyVol ?? 1); // 基增益 0.9：typing.mp3 录音偏轻，100% 音量需明显可闻
     src.connect(g);
     g.connect(bus);
     src.start();
