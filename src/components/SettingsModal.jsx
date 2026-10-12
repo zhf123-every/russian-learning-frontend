@@ -175,7 +175,7 @@ const speakPreview = (text, vol = 1, rate = 1) => {
 
 export default function SettingsModal({ onClose, defaultTab }) {
   const { settings, save } = useSettingsStore()
-  const [s, setS] = useState(settings)
+  const s = settings // 直接从 zustand store 读，不用本地 state
   const [tab, setTab] = useState(defaultTab || '快捷键')   // 默认选中快捷键；学习页传入'声音'
   const [hk, setHk] = useState(() => loadHotkeys())
   const [recId, setRecId] = useState(null)    // 正在录制的功能 id
@@ -309,7 +309,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
             <div className="qs-item-label">发音源</div>
           </div>
           <div className="qs-item-right">
-            <select value={s.ttsSource || 'premium'} onChange={e => { const v = e.target.value; set('ttsSource', v); save({ ttsSource: v }) }}>
+            <select value={s.ttsSource || 'premium'} onChange={e => { const v = e.target.value; save({ ttsSource: v }) }}>
               <option value="premium">高级发音人</option>
               <option value="system">系统发音人</option>
             </select>
@@ -321,7 +321,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
             <div className="qs-item-label">发音类型</div>
           </div>
           <div className="qs-item-right">
-            <select value={s.ttsVoice || 'female'} onChange={e => { const v = e.target.value; set('ttsVoice', v); save({ ttsVoice: v }) }}>
+            <select value={s.ttsVoice || 'female'} onChange={e => { const v = e.target.value; save({ ttsVoice: v }) }}>
               {s.ttsSource === 'system' ? (
                 <>
                   <option value="female">Svetlana（俄语-女）</option>
@@ -343,7 +343,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
             <div className="qs-item-label">音量</div>
           </div>
           <div className="qs-item-right">
-            <Slider value={s.vol ?? 100} onChange={v => { set('vol', v); save({ vol: v }) }} />
+            <Slider value={s.vol ?? 100} onChange={v => { save({ vol: v }) }} />
           </div>
         </div>
 
@@ -547,7 +547,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
                       <div className="qs-item-label">倍速</div>
                     </div>
                     <div className="qs-item-right">
-                      <QSlider min={0.5} max={2} step={0.1} value={s.rate ?? 1} display={(s.rate ?? 1) + 'x'} onChange={v => { set('rate', v); save({ rate: v }) }} />
+                      <QSlider min={0.5} max={2} step={0.1} value={s.rate ?? 1} display={(s.rate ?? 1) + 'x'} onChange={v => { save({ rate: v }) }} />
                     </div>
                   </div>
 
@@ -700,7 +700,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
                     <div className="qs-item">
                       <div className="qs-item-left"><div className="qs-item-label">Whisper 转写模型</div></div>
                       <div className="qs-item-right">
-                        <select value={s.whisperModel || 'small'} onChange={e => set('whisperModel', e.target.value)}>
+                        <select value={s.whisperModel || 'small'} onChange={e => save({ whisperModel: e.target.value })}>
                           <option value="tiny">tiny —— 最快，错字较多</option>
                           <option value="base">base —— 快，一般</option>
                           <option value="small">small —— 推荐，质量/速度平衡</option>
@@ -836,7 +836,7 @@ export default function SettingsModal({ onClose, defaultTab }) {
                     <div className="qs-item">
                       <div className="qs-item-left"><div className="qs-item-label">AI 朗读声音</div></div>
                       <div className="qs-item-right">
-                        <select value={s.ttsVoice || 'female'} onChange={e => set('ttsVoice', e.target.value)}>
+                        <select value={s.ttsVoice || 'female'} onChange={e => save({ ttsVoice: e.target.value })}>
                           <option value="female">女声</option>
                           <option value="male">男声（Dmitry）</option>
                         </select>
@@ -844,12 +844,12 @@ export default function SettingsModal({ onClose, defaultTab }) {
                     </div>
                     <div className="qs-item">
                       <div className="qs-item-left"><div className="qs-item-label">五步精听循环遍数</div></div>
-                      <div className="qs-item-right"><input type="number" min="1" max="10" style={{ width: 90 }} value={s.loopTimes} onChange={e => set('loopTimes', parseInt(e.target.value) || 3)} /></div>
+                      <div className="qs-item-right"><input type="number" min="1" max="10" style={{ width: 90 }} value={s.loopTimes} onChange={e => save({ loopTimes: parseInt(e.target.value) || 3 })} /></div>
                     </div>
                     <div className="qs-item">
                       <div className="qs-item-left"><div className="qs-item-label">AI 助教自动朗读</div></div>
                       <div className="qs-item-right">
-                        <select value={s.autoRead === false ? 'off' : 'on'} onChange={e => set('autoRead', e.target.value === 'on')}>
+                        <select value={s.autoRead === false ? 'off' : 'on'} onChange={e => save({ autoRead: e.target.value === 'on' })}>
                           <option value="on">开启（AI 回复后自动朗读）</option>
                           <option value="off">关闭（手动点朗读）</option>
                         </select>
