@@ -20,19 +20,77 @@ const MODES = [
   { id: 'speak', label: '口语模式', desc: '看词跟读练习', icon: '🗣️' },
 ]
 
-// 导出模板（9 种）：预览卡与 PNG/PDF 导出共用同一份配置（导出内容设计，非页面装饰）
+// ================= 导出模板（9 套商用级设计系统）=================
+// 每套模板有完整的视觉语言：配色体系、字体组合、编号徽章、背景纹理、版面节奏。
+// 弹窗预览（TplSample）、PNG 导出（canvas）、PDF 导出（HTML）共用同一份配置。
 const TEMPLATES = [
-  { id: 'simple', name: '简洁', desc: '简约白底，适合打印', bg: '#ffffff', text: '#111827', sub: '#6b7280', accent: '#7c3aed', serif: false, bgStops: null, cardBg: '#f3f4f6' },
-  { id: 'mist', name: '林间雾语', desc: '森林背景，优雅衬线', bg: null, bgStops: ['#0f3d2e', '#1a5c45', '#2e8b57'], text: '#f0fdf4', sub: '#a7d7c3', accent: '#86efac', serif: true, cardBg: 'rgba(255,255,255,.09)' },
-  { id: 'acid', name: '酸性平面', desc: '荧光撞色，前卫大胆', bg: null, bgStops: ['#facc15', '#22d3ee', '#d946ef'], text: '#111827', sub: '#3f3f46', accent: '#111827', serif: false, cardBg: 'rgba(255,255,255,.32)' },
-  { id: 'classic', name: '古典书库', desc: '复古羊皮纸，典雅衬线', bg: '#f2e6cd', text: '#3f2d1b', sub: '#8b7355', accent: '#b45309', serif: true, cardBg: '#eadfc2' },
-  { id: 'graffiti', name: '街头涂鸦', desc: '暗黑街头，黄色标记', bg: '#1a1a1a', text: '#fafafa', sub: '#9ca3af', accent: '#fde047', serif: false, cardBg: 'rgba(255,255,255,.07)' },
-  { id: 'neon', name: '赛博霓虹', desc: '霓虹科幻，未来感', bg: null, bgStops: ['#0b1026', '#1a0b2e', '#2a0f3a'], text: '#e0f2fe', sub: '#93c5fd', accent: '#22d3ee', serif: false, cardBg: 'rgba(34,211,238,.10)' },
-  { id: 'flow', name: '流光漫溢', desc: '梦幻渐变，轻盈通透', bg: null, bgStops: ['#fdf2f8', '#e0f2fe', '#fef9c3'], text: '#475569', sub: '#94a3b8', accent: '#d946ef', serif: false, cardBg: 'rgba(255,255,255,.55)' },
-  { id: 'swiss', name: '瑞士现代', desc: '极简主义，黑白经典', bg: '#ffffff', text: '#000000', sub: '#6b7280', accent: '#000000', serif: false, cardBg: '#f3f4f6' },
-  { id: 'ink', name: '水墨空寂', desc: '禅意留白，东方美学', bg: '#f7f5f0', text: '#2b2b2b', sub: '#8d8a83', accent: '#4a4a4a', serif: true, cardBg: '#efece3' },
+  {
+    id: 'whitespace', name: '留白', desc: '杂志式排版 · 极致留白',
+    bg: '#ffffff', text: '#111827', sub: '#9aa3b2', accent: '#18181b', line: 'rgba(17,24,39,.10)',
+    font: 'sans', numbered: false, badge: 'none', phonetics: 'below', bar: null, pattern: null, glow: false, headerCenter: true, card: 'rgba(249,250,251,.9)',
+  },
+  {
+    id: 'parchment', name: '纸语', desc: '羊皮纸底 · 古典衬线',
+    bg: '#f4ecdd', text: '#46362a', sub: '#93816b', accent: '#a1622b', line: 'rgba(70,54,42,.16)',
+    font: 'serif', numbered: true, badge: 'line', phonetics: 'below', bar: null, pattern: 'paper', glow: false, headerCenter: true, card: 'rgba(255,255,255,.42)',
+  },
+  {
+    id: 'forest', name: '青藤', desc: '森林渐变 · 自然静谧',
+    bgStops: ['#0e2a1c', '#17432e', '#2c6b49'], text: '#eef7f0', sub: '#a9cfb5', accent: '#82d7a0', line: 'rgba(238,247,240,.14)',
+    font: 'sans', numbered: true, badge: 'circle', phonetics: 'below', bar: null, pattern: null, glow: true, headerCenter: false, card: 'rgba(255,255,255,.07)',
+  },
+  {
+    id: 'midnight', name: '夜航', desc: '暗夜底色 · 黄色点缀',
+    bg: '#0c0d11', text: '#f2f2f4', sub: '#8f93a2', accent: '#facc15', line: 'rgba(242,242,244,.10)',
+    font: 'sans', numbered: true, badge: 'square', phonetics: 'below', bar: '#facc15', pattern: null, glow: false, headerCenter: false, card: 'rgba(255,255,255,.045)',
+  },
+  {
+    id: 'aurora', name: '霓光', desc: '蓝紫极光 · 梦幻深邃',
+    bgStops: ['#131a3f', '#312e81', '#6d28d9'], text: '#f4f2ff', sub: '#b5afe8', accent: '#a78bfa', line: 'rgba(244,242,255,.14)',
+    font: 'sans', numbered: false, badge: 'none', phonetics: 'below', bar: null, pattern: 'glow', glow: true, headerCenter: false, card: 'rgba(255,255,255,.07)',
+  },
+  {
+    id: 'crt', name: '像素', desc: '复古终端 · 扫描线质感',
+    bgStops: ['#0a3529', '#0e5a44', '#0d3b2e'], text: '#d8ffec', sub: '#8fe8c8', accent: '#5eead4', line: 'rgba(216,255,236,.13)',
+    font: 'mono', numbered: true, badge: 'square', phonetics: 'below', bar: null, pattern: 'scan', glow: true, headerCenter: false, card: 'rgba(0,0,0,.22)',
+  },
+  {
+    id: 'gilded', name: '鎏金', desc: '藏蓝鎏金 · 典藏气质',
+    bg: '#1b2431', text: '#f0e3c0', sub: '#b7a678', accent: '#d4af37', line: 'rgba(212,175,55,.28)',
+    font: 'serif', numbered: true, badge: 'line', phonetics: 'below', bar: null, pattern: null, glow: false, headerCenter: true, card: 'rgba(212,175,55,.055)',
+  },
+  {
+    id: 'coast', name: '海岸', desc: '海盐蓝调 · 明朗现代',
+    bgStops: ['#eef6fc', '#d7eaf8', '#b7d8f2'], text: '#1e3a5f', sub: '#5d7fa3', accent: '#1f6feb', line: 'rgba(30,58,95,.12)',
+    font: 'sans', numbered: true, badge: 'circle', phonetics: 'below', bar: null, pattern: null, glow: false, headerCenter: false, card: 'rgba(255,255,255,.55)',
+  },
+  {
+    id: 'dusk', name: '暮色', desc: '柔粉暮光 · 温润优雅',
+    bgStops: ['#fdf3f6', '#fbe7ee', '#f6d3e4'], text: '#51283a', sub: '#a8768b', accent: '#db2777', line: 'rgba(81,40,58,.12)',
+    font: 'serif', numbered: false, badge: 'none', phonetics: 'below', bar: null, pattern: null, glow: false, headerCenter: true, card: 'rgba(255,255,255,.5)',
+  },
 ]
-const tplBg = t => t.bgStops ? `linear-gradient(160deg, ${t.bgStops.join(', ')})` : t.bg
+const tplBg = t => t.bgStops ? `linear-gradient(155deg, ${t.bgStops.join(', ')})` : t.bg
+// 背景纹理（叠加在底色之上）
+const tplPattern = t => {
+  if (t.pattern === 'scan') return 'repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 2px, transparent 2px 4px)'
+  if (t.pattern === 'paper') return 'radial-gradient(circle at 1px 1px, rgba(70,54,42,.07) 1px, transparent 1.5px)'
+  if (t.pattern === 'glow') return 'radial-gradient(120% 90% at 85% -10%, rgba(167,139,250,.22), transparent 55%), radial-gradient(100% 80% at 0% 110%, rgba(94,234,212,.14), transparent 50%)'
+  return 'none'
+}
+const tplFont = t => t.font === 'serif' ? '"PT Serif", Georgia, "Songti SC", serif'
+  : t.font === 'mono' ? '"Cascadia Mono", "Consolas", "SF Mono", monospace'
+  : '"Inter", "Nunito", "PingFang SC", "Microsoft YaHei", sans-serif'
+const tplFontName = t => t.font === 'serif' ? 'PT Serif' : t.font === 'mono' ? 'Consolas' : 'Inter'
+
+// 预览示例词条（俄语，用于缩略图/放大预览，展示模板排版效果）
+const SAMPLE = [
+  { word: 'привет', chinese: '你好', reading: 'приве́т', example: 'Привет, как дела?' },
+  { word: 'спасибо', chinese: '谢谢', reading: 'спаси́бо', example: 'Большое спасибо за помощь.' },
+  { word: 'любовь', chinese: '爱', reading: 'любо́вь', example: 'Любовь — это чудо.' },
+  { word: 'время', chinese: '时间', reading: 'вре́мя', example: 'Время летит быстро.' },
+  { word: 'мир', chinese: '世界', reading: 'мир', example: 'Мир прекрасен.' },
+]
 
 // 统一按钮样式
 const ghost = 'cursor-pointer rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 dark:border-white/10 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
@@ -50,7 +108,8 @@ export default function VocabBook() {
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
   const [showExport, setShowExport] = useState(false)
-  const [exportTpl, setExportTpl] = useState('ink')
+  const [exportTpl, setExportTpl] = useState('whitespace')
+  const [previewTpl, setPreviewTpl] = useState(null) // 放大的模板示例预览
   const [exportFormat, setExportFormat] = useState('image') // image | pdf
   const [exportWithExample, setExportWithExample] = useState(true)
   const [exportCourse, setExportCourse] = useState('all')
@@ -440,12 +499,16 @@ export default function VocabBook() {
           </div>
 
           <div className="mb-2 mt-5 text-xs font-medium text-gray-400">选择模板</div>
-          <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto pr-1">
+          <div className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto pr-1">
             {TEMPLATES.map(t => (
               <button key={t.id} onClick={() => setExportTpl(t.id)}
                 className={`cursor-pointer rounded-xl border p-2.5 text-left transition-all ${exportTpl === t.id ? 'border-violet-500 ring-1 ring-violet-500/25 dark:border-violet-400' : 'border-gray-200 hover:border-gray-300 dark:border-white/10'}`}>
-                <div className="h-9 rounded-lg" style={{ background: tplBg(t) }}>
-                  <div className="px-2 pt-1.5 font-['PT_Serif',Georgia,serif] text-xs font-bold" style={{ color: t.text }}>привет</div>
+                {/* 示例缩略图：点击放大预览 */}
+                <div className="group/thumb relative cursor-zoom-in overflow-hidden rounded-lg" onClick={e => { e.stopPropagation(); setPreviewTpl(t) }}>
+                  <TplSample t={t} words={SAMPLE.slice(0, 2)} showHeader={false} compact />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover/thumb:bg-black/30 group-hover/thumb:opacity-100">
+                    <span className="rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-medium text-gray-700">🔍 放大预览</span>
+                  </div>
                 </div>
                 <div className="mt-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200">{t.name}</div>
                 <div className="text-[11px] leading-tight text-gray-400">{t.desc}</div>
@@ -453,25 +516,14 @@ export default function VocabBook() {
             ))}
           </div>
 
-          {/* 模板预览 */}
-          <div className="mb-2 mt-4 text-xs font-medium text-gray-400">模板效果预览</div>
-          <div className="overflow-hidden rounded-xl" style={{ background: tplBg(TEMPLATES.find(t => t.id === exportTpl)) }}>
-            <div className="flex items-center justify-between border-b border-white/20 px-4 py-2.5" style={{ color: TEMPLATES.find(t => t.id === exportTpl).sub }}>
-              <span className="text-xs font-semibold tracking-wide">生词本 · 共 {Math.min(3, exportList.length)} 个示例</span>
-              <span className="text-[10px]">{fmtDate(Date.now())}</span>
-            </div>
-            {exportList.slice(0, 3).map(w => (
-              <div key={w.key} className="border-b border-white/15 px-4 py-2.5">
-                <div className="flex items-baseline gap-2">
-                  <span className={`${TEMPLATES.find(t => t.id === exportTpl).serif ? "font-['PT_Serif',Georgia,serif]" : ''} text-lg font-bold`} style={{ color: TEMPLATES.find(t => t.id === exportTpl).text }}>{w.word}</span>
-                  {w.pos && <span className="text-[10px]" style={{ color: TEMPLATES.find(t => t.id === exportTpl).accent }}>{w.pos}</span>}
-                  <span className="flex-1 text-right text-xs" style={{ color: TEMPLATES.find(t => t.id === exportTpl).sub }}>{w.chinese}</span>
-                </div>
-                {exportWithExample && w.example && (
-                  <div className="mt-0.5 text-[11px] italic" style={{ color: TEMPLATES.find(t => t.id === exportTpl).sub }}>{w.example}</div>
-                )}
-              </div>
-            ))}
+          {/* 模板效果预览（点击可放大） */}
+          <div className="mb-2 mt-4 flex items-center justify-between">
+            <span className="text-xs font-medium text-gray-400">模板效果预览</span>
+            <button onClick={() => setPreviewTpl(TEMPLATES.find(t => t.id === exportTpl))} className="cursor-pointer text-[11px] font-medium text-violet-600 hover:underline dark:text-violet-400">🔍 放大预览</button>
+          </div>
+          <div className="cursor-zoom-in overflow-hidden rounded-xl shadow-sm" style={{ background: tplBg(TEMPLATES.find(t => t.id === exportTpl)) }}
+            onClick={() => setPreviewTpl(TEMPLATES.find(t => t.id === exportTpl))}>
+            <TplSample t={TEMPLATES.find(t => t.id === exportTpl)} words={SAMPLE.slice(0, 3)} />
           </div>
 
           <div className="mb-2 mt-5 text-xs font-medium text-gray-400">导出格式</div>
@@ -494,6 +546,24 @@ export default function VocabBook() {
             <button onClick={doExport} className={`${primary} flex-1`}>导出{exportFormat === 'image' ? '图片' : 'PDF'}</button>
           </div>
         </Modal>
+      )}
+
+      {/* ============ 模板放大预览 ============ */}
+      {previewTpl && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" style={{ animation: 'vb-fadeIn .18s ease' }} onClick={() => setPreviewTpl(null)}>
+          <div onClick={e => e.stopPropagation()} className="w-[540px] max-w-[94vw] rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-white/10 dark:bg-[#151519] dark:shadow-[0_16px_50px_rgba(0,0,0,.5)]" style={{ animation: 'vb-popIn .22s ease' }}>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-base font-bold text-gray-900 dark:text-white">{previewTpl.name}</span>
+              <span className="text-xs text-gray-400">{previewTpl.desc}</span>
+              <div className="flex-1" />
+              <button onClick={() => setPreviewTpl(null)} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-base text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-500 dark:hover:bg-white/10">×</button>
+            </div>
+            <div className="overflow-hidden rounded-xl shadow-md">
+              <TplSample t={previewTpl} words={SAMPLE} showFooter />
+            </div>
+            <p className="mt-3 text-center text-[11px] text-gray-400 dark:text-gray-500">示例预览 · 点击空白处关闭</p>
+          </div>
+        </div>
       )}
 
       {/* ============ 开始练习弹窗 ============ */}
@@ -551,6 +621,66 @@ function Toggle({ on, onChange }) {
   )
 }
 
+// ---------------- 模板示例渲染（弹窗预览 / 放大预览共用，HTML 质感版）----------------
+// 与 exportPNG / exportPDF 共用同一套 TEMPLATES 配置，保证「所见即所得」
+function TplSample({ t, words = SAMPLE, compact = false, showHeader = true, showFooter = false }) {
+  const pad = compact ? 8 : 16
+  const headPad = compact ? 8 : 14
+  return (
+    <div className="relative w-full overflow-hidden" style={{ background: tplBg(t), borderRadius: 10 }}>
+      {/* 纹理层 */}
+      <div className="pointer-events-none absolute inset-0" style={{ background: tplPattern(t) }} />
+      <div className="relative" style={{ padding: `${headPad}px ${pad}px ${pad}px` }}>
+        {/* 页眉 */}
+        {showHeader && (
+          <>
+            <div className="flex items-baseline justify-between" style={{ marginBottom: compact ? 6 : 10 }}>
+              <span className="font-bold tracking-wide" style={{ color: t.text, fontSize: compact ? 11 : 15 }}>生词本</span>
+              <span style={{ color: t.sub, fontSize: compact ? 8 : 10 }}>JULEBU · {words.length} 词条</span>
+            </div>
+            {/* 装饰线 */}
+            <div style={{ height: 2, background: `linear-gradient(90deg, ${t.accent}, transparent)`, borderRadius: 99, marginBottom: compact ? 8 : 12, opacity: .85 }} />
+          </>
+        )}
+
+        {words.map((w, i) => {
+          const last = i === words.length - 1
+          return (
+            <div key={i} style={{ borderBottom: !last ? `1px solid ${t.line}` : 'none', padding: `${compact ? 5 : 8}px 0`, borderLeft: t.bar ? `3px solid ${t.bar}` : 'none', paddingLeft: t.bar ? (compact ? 6 : 10) : 0 }}>
+              <div className="flex items-baseline gap-2">
+                {t.numbered && (
+                  t.badge === 'circle' ? (
+                    <span className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white" style={{ background: t.accent, width: compact ? 15 : 20, height: compact ? 15 : 20, fontSize: compact ? 8 : 10 }}>{i + 1}</span>
+                  ) : t.badge === 'square' ? (
+                    <span className="flex shrink-0 items-center justify-center font-semibold" style={{ color: t.accent, border: `1px solid ${t.accent}`, borderRadius: 3, width: compact ? 15 : 20, height: compact ? 15 : 20, fontSize: compact ? 8 : 10 }}>{i + 1}</span>
+                  ) : (
+                    <span className="shrink-0 font-semibold" style={{ color: t.accent, fontSize: compact ? 8 : 11, letterSpacing: .5 }}>{String(i + 1).padStart(2, '0')}</span>
+                  )
+                )}
+                <span className="truncate font-bold" style={{ color: t.text, fontSize: compact ? 12 : 17, fontFamily: tplFont(t), letterSpacing: t.font === 'mono' ? -.3 : 0 }}>{w.word}</span>
+                <span className="ml-auto shrink-0" style={{ color: t.sub, fontSize: compact ? 8 : 12 }}>{w.chinese}</span>
+              </div>
+              {t.phonetics !== 'none' && w.reading && (
+                <div className="mt-0.5" style={{ color: t.sub, fontSize: compact ? 7 : 10, fontStyle: 'italic', letterSpacing: .4, opacity: .9 }}>{w.reading}</div>
+              )}
+              {w.example && (
+                <div className="mt-0.5 truncate" style={{ color: t.sub, fontSize: compact ? 7 : 10, fontStyle: 'italic', opacity: .75 }}>{w.example}</div>
+              )}
+            </div>
+          )
+        })}
+
+        {showFooter && (
+          <div className="mt-2 flex items-center justify-between border-t pt-2" style={{ borderColor: t.line }}>
+            <span style={{ color: t.sub, fontSize: 9, letterSpacing: 2 }}>© JULEBU 生词本</span>
+            <span style={{ color: t.sub, fontSize: 9 }}>{fmtDate(Date.now())}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ---------------- 弹窗骨架 ----------------
 function Modal({ title, onClose, children, wide }) {
   return (
@@ -572,15 +702,20 @@ function Modal({ title, onClose, children, wide }) {
 }
 
 // ---------------- 导出实现 ----------------
+// PNG（canvas）与 PDF（HTML）按同一套 TEMPLATES 配置渲染，与弹窗预览「所见即所得」
+
 function exportPNG(words, tpl, withExample) {
   const W = 900
-  const headerH = 130
-  const rowH = withExample ? 136 : 96
-  const H = headerH + words.length * rowH + 90
+  const headerH = 150
+  const rowBase = 104
+  const rowH = rowBase + (tpl.phonetics !== 'none' && words.some(w => w.reading) ? 30 : 0) + (withExample && words.some(w => w.example) ? 32 : 0)
+  const footerH = 76
+  const H = headerH + words.length * rowH + footerH
   const cv = document.createElement('canvas')
   cv.width = W; cv.height = H
   const ctx = cv.getContext('2d')
 
+  // ---- 背景（渐变 / 纯色）----
   if (tpl.bgStops) {
     const g = ctx.createLinearGradient(0, 0, 0, H)
     tpl.bgStops.forEach((c, i) => g.addColorStop(i / (tpl.bgStops.length - 1), c))
@@ -588,48 +723,135 @@ function exportPNG(words, tpl, withExample) {
   } else { ctx.fillStyle = tpl.bg }
   ctx.fillRect(0, 0, W, H)
 
+  // ---- 纹理 ----
+  if (tpl.pattern === 'scan') {
+    ctx.fillStyle = 'rgba(255,255,255,.05)'
+    for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 1.5)
+  } else if (tpl.pattern === 'paper') {
+    ctx.fillStyle = 'rgba(70,54,42,.06)'
+    for (let y = 8; y < H; y += 16) for (let x = 8; x < W; x += 16) { ctx.beginPath(); ctx.arc(x, y, 1, 0, 7); ctx.fill() }
+  } else if (tpl.pattern === 'glow') {
+    let g = ctx.createRadialGradient(W * .85, -40, 0, W * .85, -40, 420)
+    g.addColorStop(0, 'rgba(167,139,250,.28)'); g.addColorStop(1, 'rgba(167,139,250,0)')
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    g = ctx.createRadialGradient(0, H + 60, 0, 0, H + 60, 460)
+    g.addColorStop(0, 'rgba(94,234,212,.20)'); g.addColorStop(1, 'rgba(94,234,212,0)')
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+  }
+
+  // ---- 页眉 ----
+  const fontOf = (px, weight = 400, italic = false) => `${italic ? 'italic ' : ''}${weight} ${px}px ${tplFont(t)}`
+  ctx.textAlign = 'left'
   ctx.fillStyle = tpl.text
-  ctx.font = '700 34px "PT Serif", Georgia, serif'
-  ctx.fillText('生词本', 48, 62)
-  ctx.fillStyle = tpl.sub
-  ctx.font = '500 16px "PingFang SC", "Microsoft YaHei", sans-serif'
-  ctx.fillText(`共 ${words.length} 个生词  ·  ${fmtDate(Date.now())}`, 48, 92)
+  ctx.font = fontOf(36, 700)
+  ctx.fillText('生词本', 56, 66)
+  // 徽标胶囊
+  ctx.font = fontOf(11, 600)
+  const badgeW = ctx.measureText('JULEBU').width + 24
   ctx.fillStyle = tpl.accent
-  ctx.fillRect(48, 104, 64, 4)
+  roundRect(ctx, 56, 82, badgeW, 24, 12); ctx.fill()
+  ctx.fillStyle = tpl.bg ? (tpl.bg !== '#ffffff' ? '#fff' : tpl.text) : '#fff'
+  ctx.fillText('JULEBU', 56 + 12, 98)
+  // 右侧：词数 · 日期
+  ctx.textAlign = 'right'
+  ctx.fillStyle = tpl.sub
+  ctx.font = fontOf(14)
+  ctx.fillText(`${words.length} 个生词 · ${fmtDate(Date.now())}`, W - 56, 100)
+  ctx.textAlign = 'left'
+  // 装饰渐变线
+  const lg = ctx.createLinearGradient(56, 0, 300, 0)
+  lg.addColorStop(0, tpl.accent); lg.addColorStop(1, 'transparent')
+  ctx.fillStyle = lg
+  ctx.fillRect(56, 120, 244, 3)
 
+  // ---- 词条 ----
   words.forEach((w, i) => {
-    const y = headerH + i * rowH
-    const pad = 24
-    const r = 14
-    ctx.fillStyle = tpl.cardBg
-    ctx.beginPath()
-    ctx.moveTo(pad + r, y); ctx.arcTo(pad + W - pad, y, pad + W - pad, y + rowH - 14, r)
-    ctx.arcTo(pad + W - pad, y + rowH - 14, pad, y + rowH - 14, r)
-    ctx.arcTo(pad, y + rowH - 14, pad, y, r); ctx.arcTo(pad, y, pad + W - pad, y, r)
-    ctx.closePath(); ctx.fill()
-
+    const y = headerH + i * rowH + 10
+    const hasRead = tpl.phonetics !== 'none' && w.reading
+    const hasEx = withExample && w.example
+    const padX = 26
+    const r = 16
+    // 卡片
+    ctx.fillStyle = tpl.card
+    if (tpl.glow) {
+      ctx.shadowColor = tpl.accent; ctx.shadowBlur = 14; ctx.shadowOffsetY = 0
+    }
+    roundRect(ctx, padX, y, W - padX * 2, rowH - 20, r); ctx.fill()
+    ctx.shadowBlur = 0
+    // bar 竖条（夜航）
+    if (tpl.bar) {
+      ctx.fillStyle = tpl.bar
+      roundRect(ctx, padX + 10, y + 16, 4, rowH - 52, 2); ctx.fill()
+    }
+    const x0 = padX + (tpl.bar ? 30 : 16)
+    // 编号徽章
+    let wordX = x0
+    if (tpl.numbered) {
+      const bs = 30
+      if (tpl.badge === 'circle') {
+        ctx.fillStyle = tpl.accent
+        ctx.beginPath(); ctx.arc(x0 + bs / 2, y + 34, bs / 2, 0, 7); ctx.fill()
+        ctx.fillStyle = '#fff'
+        ctx.font = fontOf(13, 700)
+        ctx.textAlign = 'center'; ctx.fillText(String(i + 1), x0 + bs / 2, y + 39); ctx.textAlign = 'left'
+      } else if (tpl.badge === 'square') {
+        ctx.strokeStyle = tpl.accent; ctx.lineWidth = 1.5
+        roundRect(ctx, x0, y + 19, bs, bs, 5); ctx.stroke()
+        ctx.fillStyle = tpl.accent
+        ctx.font = fontOf(13, 700)
+        ctx.textAlign = 'center'; ctx.fillText(String(i + 1), x0 + bs / 2, y + 39); ctx.textAlign = 'left'
+      } else {
+        ctx.fillStyle = tpl.accent
+        ctx.font = fontOf(12, 600)
+        ctx.fillText(String(i + 1).padStart(2, '0'), x0, y + 40)
+      }
+      wordX = x0 + (tpl.badge === 'none' ? 34 : 44)
+    }
+    // 单词
     ctx.fillStyle = tpl.text
-    ctx.font = `700 30px ${tpl.serif ? '"PT Serif", Georgia, serif' : '"Nunito", "Segoe UI", sans-serif'}`
-    ctx.fillText(w.word, 52, y + 40)
+    ctx.font = fontOf(29, 700)
+    ctx.fillText(w.word, wordX, y + 40)
+    // pos
     if (w.pos) {
+      const ww = ctx.measureText(w.word).width
       ctx.fillStyle = tpl.accent
-      ctx.font = '600 13px "PingFang SC", "Microsoft YaHei", sans-serif'
-      ctx.fillText(w.pos, 52 + ctx.measureText(w.word).width + 14, y + 40)
+      ctx.font = fontOf(12, 600)
+      ctx.fillText(w.pos, wordX + ww + 12, y + 40)
     }
+    // 中文（右对齐）
     ctx.fillStyle = tpl.sub
+    ctx.font = fontOf(16, 500)
     ctx.textAlign = 'right'
-    ctx.font = '500 17px "PingFang SC", "Microsoft YaHei", sans-serif'
-    ctx.fillText(w.chinese || '', W - 52, y + 40)
+    ctx.fillText(w.chinese || '', W - padX - 18, y + 40)
     ctx.textAlign = 'left'
-    if (withExample && w.example) {
+    // 音标行
+    let exY = y + 40
+    if (hasRead) {
       ctx.fillStyle = tpl.sub
-      ctx.font = 'italic 400 15px "PT Serif", Georgia, serif'
-      ctx.fillText('「' + w.example + '」', 52, y + 74)
+      ctx.font = fontOf(14, 400, true)
+      ctx.fillText(w.reading, wordX, y + 66)
+      exY = y + 66
     }
-    ctx.strokeStyle = 'rgba(0,0,0,.05)'
-    ctx.lineWidth = 1
-    ctx.beginPath(); ctx.moveTo(pad + 8, y + rowH - 8); ctx.lineTo(W - pad - 8, y + rowH - 8); ctx.stroke()
+    // 例句行
+    if (hasEx) {
+      ctx.fillStyle = tpl.sub
+      ctx.globalAlpha = .8
+      ctx.font = fontOf(13, 400, true)
+      ctx.fillText('「' + w.example + '」', wordX, exY + 28)
+      ctx.globalAlpha = 1
+    }
   })
+
+  // ---- 页脚 ----
+  ctx.strokeStyle = tpl.line
+  ctx.lineWidth = 1
+  ctx.beginPath(); ctx.moveTo(56, H - footerH + 18); ctx.lineTo(W - 56, H - footerH + 18); ctx.stroke()
+  ctx.fillStyle = tpl.sub
+  ctx.font = fontOf(12)
+  ctx.fillText('© JULEBU · 生词本', 56, H - footerH + 46)
+  ctx.textAlign = 'right'
+  ctx.fillText(`${words.length} 个词条 · ${fmtDate(Date.now())}`, W - 56, H - footerH + 46)
+  ctx.textAlign = 'left'
 
   const a = document.createElement('a')
   a.href = cv.toDataURL('image/png')
@@ -638,37 +860,93 @@ function exportPNG(words, tpl, withExample) {
   toast(`已导出图片（${words.length} 个生词，模板「${tpl.name}」）`)
 }
 
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+}
+
 function exportPDF(words, tpl, withExample) {
   const t = tpl
-  const rows = words.map(w => `
+  const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const rows = words.map((w, i) => {
+    const hasRead = t.phonetics !== 'none' && w.reading
+    const hasEx = withExample && w.example
+    const badge = t.numbered
+      ? t.badge === 'circle'
+        ? `<span class="badge circle">${i + 1}</span>`
+        : t.badge === 'square'
+          ? `<span class="badge square">${i + 1}</span>`
+          : `<span class="badge line">${String(i + 1).padStart(2, '0')}</span>`
+      : ''
+    return `
     <div class="row">
-      <div class="row-head">
-        <span class="word">${w.word}</span>
-        ${w.pos ? `<span class="pos">${w.pos}</span>` : ''}
-        <span class="cn">${w.chinese || ''}</span>
+      <div class="row-inner">
+        ${badge}
+        <div class="main">
+          <div class="line1">
+            <span class="word">${esc(w.word)}</span>
+            ${w.pos ? `<span class="pos">${esc(w.pos)}</span>` : ''}
+            <span class="cn">${esc(w.chinese || '')}</span>
+          </div>
+          ${hasRead ? `<div class="read">${esc(w.reading)}</div>` : ''}
+          ${hasEx ? `<div class="ex">「${esc(w.example)}」</div>` : ''}
+        </div>
       </div>
-      ${withExample && w.example ? `<div class="ex">「${w.example}」</div>` : ''}
-    </div>
-  `).join('')
+    </div>`
+  }).join('')
+
+  const patternCss = t.pattern === 'scan'
+    ? 'background-image:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 2px, transparent 2px 4px);'
+    : t.pattern === 'paper'
+      ? 'background-image:radial-gradient(circle at 1px 1px, rgba(70,54,42,.07) 1px, transparent 1.5px);background-size:16px 16px;'
+      : t.pattern === 'glow'
+        ? 'background-image:radial-gradient(120% 90% at 85% -10%, rgba(167,139,250,.22), transparent 55%), radial-gradient(100% 80% at 0% 110%, rgba(94,234,212,.14), transparent 50%);'
+        : ''
+
   const win = window.open('', '_blank')
-  win.document.write(`<!doctype html><html><head><title>生词本导出</title><style>
+  win.document.write(`<!doctype html><html><head><title>生词本导出 · ${t.name}</title><style>
+    @page { margin: 14mm; }
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:${t.bgStops ? `linear-gradient(160deg,${t.bgStops.join(',')}) fixed` : t.bg}; color:${t.text}; font-family:${t.serif ? '"PT Serif", Georgia, serif' : '"Nunito", "Segoe UI", "PingFang SC", sans-serif'}; padding:48px; }
-    .head { display:flex; align-items:baseline; gap:16px; margin-bottom:8px; }
-    .title { font-size:30px; font-weight:700; }
-    .meta { font-size:14px; opacity:.65; }
-    .bar { width:64px; height:4px; background:${t.accent}; margin-bottom:32px; }
-    .row { background:${t.cardBg}; border-radius:14px; padding:18px 22px; margin-bottom:12px; }
-    .row-head { display:flex; align-items:baseline; gap:12px; }
-    .word { font-size:24px; font-weight:700; }
-    .pos { font-size:12px; font-weight:600; color:${t.accent}; }
-    .cn { flex:1; text-align:right; font-size:15px; opacity:.75; }
-    .ex { margin-top:6px; font-size:13px; font-style:italic; opacity:.6; }
-    @media print { body { padding:24px; } }
+    body { background:${t.bgStops ? `linear-gradient(155deg,${t.bgStops.join(',')}) fixed` : t.bg}; color:${t.text}; font-family:${tplFont(t)}; padding:36px 44px; ${patternCss} }
+    .wrap { max-width:820px; margin:0 auto; }
+    .head { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:10px; }
+    .title { font-size:32px; font-weight:700; letter-spacing:.5px; }
+    .badge-top { display:inline-block; padding:2px 10px; border-radius:99px; background:${t.accent}; color:#fff; font-size:10px; font-weight:600; letter-spacing:1.5px; vertical-align:5px; margin-left:10px; }
+    .meta { font-size:13px; opacity:.68; }
+    .rule { height:3px; border-radius:99px; background:linear-gradient(90deg, ${t.accent}, transparent); margin-bottom:26px; }
+    .row { border-bottom:1px solid ${t.line}; padding:14px 2px; }
+    .row:last-child { border-bottom:none; }
+    .row-inner { display:flex; align-items:flex-start; gap:14px; border-left:${t.bar ? `3px solid ${t.bar}` : 'none'}; padding-left:${t.bar ? '14px' : '0'}; }
+    .badge.circle { flex-shrink:0; width:26px; height:26px; border-radius:50%; background:${t.accent}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; margin-top:4px; }
+    .badge.square { flex-shrink:0; width:24px; height:24px; border-radius:5px; border:1.5px solid ${t.accent}; color:${t.accent}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; margin-top:5px; }
+    .badge.line { flex-shrink:0; color:${t.accent}; font-size:12px; font-weight:700; letter-spacing:1px; margin-top:8px; }
+    .main { flex:1; min-width:0; }
+    .line1 { display:flex; align-items:baseline; gap:12px; }
+    .word { font-size:24px; font-weight:700; letter-spacing:.2px; }
+    .pos { font-size:11px; font-weight:600; color:${t.accent}; }
+    .cn { flex:1; text-align:right; font-size:14px; opacity:.75; }
+    .read { margin-top:4px; font-size:12px; font-style:italic; letter-spacing:.4px; opacity:.8; }
+    .ex { margin-top:3px; font-size:12px; font-style:italic; opacity:.62; }
+    .foot { margin-top:22px; padding-top:12px; border-top:1px solid ${t.line}; display:flex; justify-content:space-between; font-size:11px; letter-spacing:1.5px; opacity:.65; }
+    @media print { body { padding:0; } }
   </style></head><body>
-    <div class="head"><span class="title">生词本</span><span class="meta">共 ${words.length} 个生词 · ${fmtDate(Date.now())}</span></div>
-    <div class="bar"></div>
-    ${rows}
+    <div class="wrap">
+      <div class="head">
+        <span class="title">生词本<span class="badge-top">JULEBU</span></span>
+        <span class="meta">共 ${words.length} 个生词 · ${fmtDate(Date.now())}</span>
+      </div>
+      <div class="rule"></div>
+      ${rows}
+      <div class="foot">
+        <span>© JULEBU · 生词本</span>
+        <span>${words.length} 个词条 · ${fmtDate(Date.now())}</span>
+      </div>
+    </div>
   </body></html>`)
   win.document.close()
   win.focus()
