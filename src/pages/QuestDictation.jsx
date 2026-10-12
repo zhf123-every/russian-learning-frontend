@@ -392,6 +392,7 @@ export default function QuestDictation() {
 
   // 进答题页时自动播放发音
   useEffect(() => {
+    console.log('[useEffect] currentStatement?.russian:', currentStatement?.russian, 'loading:', loading); // 调试：确认useEffect有没有执行
     if (currentStatement?.russian && !loading) {
       const timer = setTimeout(() => playAudio(), 500);
       return () => clearTimeout(timer);
