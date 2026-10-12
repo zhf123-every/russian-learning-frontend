@@ -48,6 +48,24 @@ const ROLE_COLORS = {
   default: "#9CA3AF",
 };
 
+// 边框色（与下划线完全不同色相，不重合）
+const ROLE_BORDER_COLORS = {
+  subject: "#2563EB",      // 主语红下划线 → 蓝边框
+  predicate: "#F59E0B",    // 谓语绿下划线 → 橙边框
+  object: "#C026D3",       // 宾语蓝下划线 → 紫边框
+  adverbial: "#14B8A6",    // 状语橙下划线 → 青边框
+  attribute: "#BE123C",    // 定语紫下划线 → 红边框
+  predicative: "#B45309",   // 表语青下划线 → 棕边框
+  complement: "#0EA5E9",   // 补语粉下划线 → 天蓝边框
+  negation: "#9CA3AF",      // 否定灰下划线 → 浅灰边框
+  preposition: "#BE185D",   // 前置词天蓝下划线 → 玫红边框
+  conjunction: "#7C3AED",  // 连接词黄下划线 → 紫边框
+  particle: "#DB2777",     // 语气词紫下划线 → 洋红边框
+  interjection: "#16A34A", // 感叹词洋红下划线 → 绿边框
+  numeral: "#D97706",      // 数词绿下划线 → 金边框
+  default: "#9CA3AF",
+};
+
 // 句法角色 → 中文标签（兼容各种写法）
 const ROLE_LABELS_MAP = {
   subject: "主语",
@@ -283,7 +301,7 @@ export default function AnswerPanel({
                     const first = g.items[0].w;
                     const gRole = first.syntacticRole;
                     const gRoleColor = getRoleColor(gRole);
-                    const gBorder = (gRole && gRole !== "default" && ROLE_COLORS[gRole]) ? gRoleColor : null;
+                    const gBorder = (gRole && gRole !== "default" && ROLE_BORDER_COLORS[gRole]) ? ROLE_BORDER_COLORS[gRole] : null;
                     const isGroup = g.items.length > 1;
                     const gLabel = (gRole && gRole !== "default" && gRole !== "待确认") ? (getRoleLabel(gRole) || gRole) : "";
                     const lastIdx = g.items[g.items.length - 1].i;
@@ -293,8 +311,8 @@ export default function AnswerPanel({
                         <div
                           className="word-card"
                           style={isGroup
-                            ? { ...styles.wordCard, borderColor: gBorder ? `${gBorder}60` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
-                            : { ...styles.wordCard, borderColor: gBorder ? `${gBorder}60` : "var(--qs-border, #E5E7EB)" }}
+                            ? { ...styles.wordCard, borderColor: gBorder ? `${gBorder}33` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
+                            : { ...styles.wordCard, borderColor: gBorder ? `${gBorder}33` : "var(--qs-border, #E5E7EB)" }}
                         >
                           {gLabel && <span style={{ ...styles.roleTag, background: gBorder || "#9CA3AF" }}>{gLabel}</span>}
                           {g.items.map(({ w, i }, j) => {
