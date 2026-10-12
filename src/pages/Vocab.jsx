@@ -1,9 +1,10 @@
-﻿// 复习本 · 学过的所有单词（答错不足 3 次；答错 ≥3 次的词自动进入「陌生关卡」，互斥不重叠）
+﻿// 复习本 · 学过的所有句子（句子级卡片；同一句去重只挂一个，模式/课程标签合并）
 // 路由：/vocab（侧边栏「通关存档 → 复习关卡」）
 // 页眉：筛选(图2) / 复习设置(图3) / 选择(图4) / 开始复习(图5)，条目卡片包裹式（图1）
-// 数据源：rlearn_word_stats（中译俄/听写/听力/口语评测 答题时自动记录，重复单词只挂一个）
+// 数据源：rlearn_review_items（中译俄/听写/听力/口语评测 答题时自动记录）
+// 陌生关卡仍按单词统计（答错 ≥3 次的单词 → src/lib/wordStats.js）
 import { useState, useMemo } from 'react'
-import { getReviewWords, removeWord } from '../lib/wordStats'
+import { getReviewSentences, removeSentence } from '../lib/reviewItems'
 import { speak } from '../lib/tts'
 
 const MODES = ['中译俄', '听写', '听力', '口语评测']
@@ -41,7 +42,7 @@ const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)
 const modalStyle = { background: '#fff', borderRadius: 16, padding: 20, width: 420, maxWidth: '92vw', maxHeight: '80vh', overflowY: 'auto' }
 
 export default function Vocab() {
-  const [list, setList] = useState(() => getReviewWords())
+  const [list, setList] = useState(() => getReviewSentences())
   const [tab, setTab] = useState('all') // all | pack
   const [sortBy, setSortBy] = useState('added') // added | times | review(会员锁)
   const [sortDir, setSortDir] = useState('desc') // desc | asc
@@ -55,7 +56,7 @@ export default function Vocab() {
   const [review, setReview] = useState(null) // { words, i, showAns, done }
   const [dailyDone, setDailyDone] = useState(() => loadDaily())
 
-  const refresh = () => setList(getReviewWords())
+  const refresh = () => setList(getReviewSentences())
 
   // 排序：添加时间(learnedAt) / 练习次数(correct+wrong)，降序或升序
   const sorted = useMemo(() => {
@@ -108,7 +109,7 @@ export default function Vocab() {
     setReview({ ...review, i: Math.max(0, review.i - 1), showAns: false })
   }
   const removeMany = (keys) => {
-    keys.forEach(k => removeWord(k))
+    keys.forEach(k => removeSentence(k))
     refresh(); clearSelect()
   }
 
@@ -121,20 +122,20 @@ export default function Vocab() {
         >{selected.has(c.key) ? '✓' : ''}</div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="ru" style={{ fontSize: 15, fontWeight: 700, color: '#18181B' }}>{c.word}</div>
+        <div className="ru" style={{ fontSize: 15, fontWeight: 700, color: '#18181B' }}>{c.russian}</div>
         <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>{c.chinese || '—'}</div>
         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
           {(c.modes && c.modes.length ? c.modes : ['学过']).map(m => <span key={m} style={tagStyle}>{m}</span>)}
-          {c.pos && <span style={tagStyle}>{c.pos}</span>}
+          {(c.wrongCount || 0) > 0 && <span style={{ ...tagStyle, background: '#FEF3C7', color: '#D97706' }}>答错 {c.wrongCount} 次</span>}
         </div>
         <div style={{ fontSize: 12, color: '#BBB', marginTop: 4 }}>
           {fmtDate(c.learnedAt)} 添加 · 已练习 {(c.correctCount || 0) + (c.wrongCount || 0)} 次 · 上次: {fmtDate(c.lastAt)}
         </div>
       </div>
-      <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50" onClick={() => speak(c.word, { rate: 0.8 })}>🔊 发音</button>
+      <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50" onClick={() => speak(c.russian, { rate: 0.8 })}>🔊 发音</button>
       {!selecting && (
         <button style={{ border: 'none', background: 'none', color: '#DDD', cursor: 'pointer', fontSize: 15 }} title="移除"
-          onClick={() => { if (window.confirm(`确定移除「${c.word}」吗？`)) { removeWord(c.key); refresh() } }}
+          onClick={() => { if (window.confirm(`确定移除「${c.russian}」吗？`)) { removeSentence(c.key); refresh() } }}
         >🗑</button>
       )}
     </div>
@@ -158,13 +159,12 @@ export default function Vocab() {
           <div style={{ textAlign: 'center', padding: '60px 0', background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
             <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>今日复习完成！</h3>
-            <p style={{ fontSize: 13, color: '#999', marginTop: 6 }}>共复习 {words.length} 个单词，明天再来巩固</p>
+            <p style={{ fontSize: 13, color: '#999', marginTop: 6 }}>共复习 {words.length} 个句子，明天再来巩固</p>
           </div>
         ) : (
           <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: 32, textAlign: 'center' }}>
-            <div className="ru" style={{ fontSize: 28, fontWeight: 700, color: '#18181B' }}>{cur.word}</div>
-            {cur.reading && <div style={{ fontSize: 14, color: '#B87333', marginTop: 6 }}>{cur.reading}</div>}
-            <button style={{ ...btnBase, marginTop: 16 }} onClick={() => speak(cur.word, { rate: 0.8 })}>🔊 听发音</button>
+            <div className="ru" style={{ fontSize: 26, fontWeight: 700, color: '#18181B', lineHeight: 1.4 }}>{cur.russian}</div>
+            <button style={{ ...btnBase, marginTop: 16 }} onClick={() => speak(cur.russian, { rate: 0.8 })}>🔊 听发音</button>
             {showAns ? (
               <div style={{ marginTop: 24 }}>
                 <div style={{ fontSize: 20, fontWeight: 600, color: '#374151' }}>{cur.chinese || '暂无释义'}</div>
@@ -224,8 +224,8 @@ export default function Vocab() {
       {total === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white py-20 text-center">
           <div style={{ fontSize: 52, marginBottom: 12 }}>📖</div>
-          <h3 style={{ fontSize: 16, fontWeight: 600 }}>还没有学过的单词</h3>
-          <p style={{ fontSize: 13, color: '#888', marginTop: 6 }}>去中译俄 / 听写 / 听力 / 口语页练习，答过的单词会自动出现在这里</p>
+          <h3 style={{ fontSize: 16, fontWeight: 600 }}>还没有学过的句子</h3>
+          <p style={{ fontSize: 13, color: '#888', marginTop: 6 }}>去中译俄 / 听写 / 听力 / 口语页练习，答过的句子会自动出现在这里</p>
         </div>
       ) : tab === 'pack' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -245,7 +245,7 @@ export default function Vocab() {
         <div style={{ position: 'sticky', bottom: 12, display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '10px 14px', marginTop: 14 }}>
           <span style={{ fontSize: 13, color: '#999' }}>已选择 {selected.size} 题</span>
           <div style={{ flex: 1 }} />
-          <button style={{ ...btnBase, color: '#DC2626', borderColor: '#FECACA' }} onClick={() => { if (window.confirm(`确定删除选中的 ${selected.size} 个单词吗？`)) removeMany([...selected]) }}>删除选中</button>
+          <button style={{ ...btnBase, color: '#DC2626', borderColor: '#FECACA' }} onClick={() => { if (window.confirm(`确定删除选中的 ${selected.size} 个句子吗？`)) removeMany([...selected]) }}>删除选中</button>
           <button style={{ background: '#7C3AED', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer' }} onClick={() => startReview(selectedWords)}>练习选中</button>
         </div>
       )}

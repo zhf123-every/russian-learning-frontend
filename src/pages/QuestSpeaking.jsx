@@ -8,6 +8,7 @@ import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
 import { trackWords } from "../lib/wordStats";
+import { trackSentence } from "../lib/reviewItems";
 import { touchSync } from "../lib/cloudProgress";
 import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
@@ -760,6 +761,8 @@ export default function QuestSpeaking() {
             setWrongStreak((s) => (sc.total < 60 ? s + 1 : 0));
             // 单词统计：评测完成 → 达标记学过，不达标错误次数+1（答错 ≥3 次 → 陌生关卡）
             trackWords(current?.words || [], sc.total < 60 ? "wrong" : "correct", { mode: "口语评测", lesson: effectiveCourseId });
+            // 句子统计：评测完成 → 达标记学过，不达标错误次数+1（复习本卡片展示）
+            trackSentence(current, sc.total < 60 ? "wrong" : "correct", { mode: "口语评测", lesson: effectiveCourseId });
           } catch (err) {
             console.error("ASR error", err);
             setScore({ total: 0, accuracy: 0, fluency: 0, completeness: 0 });

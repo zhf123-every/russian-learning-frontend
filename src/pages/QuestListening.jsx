@@ -8,6 +8,7 @@ import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
 import { trackWords } from "../lib/wordStats";
+import { trackSentence } from "../lib/reviewItems";
 import { touchSync } from "../lib/cloudProgress";
 import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
@@ -314,6 +315,7 @@ export default function QuestListening() {
       if (!listeningLearnedRef.current.has(current.id)) {
         listeningLearnedRef.current.add(current.id);
         trackWords(current.words, "correct", { mode: "听力", lesson: effectiveCourseId });
+        trackSentence(current, "correct", { mode: "听力", lesson: effectiveCourseId });
       }
     }
   }, [phase, current]);

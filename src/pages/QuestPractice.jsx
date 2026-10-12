@@ -20,6 +20,7 @@ import { findLocalUnitById } from "../utils/storage";
 import { apiFetch } from "../lib/api";
 import { markUnitDone } from "../lib/lessonProgress";
 import { trackWords } from "../lib/wordStats";
+import { trackSentence } from "../lib/reviewItems";
 import { touchSync } from "../lib/cloudProgress";
 import { addStudyTime } from "../lib/learningStats";
 import { getCourseById } from "../utils/courseService";
@@ -520,6 +521,8 @@ export default function QuestPractice() {
       recordCorrect();
       // 单词统计：答对 → 记为学过（复习关卡）
       trackWords(currentStatement?.fullWords || currentStatement?.words, 'correct', { mode: '中译俄', lesson: effectiveCourseId });
+      // 句子统计：答对 → 进入复习本（句子级卡片，同一句只挂一个）
+      trackSentence(currentStatement, 'correct', { mode: '中译俄', lesson: effectiveCourseId });
       if (sfx.answerOn !== false) playRightSound();
       ensureAnalysis(currentStatement);
       // 通关之路：六格天赋树（答对当前句，句中各词的格 → 正确+1）
@@ -534,6 +537,8 @@ export default function QuestPractice() {
       recordWrong();
       // 单词统计：答错次数累计（答错 ≥3 次 → 陌生关卡）
       trackWords(currentStatement?.fullWords || currentStatement?.words, 'wrong', { mode: '中译俄', lesson: effectiveCourseId });
+      // 句子统计：答错次数累计（复习本卡片展示答错次数）
+      trackSentence(currentStatement, 'wrong', { mode: '中译俄', lesson: effectiveCourseId });
       // 「自动显示答案」：连续答错 N 次后自动展示答案（off=不显示）
       if (wc >= revealThreshold) setShowAnswerPanel(true);
       // 「记录到错题本」：连续答错达到阈值后收录（always=总是）
