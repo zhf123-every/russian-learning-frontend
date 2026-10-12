@@ -14,7 +14,12 @@ export const useSettingsStore = create((set, get) => ({
   settings: { ...defaults, ...loadLS(LS.settings, {}) },
   save(patch) {
     const next = { ...get().settings, ...patch }
-    saveLS(LS.settings, next)
+    // localStorage 配额超限时，保存失败但仍然更新 zustand store，保证当前会话生效
+    try {
+      saveLS(LS.settings, next)
+    } catch (e) {
+      console.warn('[settingsStore] localStorage 保存失败，仅更新内存:', e)
+    }
     set({ settings: next })
   },
 }))
