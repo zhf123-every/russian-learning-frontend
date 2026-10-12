@@ -1,8 +1,8 @@
 ﻿// 复习本 · 学过的所有句子（句子级卡片；同一句去重只挂一个，模式/课程标签合并）
-// 路由：/vocab（侧边栏「通关存档 → 复习关卡」）
-// 页眉：筛选(图2) / 复习设置(图3) / 选择(图4) / 开始复习(图5)，条目卡片包裹式（图1）
+// 路由：/vocab（侧边栏「通关存档 → 复习本」）
+// 页眉：筛选 / 复习设置 / 选择 / 开始复习，条目卡片包裹式
 // 数据源：rlearn_review_items（中译俄/听写/听力/口语评测 答题时自动记录）
-// 陌生关卡仍按单词统计（答错 ≥3 次的单词 → src/lib/wordStats.js）
+// 设计：简约大气有质感 —— 无渐变装饰，细边框 + 柔和阴影 + 单一强调色，跟随全局主题（与生词本同款设计语言）
 import { useState, useMemo } from 'react'
 import { getReviewSentences, removeSentence } from '../lib/reviewItems'
 import { speak } from '../lib/tts'
@@ -36,10 +36,9 @@ function saveDaily(n) {
   try { localStorage.setItem(DAILY_KEY, JSON.stringify({ date: todayStr(), done: n })) } catch (e) { /* 忽略 */ }
 }
 
-const tagStyle = { fontSize: 11, padding: '2px 8px', borderRadius: 999, background: '#F3F4F6', color: '#6B7280' }
-const btnBase = { borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', padding: '6px 12px', fontSize: 13, cursor: 'pointer', color: '#374151' }
-const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }
-const modalStyle = { background: '#fff', borderRadius: 16, padding: 20, width: 420, maxWidth: '92vw', maxHeight: '80vh', overflowY: 'auto' }
+// 统一按钮样式（与生词本一致）
+const ghost = 'cursor-pointer rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 dark:border-white/10 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
+const primary = 'cursor-pointer rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700'
 
 export default function Vocab() {
   const [list, setList] = useState(() => getReviewSentences())
@@ -58,7 +57,6 @@ export default function Vocab() {
 
   const refresh = () => setList(getReviewSentences())
 
-  // 排序：添加时间(learnedAt) / 练习次数(correct+wrong)，降序或升序
   const sorted = useMemo(() => {
     const arr = [...list]
     arr.sort((a, b) => {
@@ -114,30 +112,55 @@ export default function Vocab() {
   }
 
   const card = (c) => (
-    <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, border: '1px solid #E5E7EB', background: '#fff' }}>
-      {selecting && (
-        <div
-          onClick={() => toggleSelect(c.key)}
-          style={{ width: 22, height: 22, borderRadius: 11, border: selected.has(c.key) ? 'none' : '2px solid #D1D5DB', background: selected.has(c.key) ? '#7C3AED' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, cursor: 'pointer', flexShrink: 0 }}
-        >{selected.has(c.key) ? '✓' : ''}</div>
-      )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="ru" style={{ fontSize: 15, fontWeight: 700, color: '#18181B' }}>{c.russian}</div>
-        <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>{c.chinese || '—'}</div>
-        <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-          {(c.modes && c.modes.length ? c.modes : ['学过']).map(m => <span key={m} style={tagStyle}>{m}</span>)}
-          {(c.wrongCount || 0) > 0 && <span style={{ ...tagStyle, background: '#FEF3C7', color: '#D97706' }}>答错 {c.wrongCount} 次</span>}
+    <div
+      key={c.key}
+      onClick={() => selecting && toggleSelect(c.key)}
+      className={`group rounded-xl border bg-white p-5 shadow-sm transition-all dark:bg-[#151519] ${
+        selecting
+          ? (selected.has(c.key)
+            ? 'cursor-pointer border-violet-500 ring-1 ring-violet-500/40 dark:border-violet-400'
+            : 'cursor-pointer border-gray-200 hover:border-violet-300 dark:border-white/10')
+          : 'border-gray-200 hover:-translate-y-0.5 hover:shadow-md dark:border-white/10'
+      }`}
+    >
+      <div className="flex items-start gap-4">
+        {selecting && (
+          <div className={`mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-2 text-sm text-white transition-colors ${
+            selected.has(c.key) ? 'border-violet-600 bg-violet-600' : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-[#1c1c22]'
+          }`}>{selected.has(c.key) ? '✓' : ''}</div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-3">
+            <span className="ru font-['PT_Serif',Georgia,serif] text-lg font-bold leading-snug tracking-tight text-gray-900 dark:text-white">{c.russian}</span>
+            <button
+              onClick={e => { e.stopPropagation(); speak(c.russian, { rate: 0.8 }) }}
+              title="播放发音"
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-gray-200 text-sm text-gray-400 transition-colors hover:border-violet-300 hover:text-violet-600 dark:border-white/10 dark:hover:border-violet-500/40 dark:hover:text-violet-400"
+            >🔊</button>
+          </div>
+          <div className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">{c.chinese || '—'}</div>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            {(c.modes && c.modes.length ? c.modes : ['学过']).map(m => (
+              <span key={m} className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-white/10 dark:text-gray-400">{m}</span>
+            ))}
+            {(c.wrongCount || 0) > 0 && (
+              <span className="rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">答错 {c.wrongCount} 次</span>
+            )}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 dark:text-gray-500">
+            <span>{fmtDate(c.learnedAt)} 添加</span>
+            <span>· 已练习 {(c.correctCount || 0) + (c.wrongCount || 0)} 次</span>
+            <span>· 上次: {fmtDate(c.lastAt)}</span>
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: '#BBB', marginTop: 4 }}>
-          {fmtDate(c.learnedAt)} 添加 · 已练习 {(c.correctCount || 0) + (c.wrongCount || 0)} 次 · 上次: {fmtDate(c.lastAt)}
-        </div>
+        {!selecting && (
+          <button
+            onClick={() => { if (window.confirm(`确定移除「${c.russian}」吗？`)) { removeSentence(c.key); refresh() } }}
+            title="移除"
+            className="shrink-0 cursor-pointer rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-400 transition-colors hover:border-rose-300 hover:text-rose-500 dark:border-white/10"
+          >移除</button>
+        )}
       </div>
-      <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50" onClick={() => speak(c.russian, { rate: 0.8 })}>🔊 发音</button>
-      {!selecting && (
-        <button style={{ border: 'none', background: 'none', color: '#DDD', cursor: 'pointer', fontSize: 15 }} title="移除"
-          onClick={() => { if (window.confirm(`确定移除「${c.russian}」吗？`)) { removeSentence(c.key); refresh() } }}
-        >🗑</button>
-      )}
     </div>
   )
 
@@ -146,49 +169,46 @@ export default function Vocab() {
     const { words, i, showAns, done } = review
     const cur = words[i]
     return (
-      <div style={{ padding: 16, maxWidth: 640, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-          <button style={btnBase} onClick={() => setReview(null)}>← 返回复习本</button>
-          <div style={{ flex: 1, textAlign: 'center', fontSize: 13, color: '#999' }}>
-            {done ? `复习完成 · 共 ${words.length} 个` : `第 ${i + 1} / ${words.length} 个`}
-          </div>
-          <div style={{ fontSize: 13, color: '#7C3AED', fontWeight: 600 }}>今日进度 {dailyDone}</div>
+      <div className="mx-auto max-w-xl p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <button onClick={() => setReview(null)} className={ghost}>← 返回复习本</button>
+          <div className="flex-1" />
+          {!done && <div className="text-sm font-semibold text-violet-600 dark:text-violet-400">{i + 1} / {words.length}</div>}
+          <div className="text-sm text-gray-400 dark:text-gray-500">今日 {dailyDone}</div>
         </div>
 
         {done ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
-            <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>今日复习完成！</h3>
-            <p style={{ fontSize: 13, color: '#999', marginTop: 6 }}>共复习 {words.length} 个句子，明天再来巩固</p>
+          <div className="rounded-2xl border border-gray-200 bg-white px-8 py-14 text-center shadow-sm dark:border-white/10 dark:bg-[#151519]">
+            <div className="text-5xl">🎉</div>
+            <h3 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">今日复习完成！</h3>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">共复习 {words.length} 个句子，明天再来巩固</p>
           </div>
         ) : (
-          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: 32, textAlign: 'center' }}>
-            <div className="ru" style={{ fontSize: 26, fontWeight: 700, color: '#18181B', lineHeight: 1.4 }}>{cur.russian}</div>
-            <button style={{ ...btnBase, marginTop: 16 }} onClick={() => speak(cur.russian, { rate: 0.8 })}>🔊 听发音</button>
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-white/10 dark:bg-[#151519]">
+            <div className="ru font-['PT_Serif',Georgia,serif] text-2xl font-bold leading-relaxed text-gray-900 dark:text-white">{cur.russian}</div>
+            <button onClick={() => speak(cur.russian, { rate: 0.8 })} className={`${ghost} mt-5`}>🔊 听发音</button>
             {showAns ? (
-              <div style={{ marginTop: 24 }}>
-                <div style={{ fontSize: 20, fontWeight: 600, color: '#374151' }}>{cur.chinese || '暂无释义'}</div>
-                <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-                  {(cur.modes && cur.modes.length ? cur.modes : ['学过']).map(m => <span key={m} style={tagStyle}>{m}</span>)}
+              <div className="mt-6">
+                <div className="text-lg font-semibold text-gray-700 dark:text-gray-200">{cur.chinese || '暂无释义'}</div>
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                  {(cur.modes && cur.modes.length ? cur.modes : ['学过']).map(m => (
+                    <span key={m} className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-white/10 dark:text-gray-400">{m}</span>
+                  ))}
                 </div>
-                <div style={{ fontSize: 12, color: '#BBB', marginTop: 8 }}>
-                  答对 {cur.correctCount || 0} 次 · 答错 {cur.wrongCount || 0} 次
-                </div>
+                <div className="mt-3 text-xs text-gray-400 dark:text-gray-500">答对 {cur.correctCount || 0} 次 · 答错 {cur.wrongCount || 0} 次</div>
               </div>
             ) : (
-              <div style={{ marginTop: 24 }}>
-                <button style={{ background: '#7C3AED', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 28px', fontSize: 14, cursor: 'pointer' }} onClick={reveal}>显示答案</button>
+              <div className="mt-7">
+                <button onClick={reveal} className={`${primary} px-10 py-2.5`}>显示答案</button>
               </div>
             )}
           </div>
         )}
 
         {!done && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 16 }}>
-            <button style={btnBase} onClick={reviewPrev} disabled={i === 0}>← 上一个</button>
-            <button style={{ ...btnBase, background: '#7C3AED', color: '#fff', borderColor: '#7C3AED' }} onClick={reviewNext}>
-              {i + 1 >= words.length ? '完成复习 ✓' : '下一个 →'}
-            </button>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <button onClick={reviewPrev} disabled={i === 0} className={`${ghost} disabled:cursor-not-allowed disabled:opacity-40`}>← 上一个</button>
+            <button onClick={reviewNext} className={`${primary} px-8`}>{i + 1 >= words.length ? '完成复习 ✓' : '下一个 →'}</button>
           </div>
         )}
       </div>
@@ -197,184 +217,205 @@ export default function Vocab() {
 
   // ---- 复习本主页面 ----
   return (
-    <div style={{ padding: 16 }}>
-      {/* 页眉：标题 + 全部复习/按课程包 + 筛选/复习设置/选择/开始复习 */}
-      {selecting ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-          <span style={{ fontSize: 18, fontWeight: 700 }}>管理复习项</span>
-          <button style={btnBase} onClick={selectAll}>全选</button>
-          <button style={btnBase} onClick={clearSelect}>取消</button>
-          <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 13, color: '#999' }}>已选择 {selected.size} 题</span>
+    <div className="mx-auto max-w-5xl p-6">
+      {/* 页眉 */}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="mr-auto">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">复习本</h1>
+          <p className="mt-1 text-[13px] text-gray-400 dark:text-gray-500">
+            {tab === 'all' ? '学过的句子自动收录 · 共 ' : '按课程包分组 · 共 '}{total} 条 · 今日进度 {dailyDone}
+          </p>
         </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-          <span style={{ fontSize: 18, fontWeight: 700 }}>复习本</span>
-          <button onClick={() => setTab('all')} style={{ ...btnBase, borderColor: tab === 'all' ? '#7C3AED' : '#E5E7EB', color: tab === 'all' ? '#7C3AED' : '#374151', fontWeight: tab === 'all' ? 600 : 400 }}>全部复习</button>
-          <button onClick={() => setTab('pack')} style={{ ...btnBase, borderColor: tab === 'pack' ? '#7C3AED' : '#E5E7EB', color: tab === 'pack' ? '#7C3AED' : '#374151', fontWeight: tab === 'pack' ? 600 : 400 }}>按课程包</button>
-          <div style={{ flex: 1 }} />
-          <button style={btnBase} onClick={() => setShowFilter(true)}>筛选</button>
-          <button style={btnBase} onClick={() => setShowSettings(true)}>复习设置</button>
-          <button style={btnBase} onClick={() => setSelecting(true)}>选择</button>
-          <button style={{ background: '#7C3AED', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 13, cursor: 'pointer' }} onClick={() => setShowStart(true)}>开始复习({total})</button>
+        {!selecting && (
+          <>
+            <div className="flex overflow-hidden rounded-lg border border-gray-200 dark:border-white/10">
+              {[['all', '全部复习'], ['pack', '按课程包']].map(([k, label]) => (
+                <button key={k} onClick={() => setTab(k)}
+                  className={`cursor-pointer px-4 py-2 text-sm transition-colors ${
+                    tab === k ? 'bg-violet-600 font-medium text-white' : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5'
+                  }`}>{label}</button>
+              ))}
+            </div>
+            <button onClick={() => setShowFilter(true)} className={ghost}>筛选</button>
+            <button onClick={() => setShowSettings(true)} className={ghost}>复习设置</button>
+            <button onClick={() => setSelecting(true)} className={ghost}>选择</button>
+            <button onClick={() => setShowStart(true)} className={primary}>开始复习({total})</button>
+          </>
+        )}
+      </div>
+
+      {/* 选择模式页眉 */}
+      {selecting && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50/50 px-4 py-3 dark:border-violet-500/25 dark:bg-violet-500/10">
+          <span className="text-base font-bold text-gray-900 dark:text-white">管理复习项</span>
+          <button onClick={selectAll} className="cursor-pointer text-sm font-medium text-violet-600 hover:underline dark:text-violet-400">全选</button>
+          <button onClick={clearSelect} className="cursor-pointer text-sm font-medium text-gray-500 hover:underline dark:text-gray-400">取消</button>
+          <div className="flex-1" />
+          <span className="text-sm text-gray-500 dark:text-gray-400">已选择 {selected.size} 题</span>
         </div>
       )}
-      <div style={{ fontSize: 13, color: '#999', marginBottom: 14 }}>今日进度 {dailyDone} / {total}</div>
 
+      {/* 空态 */}
       {total === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white py-20 text-center">
-          <div style={{ fontSize: 52, marginBottom: 12 }}>📖</div>
-          <h3 style={{ fontSize: 16, fontWeight: 600 }}>还没有学过的句子</h3>
-          <p style={{ fontSize: 13, color: '#888', marginTop: 6 }}>去中译俄 / 听写 / 听力 / 口语页练习，答过的句子会自动出现在这里</p>
+        <div className="mt-10 rounded-2xl border border-dashed border-gray-200 bg-white py-24 text-center dark:border-white/15 dark:bg-[#151519]">
+          <div className="text-5xl">📖</div>
+          <h3 className="mt-5 text-lg font-bold text-gray-900 dark:text-white">还没有学过的句子</h3>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-gray-400 dark:text-gray-500">
+            去中译俄 / 听写 / 听力 / 口语页练习，答过的句子会自动出现在这里
+          </p>
         </div>
       ) : tab === 'pack' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="flex flex-col gap-5">
           {packGroups.map(([lesson, words]) => (
             <div key={lesson}>
-              <div style={{ fontSize: 13, color: '#999', margin: '4px 4px 8px' }}>课程 {lesson} · {words.length} 个</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{words.map(card)}</div>
+              <div className="mb-2.5 flex items-baseline gap-2 px-1">
+                <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">课程 {lesson}</span>
+                <span className="text-xs text-gray-400">{words.length} 个</span>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">{words.map(card)}</div>
             </div>
           ))}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{sorted.map(card)}</div>
+        <div className="grid gap-4 md:grid-cols-2">{sorted.map(card)}</div>
       )}
 
-      {/* 选择模式底栏 */}
+      {/* 选择底栏 */}
       {selecting && (
-        <div style={{ position: 'sticky', bottom: 12, display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '10px 14px', marginTop: 14 }}>
-          <span style={{ fontSize: 13, color: '#999' }}>已选择 {selected.size} 题</span>
-          <div style={{ flex: 1 }} />
-          <button style={{ ...btnBase, color: '#DC2626', borderColor: '#FECACA' }} onClick={() => { if (window.confirm(`确定删除选中的 ${selected.size} 个句子吗？`)) removeMany([...selected]) }}>删除选中</button>
-          <button style={{ background: '#7C3AED', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer' }} onClick={() => startReview(selectedWords)}>练习选中</button>
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-white/10 dark:bg-[#0d0d11]/90">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2.5">
+            <span className="text-sm text-gray-500 dark:text-gray-400">已选择 <b className="text-violet-600 dark:text-violet-400">{selected.size}</b> 题 / 共 {sorted.length} 条</span>
+            <div className="flex-1" />
+            <button onClick={() => { if (window.confirm(`确定删除选中的 ${selected.size} 个句子吗？`)) removeMany([...selected]) }}
+              className="cursor-pointer rounded-lg border border-rose-200 px-4 py-2 text-sm font-medium text-rose-500 transition-colors hover:bg-rose-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10">删除选中</button>
+            <button onClick={() => startReview(selectedWords)} className={primary}>练习选中({selected.size})</button>
+          </div>
         </div>
       )}
 
-      {/* 图2 筛选弹窗 */}
+      {/* 筛选弹窗 */}
       {showFilter && (
-        <div style={overlayStyle} onClick={() => setShowFilter(false)}>
-          <div style={modalStyle} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
-              <span style={{ fontSize: 16, fontWeight: 700 }}>筛选条件</span>
-              <div style={{ flex: 1 }} />
-              <button style={{ border: 'none', background: 'none', fontSize: 16, color: '#999', cursor: 'pointer' }} onClick={() => setShowFilter(false)}>×</button>
-            </div>
-            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 8 }}>排序方式</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-              {[['added', '添加时间'], ['times', '练习次数'], ['review', '复习时间']].map(([k, label]) => (
-                <div key={k} onClick={() => k !== 'review' && setSortBy(k)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, cursor: k === 'review' ? 'not-allowed' : 'pointer', background: sortBy === k ? '#F5F3FF' : '#fff', border: '1px solid', borderColor: sortBy === k ? '#C4B5FD' : '#E5E7EB' }}>
-                  <span style={{ fontSize: 14, color: sortBy === k ? '#7C3AED' : '#374151' }}>{sortBy === k ? '✓' : ''} {label}</span>
-                  {k === 'review' && <span style={{ fontSize: 11, color: '#D97706' }}>🔒 会员</span>}
-                </div>
-              ))}
-            </div>
-            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 8 }}>排序顺序</div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              {[['desc', '降序'], ['asc', '升序']].map(([k, label]) => (
-                <button key={k} onClick={() => setSortDir(k)} style={{ ...btnBase, flex: 1, borderColor: sortDir === k ? '#7C3AED' : '#E5E7EB', color: sortDir === k ? '#7C3AED' : '#374151', fontWeight: sortDir === k ? 600 : 400 }}>{label}</button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button style={{ ...btnBase, flex: 1 }} onClick={() => { setSortBy('added'); setSortDir('desc') }}>重置</button>
-              <button style={{ ...btnBase, flex: 1 }} onClick={() => setShowFilter(false)}>关闭</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 图3 复习设置弹窗 */}
-      {showSettings && (
-        <div style={overlayStyle} onClick={() => setShowSettings(false)}>
-          <div style={modalStyle} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
-              <span style={{ fontSize: 16, fontWeight: 700 }}>复习设置</span>
-              <div style={{ flex: 1 }} />
-              <button style={{ border: 'none', background: 'none', fontSize: 16, color: '#999', cursor: 'pointer' }} onClick={() => setShowSettings(false)}>×</button>
-            </div>
-            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 8 }}>每日复习量 · 按模式自定义</div>
-            {MODES.map(m => (
-              <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #F3F4F6' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{m}</div>
-                  <div style={{ fontSize: 12, color: '#999' }}>{m === '中译俄' ? '看中文写出俄语' : m === '听写' ? '听音频写出句子' : m === '听力' ? '盲听理解句子' : '跟读和口语练习'}</div>
-                </div>
-                <input
-                  type="number" min={1} max={99} value={settings[m] || 10}
-                  onChange={e => setSettings({ ...settings, [m]: Math.min(99, Math.max(1, parseInt(e.target.value || '10', 10))) })}
-                  style={{ width: 56, padding: '6px 8px', borderRadius: 8, border: '1px solid #E5E7EB', textAlign: 'center', fontSize: 14 }}
-                />
-                <span style={{ fontSize: 13, color: '#999', width: 20 }}>次</span>
-              </div>
+        <Modal title="筛选条件" onClose={() => setShowFilter(false)}>
+          <div className="mb-2 text-xs font-medium text-gray-400">排序方式</div>
+          <div className="flex flex-col gap-2">
+            {[['added', '添加时间'], ['times', '练习次数'], ['review', '复习时间']].map(([k, label]) => (
+              <button key={k} onClick={() => k !== 'review' && setSortBy(k)} className={optBtn(sortBy === k, k === 'review')}>
+                {label}{k === 'review' && <span className="ml-1.5 text-[11px] text-amber-500">🔒 会员</span>}
+              </button>
             ))}
-            <div style={{ fontSize: 12, color: '#BBB', marginTop: 8 }}>
-              自定义时按模式分别限制，互不挪用。同一内容如果今天同时有多种模式到期，会分别计入对应模式。
-            </div>
-
-            <div style={{ fontSize: 13, color: '#6B7280', marginTop: 16, marginBottom: 8 }}>复习模式 <span style={{ fontSize: 11, color: '#D97706' }}>🔒 会员</span></div>
-            <div style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #F3F4F6', background: '#F9FAFB' }}>
-              <div style={{ fontSize: 13, color: '#999' }}>开通会员后可自定义复习模式，专注练习薄弱环节。</div>
-              <button style={{ ...btnBase, marginTop: 8, color: '#7C3AED', borderColor: '#C4B5FD' }} onClick={() => alert('会员功能暂未开放')}>开通会员</button>
-            </div>
-
-            <div style={{ fontSize: 13, color: '#6B7280', marginTop: 16, marginBottom: 8 }}>仅复习错题 <span style={{ fontSize: 11, color: '#D97706' }}>🔒 会员</span></div>
-            <div style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #F3F4F6', background: '#F9FAFB' }}>
-              <div style={{ fontSize: 13, color: '#999' }}>只推荐你做错过的内容。</div>
-              <button style={{ ...btnBase, marginTop: 8, color: '#7C3AED', borderColor: '#C4B5FD' }} onClick={() => alert('会员功能暂未开放')}>开通会员</button>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-              <button style={{ ...btnBase, flex: 1 }} onClick={() => { const d = {}; MODES.forEach(m => { d[m] = 10 }); setSettings(d) }}>恢复默认</button>
-              <button style={{ background: '#7C3AED', color: '#fff', border: 'none', borderRadius: 8, flex: 1, padding: '8px', fontSize: 14, cursor: 'pointer' }} onClick={() => { saveSettings(settings); setShowSettings(false) }}>保存设置</button>
-            </div>
           </div>
-        </div>
+          <div className="mb-2 mt-5 text-xs font-medium text-gray-400">排序顺序</div>
+          <div className="grid grid-cols-2 gap-2">
+            {[['desc', '降序'], ['asc', '升序']].map(([k, label]) => (
+              <button key={k} onClick={() => setSortDir(k)} className={optBtn(sortDir === k)}>{label}</button>
+            ))}
+          </div>
+          <div className="mt-6 flex gap-3">
+            <button onClick={() => { setSortBy('added'); setSortDir('desc') }} className={`${ghost} flex-1`}>重置</button>
+            <button onClick={() => setShowFilter(false)} className={`${primary} flex-1`}>关闭</button>
+          </div>
+        </Modal>
       )}
 
-      {/* 图5 开始复习 → 今日推荐弹窗 */}
+      {/* 复习设置弹窗 */}
+      {showSettings && (
+        <Modal title="复习设置" onClose={() => setShowSettings(false)}>
+          <div className="mb-3 text-xs font-medium text-gray-400">每日复习量 · 按模式自定义</div>
+          {MODES.map(m => (
+            <div key={m} className="flex items-center gap-3 border-b border-gray-100 py-3 last:border-0 dark:border-white/5">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">{m}</div>
+                <div className="text-xs text-gray-400">{m === '中译俄' ? '看中文写出俄语' : m === '听写' ? '听音频写出句子' : m === '听力' ? '盲听理解句子' : '跟读和口语练习'}</div>
+              </div>
+              <input
+                type="number" min={1} max={99} value={settings[m] || 10}
+                onChange={e => setSettings({ ...settings, [m]: Math.min(99, Math.max(1, parseInt(e.target.value || '10', 10))) })}
+                className="w-16 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-center text-sm outline-none focus:border-violet-400 dark:border-white/10 dark:bg-white/5 dark:text-white"
+              />
+              <span className="w-5 text-sm text-gray-400">次</span>
+            </div>
+          ))}
+          <p className="mt-2 text-xs leading-relaxed text-gray-400">自定义时按模式分别限制，互不挪用。同一内容如果今天同时有多种模式到期，会分别计入对应模式。</p>
+
+          <div className="mb-2 mt-5 text-xs font-medium text-gray-400">复习模式 <span className="text-[11px] text-amber-500">🔒 会员</span></div>
+          <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 dark:border-white/5 dark:bg-white/5">
+            <div className="text-xs text-gray-400">开通会员后可自定义复习模式，专注练习薄弱环节。</div>
+            <button onClick={() => alert('会员功能暂未开放')} className={`${ghost} mt-2.5 text-violet-600 dark:text-violet-400`}>开通会员</button>
+          </div>
+
+          <div className="mb-2 mt-5 text-xs font-medium text-gray-400">仅复习错题 <span className="text-[11px] text-amber-500">🔒 会员</span></div>
+          <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 dark:border-white/5 dark:bg-white/5">
+            <div className="text-xs text-gray-400">只推荐你做错过的内容。</div>
+            <button onClick={() => alert('会员功能暂未开放')} className={`${ghost} mt-2.5 text-violet-600 dark:text-violet-400`}>开通会员</button>
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <button onClick={() => { const d = {}; MODES.forEach(m => { d[m] = 10 }); setSettings(d) }} className={`${ghost} flex-1`}>恢复默认</button>
+            <button onClick={() => { saveSettings(settings); setShowSettings(false) }} className={`${primary} flex-1`}>保存设置</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* 开始复习 → 今日推荐弹窗 */}
       {showStart && (
-        <div style={overlayStyle} onClick={() => setShowStart(false)}>
-          <div style={modalStyle} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
-              <span style={{ fontSize: 16, fontWeight: 700 }}>今日推荐</span>
-              <div style={{ flex: 1 }} />
-              <button style={{ border: 'none', background: 'none', fontSize: 16, color: '#999', cursor: 'pointer' }} onClick={() => setShowStart(false)}>×</button>
-            </div>
-            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 10 }}>练习模式</div>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-              {MODES.map(m => {
-                const n = Math.min(settings[m] || 10, total)
-                const active = startMode === m
-                return (
-                  <div key={m} onClick={() => setStartMode(m)} style={{ flex: 1, textAlign: 'center', padding: '12px 4px', borderRadius: 12, cursor: 'pointer', border: '2px solid', borderColor: active ? '#7C3AED' : '#E5E7EB', background: active ? '#F5F3FF' : '#fff' }}>
-                    <div style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? '#7C3AED' : '#374151' }}>{m}</div>
-                    <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>{n}题</div>
-                  </div>
-                )
-              })}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10, background: '#F5F3FF', border: '1px solid #E9D5FF', marginBottom: 10 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#6D28D9' }}>{startMode}模式待复习</span>
-              <span style={{ fontSize: 12, color: '#7C3AED' }}>· 系统推荐 {total}题</span>
-              <div style={{ flex: 1 }} />
-              <span style={{ fontSize: 12, color: '#7C3AED', fontWeight: 600 }}>{Math.min(settings[startMode] || 10, total)}题</span>
-            </div>
-            <div style={{ fontSize: 12, color: '#BBB', marginBottom: 6 }}>
-              基于艾宾浩斯遗忘曲线，系统会智能安排复习时间，让你用更少的时间，记住更多内容。
-            </div>
-            <div style={{ fontSize: 12, color: '#BBB', marginBottom: 16 }}>
-              开通会员，解锁智能推荐，系统帮你挑出最该复习的内容。
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button style={{ ...btnBase, flex: 1, color: '#7C3AED', borderColor: '#C4B5FD' }} onClick={() => {
-                const pool = startMode ? sorted.filter(w => (w.modes || []).includes(startMode)) : sorted
-                startReview(pool.length ? pool : sorted)
-              }}>手动选择</button>
-              <button style={{ ...btnBase, flex: 1 }} onClick={() => alert('会员功能暂未开放')}>👑 开通会员</button>
-            </div>
+        <Modal title="今日推荐" onClose={() => setShowStart(false)}>
+          <div className="mb-2 text-xs font-medium text-gray-400">练习模式</div>
+          <div className="grid grid-cols-2 gap-2">
+            {MODES.map(m => {
+              const n = Math.min(settings[m] || 10, total)
+              const active = startMode === m
+              return (
+                <button key={m} onClick={() => setStartMode(m)}
+                  className={`cursor-pointer rounded-xl border p-3 text-left transition-all ${
+                    active ? 'border-violet-500 bg-violet-50/60 dark:border-violet-400 dark:bg-violet-500/10' : 'border-gray-200 hover:border-gray-300 dark:border-white/10'
+                  }`}>
+                  <div className={`text-sm font-semibold ${active ? 'text-violet-600 dark:text-violet-300' : 'text-gray-800 dark:text-gray-100'}`}>{m}</div>
+                  <div className="mt-0.5 text-xs text-gray-400">{n}题</div>
+                </button>
+              )
+            })}
           </div>
-        </div>
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-violet-100 bg-violet-50/60 px-4 py-2.5 text-sm text-violet-600 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300">
+            <b>{startMode}模式待复习</b>
+            <span className="text-violet-500/80">· 系统推荐 {total} 题</span>
+            <div className="flex-1" />
+            <b>{Math.min(settings[startMode] || 10, total)}题</b>
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-gray-400">基于艾宾浩斯遗忘曲线，系统会智能安排复习时间，让你用更少的时间，记住更多内容。开通会员解锁智能推荐。</p>
+          <div className="mt-5 flex gap-3">
+            <button className={`${ghost} flex-1 text-violet-600 dark:text-violet-400`} onClick={() => {
+              const pool = startMode ? sorted.filter(w => (w.modes || []).includes(startMode)) : sorted
+              startReview(pool.length ? pool : sorted)
+            }}>手动选择</button>
+            <button className={`${ghost} flex-1`} onClick={() => alert('会员功能暂未开放')}>👑 开通会员</button>
+          </div>
+        </Modal>
       )}
+    </div>
+  )
+}
+
+// 选项按钮（简约）
+const optBtn = (active, locked) => `flex w-full items-center justify-between cursor-pointer rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+  active ? 'border-violet-500 bg-violet-50/60 text-violet-600 dark:border-violet-400 dark:bg-violet-500/10 dark:text-violet-300' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-white/10 dark:bg-transparent dark:text-gray-300'
+}${locked && !active ? ' opacity-60' : ''}`
+
+// ---------------- 弹窗骨架（与生词本一致） ----------------
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" style={{ animation: 'vb-fadeIn .18s ease' }} onClick={onClose}>
+      <style>{`
+        @keyframes vb-fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes vb-popIn { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
+      `}</style>
+      <div onClick={e => e.stopPropagation()} className="max-h-[86vh] w-full max-w-md overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-[0_16px_50px_rgba(15,23,42,.16)] dark:border-white/10 dark:bg-[#151519] dark:shadow-[0_16px_50px_rgba(0,0,0,.5)]" style={{ animation: 'vb-popIn .22s ease' }}>
+        <div className="mb-5 flex items-center">
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">{title}</h3>
+          <div className="flex-1" />
+          <button onClick={onClose} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-base text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-500 dark:hover:bg-white/10">×</button>
+        </div>
+        {children}
+      </div>
     </div>
   )
 }

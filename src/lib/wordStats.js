@@ -1,5 +1,6 @@
-// ================= 学过单词 / 陌生关卡 统计 =================
-// 复习关卡 = 学过的单词且答错次数 < 3；陌生关卡 = 答错次数 >= 3（互斥不重叠）
+// ================= 单词学习统计（词频/错误次数）=================
+// 复习本（/vocab）按句子收录（见 reviewItems.js）；生词本（/save/unknown）为答题页点词手动收藏（见 vocabBook.js）。
+// 此处保留按单词的答对/答错统计：答错次数累计 ≥3 时，可用 markWordUnknown 快速加入生词本。
 // 由四个答题页（中译俄/听写/听力/口语评测）在答题时实时写入 localStorage rlearn_word_stats
 const KEY = 'rlearn_word_stats'
 
@@ -62,17 +63,17 @@ export function getAllWordStats() {
   return Object.values(load()).sort((a, b) => (b.lastAt || 0) - (a.lastAt || 0))
 }
 
-// 复习关卡：学过的单词（做过题的），答错次数 < 3
+// 已学单词：做过题的，答错次数 < 3
 export function getReviewWords() {
   return getAllWordStats().filter(x => (x.wrongCount || 0) < 3)
 }
 
-// 陌生关卡：答错次数 >= 3
+// 生词本候选：答错次数 >= 3（快速加入生词本时用）
 export function getUnknownWords() {
   return getAllWordStats().filter(x => (x.wrongCount || 0) >= 3)
 }
 
-// 陌生 → 移回复习（清零错误次数）
+// 清零错误次数（生词 → 移回复习本时用）
 export function clearWrongCount(key) {
   const map = load()
   if (map[key]) {
@@ -82,7 +83,7 @@ export function clearWrongCount(key) {
   }
 }
 
-// 手动把单词标记为生词（答题页单词卡「加入陌生关卡」）：错误次数直接置 3 → 进入陌生关卡
+// 快速把单词标记进生词本（错误次数直接置 3；生词本页面数据源为手动词库 vocabBook.js）
 export function markWordUnknown({ word, chinese, pos, reading } = {}) {
   const key = normKey(word)
   if (!key) return
@@ -98,13 +99,13 @@ export function isWordTracked(word) {
   return !!load()[normKey(word)]
 }
 
-// 是否已在生词本（陌生关卡：答错 >=3 次）
+// 是否已进生词本（错误次数 >=3）
 export function isInUnknown(word) {
   const e = load()[normKey(word)]
   return !!e && (e.wrongCount || 0) >= 3
 }
 
-// 从统计中移除（复习/陌生关卡 🗑）
+// 从统计中移除
 export function removeWord(key) {
   const map = load()
   if (map[key]) { delete map[key]; save(map) }

@@ -15,7 +15,7 @@ const TITLES = {
   '/unlocked-games': '游戏商城',
   '/game-mall': '游戏商城',
   '/my-games': '我的游戏',
-  '/vocab': '复习关卡',
+  '/vocab': '复习本',
   '/quest-store': '游戏化学习',
   '/square': '精听学习',
   '/tutor': 'AI 对话教练',

@@ -308,7 +308,7 @@ export default function QuestListening() {
   const current = flatItems[realIdx];
   const currentSequence = current ? sequences[current.si] : null;
 
-  // 单词统计：进入「答案」阶段（听完本句）→ 记为学过（复习关卡），每句只记一次
+  // 单词统计：进入「答案」阶段（听完本句）→ 记为学过（复习本），每句只记一次
   const listeningLearnedRef = useRef(new Set());
   useEffect(() => {
     if (phase === "answer" && current?.id && Array.isArray(current.words) && current.words.length) {

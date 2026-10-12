@@ -298,7 +298,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 双小卡：重复通关 | 陌生关卡 */}
+        {/* 双小卡：重复通关 | 生词本 */}
         <div className="flex flex-col flex-wrap gap-4 lg:flex-row">
           <Link to="/vocab" className="group flex-1 cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white p-4 transition-all hover:bg-gray-50 shadow-sm hover:shadow-md">
             <div className="flex items-center">
@@ -310,7 +310,7 @@ export default function Dashboard() {
               <div className="ml-3 min-w-0 flex-1">
                 <h3 className="text-sm font-medium text-gray-900">重复通关</h3>
                 <p className="mt-1 truncate text-xs text-gray-500">重复闯关，巩固游戏内容</p>
-                <p className="mt-1 text-xs text-gray-500">复习关卡 1/30</p>
+                <p className="mt-1 text-xs text-gray-500">复习本 1/30</p>
               </div>
               <div className="mr-2 flex shrink-0 items-center space-x-2">
                 <div className="flex items-center space-x-1">

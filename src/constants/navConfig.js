@@ -34,7 +34,7 @@ export const NAV_GROUPS = [
     type: 'collapsible', label: '通关存档', icon: ICONS.database,
     items: [
       { to: '/save/proficiency', icon: ICONS.barChart, label: '关卡熟练度' },
-      { to: '/vocab', icon: ICONS.book, label: '复习关卡', badgeKey: 'vocabDue' },
+      { to: '/vocab', icon: ICONS.book, label: '复习本', badgeKey: 'vocabDue' },
       { to: '/save/unknown', icon: ICONS.star, label: '生词本' },
       { to: '/save/notes', icon: ICONS.fileText, label: '关卡笔记' },
     ],

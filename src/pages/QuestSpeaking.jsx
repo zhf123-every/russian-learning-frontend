@@ -759,7 +759,7 @@ export default function QuestSpeaking() {
             setRecState("scored");
             // 评分不达标（<60 分）计一次连续答错，达标清零 → 悟空连续答错主动求助逻辑
             setWrongStreak((s) => (sc.total < 60 ? s + 1 : 0));
-            // 单词统计：评测完成 → 达标记学过，不达标错误次数+1（答错 ≥3 次 → 陌生关卡）
+            // 单词统计：评测完成 → 达标记学过，不达标错误次数+1（答错 ≥3 次可快速进生词本）
             trackWords(current?.words || [], sc.total < 60 ? "wrong" : "correct", { mode: "口语评测", lesson: effectiveCourseId });
             // 句子统计：评测完成 → 达标记学过，不达标错误次数+1（复习本卡片展示）
             trackSentence(current, sc.total < 60 ? "wrong" : "correct", { mode: "口语评测", lesson: effectiveCourseId });

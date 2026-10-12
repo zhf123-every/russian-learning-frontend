@@ -464,7 +464,7 @@ export default function QuestDictation() {
       // Chunking：每一步答对都显示答对面板（含中间步），用户点「下一题」进入下一步
       setShowAnswerPanel(true);
       recordCorrect();
-      // 单词统计：答对 → 记为学过（复习关卡）
+      // 单词统计：答对 → 记为学过（复习本）
       trackWords(currentStatement?.fullWords || currentStatement?.words, 'correct', { mode: '听写', lesson: effectiveCourseId });
       // 句子统计：答对 → 进入复习本（句子级卡片，同一句只挂一个）
       trackSentence(currentStatement, 'correct', { mode: '听写', lesson: effectiveCourseId });
@@ -481,7 +481,7 @@ export default function QuestDictation() {
       const wc = wrongStreak + 1;
       setWrongStreak(wc); // 答错累计连续答错（悟空主动求助逻辑）
       recordWrong();
-      // 单词统计：答错次数累计（答错 ≥3 次 → 陌生关卡）
+      // 单词统计：答错次数累计（答错 ≥3 次可快速进生词本）
       trackWords(currentStatement?.fullWords || currentStatement?.words, 'wrong', { mode: '听写', lesson: effectiveCourseId });
       // 句子统计：答错次数累计（复习本卡片展示答错次数）
       trackSentence(currentStatement, 'wrong', { mode: '听写', lesson: effectiveCourseId });
