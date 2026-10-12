@@ -4,6 +4,7 @@
 const ICONS = {
   home: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10',
   gamepad: 'M6 11h4 M8 9v4 M15 12h.01 M18 10h.01 M2 16a2 2 0 002 2h16a2 2 0 002-2V10a2 2 0 00-2-2H4a2 2 0 00-2 2z',
+  star: 'M12 2l2.9 6.2 6.8.6-5.1 4.6 1.5 6.7-6.1-3.4-6.1 3.4 1.5-6.7L2.3 8.8l6.8-.6z',
   play: 'M6 4l14 8-14 8z',
   map: 'M1 6v16l7-4 8 4 7-4V2l-7 4-8-4z M8 2v16 M16 6v16',
   users: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M9 11a4 4 0 100-8 4 4 0 000 8z M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75',
@@ -34,6 +35,7 @@ export const NAV_GROUPS = [
     items: [
       { to: '/save/proficiency', icon: ICONS.barChart, label: '关卡熟练度' },
       { to: '/vocab', icon: ICONS.book, label: '复习关卡', badgeKey: 'vocabDue' },
+      { to: '/vocab-book', icon: ICONS.star, label: '生词本' },
       { to: '/save/notes', icon: ICONS.fileText, label: '关卡笔记' },
       { to: '/save/unknown', icon: ICONS.help, label: '陌生关卡' },
     ],
@@ -73,7 +75,7 @@ export const LEARN_CARDS = [
 // 工具落地页
 export const TOOLS_CARDS = [
   {
-    icon: '📒', to: '/vocab', title: '生词本',
+    icon: '📒', to: '/vocab-book', title: '生词本',
     desc: '学习中收藏的生词，按间隔重复算法安排复习，到期词会在导航中提醒。',
     tags: ['间隔重复 SRS'],
     tone: { bg: 'var(--db-danger-soft)', color: 'var(--db-danger)' },

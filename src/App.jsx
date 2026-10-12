@@ -10,6 +10,7 @@ import AppShell from './components/layout/AppShell'
 import SquarePage from './pages/SquarePage'
 import Study from './pages/Study'
 import Vocab from './pages/Vocab'
+import VocabBook from './pages/VocabBook'
 import Profile from './pages/Profile'
 import Dictionary from './pages/Dictionary'
 import TutorChat from './pages/TutorChat'
@@ -91,6 +92,7 @@ export default function App() {
 
         {/* 工具 */}
         <Route path="/vocab" element={<Vocab />} />
+        <Route path="/vocab-book" element={<VocabBook />} />
         <Route path="/save/notes" element={<SaveNotes />} />
         <Route path="/save/proficiency" element={<SaveProficiency />} />
         <Route path="/save/unknown" element={<SaveUnknown />} />

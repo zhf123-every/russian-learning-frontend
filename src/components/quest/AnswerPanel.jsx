@@ -27,6 +27,7 @@ import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQue
 import { playGlobalAudio, stopGlobalAudio } from "../../utils/audioService";
 import { speakText } from "../../lib/tts";
 import { useSettingsStore } from "../../store/settingsStore";
+import WordDetailCard from "./WordDetailCard";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 内存缓存：音色::text -> audio_url，避免重复请求（切换音色后自动命中新 key，旧缓存作废）
 const ttsCache = new Map();
@@ -117,6 +118,8 @@ export default function AnswerPanel({
   ui = {},
 }) {
   const [copied, setCopied] = useState(false);
+  // 点词弹出的单词卡（生词本收录入口）
+  const [detailWord, setDetailWord] = useState(null);
 
   // ---- 俄语发音（Yandex 真人发音）----
   const audioRef = useRef(null);
@@ -376,8 +379,8 @@ export default function AnswerPanel({
                               <Fragment key={i}>
                                 <div
                                   style={cellStyle}
-                                  onClick={() => speakRussian(displayWord, w.audio_url, w.id, "word")}
-                                  title="点击发音"
+                                  onClick={() => setDetailWord({ w, example: statement.russian })}
+                                  title="点击查看单词并加入生词本"
                                 >
                                   {/* 重音符（灰色小字，带重音） */}
                                   <div style={styles.phonetic}>{displayWord}</div>
@@ -435,6 +438,20 @@ export default function AnswerPanel({
               )}
             </span>
           </div>
+        )}
+
+        {/* 点词弹出单词卡 */}
+        {detailWord && (
+          <WordDetailCard
+            word={{
+              ...detailWord.w,
+              plain: String(detailWord.w.form || detailWord.w.stress_marked || detailWord.w.lemma || "").replace(/\u0301/g, ""),
+              posLabel: getPosLabel(detailWord.w.pos),
+            }}
+            example={detailWord.example}
+            onSpeak={(t) => speakRussian(t, detailWord.w.audio_url, detailWord.w.id, "word")}
+            onClose={() => setDetailWord(null)}
+          />
         )}
 
       </div>
