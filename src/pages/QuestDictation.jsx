@@ -260,6 +260,17 @@ export default function QuestDictation() {
     // 预加载页已真实生成该句 TTS → 直接复用（免再请求后端）
     const preUrl = getCachedTtsUrl(text);
     if (preUrl) { ttsUrlCacheRef.current[text] = preUrl; return preUrl; }
+    // 发音源切换：system=浏览器系统发音 / premium=后端高级发音人
+    const ttsSource = useSettingsStore.getState().settings.ttsSource || "premium";
+    if (ttsSource === "system" && window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "ru-RU";
+      const volume = useSettingsStore.getState().settings.ttsVolume ?? 1;
+      u.volume = volume;
+      window.speechSynthesis.speak(u);
+      return "system://" + text; // 返回伪 URL，标记为系统发音
+    }
     let url = "";
     try {
       const res = await fetch(`${API_BASE}/api/tts`, {
