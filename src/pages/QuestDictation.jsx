@@ -52,7 +52,7 @@ import { preloadTtsAll } from "../lib/ttsPreload";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
 import { playGlobalAudio, stopGlobalAudio } from "../utils/audioService";
 
-import { useQuestSettings, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings";
+import { useQuestSettings, loadUi, BG_STYLE, THEME_OF } from "../hooks/useQuestSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 无 courseId 时的默认单元：privet_rossiya_a1 课程包第一单元（u1），后端已确证存在
@@ -325,6 +325,9 @@ export default function QuestDictation() {
   }, [ensureTtsAudio]);
 
   const playAudio = useCallback((text, times) => {
+    // 直接从 store 读最新设置（不用闭包，避免设置改了但闭包还是旧的）
+    const ui = loadUi();
+    const settings = useSettingsStore.getState().settings;
     // 检查答题页自动播放设置（ui.autoSpeak）
     if (ui.autoSpeak === false) return;
     // 发音音量（settings.vol 0-100）
