@@ -313,7 +313,7 @@ export default function QuestListening() {
     if (phase === "answer" && current?.id && Array.isArray(current.words) && current.words.length) {
       if (!listeningLearnedRef.current.has(current.id)) {
         listeningLearnedRef.current.add(current.id);
-        trackWords(current.words, "correct");
+        trackWords(current.words, "correct", { mode: "听力", lesson: effectiveCourseId });
       }
     }
   }, [phase, current]);

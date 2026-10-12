@@ -21,8 +21,9 @@ const surfaceOf = (w) => String(w?.lemma || w?.text || w?.word || w?.ru || w?.fo
  * 记录一次答题的单词统计
  * @param {Array} words 句子的单词数组，元素可含 {lemma|text|word|ru|form, chinese|zh|meaning|translation, pos, reading}
  * @param {'correct'|'wrong'} outcome correct=答对(记为学过) / wrong=答错(错误次数+1)
+ * @param {Object} meta { mode: '中译俄'|'听写'|'听力'|'口语评测', lesson: 课程/单元 id }
  */
-export function trackWords(words, outcome) {
+export function trackWords(words, outcome, meta = {}) {
   if (!Array.isArray(words) || !words.length) return
   const map = load()
   let changed = false
@@ -44,6 +45,12 @@ export function trackWords(words, outcome) {
     if (!cur.chinese) cur.chinese = String(w?.chinese || w?.zh || w?.meaning || w?.translation || '')
     if (!cur.pos && w?.pos) cur.pos = String(w.pos)
     if (!cur.reading && w?.reading) cur.reading = String(w.reading)
+    // 练习模式 / 课程标签（重复单词只挂一个，模式与课程合并记录）
+    if (meta.mode) {
+      cur.modes = cur.modes || []
+      if (!cur.modes.includes(meta.mode)) cur.modes.push(meta.mode)
+    }
+    if (meta.lesson) cur.lesson = meta.lesson
     cur.lastAt = Date.now()
     map[key] = cur
     changed = true
