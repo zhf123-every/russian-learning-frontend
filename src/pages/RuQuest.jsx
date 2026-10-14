@@ -1953,8 +1953,8 @@ export default function RuQuest() {
             </div>
           ) : (
             <>
-              {/* 官方连词成句：单词下划线槽（QuestionInput.vue 1:1：槽 64px / 字号 48px / 激活整词 #d946ef / 错误整词 red+shake(仅fix模式) / 默认 #20202099；标点直接显示无槽） */}
-              <div ref={inputRowRef} style={styles.slotRow}>
+              {/* 打字输入：单词下划线槽（三种样式均为横线：单词长度=按词长不等长 / 固定宽度=等宽下划线 / 极简横线=整行一条长线；标点直接显示无槽） */}
+              <div ref={inputRowRef} style={{ ...styles.slotRow, ...(uiCfg.inputStyle === 'underline' ? { borderBottom: '2px solid ' + (slotState.incorrect.length ? '#EF4444' : slotState.active >= 0 ? '#d946ef' : '#D1D5DB'), paddingBottom: 4 } : {}) }}>
                 {expectChunks.map((text, i) => {
                   const userInput = typed.split(' ')[i] !== undefined ? typed.split(' ')[i] : ''
                   const editing = fixMode === 'fix_input' && i === editIdx
@@ -1965,14 +1965,18 @@ export default function RuQuest() {
                   let col = '#20202099', bcol = '#D1D5DB'
                   if (incorrect) { col = '#EF4444'; bcol = '#EF4444' }
                   else if (active) { col = '#d946ef'; bcol = '#d946ef' }
-                  // 官方：默认固定 4ch（isShowWordsWidth 关闭时），不按词长动态计算；外观「固定等宽」仍保留 96px
-                  const slotW = uiCfg.inputStyle === 'fixed' ? 96 : 4
+                  // 输入框三样式（均为横线）：单词长度=按词长不等长下划线 / 固定宽度=等宽下划线 / 极简横线=整行一条长线
+                  const lineUnder = uiCfg.inputStyle === 'underline'
+                  const slotStyle =
+                    uiCfg.inputStyle === 'fixed' ? { width: 96, minWidth: 96 }
+                    : lineUnder ? { minWidth: 0, padding: '0 6px' }
+                    : { width: `calc(${((text || '').length * 1.1 + 1.4).toFixed(2)}ch)`, minWidth: `calc(${((text || '').length * 1.1 + 1.4).toFixed(2)}ch)` }
                   if (!isWordChunk) {
                     // 官方：非词（标点）无下划线槽，直接显示，同高 64px
                     return <div key={i} style={{ ...styles.slotPunct, fontSize: 48, color: '#20202099' }}>{text}</div>
                   }
                   return (
-                    <div key={i} style={{ ...styles.slotBox, minWidth: slotW + 'ch', borderBottom: '2px solid ' + bcol, fontSize: 48, color: col, ...(incorrect && fixMode !== 'input' ? { animation: 'ruqShake .3s ease' } : {}) }}>
+                    <div key={i} style={{ ...styles.slotBox, borderBottom: lineUnder ? 'none' : '2px solid ' + bcol, fontSize: 48, color: col, ...slotStyle, ...(incorrect && fixMode !== 'input' ? { animation: 'ruqShake .3s ease' } : {}) }}>
                       {userInput}
                     </div>
                   )

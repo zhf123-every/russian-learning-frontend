@@ -1,13 +1,18 @@
 /**
- * QuestionInput.jsx —— 连词成句输入组件（句乐部极简风格）
+ * QuestionInput.jsx —— 打字答题输入组件
  *
  * 结构：隐藏的 <input> + 下划线单词槽
  * 视觉：纯白背景，无卡片，只有 border-bottom 下划线
  *   - 默认词：半透明深灰文字 + 灰色下划线 #D1D5DB
- *   - 激活词：靛蓝文字 oklch(23.27% 0.0249 284.3) + 靛蓝下划线
+ *   - 激活词：紫色文字 + 紫色下划线 + Bold
  *   - 错误词：文字颜色按错误类型（橙/红/蓝）+ 同色下划线 + 抖动
  * 字体：默认词系统字重400，激活/错误词 Nunito Bold 700
  * 字号：桌面端 3em，移动端 1.8em
+ *
+ * 答题输入框样式（三种都是横线，区别只在长度规则）：
+ *   - dynamic 单词长度：下划线宽度 = 单词长度匹配（я 就一条短横线，不等长）
+ *   - fixed   固定宽度：每个词槽等宽的下划线（96px）
+ *   - underline 极简横线：整行底部一条长长的横线（激活→紫色长线，错误→红色长线）
  */
 
 import { useMemo } from "react";
@@ -21,6 +26,12 @@ const ERROR_COLORS = {
 
 // 判断是否为纯标点符号（不生成下划线）
 const isPunctuation = (text) => /^[.,!?;:…'"()\[\]{}\-–—\s]+$/.test(text || "");
+
+// 按单词长度估算下划线宽度（ch 相对当前字号，自动适配桌面/移动端）
+const slotWidthFor = (text) => {
+  const len = (text || "").length || 1;
+  return `calc(${(len * 1.1 + 1.4).toFixed(2)}ch)`;
+};
 
 export default function QuestionInput({
   userInputWords = [],
@@ -43,11 +54,20 @@ export default function QuestionInput({
     return map;
   }, [errors]);
 
-  // 带边框词槽样式（单词长度/固定宽度）：错误时整框变色 + 浅色底
-  const boxed = inputStyle === "dynamic" || inputStyle === "fixed";
+  // 是否有错误词 / 是否有激活词（极简长线整条变色的依据）
+  const hasError = useMemo(() => (errors || []).some((e) => e.wordIndex >= 0), [errors]);
+  const hasActive = useMemo(
+    () => (userInputWords || []).some((w) => w.isActive && !w.fixed),
+    [userInputWords]
+  );
 
   return (
-    <div className="quest-input-wrapper" data-style={inputStyle}>
+    <div
+      className="quest-input-wrapper"
+      data-style={inputStyle}
+      data-err={hasError ? "1" : "0"}
+      data-act={hasActive ? "1" : "0"}
+    >
       <style>{`
         /* 外层：无卡片，纯文本居中 */
         .quest-input-wrapper {
@@ -65,9 +85,10 @@ export default function QuestionInput({
           align-items: flex-end;
           gap: 8px;
           min-height: 4rem;
+          padding-bottom: 2px;
         }
 
-        /* 单词槽：只有底部下划线，无背景无边框无圆角（极简横线） */
+        /* 单词槽：默认只有底部下划线，无背景无边框无圆角 */
         .quest-word {
           height: 4rem;
           border-bottom: 2px solid var(--qs-border, #D1D5DB);
@@ -76,46 +97,53 @@ export default function QuestionInput({
           line-height: 1;
           font-weight: 400;
           color: var(--qs-sub, rgba(32, 32, 32, 0.6));
-          min-width: 10rem;
           text-align: center;
           transition: color 0.15s ease, border-color 0.15s ease;
           display: inline-flex;
           align-items: flex-end;
           justify-content: center;
-          padding-bottom: 2px;
+          padding: 0 4px 2px;
         }
 
-        /* 「单词长度」/「固定宽度」：带边框词槽（对齐答题输入框样式设置） */
-        .quest-input-wrapper[data-style="dynamic"] .quest-word,
+        /* 「固定宽度」：等宽下划线（每个词槽一样宽，仅下划线，无方框） */
         .quest-input-wrapper[data-style="fixed"] .quest-word {
-          border: 2px solid var(--qs-border, #D1D5DB);
-          border-radius: 10px;
-          background: #FFFFFF;
+          width: 96px;
+          min-width: 96px;
+          padding: 0 6px 2px;
+        }
+        .quest-input-wrapper[data-style="fixed"] .quest-word-punct {
+          width: auto;
           min-width: 0;
-          padding: 0 12px;
-          align-items: center;
-        }
-        .quest-input-wrapper[data-style="dynamic"] .quest-word { min-width: 5rem; }
-        .quest-input-wrapper[data-style="fixed"] .quest-word { width: 96px; min-width: 96px; }
-        .quest-input-wrapper[data-style="dynamic"] .quest-word-active,
-        .quest-input-wrapper[data-style="fixed"] .quest-word-active {
-          color: var(--qs-active, #5B21B6);
-          border-color: var(--qs-active, #5B21B6);
-          background: rgba(91, 33, 182, 0.08);
-          font-weight: 700;
-        }
-        .quest-input-wrapper[data-style="dynamic"] .quest-word-fixed,
-        .quest-input-wrapper[data-style="fixed"] .quest-word-fixed {
-          background: transparent;
-          border: none;
-          border-radius: 0;
         }
 
-        /* 激活词：紫色文字 + 紫色下划线 + Bold（深夜模式自动用亮紫 var(--qs-active)） */
+        /* 「单词长度」：宽度由 JS 按单词字符数注入（不等长下划线，я 只放得下 я） */
+
+        /* 「极简横线」：词槽不画线，整行底部一条长长的横线 */
+        .quest-input-wrapper[data-style="underline"] .quest-word,
+        .quest-input-wrapper[data-style="underline"] .quest-word-punct {
+          border-bottom: none;
+          min-width: 0;
+          padding: 0 6px 2px;
+        }
+        .quest-input-wrapper[data-style="underline"] .quest-input-row {
+          border-bottom: 2px solid var(--qs-border, #D1D5DB);
+        }
+        /* 有激活词 → 整条长线紫色；有错误 → 整条长线红色 */
+        .quest-input-wrapper[data-style="underline"][data-act="1"][data-err="0"] .quest-input-row {
+          border-bottom-color: var(--qs-active, #5B21B6);
+        }
+        .quest-input-wrapper[data-style="underline"][data-err="1"] .quest-input-row {
+          border-bottom-color: #E11D48;
+        }
+
+        /* 激活词：紫色文字 + 紫色下划线 + Bold（极简横线模式下线由长线统一显示） */
         .quest-word-active {
           color: var(--qs-active, #5B21B6);
           border-bottom-color: var(--qs-active, #5B21B6);
           font-weight: 700;
+        }
+        .quest-input-wrapper[data-style="underline"] .quest-word-active {
+          border-bottom-color: transparent;
         }
 
         /* 错误词：抖动 + Bold */
@@ -183,19 +211,14 @@ export default function QuestionInput({
           .quest-word-punct {
             font-size: 1.8em;
             height: 2.5rem;
-            min-width: 6.5rem;
           }
           .quest-input-row {
             min-height: 2.5rem;
             gap: 6px;
           }
-          .quest-input-wrapper[data-style="dynamic"] .quest-word {
-            min-width: 4.5rem;
-            padding: 0 8px;
-          }
           .quest-input-wrapper[data-style="fixed"] .quest-word {
-            width: 80px;
-            min-width: 80px;
+            width: 72px;
+            min-width: 72px;
           }
         }
       `}</style>
@@ -219,16 +242,20 @@ export default function QuestionInput({
             }
             if (!word.fixed && isError) className += " quest-word-error";
 
+            // 「单词长度」样式：每个词下划线宽度 = 该词字符数（不等长）
+            const dynWidth =
+              inputStyle === "dynamic" && !word.fixed && !isPunct
+                ? { width: slotWidthFor(word.text) }
+                : undefined;
+
             return (
               <div
                 key={word.id}
                 className={className}
                 style={
                   isError
-                    ? boxed
-                      ? { color: errorColor, borderColor: errorColor, background: errorColor + "1A" }
-                      : { color: errorColor, borderBottomColor: errorColor }
-                    : undefined
+                    ? { color: errorColor, borderBottomColor: errorColor, ...dynWidth }
+                    : dynWidth
                 }
               >
                 {/* 已输入的文字显示在下划线上方；未输入时为空（只显示下划线） */}
