@@ -7,6 +7,7 @@ import { getPosLabel } from '../constants/posColors'
 import { playGlobalAudio } from '../utils/audioService'
 import { useSettingsStore } from '../store/settingsStore'
 import { speakText } from '../lib/tts'
+import { API_BASE } from '../lib/api'
 
 
 // 学习内容弹窗 —— 对标句乐部「查看课程学习内容 Ctrl+1」
@@ -51,7 +52,9 @@ function playTTS(text) {
   const voice = st.ttsVoice || (ttsSource === 'system' ? 'female' : 'alena')
   const volume = (st.vol ?? 100) / 100
   // 统一走后端 /api/tts：高级发音人=Alena/Filipp；系统发音人=微软神经 Svetlana/Dmitry
-  fetch('/api/tts', {
+  // 注意必须用 API_BASE 绝对地址：生产环境前端(pages.dev)/后端(onrender)分开部署，
+  // 相对路径 /api/tts 会打到前端域名上 → 404 → 点击无声
+  fetch(`${API_BASE}/api/tts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, voice }),
