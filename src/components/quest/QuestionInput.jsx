@@ -10,8 +10,8 @@
  * 字号：桌面端 3em，移动端 1.8em
  *
  * 答题输入框样式（三种都是横线，区别只在长度规则）：
- *   - dynamic 单词长度：下划线宽度 = 单词长度匹配（я 就一条短横线，不等长）
- *   - fixed   固定宽度：每个词槽等宽的下划线（96px）
+ *   - dynamic 单词长度：下划线宽度 = 标准答案单词长度匹配（я 就一条短横线，不等长）
+ *   - fixed   固定宽度：下划线宽度跟随该词已输入内容长度（输入越长线越长，未输入为短横线）
  *   - underline 极简横线：整行底部一条长长的横线（激活→紫色长线，错误→红色长线）
  */
 
@@ -105,10 +105,8 @@ export default function QuestionInput({
           padding: 0 4px 2px;
         }
 
-        /* 「固定宽度」：等宽下划线（每个词槽一样宽，仅下划线，无方框） */
+        /* 「固定宽度」：下划线宽度跟随该词已输入内容长度（JS 注入），不再固定 96px */
         .quest-input-wrapper[data-style="fixed"] .quest-word {
-          width: 96px;
-          min-width: 96px;
           padding: 0 6px 2px;
         }
         .quest-input-wrapper[data-style="fixed"] .quest-word-punct {
@@ -244,9 +242,10 @@ export default function QuestionInput({
             if (!word.fixed && isError) className += " quest-word-error";
 
             // 「单词长度」样式：每个词下划线宽度 = 该词字符数（不等长）
+            // 「固定宽度」样式：宽度跟随该词已输入内容长度（输入越长线越长，未输入时是短横线）
             const dynWidth =
-              inputStyle === "dynamic" && !word.fixed && !isPunct
-                ? { width: slotWidthFor(word.text) }
+              (inputStyle === "dynamic" || inputStyle === "fixed") && !word.fixed && !isPunct
+                ? { width: slotWidthFor(inputStyle === "fixed" ? (word.userInput || "") : word.text) }
                 : undefined;
 
             return (
