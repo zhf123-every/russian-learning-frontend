@@ -929,55 +929,18 @@ export default function VideoStudy() {
         {/* ===== ④ 跟读 ===== */}
         {step === 'recite' && (
           <div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              <button className={'btn sm' + (reciteMode === 'segment' ? ' primary' : '')} onClick={() => setReciteMode('segment')}>分段跟读</button>
-              <button className={'btn sm' + (reciteMode === 'full' ? ' primary' : '')} onClick={() => setReciteMode('full')}>整篇跟读</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ fontSize: 13, color: '#888' }}>第 {curIdx + 1} 句 / 共 {sentences.length} 句</div>
             </div>
-
-            {reciteMode === 'segment' ? (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, color: '#888' }}>第 {curIdx + 1} 句 / 共 {sentences.length} 句</div>
-                </div>
-                {!cur ? (
-                  <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>请先「生成字幕」再跟读</div>
-                ) : (
-                  <>
-                    {uiCfg.listenShowEn !== false && (
-                      <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 18, lineHeight: 1.8, fontWeight: 500, textAlign: 'center' }}>
-                        {renderSub(cur.russian)}
-                      </div>
-                    )}
-                    <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'center' }}>
-                      <button className="btn primary" onClick={() => playSeg(curIdx, { loop: true, times: 3 })}>🔁 循环跟读</button>
-                      <button className="btn" onClick={() => playSeg(curIdx, { loop: false })}>听一次</button>
-                    </div>
-                    <div style={{ height: 92 }} />
-                  </>
-                )}
-              </>
+            {!cur ? (
+              <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>请先「生成字幕」再跟读</div>
             ) : (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, color: '#888' }}>整篇连播 · 字幕跟随高亮 · 空格 播放/暂停</div>
-                </div>
-                <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 17, lineHeight: 2 }}>
-                  {sentences.map((s, i) => (
-                    <div
-                      key={s.id ?? i}
-                      onClick={() => { setCurIdx(i); playSeg(i, { loop: false }) }}
-                      style={{
-                        padding: '4px 8px', borderRadius: 8, cursor: 'pointer',
-                        background: i === activeIdx ? 'rgba(109,40,217,0.12)' : 'transparent',
-                        borderLeft: i === activeIdx ? '3px solid #6d28d9' : '3px solid transparent',
-                        transition: 'background .2s',
-                      }}
-                    >
-                      <span style={{ color: i === activeIdx ? '#6d28d9' : '#9ca3af', fontSize: 12, marginRight: 8 }}>{i + 1}</span>
-                      {renderSub(s.russian)}
-                    </div>
-                  ))}
-                </div>
+                {uiCfg.listenShowEn !== false && (
+                  <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 18, lineHeight: 1.8, fontWeight: 500, textAlign: 'center' }}>
+                    {renderSub(cur.russian)}
+                  </div>
+                )}
                 <div style={{ height: 92 }} />
               </>
             )}
