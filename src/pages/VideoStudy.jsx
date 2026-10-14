@@ -887,10 +887,6 @@ export default function VideoStudy() {
                 {uiCfg.listenShowZh !== false && cur.chinese && (
                   <div style={{ padding: '8px 4px', fontSize: 14, color: '#888' }}>{cur.chinese}</div>
                 )}
-                <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-                  <button className="btn sm primary" onClick={runAI} disabled={analyzing}>{analyzing ? '解析中…' : '✨ AI 解析'}</button>
-                  <button className="btn sm" onClick={() => playSeg(curIdx, { loop: true, times: uiCfg.listenAnsTimes ?? 1 })}>🔁 循环本句</button>
-                </div>
                 {aiHtml && (
                   <div style={{ marginTop: 10, padding: 14, background: '#f8f8fb', borderRadius: 10, border: '1px solid #eee', fontSize: 14, lineHeight: 1.7, textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: aiHtml }} />
                 )}
