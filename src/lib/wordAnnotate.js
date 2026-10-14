@@ -342,6 +342,35 @@ const SUPPLEMENT = {
     pl: ["ва'ши", "ва'ших", "ва'шим", "ва'ши", "ва'шими", "ва'ших"],
   } },
 };
+// 同形变格消歧优先级：词形 → 首选 lemma（dict-full 遍历时多个词的同形变格互相覆盖，
+// 按常用义优先。如 банке 同时是 банк（银行）与 банка（罐子）的第六格，默认取银行）
+const DISAMBIG = {
+  "банке": "банк",
+};
+
+// 带消歧的索引写入：非首选 lemma 遇到该词形已被占时跳过，首选可覆盖
+function setIdx(idx, form, entry) {
+  const nf = normForm(form);
+  const pref = DISAMBIG[nf];
+  if (pref && pref !== entry.lemma && idx.has(nf)) return;
+  idx.set(nf, entry);
+}
+
+// 词典释义显示清理：去罗马数字/义项序号/学科标记/拼音注音残留（"[-tou]"、"[-]"），保留拼音正文
+// 注意：JS \b 不识别西里尔字母，学科/词性标记不用 \b（西里尔单字母 м/ж/с 不会出现在拼音与中文中）
+function cleanZhText(t) {
+  if (!t) return t;
+  return String(t)
+    .replace(/\[-[^\]]*\]/g, "")                        // 拼音注音残留 "[-tou]" 与分隔符污染 "[-]"
+    .replace(/[IVX]{1,4}[мжс]?/g, "；")                 // 罗马数字义项 + 附着的词性字母（I1. IIж）
+    .replace(/(?:союз|сущ|прил|нар|числ|мест|предл|част|межд|глаг|мед|физ|астр|юр|хим|тех|разг|книжн|прост|г|м|ж|с|ср)\.?/g, "；") // 词性/学科/语域标记
+    .replace(/\d+\.+\s*/g, "")                          // 义项序号 "1." "2.."
+    .replace(/\s*[；;]\s*/g, "；")                      // 压缩分号及周围空白
+    .replace(/[；;]{2,}/g, "；")
+    .replace(/^[；;，,、\s]+|[；;，,、\s]+$/g, "")
+    .trim();
+}
+
 function buildIndex() {
   if (formIndex) return formIndex;
   const D0 = window.RU_DICT_FULL || {};
@@ -357,7 +386,7 @@ function buildIndex() {
       const zh = (RU_DICT[lemma] && RU_DICT[lemma].z) || ""; // 变形词回填中文释义（简版词典）
       ["sg", "pl"].forEach((num, ni) => {
         (f[num] || []).forEach((form, ci) => {
-          if (form) idx.set(normForm(form), {
+          if (form) setIdx(idx, form, {
             lemma, pos: "noun", gender,
             caseCode: CASE_CODES[ci] || "",
             number: ni === 0 ? "singular" : "plural",
@@ -372,7 +401,7 @@ function buildIndex() {
         const gender = ki === 0 ? "masculine" : ki === 1 ? "feminine" : ki === 2 ? "neuter" : "";
         const number = ki === 3 ? "plural" : "singular";
         (f[key] || []).forEach((form, ci) => {
-          if (form) idx.set(normForm(form), {
+          if (form) setIdx(idx, form, {
             lemma, pos: "adjective", gender,
             caseCode: CASE_CODES[ci] || "",
             number,
@@ -384,7 +413,7 @@ function buildIndex() {
     } else if (e.p === "v") {
       const zh = (RU_DICT[lemma] && RU_DICT[lemma].z) || "";
       (f.pres || []).forEach((form, pi) => {
-        if (form) idx.set(normForm(form), {
+        if (form) setIdx(idx, form, {
           lemma, pos: "verb",
           person: pi + 1, tense: "present",
           stressed: toStress(form),
@@ -392,7 +421,7 @@ function buildIndex() {
         });
       });
       (f.past || []).forEach((form, ki) => {
-        if (form) idx.set(normForm(form), {
+        if (form) setIdx(idx, form, {
           lemma, pos: "verb", tense: "past",
           gender: ki === 0 ? "masculine" : ki === 1 ? "feminine" : ki === 2 ? "neuter" : "",
           number: ki === 3 ? "plural" : "singular",
@@ -402,7 +431,7 @@ function buildIndex() {
       });
     } else {
       // p === "o"：其它词（代词/副词/数词等），先入原形，稍后用简版词典细化词性
-      idx.set(normForm(lemma), {
+      setIdx(idx, lemma, {
         lemma, pos: "", stressed: stressedLemma,
       });
     }
@@ -462,7 +491,7 @@ export function annotateWords(sentence) {
         gender: hit.gender || "",
         grammarCase: hit.caseCode || "",
         number: hit.number || "",
-        chinese: hit.chinese || zhOf(n, hit.lemma) || "",
+        chinese: cleanZhText(hit.chinese || zhOf(n, hit.lemma)) || "",
         roleLabel: "",
         person: hit.person || "",
         tense: hit.tense || "",
@@ -476,7 +505,7 @@ export function annotateWords(sentence) {
         form: cleanToken(w), lemma: n, pos,
         posColor: getPosColor(pos),
         gender: ruGender(base.p),
-        chinese: base.z || zhOf(n, n) || "",
+        chinese: cleanZhText(base.z || zhOf(n, n)) || "",
         roleLabel: "",
       };
     }
@@ -486,7 +515,7 @@ export function annotateWords(sentence) {
       return {
         form: cleanToken(w), lemma: n, pos: fw.pos,
         posColor: getPosColor(fw.pos),
-        chinese: fw.zh || "",
+        chinese: cleanZhText(fw.zh) || "",
         roleLabel: "",
       };
     }
@@ -496,12 +525,12 @@ export function annotateWords(sentence) {
       return {
         form: cleanToken(w), lemma: vf.lemma, pos: "verb",
         posColor: getPosColor("verb"),
-        chinese: vf.zh || "",
+        chinese: cleanZhText(vf.zh) || "",
         roleLabel: "",
         person: vf.person,
         tense: "present",
       };
     }
-    return { form: cleanToken(w), lemma: n, pos: "", posColor: "", chinese: zhOf(n, n) || "", roleLabel: "" };
+    return { form: cleanToken(w), lemma: n, pos: "", posColor: "", chinese: cleanZhText(zhOf(n, n)) || "", roleLabel: "" };
   });
 }

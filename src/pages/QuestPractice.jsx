@@ -157,8 +157,12 @@ function adaptLocalLesson(lesson) {
 
   const buildUnit = (ru, zh, idx, extra) => {
     const tokens = String(ru || "").trim().split(/\s+/).filter(Boolean);
+    const mean = Array.isArray(extra?.meaning) ? extra.meaning : null;
+    const meanOk = mean && mean.length === tokens.length;
     const ws = tokens.map((w, i) => ({
       order: i, form: w, lemma: w, pos: "", posColor: "", grammarLabel: "", roleLabel: "",
+      // Excel 上传的逐词释义（数量对齐时生效，词卡优先显示；未填回退词典）
+      chinese: meanOk ? mean[i] || "" : "",
     }));
     return {
       id: `local_${idx + 1}`,

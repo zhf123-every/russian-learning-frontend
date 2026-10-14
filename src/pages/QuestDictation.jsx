@@ -629,7 +629,7 @@ export default function QuestDictation() {
               russian: st.ru || "",
               chinese: st.zh || "",
               syntactic: Array.isArray(st.syntactic) ? st.syntactic : null,
-              words: [],
+              words: (Array.isArray(st.meaning) ? st.meaning : []).map((c, j) => ({ order: j, chinese: c || "" })),
             }));
             if (!cancelled) {
               setLocalLesson(pre); setIsLocalMode(true);
@@ -694,7 +694,7 @@ export default function QuestDictation() {
               russian: st.ru || "",
               chinese: st.zh || "",
               syntactic: Array.isArray(st.syntactic) ? st.syntactic : null,
-              words: [],
+              words: (Array.isArray(st.meaning) ? st.meaning : []).map((c, j) => ({ order: j, chinese: c || "" })),
             }));
             if (!cancelled) {
               setLocalLesson(stored);
