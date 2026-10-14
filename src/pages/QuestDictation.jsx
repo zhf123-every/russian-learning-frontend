@@ -586,6 +586,7 @@ export default function QuestDictation() {
                 id: `local_${i}`,
                 russian: s.russian || s.ru || "",
                 chinese: s.chinese || s.zh || "",
+                syntactic: Array.isArray(s.syntactic) ? s.syntactic : null,
                 words: (s.words || []).map((w) => ({
                   ru: w.form || w.lemma || w.ru || "",
                   form: w.form || w.lemma || "",
@@ -627,6 +628,7 @@ export default function QuestDictation() {
               id: `local_${i + 1}`,
               russian: st.ru || "",
               chinese: st.zh || "",
+              syntactic: Array.isArray(st.syntactic) ? st.syntactic : null,
               words: [],
             }));
             if (!cancelled) {
@@ -691,6 +693,7 @@ export default function QuestDictation() {
               id: `local_${i + 1}`,
               russian: st.ru || "",
               chinese: st.zh || "",
+              syntactic: Array.isArray(st.syntactic) ? st.syntactic : null,
               words: [],
             }));
             if (!cancelled) {

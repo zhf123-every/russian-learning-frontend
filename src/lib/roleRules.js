@@ -270,3 +270,15 @@ export function inferRoles(sentence, dictWords) {
 
   return words;
 }
+
+// Excel「句子成分」列的逐词角色名 → 引擎 role key 映射（课程上传的权威标注直接驱动答题页角色颜色/标签）
+const ROLE_ZH_TO_KEY = {
+  "主语": "subject", "谓语": "predicate", "宾语": "object", "定语": "attributive",
+  "状语": "adverbial", "补语": "complement", "表语": "predicative",
+  "否定": "negation", "连接词": "conjunction", "连词": "conjunction",
+  "前置词": "preposition", "语气词": "particle", "感叹词": "interjection",
+  "待确认": "default",
+};
+export function roleKeyFromZh(zh) {
+  return ROLE_ZH_TO_KEY[String(zh || "").trim()] || "";
+}

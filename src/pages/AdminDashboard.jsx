@@ -671,20 +671,38 @@ export default function AdminDashboard() {
         const head = (aoa[0] || []).map(h => String(h || '').trim().toLowerCase())
         const isRuHead = (h) => h === 'ru' || h === 'russian' || h.includes('俄')
         const isZhHead = (h) => h === 'zh' || h === 'chinese' || h.includes('中')
+        // 句子成分列：表头含「成分/句法/角色/syntactic」；语法标签列：表头含「语法标签/tag」
+        const isSynHead = (h) => h === 'syntactic' || h === 'syntactic_tag' || h.includes('成分') || h.includes('句法') || h.includes('角色')
+        const isTagHead = (h) => h === 'tag' || h === '语法标签' || (h.includes('语法') && h.includes('标签'))
         const ruIdx = head.findIndex(isRuHead)
         if (ruIdx === -1) throw new Error('第一行表头需含俄语列：ru / 俄语 / 俄语原文（当前：' + head.join(', ') + '）')
         const zhIdx = head.findIndex(isZhHead)
+        const synIdx = head.findIndex(isSynHead)
+        const tagIdx = head.findIndex(isTagHead)
         // 数据行：保序收集，过滤空 ru，统计跳过
         const rows = []
         let skipped = 0
+        let synMatched = 0, synMismatch = 0
         for (let i = 1; i < aoa.length; i++) {
           const ru = String(aoa[i][ruIdx] ?? '').trim()
           if (!ru) { skipped++; continue }
           const zh = zhIdx >= 0 ? String(aoa[i][zhIdx] ?? '').trim() : ''
-          rows.push({ ru, zh })
+          // 句子成分列：按 空格/逗号/顿号/分号/竖线/箭头 拆成逐词角色序列，数量与俄语词数对齐才生效（不对齐回退规则引擎）
+          const synRaw = synIdx >= 0 ? String(aoa[i][synIdx] ?? '').trim() : ''
+          let syntactic
+          if (synRaw) {
+            const roles = synRaw.split(/[、,，;；/|→\s]+/).map(x => x.trim()).filter(Boolean)
+            const nTok = String(ru).trim().split(/\s+/).filter(Boolean).length
+            if (roles.length === nTok) { syntactic = roles; synMatched++ } else { synMismatch++ }
+          }
+          const tag = tagIdx >= 0 ? String(aoa[i][tagIdx] ?? '').trim() : ''
+          rows.push({ ru, zh, ...(syntactic ? { syntactic } : {}), ...(tag ? { tag } : {}) })
         }
         if (!rows.length) throw new Error('没有解析到有效句子：第二行起需填写俄语例句')
-        setImportPreview({ rows, skipped, fileName: file.name })
+        setImportPreview({
+          rows, skipped, fileName: file.name, synMatched, synMismatch,
+          cols: { ru: head[ruIdx], zh: zhIdx >= 0 ? head[zhIdx] : '', syn: synIdx >= 0 ? head[synIdx] : '', tag: tagIdx >= 0 ? head[tagIdx] : '' },
+        })
       } catch (err) {
         setImportErr(String(err && err.message || err))
         setImportFile(null)
@@ -718,7 +736,7 @@ export default function AdminDashboard() {
         console.warn('[source-file] 云端自动保存失败（不影响本课使用）：', e && e.message)
       }
     }
-    flash(`✅ 已导入 ${importPreview.rows.length} 句（顺序=文件行顺序）` + (importPreview.skipped ? `，跳过 ${importPreview.skipped} 个空行` : '') + (noZh ? `，${noZh} 句缺中文可逐句「编」补齐` : '') + (savedCloud ? `，原始 Excel 已自动保存` : '，点「💾 保存课时内容」生效'))
+    flash(`✅ 已导入 ${importPreview.rows.length} 句（顺序=文件行顺序）` + (importPreview.skipped ? `，跳过 ${importPreview.skipped} 个空行` : '') + (noZh ? `，${noZh} 句缺中文可逐句「编」补齐` : '') + (importPreview.synMatched ? `，${importPreview.synMatched} 句带句子成分标注` : (importPreview.synMismatch ? `，${importPreview.synMismatch} 句成分与词数不符已忽略` : '')) + (savedCloud ? `，原始 Excel 已自动保存` : '，点「💾 保存课时内容」生效'))
     setImportFile(null)
     setImportPreview(null)
   }
@@ -911,7 +929,7 @@ export default function AdminDashboard() {
                 <label htmlFor="unit-sent-file" className="cursor-pointer block">
                   <div className="text-3xl">📄</div>
                   <div className="mt-1 text-sm font-semibold text-primary">点击选择 CSV / Excel 文件</div>
-                  <div className="mt-0.5 text-[11px] text-gray-400">支持 .csv / .xlsx · 表头兼容：俄语列（ru / 俄语 / 俄语原文）＋中文列（zh / 中文 / 中文翻译），其余列自动忽略 · 文件行顺序即学习顺序 · CSV 请用 UTF-8 编码</div>
+                  <div className="mt-0.5 text-[11px] text-gray-400">支持 .csv / .xlsx · 表头兼容：俄语列（ru / 俄语 / 俄语原文）＋中文列（zh / 中文 / 中文翻译）＋句子成分列（句子成分 / 句法成分 / 角色，按词序用空格/逗号分隔，如「主语 谓语 宾语」）＋语法标签列（语法标签 / tag）· 其余列自动忽略 · 文件行顺序即学习顺序 · CSV 请用 UTF-8 编码</div>
                 </label>
                 <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2">
                   <label htmlFor="unit-sent-file" className="btn btn-primary btn-sm cursor-pointer">📂 选择文件</label>
@@ -925,7 +943,7 @@ export default function AdminDashboard() {
               {importPreview && (
                 <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5">
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-xs font-semibold text-gray-700">📎 {importPreview.fileName}：解析到 <b className="text-primary">{importPreview.rows.length} 句</b>{importPreview.skipped ? `（跳过 ${importPreview.skipped} 个空行）` : ''}</span>
+                    <span className="text-xs font-semibold text-gray-700">📎 {importPreview.fileName}：解析到 <b className="text-primary">{importPreview.rows.length} 句</b>{importPreview.skipped ? `（跳过 ${importPreview.skipped} 个空行）` : ''}{importPreview.cols?.syn ? ` · 识别句子成分列「${importPreview.cols.syn}」` : ''}{importPreview.synMatched ? `（${importPreview.synMatched} 句生效）` : ''}{importPreview.synMismatch ? `，${importPreview.synMismatch} 句成分数量与词数不符已忽略` : ''}{importPreview.cols?.tag ? ` · 语法标签列「${importPreview.cols.tag}」` : ''}</span>
                     <div className="flex items-center gap-2">
                       <button className="btn btn-ghost btn-xs" onClick={() => { setImportFile(null); setImportPreview(null) }}>取消</button>
                       <button className="btn btn-primary btn-xs" onClick={applyImportedSentences}>✅ 导入到本课时（替换现有句子）</button>
@@ -937,6 +955,9 @@ export default function AdminDashboard() {
                         <span className="font-bold text-gray-400 w-6 shrink-0 text-right">{i + 1}</span>
                         <span className="font-mono text-gray-800 min-w-0 truncate flex-1">{s.ru}</span>
                         <span className="text-gray-400 shrink-0 max-w-[40%] truncate">{s.zh}</span>
+                        {Array.isArray(s.syntactic) && (
+                          <span className="shrink-0 text-[10px] text-primary/80 font-mono max-w-[30%] truncate">{s.syntactic.join(' ')}</span>
+                        )}
                       </div>
                     ))}
                     {importPreview.rows.length > 6 && <div className="text-[11px] text-gray-400 pl-8">… 共 {importPreview.rows.length} 句</div>}

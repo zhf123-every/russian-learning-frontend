@@ -21,7 +21,7 @@
 import { useEffect, useCallback, useState, useRef, useMemo, Fragment } from "react";
 import { getPosLabel, getPosColor, buildGrammarLabel } from "../../constants/posColors";
 import { annotateWords, ensureDictFull } from "../../lib/wordAnnotate";
-import { inferRoles } from "../../lib/roleRules";
+import { inferRoles, roleKeyFromZh } from "../../lib/roleRules";
 import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQuestSettings";
 
 import { playGlobalAudio, stopGlobalAudio } from "../../utils/audioService";
@@ -233,11 +233,16 @@ export default function AnswerPanel({
       const dictWords = annotateWords(statement.russian);
       if (dictWords.length) {
         const roleWords = inferRoles(statement.russian, dictWords);
+        // Excel 上传的逐词句子成分（数量与词数对齐时）为权威标注，直接覆盖引擎推断的角色
+        const excelRoles = Array.isArray(statement?.syntactic) ? statement.syntactic : null;
+        const excelOk = excelRoles && excelRoles.length === roleWords.length;
         return roleWords.map((rw, i) => {
           const w = raw[i] || {};
           // 词典查不到的词（专有名词等）：回退课程数据的词性/释义
           const enginePos = rw.pos && rw.pos !== "default" ? rw.pos : "";
           const finalPos = enginePos || (w.pos && w.pos !== "default" ? w.pos : "") || "";
+          const xl = excelOk ? excelRoles[i] : "";
+          const xlKey = xl ? roleKeyFromZh(xl) : "";
           return {
             ...w, ...rw,
             pos: finalPos,
@@ -248,9 +253,9 @@ export default function AnswerPanel({
             gender: rw.gender || w.gender || "",
             grammarCase: rw.grammarCase || w.grammarCase || "",
             number: rw.number || w.number || "",
-            // 角色：引擎"待确认"时回退课程数据（如专有名词）
-            roleLabel: (rw.roleLabel && rw.roleLabel !== "待确认") ? rw.roleLabel : (w.roleLabel || ""),
-            syntacticRole: (rw.syntacticRole && rw.syntacticRole !== "default") ? rw.syntacticRole : (w.syntacticRole || "default"),
+            // 角色：Excel 权威标注 > 引擎 > 课程数据回退（引擎"待确认"时回退课程数据，如专有名词）
+            roleLabel: xlKey ? xl : ((rw.roleLabel && rw.roleLabel !== "待确认") ? rw.roleLabel : (w.roleLabel || "")),
+            syntacticRole: xlKey ? xlKey : ((rw.syntacticRole && rw.syntacticRole !== "default") ? rw.syntacticRole : (w.syntacticRole || "default")),
             person: rw.person || w.person || "",
             tense: rw.tense || w.tense || "",
             order: i,

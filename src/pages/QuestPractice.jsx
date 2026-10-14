@@ -155,7 +155,7 @@ function adaptLocalLesson(lesson) {
   const sentences = Array.isArray(lesson.sentences) ? lesson.sentences.filter(x => x && x.ru) : [];
   const words = Array.isArray(lesson.words) ? lesson.words.filter(w => w && w.ru) : [];
 
-  const buildUnit = (ru, zh, idx) => {
+  const buildUnit = (ru, zh, idx, extra) => {
     const tokens = String(ru || "").trim().split(/\s+/).filter(Boolean);
     const ws = tokens.map((w, i) => ({
       order: i, form: w, lemma: w, pos: "", posColor: "", grammarLabel: "", roleLabel: "",
@@ -168,6 +168,9 @@ function adaptLocalLesson(lesson) {
       stressMarked: tokens.join(" "),
       chinese: zh || "",
       action: "", grammarNote: "", newElement: "",
+      // Excel 上传的句子成分（逐词角色序列，数量与词数对齐时生效）/ 语法标签
+      syntactic: Array.isArray(extra?.syntactic) ? extra.syntactic : null,
+      tag: extra?.tag || "",
       words: ws,
       acceptableAnswers: [{ wordOrder: tokens.map((_, i) => i), wordVariants: {}, isDefault: true, note: "" }],
     };
@@ -175,7 +178,7 @@ function adaptLocalLesson(lesson) {
 
   // 无词表：退回「全部句子渐进」（一句话一题）
   if (!words.length) {
-    const units = sentences.map((st, idx) => buildUnit(st.ru, st.zh, idx));
+    const units = sentences.map((st, idx) => buildUnit(st.ru, st.zh, idx, st));
     return [{
       id: "local", name: lesson.title || "本课", familyName: lesson.title || "本课",
       units, totalUnits: units.length, fullSentence: "",
@@ -220,7 +223,7 @@ function adaptLocalLesson(lesson) {
       if (!assigned.has(si)) {
         assigned.add(si);
         uid += 1;
-        units.push(buildUnit(sentences[si].ru, sentences[si].zh, uid - 1));
+        units.push(buildUnit(sentences[si].ru, sentences[si].zh, uid - 1, sentences[si]));
       }
     }
   }
@@ -238,7 +241,7 @@ function adaptLocalLesson(lesson) {
       assigned.add(si);
       leftovers.shift();
       uid += 1;
-      units.push(buildUnit(sentences[si].ru, sentences[si].zh, uid - 1));
+      units.push(buildUnit(sentences[si].ru, sentences[si].zh, uid - 1, sentences[si]));
     }
   }
 
