@@ -367,7 +367,12 @@ export default function QuestDictation() {
       try {
         const entry = ensureTtsAudio(textToPlay);
         if (entry) {
-          await entry.promise;
+          // 预载进行中 → 等它完成再播（复用已缓冲音频）；8s 超时兜底，防后端慢时播放卡死
+          if (entry.promise) {
+            try {
+              await Promise.race([entry.promise, new Promise((r) => setTimeout(r, 8000))]);
+            } catch (e) { /* 超时/失败 → 走实时兜底 */ }
+          }
           if (entry.audio && entry.audio.src) { url = entry.audio.src; readyEl = entry.audio; }
         }
         if (!url) url = await ensureTtsUrl(textToPlay);

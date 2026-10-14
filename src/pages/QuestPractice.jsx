@@ -986,7 +986,15 @@ export default function QuestPractice() {
       let readyEl = null; // 已内容就绪的预载 Audio → 直接播（零延迟，跳过重新加载）
       try {
         const entry = ensureTtsAudioRef.current(stmt);
-        if (entry && entry.audio && entry.audio.src) { url = entry.audio.src; readyEl = entry.audio; }
+        if (entry) {
+          // 预载进行中（进页首句/滚动预载）→ 等它完成再播：复用已缓冲音频，避免重复请求后端二次合成
+          if (entry.promise) {
+            try {
+              await Promise.race([entry.promise, new Promise((r) => setTimeout(r, 8000))]);
+            } catch (e) { /* 超时/失败 → 走实时兜底 */ }
+          }
+          if (entry.audio && entry.audio.src) { url = entry.audio.src; readyEl = entry.audio; }
+        }
         if (!url) url = await ensureTts(stmt);
       } catch (e) { /* ignore */ }
       if (callIdRef.current !== myCallId) return;   // 已被更新播放/切题取代 → 不播（防旧覆盖新）
