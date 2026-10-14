@@ -220,7 +220,8 @@ export default function AnswerPanel({
   }, [statement?.words, statement?.russian]);
 
   // 本地即时标注：词典（重音/词性/性数格）+ 形态规则引擎（句子成分）整句同步推断
-  // 覆盖课程数据里残留的无效标签（default 等），答对瞬间成分/重音即完整，无闪烁无延迟
+  // 引擎优先：无论课程数据带没带标注，都以 词典标注+规则引擎 的整句结果为准（课程数据仅作词典未命中回退），
+  // 杜绝课程数据里残留的错误词性/错误成分原样显示
   const words = useMemo(() => {
     let raw = statement?.words || [];
     // 兜底：如果 words 为空，用 russian 自动 split 并调词典补全（听写页/本地数据无逐词标注时）
@@ -228,54 +229,36 @@ export default function AnswerPanel({
       const tokens = String(statement.russian).split(/\s+/).filter(Boolean);
       raw = tokens.map((t) => ({ ru: t, chinese: statement.chinese || "" }));
     }
-    const needRules = raw.some((w) => !w.pos || w.pos === "default" || !w.roleLabel || w.roleLabel === "default" || !w.syntacticRole || w.syntacticRole === "default");
-    if (needRules && statement?.russian) {
+    if (statement?.russian) {
       const dictWords = annotateWords(statement.russian);
       if (dictWords.length) {
         const roleWords = inferRoles(statement.russian, dictWords);
-        return raw.map((w, i) => {
-          const rw = roleWords[i] || {};
-          // 词典未命中词再逐词兜底
-          const single = !rw.pos ? (annotateWords(w.lemma || w.word || w.ru || w.text || "")[0] || {}) : {};
+        return roleWords.map((rw, i) => {
+          const w = raw[i] || {};
+          // 词典查不到的词（专有名词等）：回退课程数据的词性/释义
+          const enginePos = rw.pos && rw.pos !== "default" ? rw.pos : "";
+          const finalPos = enginePos || (w.pos && w.pos !== "default" ? w.pos : "") || "";
           return {
-            ...w, ...rw, ...single,
-            // 中文释义优先保留课程数据原值（词典未命中时不得用空值覆盖）
-            chinese: w.chinese || w.zh || w.meaning || w.translation || rw.chinese || single.chinese || "",
+            ...w, ...rw,
+            pos: finalPos,
+            posColor: enginePos ? rw.posColor : (finalPos ? getPosColor(finalPos) : ""),
+            form: rw.form || w.form || w.lemma || w.ru || w.word || "",
+            lemma: rw.lemma || w.lemma || w.ru || w.word || "",
+            chinese: w.chinese || w.zh || w.meaning || w.translation || rw.chinese || "",
+            gender: rw.gender || w.gender || "",
+            grammarCase: rw.grammarCase || w.grammarCase || "",
+            number: rw.number || w.number || "",
+            // 角色：引擎"待确认"时回退课程数据（如专有名词）
+            roleLabel: (rw.roleLabel && rw.roleLabel !== "待确认") ? rw.roleLabel : (w.roleLabel || ""),
+            syntacticRole: (rw.syntacticRole && rw.syntacticRole !== "default") ? rw.syntacticRole : (w.syntacticRole || "default"),
+            person: rw.person || w.person || "",
+            tense: rw.tense || w.tense || "",
             order: i,
-            roleLabel: rw.roleLabel || "",
-            syntacticRole: rw.syntacticRole || "default",
           };
         });
       }
     }
-    return raw.map((w) => {
-      if (w.form && w.pos && w.pos !== "default") return w; // 已有完整标注直接复用
-      // 兜底：用 lemma/word/ru/text/form 任意一个字段查词典
-      const lookupKey = w.lemma || w.word || w.ru || w.text || w.form || "";
-      const single = annotateWords(lookupKey)[0] || {};
-      // 硬编码兜底：常见代词/副词词典查不到时手动补
-      const lower = String(lookupKey).toLowerCase().replace(/[^а-яёa-z]/g, "");
-      if ((!single.pos || single.pos === "default") && /меня|тебя|его|её|нас|вас|их|мне|тебе|ним|ней/.test(lower)) {
-        single.pos = "pronoun";
-        single.posColor = getPosColor("pronoun");
-      }
-      if ((!single.pos || single.pos === "default") && /днём|утром|вечером|сегодня|завтра|сейчас|тут|там|здесь/.test(lower)) {
-        single.pos = "adverb";
-        single.posColor = getPosColor("adverb");
-      }
-      if (!single.form && !single.pos) return w;
-      return {
-        ...w,
-        form: w.form || single.form || lookupKey,
-        lemma: w.lemma || single.lemma || lookupKey,
-        pos: w.pos && w.pos !== "default" ? w.pos : single.pos || "",
-        posColor: w.posColor || single.posColor || "",
-        gender: w.gender || single.gender || "",
-        grammarCase: w.grammarCase || single.grammarCase || "",
-        number: w.number || single.number || "",
-        chinese: w.chinese || single.chinese || "",
-      };
-    });
+    return raw;
   }, [statement?.words, statement?.russian, dictReady]);
 
   // 原句标点对齐：第 i 个词后是否跟标点（逗号/句号/感叹号…），词卡之间原样显示

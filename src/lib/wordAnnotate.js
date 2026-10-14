@@ -18,6 +18,8 @@ import { RU_DICT } from "./lemma";
 // 中文词性 → 英文代码（posColors 用）
 export function ruPosToEn(p) {
   if (!p) return "default";
+  // "疑/连"（что 等）→ 连词（从句引导词常见）；"数/形" 会在后面命中"形"
+  if (p.includes("连")) return "conjunction";
   if (p.includes("动")) return "verb";
   // 注意顺序：'副/名'（时间词 сегодня/завтра 等）须判为副词（状语），不能先命中"名"
   if (p.includes("副")) return "adverb";
@@ -25,7 +27,6 @@ export function ruPosToEn(p) {
   if (p.includes("形")) return "adjective";
   if (p.includes("代") || p.includes("疑")) return "pronoun";
   if (p.includes("数")) return "numeral";
-  if (p.includes("连")) return "conjunction";
   if (p.includes("介")) return "preposition";
   if (p.includes("叹")) return "interjection";
   if (p.includes("助") || p.includes("语")) return "particle";
@@ -46,6 +47,11 @@ function normForm(word) {
     .replace(/^[«"'(]+|[»"').,;:!?…]+$/g, "")
     .toLowerCase()
     .trim();
+}
+
+// 去掉 token 尾部标点（词卡显示用；标点由 AnswerPanel 按原句另行渲染）
+function cleanToken(word) {
+  return String(word || "").replace(/[.,!?;:…—–]+$/g, "").trim();
 }
 
 // 高频虚词硬编码表（词典未收录时的兜底标注，key 为 normForm 无重音小写原形）
@@ -467,7 +473,7 @@ export function annotateWords(sentence) {
     if (base) {
       const pos = ruPosToEn(base.p);
       return {
-        form: w, lemma: n, pos,
+        form: cleanToken(w), lemma: n, pos,
         posColor: getPosColor(pos),
         gender: ruGender(base.p),
         chinese: base.z || zhOf(n, n) || "",
@@ -478,7 +484,7 @@ export function annotateWords(sentence) {
     const fw = FUNCTION_WORDS[n];
     if (fw) {
       return {
-        form: w, lemma: n, pos: fw.pos,
+        form: cleanToken(w), lemma: n, pos: fw.pos,
         posColor: getPosColor(fw.pos),
         chinese: fw.zh || "",
         roleLabel: "",
@@ -488,7 +494,7 @@ export function annotateWords(sentence) {
     const vf = VERB_FORMS[n];
     if (vf) {
       return {
-        form: w, lemma: vf.lemma, pos: "verb",
+        form: cleanToken(w), lemma: vf.lemma, pos: "verb",
         posColor: getPosColor("verb"),
         chinese: vf.zh || "",
         roleLabel: "",
@@ -496,6 +502,6 @@ export function annotateWords(sentence) {
         tense: "present",
       };
     }
-    return { form: w, lemma: n, pos: "", posColor: "", chinese: zhOf(n, n) || "", roleLabel: "" };
+    return { form: cleanToken(w), lemma: n, pos: "", posColor: "", chinese: zhOf(n, n) || "", roleLabel: "" };
   });
 }
