@@ -20,7 +20,7 @@
 
 import { useEffect, useCallback, useState, useRef, useMemo, Fragment } from "react";
 import { getPosLabel, getPosColor, buildGrammarLabel } from "../../constants/posColors";
-import { annotateWords } from "../../lib/wordAnnotate";
+import { annotateWords, ensureDictFull } from "../../lib/wordAnnotate";
 import { inferRoles } from "../../lib/roleRules";
 import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQuestSettings";
 
@@ -120,6 +120,9 @@ export default function AnswerPanel({
   const [copied, setCopied] = useState(false);
   // 点词弹出的单词卡（生词本收录入口）
   const [detailWord, setDetailWord] = useState(null);
+  // 完整词典（dict-full.js，25MB 懒加载）就绪标记：就绪后强制重跑整句标注，
+  // 保证变位动词（знаю→знать）等只有完整词典才有的词形也能拿到词性/颜色/成分
+  const [dictReady, setDictReady] = useState(false);
 
   // ---- 俄语发音（Yandex 真人发音）----
   const audioRef = useRef(null);
@@ -204,6 +207,18 @@ export default function AnswerPanel({
     });
   }, [statement?.chinese]);
 
+  // 完整词典懒加载：需要规则标注时先确保 dict-full.js 就绪，加载完成后置 dictReady → 触发 useMemo 整句重标
+  // （否则首次进答题页时 25MB 词典未就绪，знаю 等变位动词查不到词性/颜色/成分，且加载完不会自动重跑）
+  useEffect(() => {
+    const raw = statement?.words || [];
+    const needRules = (!raw || raw.length === 0)
+      || raw.some((w) => !w.pos || w.pos === "default" || !w.roleLabel || w.roleLabel === "default" || !w.syntacticRole || w.syntacticRole === "default");
+    if (!needRules || !statement?.russian) return;
+    let alive = true;
+    Promise.resolve(ensureDictFull()).then(() => { if (alive) setDictReady(true); }).catch(() => {});
+    return () => { alive = false };
+  }, [statement?.words, statement?.russian]);
+
   // 本地即时标注：词典（重音/词性/性数格）+ 形态规则引擎（句子成分）整句同步推断
   // 覆盖课程数据里残留的无效标签（default 等），答对瞬间成分/重音即完整，无闪烁无延迟
   const words = useMemo(() => {
@@ -213,7 +228,6 @@ export default function AnswerPanel({
       const tokens = String(statement.russian).split(/\s+/).filter(Boolean);
       raw = tokens.map((t) => ({ ru: t, chinese: statement.chinese || "" }));
     }
-    console.log("[AnswerPanel DEBUG] words.length =", raw.length, "| raw =", raw, "| russian =", statement?.russian);
     const needRules = raw.some((w) => !w.pos || w.pos === "default" || !w.roleLabel || w.roleLabel === "default" || !w.syntacticRole || w.syntacticRole === "default");
     if (needRules && statement?.russian) {
       const dictWords = annotateWords(statement.russian);
@@ -262,7 +276,7 @@ export default function AnswerPanel({
         chinese: w.chinese || single.chinese || "",
       };
     });
-  }, [statement?.words, statement?.russian]);
+  }, [statement?.words, statement?.russian, dictReady]);
 
   // 原句标点对齐：第 i 个词后是否跟标点（逗号/句号/感叹号…），词卡之间原样显示
   const punctMap = useMemo(() => {

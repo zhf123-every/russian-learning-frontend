@@ -227,6 +227,32 @@ const FUNCTION_WORDS = {
   "везде": { pos: "adverb", zh: "到处" },
 };
 
+// 高频动词现在时变位补充表（dict-full.js 未就绪/加载失败时的兜底）
+// 作用：знаю/говорит/любишь 等只有完整词典才有变位索引的词形，即使懒加载词典没到也能标出动词词性 → 词性色 + 谓语成分
+const VERB_FORMS = {
+  "знаю": { lemma: "знать", person: 1, zh: "知道" }, "знаешь": { lemma: "знать", person: 2, zh: "知道" }, "знает": { lemma: "знать", person: 3, zh: "知道" }, "знаем": { lemma: "знать", person: 1, zh: "知道" }, "знаете": { lemma: "знать", person: 2, zh: "知道" }, "знают": { lemma: "знать", person: 3, zh: "知道" },
+  "говорю": { lemma: "говорить", person: 1, zh: "说" }, "говоришь": { lemma: "говорить", person: 2, zh: "说" }, "говорит": { lemma: "говорить", person: 3, zh: "说" }, "говорим": { lemma: "говорить", person: 1, zh: "说" }, "говорите": { lemma: "говорить", person: 2, zh: "说" }, "говорят": { lemma: "говорить", person: 3, zh: "说" },
+  "люблю": { lemma: "любить", person: 1, zh: "爱" }, "любишь": { lemma: "любить", person: 2, zh: "爱" }, "любит": { lemma: "любить", person: 3, zh: "爱" }, "любим": { lemma: "любить", person: 1, zh: "爱" }, "любите": { lemma: "любить", person: 2, zh: "爱" }, "любят": { lemma: "любить", person: 3, zh: "爱" },
+  "хочу": { lemma: "хотеть", person: 1, zh: "想要" }, "хочешь": { lemma: "хотеть", person: 2, zh: "想要" }, "хочет": { lemma: "хотеть", person: 3, zh: "想要" }, "хотим": { lemma: "хотеть", person: 1, zh: "想要" }, "хотите": { lemma: "хотеть", person: 2, zh: "想要" }, "хотят": { lemma: "хотеть", person: 3, zh: "想要" },
+  "могу": { lemma: "мочь", person: 1, zh: "能够" }, "можешь": { lemma: "мочь", person: 2, zh: "能够" }, "может": { lemma: "мочь", person: 3, zh: "能够" }, "можем": { lemma: "мочь", person: 1, zh: "能够" }, "можете": { lemma: "мочь", person: 2, zh: "能够" }, "могут": { lemma: "мочь", person: 3, zh: "能够" },
+  "делаю": { lemma: "делать", person: 1, zh: "做" }, "делаешь": { lemma: "делать", person: 2, zh: "做" }, "делает": { lemma: "делать", person: 3, zh: "做" }, "делаем": { lemma: "делать", person: 1, zh: "做" }, "делаете": { lemma: "делать", person: 2, zh: "做" }, "делают": { lemma: "делать", person: 3, zh: "做" },
+  "живу": { lemma: "жить", person: 1, zh: "住" }, "живёшь": { lemma: "жить", person: 2, zh: "住" }, "живёт": { lemma: "жить", person: 3, zh: "住" }, "живём": { lemma: "жить", person: 1, zh: "住" }, "живёте": { lemma: "жить", person: 2, zh: "住" }, "живут": { lemma: "жить", person: 3, zh: "住" },
+  "работаю": { lemma: "работать", person: 1, zh: "工作" }, "работаешь": { lemma: "работать", person: 2, zh: "工作" }, "работает": { lemma: "работать", person: 3, zh: "工作" }, "работаем": { lemma: "работать", person: 1, zh: "工作" }, "работаете": { lemma: "работать", person: 2, zh: "工作" }, "работают": { lemma: "работать", person: 3, zh: "工作" },
+  "читаю": { lemma: "читать", person: 1, zh: "读" }, "читаешь": { lemma: "читать", person: 2, zh: "读" }, "читает": { lemma: "читать", person: 3, zh: "读" }, "читаем": { lemma: "читать", person: 1, zh: "读" }, "читаете": { lemma: "читать", person: 2, zh: "读" }, "читают": { lemma: "читать", person: 3, zh: "读" },
+  "пишу": { lemma: "писать", person: 1, zh: "写" }, "пишешь": { lemma: "писать", person: 2, zh: "写" }, "пишет": { lemma: "писать", person: 3, zh: "写" }, "пишем": { lemma: "писать", person: 1, zh: "写" }, "пишете": { lemma: "писать", person: 2, zh: "写" }, "пишут": { lemma: "писать", person: 3, zh: "写" },
+  "вижу": { lemma: "видеть", person: 1, zh: "看见" }, "видишь": { lemma: "видеть", person: 2, zh: "看见" }, "видит": { lemma: "видеть", person: 3, zh: "看见" }, "видим": { lemma: "видеть", person: 1, zh: "看见" }, "видите": { lemma: "видеть", person: 2, zh: "看见" }, "видят": { lemma: "видеть", person: 3, zh: "看见" },
+  "понимаю": { lemma: "понимать", person: 1, zh: "明白" }, "понимаешь": { lemma: "понимать", person: 2, zh: "明白" }, "понимает": { lemma: "понимать", person: 3, zh: "明白" }, "понимаем": { lemma: "понимать", person: 1, zh: "明白" }, "понимаете": { lemma: "понимать", person: 2, zh: "明白" }, "понимают": { lemma: "понимать", person: 3, zh: "明白" },
+  "слышу": { lemma: "слышать", person: 1, zh: "听见" }, "слышишь": { lemma: "слышать", person: 2, zh: "听见" }, "слышит": { lemma: "слышать", person: 3, zh: "听见" }, "слышим": { lemma: "слышать", person: 1, zh: "听见" }, "слышите": { lemma: "слышать", person: 2, zh: "听见" }, "слышат": { lemma: "слышать", person: 3, zh: "听见" },
+  "иду": { lemma: "идти", person: 1, zh: "走" }, "идёшь": { lemma: "идти", person: 2, zh: "走" }, "идёт": { lemma: "идти", person: 3, zh: "走" }, "идём": { lemma: "идти", person: 1, zh: "走" }, "идёте": { lemma: "идти", person: 2, zh: "走" }, "идут": { lemma: "идти", person: 3, zh: "走" },
+  "ем": { lemma: "есть", person: 1, zh: "吃" }, "ешь": { lemma: "есть", person: 2, zh: "吃" }, "ест": { lemma: "есть", person: 3, zh: "吃" }, "едим": { lemma: "есть", person: 1, zh: "吃" }, "едите": { lemma: "есть", person: 2, zh: "吃" }, "едят": { lemma: "есть", person: 3, zh: "吃" },
+  "учу": { lemma: "учить", person: 1, zh: "学习" }, "учишь": { lemma: "учить", person: 2, zh: "学习" }, "учит": { lemma: "учить", person: 3, zh: "学习" }, "учим": { lemma: "учить", person: 1, zh: "学习" }, "учите": { lemma: "учить", person: 2, zh: "学习" }, "учат": { lemma: "учить", person: 3, zh: "学习" },
+  "играю": { lemma: "играть", person: 1, zh: "玩" }, "играешь": { lemma: "играть", person: 2, zh: "玩" }, "играет": { lemma: "играть", person: 3, zh: "玩" }, "играем": { lemma: "играть", person: 1, zh: "玩" }, "играете": { lemma: "играть", person: 2, zh: "玩" }, "играют": { lemma: "играть", person: 3, zh: "玩" },
+  "смотрю": { lemma: "смотреть", person: 1, zh: "看" }, "смотришь": { lemma: "смотреть", person: 2, zh: "看" }, "смотрит": { lemma: "смотреть", person: 3, zh: "看" }, "смотрим": { lemma: "смотреть", person: 1, zh: "看" }, "смотрите": { lemma: "смотреть", person: 2, zh: "看" }, "смотрят": { lemma: "смотреть", person: 3, zh: "看" },
+  "слушаю": { lemma: "слушать", person: 1, zh: "听" }, "слушаешь": { lemma: "слушать", person: 2, zh: "听" }, "слушает": { lemma: "слушать", person: 3, zh: "听" }, "слушаем": { lemma: "слушать", person: 1, zh: "听" }, "слушаете": { lemma: "слушать", person: 2, zh: "听" }, "слушают": { lemma: "слушать", person: 3, zh: "听" },
+  "пью": { lemma: "пить", person: 1, zh: "喝" }, "пьёшь": { lemma: "пить", person: 2, zh: "喝" }, "пьёт": { lemma: "пить", person: 3, zh: "喝" }, "пьём": { lemma: "пить", person: 1, zh: "喝" }, "пьёте": { lemma: "пить", person: 2, zh: "喝" }, "пьют": { lemma: "пить", person: 3, zh: "喝" },
+  "сплю": { lemma: "спать", person: 1, zh: "睡觉" }, "спишь": { lemma: "спать", person: 2, zh: "睡觉" }, "спит": { lemma: "спать", person: 3, zh: "睡觉" }, "спим": { lemma: "спать", person: 1, zh: "睡觉" }, "спите": { lemma: "спать", person: 2, zh: "睡觉" }, "спят": { lemma: "спать", person: 3, zh: "睡觉" },
+};
+
 // 重音标记：词典用 ' 表示（如 челове'к），转成组合重音符号（приве́т）
 // 规则：只有一个元音的词不标重音（俄语单音节词重音唯一，无需标注）
 function countVowels(word) {
@@ -456,6 +482,18 @@ export function annotateWords(sentence) {
         posColor: getPosColor(fw.pos),
         chinese: fw.zh || "",
         roleLabel: "",
+      };
+    }
+    // 兜底3：高频动词现在时变位表（dict-full 未就绪时 знаю/говорит 等也能标出动词）
+    const vf = VERB_FORMS[n];
+    if (vf) {
+      return {
+        form: w, lemma: vf.lemma, pos: "verb",
+        posColor: getPosColor("verb"),
+        chinese: vf.zh || "",
+        roleLabel: "",
+        person: vf.person,
+        tense: "present",
       };
     }
     return { form: w, lemma: n, pos: "", posColor: "", chinese: zhOf(n, n) || "", roleLabel: "" };
