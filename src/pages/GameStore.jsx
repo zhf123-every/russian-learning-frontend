@@ -433,7 +433,8 @@ export default function GameStore() {
       </div>
     )
     return () => { setTitleOverride(null); setHeaderRight(null) }
-  }, [mode, menuOpen, activeCat, query, visibleCats, menuItem, setHeaderRight, setTitleOverride, showVipModal])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, menuOpen, activeCat, query, visibleCats, setHeaderRight, setTitleOverride, showVipModal])
 
   useEffect(() => {
     const sync = () => setTick((t) => t + 1)

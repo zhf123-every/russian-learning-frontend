@@ -161,6 +161,7 @@ export default function AdminDashboard() {
   const [cloudBusy, setCloudBusy] = useState(false)
   const [cloudMsg, setCloudMsg] = useState('')
   const [cloudCount, setCloudCount] = useState(-1)
+  const [cloudCourses, setCloudCourses] = useState([]) // 云端课程名单（跨设备同步；本机没有的合并显示）
   // —— 视频学习页视频上传（复用投稿链路：presign → B2 → 云端名单；/video-study/:id 可学）——
   const [showVideoUpload, setShowVideoUpload] = useState(false)
   const [videoUploadMsg, setVideoUploadMsg] = useState('')
@@ -262,10 +263,38 @@ export default function AdminDashboard() {
   const refresh = () => setCourses(getCourses())
   useEffect(() => { refresh() }, [])
 
+  // 页面加载时拉取云端名单：云端独有课程合并显示（跨设备创建的课程统一可见）；同时刷新 cloudCount
+  useEffect(() => {
+    let alive = true
+    apiFetch('/api/videos/list', { timeout: 60000 })
+      .then(r => r.json())
+      .then(j => {
+        if (!alive || !j.ok || !Array.isArray(j.videos)) return
+        if (alive) setCloudCourses(j.videos.filter(v => v.kind === 'course' && v.title))
+        if (alive) setCloudCount(j.videos.length)
+      })
+      .catch(() => { /* 云端不可用仅显示本地 */ })
+    return () => { alive = false }
+  }, [])
+
+  // 合并课程列表：本地课程（优先，最新版）+ 云端独有课程（其他设备同步上云，标"云端"）
+  const localIds = new Set(courses.map(c => c.id))
+  const cloudOnly = cloudCourses.filter(c => !localIds.has(c.id))
+  const mergedCourses = [...courses, ...cloudOnly]
+
   // 全局搜索过滤（顶部栏 ?q=）：匹配课程标题或简介
   const filteredCourses = q
-    ? courses.filter(c => ((c.title || '') + ' ' + (c.subtitle || '')).toLowerCase().includes(q))
-    : courses
+    ? mergedCourses.filter(c => ((c.title || '') + ' ' + (c.subtitle || '')).toLowerCase().includes(q))
+    : mergedCourses
+
+  // 云端独有课程 → 拉取到本地（导入后即可编辑/搭课程序；导入不删除云端，同步时同 id 覆盖）
+  const importCloudToLocal = (c) => {
+    const list = getCourses()
+    if (list.some(x => x.id === c.id)) { flash('该课程已在本地'); return }
+    saveCourses([...list, { ...c, cloudSynced: true }])
+    refresh()
+    flash('已导入本地《' + (c.title || '') + '》，可编辑/搭课程序/同步')
+  }
 
   // 提示（2.5 秒自动消失）
   const flash = (msg) => {
@@ -1271,13 +1300,13 @@ export default function AdminDashboard() {
           <div className="card-body p-6">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="card-title text-base text-gray-900">
-                已有课程（{q ? `${filteredCourses.length} / ${courses.length} 匹配「${q}」` : courses.length}）
+                已有课程（{q ? `${filteredCourses.length} / ${mergedCourses.length} 匹配「${q}」` : mergedCourses.length}）{cloudOnly.length > 0 && <span className="badge badge-info badge-sm ml-2">含 {cloudOnly.length} 门云端课程</span>}
               </h2>
               <button className="btn btn-primary btn-sm" onClick={() => navigate('/admin/courses/new')}>＋ 新建课程</button>
             </div>
             {filteredCourses.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-400">
-                {courses.length === 0 ? '还没有课程，先填上面表单保存一个草稿试试。' : `没有标题或简介包含「${q}」的课程，换个关键词试试。`}
+                {mergedCourses.length === 0 ? '还没有课程，先填上面表单保存一个草稿试试。' : `没有标题或简介包含「${q}」的课程，换个关键词试试。`}
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -1288,24 +1317,32 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredCourses.map(c => (
+                    {filteredCourses.map(c => {
+                      const cloudOnlyCourse = cloudOnly.some(x => x.id === c.id)
+                      return (
                       <tr key={c.id}>
                         <td>
-                          {(() => {
-                            const st = courseStatus(c)
-                            if (st === 'published') return <span className="badge badge-success badge-sm">已发布</span>
-                            if (st === 'scheduled') return <span className="badge badge-info badge-sm" title={'将于 ' + statusLabel(c) + ' 自动上架'}>定时中 {fmtSchedule(c.scheduledPublishAt)}</span>
-                            if (st === 'expired') return <span className="badge badge-warning badge-sm" title={'已于 ' + statusLabel(c) + ' 下架'}>已下架</span>
-                            return <span className="badge badge-warning badge-sm">草稿</span>
-                          })()}
-                          {c.cloudSynced && <span className="badge badge-info badge-sm ml-1">云端</span>}
+                          {cloudOnlyCourse ? (
+                            <span className="badge badge-info badge-sm">云端</span>
+                          ) : (
+                            <>
+                              {(() => {
+                                const st = courseStatus(c)
+                                if (st === 'published') return <span className="badge badge-success badge-sm">已发布</span>
+                                if (st === 'scheduled') return <span className="badge badge-info badge-sm" title={'将于 ' + statusLabel(c) + ' 自动上架'}>定时中 {fmtSchedule(c.scheduledPublishAt)}</span>
+                                if (st === 'expired') return <span className="badge badge-warning badge-sm" title={'已于 ' + statusLabel(c) + ' 下架'}>已下架</span>
+                                return <span className="badge badge-warning badge-sm">草稿</span>
+                              })()}
+                              {c.cloudSynced && <span className="badge badge-info badge-sm ml-1">云端</span>}
+                            </>
+                          )}
                         </td>
                         <td>
                           <AdminCourseCover src={c.cover} className="h-10 w-16 rounded object-cover" />
                         </td>
                         <td className="font-medium text-gray-800">
                           <div className="line-clamp-1">{c.title}</div>
-                          <div className="text-[11px] text-gray-400">{c.subtitle || '—'}</div>
+                          <div className="text-[11px] text-gray-400">{c.subtitle || (cloudOnlyCourse ? '其他设备同步上云 · 导入本地后可编辑' : '—')}</div>
                         </td>
                         <td className="text-xs">{c.category}</td>
                         <td className="text-xs">{Array.isArray(c.units) && c.units.length ? c.units.length + ' 课' : (c.lessons || 0) + ' 课'}</td>
@@ -1316,13 +1353,24 @@ export default function AdminDashboard() {
                         </td>
                         <td>
                           <div className="flex gap-1">
-                            <button className="btn btn-primary btn-xs" onClick={() => manageUnits(c)}>搭课程序</button>
-                            <button className="btn btn-ghost btn-xs" onClick={() => navigate('/admin/courses/new?edit=' + c.id)}>编辑</button>
-                            <button className="btn btn-error btn-xs btn-outline" onClick={() => remove(c.id)}>删除</button>
+                            {cloudOnlyCourse ? (
+                              <>
+                                <button className="btn btn-ghost btn-xs" onClick={() => navigate('/game-mall')}>预览</button>
+                                <button className="btn btn-primary btn-xs" onClick={() => importCloudToLocal(c)}>导入本地</button>
+                                <button className="btn btn-error btn-xs btn-outline" onClick={() => removeFromCloud(c.id)}>删除云端</button>
+                              </>
+                            ) : (
+                              <>
+                                <button className="btn btn-primary btn-xs" onClick={() => manageUnits(c)}>搭课程序</button>
+                                <button className="btn btn-ghost btn-xs" onClick={() => navigate('/admin/courses/new?edit=' + c.id)}>编辑</button>
+                                <button className="btn btn-error btn-xs btn-outline" onClick={() => remove(c.id)}>删除</button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
