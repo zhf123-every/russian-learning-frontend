@@ -746,11 +746,9 @@ export default function VideoStudy() {
               <div style={{ fontSize: 13, color: '#888' }}>当前第 {curIdx + 1} 句 / 共 {sentences.length} 句</div>
               <div style={{ fontSize: 13, color: '#888' }}>{sentences.length ? '本素材共 ' + sentences.length + ' 句' : '本素材暂无字幕断句'}</div>
             </div>
-            <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 14 }}>反复听完整篇素材 · 感受整体语境主旨 · 无字幕</div>
-            <div style={{ fontSize: 13, color: '#6d28d9', fontWeight: 700, marginBottom: 4 }}>按 空格键 开始播放 · 再按一次暂停</div>
             {/* 盲听揭晓：Ctrl+; 显示本句字幕 */}
             {listenReveal && cur && (
-              <div style={{ maxWidth: 640, margin: '16px auto 6px' }}>
+              <div style={{ maxWidth: 640, margin: '16px auto 92px' }}>
                 <div style={{
                   background: 'var(--qs-surface2, #fafafa)', border: '1px solid var(--qs-border, #eee)',
                   borderRadius: 12, padding: '12px 16px', textAlign: 'left',
@@ -763,7 +761,6 @@ export default function VideoStudy() {
                 </div>
               </div>
             )}
-            <div style={{ fontSize: 12, color: '#bbb', marginTop: 10, marginBottom: 92 }}>盲听完成可逐句核对 · {'<'} 上一句 · {'>'} 下一句</div>
           </div>
         )}
 
