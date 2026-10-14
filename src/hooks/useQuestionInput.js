@@ -16,7 +16,7 @@
  *  - Vue 普通函数 → React useCallback
  */
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
 // ============================================================
 // 常量
@@ -48,8 +48,12 @@ function createWord(text, id) {
   };
 }
 
-// 判断是否为人名/专有名词（句中词、首字母大写西里尔字母）
-// 句首第一个大写词不算（那是要打的句首）；去掉首尾标点后判断
+// 判断是否为人名/专有名词（启发式：非句首、非分句句首、首字母大写）
+// 说明：只认首字母大写会把句中被误大写的普通词（如 "Здравствуйте! Разрешите…"）也当名字。
+// 判定分三层（初始化 useEffect 中执行）：
+//   1) nameWords（词典词性=专有名词/人名）→ 权威：直接显示
+//   2) ordinaryWords（词典标注为普通词性）→ 反证：即使大写也正常输入
+//   3) 启发式兜底：非句首真词 + 非分句句首 + 首字母大写（真名通常词典未收录）
 function isProperNoun(text) {
   const clean = String(text || "").replace(/^[^А-Яа-яЁё]+|[^А-Яа-яЁё-]+$/g, "");
   if (!clean) return false;
@@ -79,6 +83,8 @@ export function useQuestionInput({
   onCorrect,
   onWrong,
   ignoreCase = true,
+  nameWords = [],        // 词典词性标注为「专有名词/人名」的词 → 直接显示（权威）
+  ordinaryWords = [],    // 词典标注为普通词性的词 → 反证：大写也不算名字
 }) {
   // ---- 状态 ----
   const [mode, setMode] = useState(MODES.INPUT);
@@ -88,6 +94,18 @@ export function useQuestionInput({
 
   // 当前正在修正的词 id（Fix_Input 模式下）
   const currentEditWordIdRef = useRef(null);
+
+  // 名字词/普通词集合（小写比对；用 join 键做依赖，标注完成更新后触发重算）
+  const nameSet = useMemo(
+    () => new Set((nameWords || []).map((w) => String(w || "").trim().toLowerCase())),
+    [nameWords]
+  );
+  const ordinarySet = useMemo(
+    () => new Set((ordinaryWords || []).map((w) => String(w || "").trim().toLowerCase())),
+    [ordinaryWords]
+  );
+  const nameWordsKey = (nameWords || []).join("|");
+  const ordinaryWordsKey = (ordinaryWords || []).join("|");
 
   // ---- 四级反馈追踪（Good/Great/Perfect/Amazing）----
   const usedHintRef = useRef(false);        // 是否使用过提示（Ctrl+;）
@@ -114,22 +132,36 @@ export function useQuestionInput({
     if (!answerText) return;
     const words = [];
     let id = 0;
-    answerText.split(" ").forEach((text) => {
-      if (isWord(text)) {
+    const tokens = String(answerText).split(" ");
+    let prevEndsSentence = false; // 前一个 token 以句末标点（.!?…）结尾 → 当前大写词是新句首，不算名字
+    tokens.forEach((text) => {
+      const isWordTok = isWord(text);
+      if (isWordTok) {
         const w = createWord(text, id++);
-        // 人名/专有名词：非句首真词 + 首字母大写 → 直接显示，不用用户打
+        // 三层判定：
+        //   1) 词典词性权威：标注为专有名词/人名 → 直接显示
+        //   2) 词典反证：标注为普通词性 → 即使首字母大写也正常输入
+        //   3) 启发式兜底：非句首真词 + 非分句句首 + 首字母大写（真名通常词典未收录）
+        const clean = String(text).replace(/^[^А-Яа-яЁё]+|[^А-Яа-яЁё-]+$/g, "");
         const isFirstRealWord = words.length === 0;
-        w.fixed = !isFirstRealWord && isProperNoun(text);
+        const lower = clean.toLowerCase();
+        const dictName = nameSet.has(lower);
+        const knownOrdinary = ordinarySet.has(lower);
+        const heuristicName = !isFirstRealWord && !prevEndsSentence && /^[А-ЯЁ]/.test(clean);
+        w.fixed = dictName || (!knownOrdinary && heuristicName);
         if (w.fixed) w.userInput = text; // 预设为正确文本
         words.push(w);
       }
+      // 更新「是否新句首」：token 以句末标点结尾 → 下一个大写词是新句首（要打，不算名字）
+      if (/[.!?…]["'"»)]*$/.test(text)) prevEndsSentence = true;
+      else if (isWordTok || /[А-Яа-яЁё]/.test(text)) prevEndsSentence = false;
     });
     if (words.length > 0) words[0].isActive = true;
     setUserInputWords(words);
     setInputValue("");
     setMode(MODES.INPUT);
     currentEditWordIdRef.current = null;
-  }, [answerText]);
+  }, [answerText, nameWordsKey, ordinaryWordsKey]);
 
   // ==========================================================
   // 双向同步：输入框字符串 ↔ 单词数组

@@ -16,7 +16,7 @@
  *  - Ctrl+; 查看模糊字幕（答完后才能彻底看清）
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { checkUnitAccess } from "../lib/courseAccess";
 import { findLocalUnitById } from "../utils/storage";
@@ -446,6 +446,20 @@ export default function QuestDictation() {
   }, [currentStatement?.russian, loading, playAudio]);
 
   // ---- 输入状态机 ----
+  // 词典/课程词性标注：专有名词/人名 → 直接显示；普通词性 → 大写也不算名字
+  const { nameWords, ordinaryWords } = useMemo(() => {
+    const ws = currentStatement?.words || [];
+    const isNamePos = (p) => /专有|人名|proper|name/i.test(String(p || ""));
+    const names = [];
+    const ordinary = [];
+    ws.forEach((w) => {
+      const key = w.lemma || w.word || "";
+      if (!key) return;
+      if (w.pos && isNamePos(w.pos)) names.push(key);
+      else if (w.pos && !isNamePos(w.pos)) ordinary.push(key);
+    });
+    return { nameWords: names, ordinaryWords: ordinary };
+  }, [currentStatement?.words]);
   const {
     mode,
     inputValue,
@@ -463,6 +477,8 @@ export default function QuestDictation() {
     inputRef,
     isComposingRef,
     ignoreCase: ui.ignoreCase !== false, // 「忽略大小写」设置（默认开）
+    nameWords,       // 词典标注「专有名词/人名」→ 直接显示
+    ordinaryWords,   // 词典标注普通词性 → 大写也不算名字
     onCorrect: (result) => {
       setCurrentErrors([]);
       setWrongStreak(0); // 答对清零连续答错计数（悟空主动求助逻辑）

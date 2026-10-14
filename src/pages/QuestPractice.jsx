@@ -500,6 +500,21 @@ export default function QuestPractice() {
 
   const [showAnswer, setShowAnswer] = useState(false);
 
+  // ---- 词典词性标注（预分析完成后）：专有名词/人名 → 直接显示；普通词性 → 大写也不算名字 ----
+  const { nameWords, ordinaryWords } = useMemo(() => {
+    const ws = currentStatement?.words || [];
+    const isNamePos = (p) => /专有|人名|proper|name/i.test(String(p || ""));
+    const names = [];
+    const ordinary = [];
+    ws.forEach((w) => {
+      const key = w.lemma || w.word || "";
+      if (!key) return;
+      if (w.pos && isNamePos(w.pos)) names.push(key);
+      else if (w.pos && !isNamePos(w.pos)) ordinary.push(key);
+    });
+    return { nameWords: names, ordinaryWords: ordinary };
+  }, [currentStatement?.words]);
+
   // ---- 输入状态机 ----
   const {
     mode,
@@ -520,6 +535,8 @@ export default function QuestPractice() {
     inputRef,
     isComposingRef,
     ignoreCase: ui.ignoreCase !== false, // 「忽略大小写」设置（默认开）
+    nameWords,       // 词典标注「专有名词/人名」→ 直接显示
+    ordinaryWords,   // 词典标注普通词性 → 大写也不算名字
     onCorrect: (result, resultType) => {
       setCurrentErrors([]);
       setWrongStreak(0); // 答对清零连续答错计数（悟空主动求助逻辑）
