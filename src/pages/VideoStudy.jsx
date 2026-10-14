@@ -921,7 +921,7 @@ export default function VideoStudy() {
             statement={{ russian: cur.russian, chinese: cur.chinese }}
             modeLabel="精读"
             presetQuestions={[
-              '请拆解这句话的语法结构：主干、修饰关系和词序。',
+              '请对这句话做完整语法解析：动词的时态与变位、名词和形容词的格/数/性，以及句子的句法结构（主干、修饰、语序）。',
               '请逐词讲解这句话，说明每个单词的意思和在句中的作用。',
               '请标出这句话每个单词的重音，并说明朗读时的语调和停顿。',
               '这句话的中文翻译为什么是这样？请解释每个词的对应关系。',
