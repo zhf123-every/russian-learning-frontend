@@ -298,8 +298,17 @@ export default function GameStore() {
   const adminLogin = useAdminStore(s => s.login)
   const adminLogout = useAdminStore(s => s.logout)
 
-  // 通关视频区 = 仅内置视频（云端/本地投稿视频不在此商城页展示）
-  const allVideos = [...VIDEOS]
+  // 通关视频区 = 云端视频名单 + 本地上传投稿 + 内置视频（按 id 去重；投稿视频优先展示且自动视为已解锁）
+  const dedupById = (list) => {
+    const seen = new Set()
+    return list.filter(v => {
+      if (!v || !v.id) return false
+      if (seen.has(v.id)) return false
+      seen.add(v.id)
+      return true
+    })
+  }
+  const allVideos = dedupById([...cloudVideos, ...uploadedVideos, ...VIDEOS])
 
   // 后台发布课程判定：带 src=admin 标记，或旧数据有 units 课时结构（投稿课程用 lessons 无 units）
   const isAdminCourse = (c) => c && (c.src === 'admin' || c.src === 'admin_publish' || (Array.isArray(c.units) && c.units.length > 0))
