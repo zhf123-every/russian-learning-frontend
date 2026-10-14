@@ -60,7 +60,7 @@ function extractVideoCover(file) {
   })
 }
 
-export default function ContributeModal({ onClose, onSubmit }) {
+export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     title: '',
@@ -293,6 +293,12 @@ export default function ContributeModal({ onClose, onSubmit }) {
         toast('投稿成功！已发布到游戏商城·通关视频，含 ' + sentences.length + ' 句字幕')
       } else {
         toast('投稿成功！已发布到游戏商城·通关视频·' + form.cat + (form.subcat && form.subcat !== '全部' ? ' / ' + form.subcat : ''))
+      }
+      // 管理后台场景：留在当前页并把结果交给调用方（不自动跳转商城）
+      if (onSubmitted) {
+        onSubmitted(payload)
+        onClose()
+        return
       }
       onClose()
       navigate('/unlocked-games')

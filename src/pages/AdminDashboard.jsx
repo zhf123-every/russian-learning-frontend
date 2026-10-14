@@ -12,6 +12,8 @@ import { resolvePlayUrl } from '../lib/playUrl'
 import { collectUnitSentenceObjs } from '../lib/unitSentences'
 import { triggerUnitSegments, retryPendingSegments } from '../lib/segmentTrigger'
 import { useAdminStore } from '../store/adminStore'
+import { useGameVideoStore } from '../store/gameVideoStore'
+import ContributeModal from '../components/ContributeModal'
 
 // ===== 站长专属后台 · 课程包管理（第三步：课程档案 + 课程序 + 课时内容） =====
 
@@ -159,6 +161,10 @@ export default function AdminDashboard() {
   const [cloudBusy, setCloudBusy] = useState(false)
   const [cloudMsg, setCloudMsg] = useState('')
   const [cloudCount, setCloudCount] = useState(-1)
+  // —— 视频学习页视频上传（复用投稿链路：presign → B2 → 云端名单；/video-study/:id 可学）——
+  const [showVideoUpload, setShowVideoUpload] = useState(false)
+  const [videoUploadMsg, setVideoUploadMsg] = useState('')
+  const uploadedVideos = useGameVideoStore(s => s.videos)
 
   // 顶部栏「同步云端」跳转入口：带 ?sync=1 → 提示在下方同步区操作，并清除参数
   useEffect(() => {
@@ -1208,6 +1214,55 @@ export default function AdminDashboard() {
             <div className="mt-3 text-xs text-gray-400">
               提示：只有「已发布」状态的课程会同步；草稿不会上云。同步后所有访客可见、可学。
             </div>
+          </div>
+        </div>
+
+        {/* ===== ①.6 视频学习页视频 · 上传管理 ===== */}
+        <div className="card mt-6 border border-gray-200 bg-base-100 shadow-sm" style={{ borderRadius: 16 }}>
+          <div className="card-body p-6">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h2 className="card-title text-base text-gray-900">🎬 视频学习页视频</h2>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowVideoUpload(true)} disabled={!isLoggedIn}>＋ 上传视频</button>
+            </div>
+            <p className="mt-1 text-xs text-gray-400">
+              上传本地视频直传云端永久保存；发布后可在视频学习页（/video-study/视频ID）盲听 / 听写 / 精读 / 跟读。字幕可在此处粘贴，也可进入学习页后「生成字幕」自动转写。
+            </p>
+            {videoUploadMsg && (
+              <div className="alert alert-success mt-3 shadow-lg" style={{ padding: '10px 14px' }}>
+                <span className="text-sm">✅ {videoUploadMsg}</span>
+              </div>
+            )}
+            {uploadedVideos.length === 0 ? (
+              <p className="py-6 text-center text-sm text-gray-400">还没有上传视频，点右上角「＋ 上传视频」发布第一个。</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {uploadedVideos.map(v => (
+                  <div key={v.id} className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-800 truncate">{v.title}</span>
+                        {v.sentences?.length > 0 && <span className="badge badge-success badge-xs shrink-0">{v.sentences.length} 句字幕</span>}
+                      </div>
+                      <div className="text-[11px] text-gray-400 truncate">{v.id} · {v.cat || '影视俄语'}{v.level ? ' · ' + v.level : ''}</div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button className="btn btn-primary btn-xs" onClick={() => navigate('/video-study/' + v.id)}>进入学习</button>
+                      <button className="btn btn-error btn-xs btn-outline" onClick={() => { useGameVideoStore.getState().remove(v.id); setVideoUploadMsg('') }}>
+                        删除
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {showVideoUpload && (
+              <ContributeModal
+                onClose={() => setShowVideoUpload(false)}
+                onSubmitted={(payload) => {
+                  setVideoUploadMsg('上传成功！视频ID：' + payload.id + ' → 打开 /video-study/' + payload.id + ' 即可开始学习（云端同步后所有访客可见）')
+                }}
+              />
+            )}
           </div>
         </div>
 
