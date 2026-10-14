@@ -102,6 +102,7 @@ export default function VideoStudy() {
   // —— 听写升级：逐词输入槽 + 逐次判定 + 词典标注 + 底部快捷键栏 ——
   const [answerDone, setAnswerDone] = useState(false)   // 当前句答对（显示标注答案面板）
   const [revealed, setRevealed] = useState(false)       // 显示答案（Ctrl+; / 跳过）
+  const [listenReveal, setListenReveal] = useState(false) // 盲听：显示本句字幕揭晓
   const [analysis, setAnalysis] = useState(null)        // 当前句词典标注结果
   const [currentErrors, setCurrentErrors] = useState([])
   const autoNextTimer = useRef(null)
@@ -275,12 +276,12 @@ export default function VideoStudy() {
   // 下一句（答对自动 / 右箭头）
   const nextSentence = () => {
     stopPlay()
-    setAnswerDone(false); setRevealed(false); setAnalysis(null); setCurrentErrors([])
+    setAnswerDone(false); setRevealed(false); setListenReveal(false); setAnalysis(null); setCurrentErrors([])
     if (curIdxRef.current < sentences.length - 1) {
       setCurIdx(curIdxRef.current + 1)
       setActiveIdx(-1)
     } else {
-      toast('🎉 全部句子听写完成！')
+      toast('🎉 全部句子已完成！')
     }
   }
   nextSentenceRef.current = nextSentence
@@ -290,7 +291,7 @@ export default function VideoStudy() {
     if (curIdxRef.current > 0) {
       setCurIdx(curIdxRef.current - 1)
       setActiveIdx(-1)
-      setAnswerDone(false); setRevealed(false); setAnalysis(null); setCurrentErrors([])
+      setAnswerDone(false); setRevealed(false); setListenReveal(false); setAnalysis(null); setCurrentErrors([])
     }
   }
 
@@ -392,6 +393,9 @@ export default function VideoStudy() {
       return () => clearTimeout(t)
     }
   }, [step, curIdx, answerDone, qMode])
+
+  // 切句/切步骤时清盲听揭晓
+  useEffect(() => { setListenReveal(false) }, [step, curIdx])
 
   // 整篇跟读/精读：字幕跟随高亮
   useEffect(() => {
@@ -738,9 +742,28 @@ export default function VideoStudy() {
         {/* ===== ① 盲听 ===== */}
         {step === 'listen' && (
           <div style={{ textAlign: 'center', paddingTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: '#888' }}>当前第 {curIdx + 1} 句 / 共 {sentences.length} 句</div>
+              <div style={{ fontSize: 13, color: '#888' }}>{sentences.length ? '本素材共 ' + sentences.length + ' 句' : '本素材暂无字幕断句'}</div>
+            </div>
             <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 14 }}>反复听完整篇素材 · 感受整体语境主旨 · 无字幕</div>
             <div style={{ fontSize: 13, color: '#6d28d9', fontWeight: 700, marginBottom: 4 }}>按 空格键 开始播放 · 再按一次暂停</div>
-            <div style={{ fontSize: 12, color: '#bbb', marginTop: 10 }}>{sentences.length ? '本素材共 ' + sentences.length + ' 句' : '本素材暂无字幕断句'}</div>
+            {/* 盲听揭晓：Ctrl+; 显示本句字幕 */}
+            {listenReveal && cur && (
+              <div style={{ maxWidth: 640, margin: '16px auto 6px' }}>
+                <div style={{
+                  background: 'var(--qs-surface2, #fafafa)', border: '1px solid var(--qs-border, #eee)',
+                  borderRadius: 12, padding: '12px 16px', textAlign: 'left',
+                }}>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>本句揭晓</div>
+                  <div style={{ fontSize: 17, lineHeight: 1.9, fontWeight: 600, color: '#18181b' }}>{cur.russian}</div>
+                  {cur.chinese && (
+                    <div style={{ fontSize: 13, color: '#666', marginTop: 8, borderTop: '1px dashed #e2e8f0', paddingTop: 8 }}>{cur.chinese}</div>
+                  )}
+                </div>
+              </div>
+            )}
+            <div style={{ fontSize: 12, color: '#bbb', marginTop: 10, marginBottom: 92 }}>盲听完成可逐句核对 · {'<'} 上一句 · {'>'} 下一句</div>
           </div>
         )}
 
@@ -830,6 +853,21 @@ export default function VideoStudy() {
             onShowAnswer={() => { setRevealed(true); setAnswerDone(false); if (cur) analysisNow(cur) }}
             onPrev={prevSentence}
             inputRef={inputRef}
+          />
+        )}
+
+        {/* 盲听底部快捷键栏：< 上一句 · 播放整篇/下一句/显示本句 · > 下一句 */}
+        {step === 'listen' && cur && (
+          <ShortcutTips
+            mode="question"
+            playText="播放整篇"
+            enterText="下一句"
+            showAnswerText="显示本句"
+            onSubmit={nextSentence}
+            onNext={nextSentence}
+            onPlaySound={playFull}
+            onShowAnswer={() => setListenReveal(true)}
+            onPrev={prevSentence}
           />
         )}
 

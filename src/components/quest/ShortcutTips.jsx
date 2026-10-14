@@ -18,6 +18,9 @@ export default function ShortcutTips({
   onPlaySound,    // 播放发音
   onShowAnswer,   // 输入模式：显示答案
   onPrev,         // 上一题（左箭头）
+  playText = "播放发音",
+  enterText,       // 覆盖 Enter 按钮文字（默认随 mode：提交/下一题）
+  showAnswerText,  // 覆盖 Ctrl+; 按钮文字（默认随 mode：显示答案/再来一次）
   inputRef = null,
 }) {
   // 包装点击：执行后自动聚焦输入框
@@ -29,15 +32,15 @@ export default function ShortcutTips({
 
   // 动态按钮文字
   const enterBtn = mode === "question"
-    ? { keys: ["Enter"], text: "提交", onClick: onSubmit }
-    : { keys: ["Enter"], text: "下一题", onClick: onNext };
+    ? { keys: ["Enter"], text: enterText || "提交", onClick: onSubmit }
+    : { keys: ["Enter"], text: enterText || "下一题", onClick: onNext };
 
   const ctrlSemicolonBtn = mode === "question"
-    ? { keys: ["Ctrl", ";"], text: "显示答案", onClick: onShowAnswer }
-    : { keys: ["Ctrl", ";"], text: "再来一次", onClick: onRetry };
+    ? { keys: ["Ctrl", ";"], text: showAnswerText || "显示答案", onClick: onShowAnswer }
+    : { keys: ["Ctrl", ";"], text: showAnswerText || "再来一次", onClick: onRetry };
 
   const buttons = [
-    { keys: ["Ctrl", "'"], text: "播放发音", onClick: onPlaySound },
+    { keys: ["Ctrl", "'"], text: playText, onClick: onPlaySound },
     { keys: ["Ctrl", "M"], text: "掌握", onClick: null },
     { keys: ["Ctrl", "N"], text: "生词", onClick: null },
     enterBtn,
