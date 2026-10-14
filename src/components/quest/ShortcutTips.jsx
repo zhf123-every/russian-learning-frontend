@@ -35,9 +35,11 @@ export default function ShortcutTips({
     ? { keys: ["Enter"], text: enterText || "提交", onClick: onSubmit }
     : { keys: ["Enter"], text: enterText || "下一题", onClick: onNext };
 
-  const ctrlSemicolonBtn = mode === "question"
-    ? { keys: ["Ctrl", ";"], text: showAnswerText || "显示答案", onClick: onShowAnswer }
-    : { keys: ["Ctrl", ";"], text: showAnswerText || "再来一次", onClick: onRetry };
+  const ctrlSemicolonBtn = showAnswerText === null
+    ? null
+    : (mode === "question"
+        ? { keys: ["Ctrl", ";"], text: showAnswerText || "显示答案", onClick: onShowAnswer }
+        : { keys: ["Ctrl", ";"], text: showAnswerText || "再来一次", onClick: onRetry });
 
   const buttons = [
     { keys: ["Ctrl", "'"], text: playText, onClick: onPlaySound },
@@ -45,7 +47,7 @@ export default function ShortcutTips({
     { keys: ["Ctrl", "N"], text: "生词", onClick: null },
     enterBtn,
     ctrlSemicolonBtn,
-  ];
+  ].filter(Boolean);
 
   return (
     <div className="ew-shortcut-bar">

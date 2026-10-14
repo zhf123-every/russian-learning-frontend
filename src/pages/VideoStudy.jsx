@@ -952,23 +952,6 @@ export default function VideoStudy() {
                       <button className="btn primary" onClick={() => playSeg(curIdx, { loop: true, times: 3 })}>🔁 循环跟读</button>
                       <button className="btn" onClick={() => playSeg(curIdx, { loop: false })}>听一次</button>
                     </div>
-                    <div style={{ marginTop: 12, padding: 12, background: '#fafafa', borderRadius: 10, border: '1px solid #eee' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>🎤 本句跟读录音</div>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {!recording ? (
-                          <button className="btn sm primary" onClick={() => startRec(curIdx)}>开始录音</button>
-                        ) : (
-                          <button className="btn sm" onClick={stopRec} style={{ background: '#dc2626', color: '#fff', borderColor: '#dc2626' }}>停止录音（录当前句）</button>
-                        )}
-                        {myAudioUrl && !recording && (
-                          <>
-                            <audio src={myAudioUrl} controls style={{ height: 34, maxWidth: 240 }} />
-                            <button className="btn sm primary" onClick={runScore} disabled={scoring}>{scoring ? '评分中…' : 'AI 评测本句'}</button>
-                          </>
-                        )}
-                      </div>
-                      {renderScore()}
-                    </div>
                     <div style={{ height: 92 }} />
                   </>
                 )}
@@ -995,40 +978,22 @@ export default function VideoStudy() {
                     </div>
                   ))}
                 </div>
-                <div style={{ marginTop: 12, padding: 12, background: '#fafafa', borderRadius: 10, border: '1px solid #eee' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>🎤 整篇跟读录音</div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {!recording ? (
-                      <button className="btn sm primary" onClick={() => startRec(-1)}>开始录音（整篇）</button>
-                    ) : (
-                      <button className="btn sm" onClick={stopRec} style={{ background: '#dc2626', color: '#fff', borderColor: '#dc2626' }}>停止录音</button>
-                    )}
-                    {myAudioUrl && !recording && (
-                      <>
-                        <audio src={myAudioUrl} controls style={{ height: 34, maxWidth: 240 }} />
-                        <button className="btn sm primary" onClick={runScore} disabled={scoring}>{scoring ? '评分中…' : 'AI 评测整篇'}</button>
-                      </>
-                    )}
-                  </div>
-                  {renderScore()}
-                </div>
                 <div style={{ height: 92 }} />
               </>
             )}
           </div>
         )}
 
-        {/* 跟读底部快捷键栏：< 上一句 · 循环本句/下一句/录音 · > 下一句 */}
+        {/* 跟读底部快捷键栏：< 上一句 · 循环本句/下一句 · > 下一句（跟读页无录音） */}
         {step === 'recite' && cur && (
           <ShortcutTips
             mode="question"
             playText="循环本句"
             enterText="下一句"
-            showAnswerText={recording ? '停止录音' : (reciteMode === 'full' ? '整篇录音' : '开始录音')}
+            showAnswerText={null}
             onSubmit={nextSentence}
             onNext={nextSentence}
             onPlaySound={() => playSeg(curIdx, { loop: true, times: 3 })}
-            onShowAnswer={() => (recording ? stopRec() : startRec(reciteMode === 'full' ? -1 : curIdx))}
             onPrev={prevSentence}
           />
         )}
