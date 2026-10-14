@@ -22,6 +22,12 @@ import ModePickerModal, { VIDEO_MODES } from '../components/ModePickerModal'
 import StudyToolbar, { Icon as StudyIcon } from '../components/quest/StudyToolbar'
 import SettingsModal from '../components/SettingsModal'
 import FullTextPanel from '../components/FullTextPanel'
+import { useQuestionInput } from '../hooks/useQuestionInput'
+import QuestionInput from '../components/quest/QuestionInput'
+import ShortcutTips from '../components/quest/ShortcutTips'
+import { sfxKey, playRightSound, playErrorSound } from '../lib/questSounds'
+import { ensureDictFull, annotateWords } from '../lib/wordAnnotate'
+import { inferRoles } from '../lib/roleRules'
 
 const STEPS = [
   { key: 'listen', label: '盲听', short: '盲听' },
@@ -92,9 +98,24 @@ export default function VideoStudy() {
   const [scoreResult, setScoreResult] = useState(null)
   const [scoring, setScoring] = useState(false)
 
-  const [dictInput, setDictInput] = useState('')
-  const [dictResult, setDictResult] = useState(null)
   const [dictDone, setDictDone] = useState({})
+  // —— 听写升级：逐词输入槽 + 逐次判定 + 词典标注 + 底部快捷键栏 ——
+  const [answerDone, setAnswerDone] = useState(false)   // 当前句答对（显示标注答案面板）
+  const [revealed, setRevealed] = useState(false)       // 显示答案（Ctrl+; / 跳过）
+  const [analysis, setAnalysis] = useState(null)        // 当前句词典标注结果
+  const [currentErrors, setCurrentErrors] = useState([])
+  const autoNextTimer = useRef(null)
+  const nextSentenceRef = useRef(null)
+  const isComposingRef = useRef(false)
+  useEffect(() => {
+    const s = () => { isComposingRef.current = true }
+    const e = () => { isComposingRef.current = false }
+    window.addEventListener('compositionstart', s)
+    window.addEventListener('compositionend', e)
+    return () => { window.removeEventListener('compositionstart', s); window.removeEventListener('compositionend', e) }
+  }, [])
+
+  const inputRef = useRef(null)
 
   const [reciteMode, setReciteMode] = useState('segment')
   const [activeIdx, setActiveIdx] = useState(-1)
@@ -106,8 +127,6 @@ export default function VideoStudy() {
   const recordChunksRef = useRef([])
   const streamRef = useRef(null)
   const activeIdxRef = useRef(0)
-  const dictResultRef = useRef(null)
-  dictResultRef.current = dictResult
   const pausedRef = useRef(true)
   pausedRef.current = paused
   const curIdxRef = useRef(0)
@@ -124,6 +143,54 @@ export default function VideoStudy() {
   recordingIdxRef.current = recordingIdx
 
   const cur = sentences[curIdx]
+
+  // 当前句词典标注（异步，答对/显示答案时）
+  const analysisNow = (stmt) => {
+    ensureDictFull().then(() => {
+      const dw = annotateWords(stmt.russian)
+      const rw = dw.length ? inferRoles(stmt.russian, dw) : []
+      setAnalysis({ words: rw, stress: stmt.stressMarked || '' })
+    }).catch(() => {})
+  }
+
+  // 逐词输入状态机：前端快速判题（后端 /api/answer/submit 失败自动忽略，不影响本地判定）
+  const {
+    mode: qMode,
+    isJudging: qJudging,
+    isFixMode,
+    isFixInputMode,
+    inputValue,
+    userInputWords,
+    handleChange: qHandleChange,
+    handleInputKeyDown,
+    submitAnswer,
+    reset: qReset,
+  } = useQuestionInput({
+    answerText: cur?.russian || '',
+    statementId: cur?.id != null ? String(cur.id) : '',
+    inputRef,
+    isComposingRef,
+    ignoreCase: uiCfg.ignoreCase !== false,
+    onCorrect: () => {
+      if (!cur) return
+      setDictDone(d => ({ ...d, [cur.id]: true }))
+      setCurrentErrors([])
+      setAnswerDone(true)
+      setRevealed(false)
+      setAnalysis(null)
+      analysisNow(cur)
+      playRightSound()
+      clearTimeout(autoNextTimer.current)
+      autoNextTimer.current = setTimeout(() => nextSentenceRef.current?.(), 1600)
+    },
+    onWrong: () => {
+      playErrorSound()
+      setAnswerDone(false)
+      setRevealed(false)
+    },
+  })
+  // 打字音效：输入时播放（音量/开关/风格读声音设置）
+  const onDictChange = (e) => { sfxKey(); qHandleChange(e) }
 
   // ---------- 数据加载 ----------
   useEffect(() => {
@@ -204,6 +271,28 @@ export default function VideoStudy() {
     if (pRef.current) { pRef.current.pause(); pRef.current.stopLoop() }
     setPaused(true)
   }, [])
+
+  // 下一句（答对自动 / 右箭头）
+  const nextSentence = () => {
+    stopPlay()
+    setAnswerDone(false); setRevealed(false); setAnalysis(null); setCurrentErrors([])
+    if (curIdxRef.current < sentences.length - 1) {
+      setCurIdx(curIdxRef.current + 1)
+      setActiveIdx(-1)
+    } else {
+      toast('🎉 全部句子听写完成！')
+    }
+  }
+  nextSentenceRef.current = nextSentence
+  // 上一句（左箭头）
+  const prevSentence = () => {
+    stopPlay()
+    if (curIdxRef.current > 0) {
+      setCurIdx(curIdxRef.current - 1)
+      setActiveIdx(-1)
+      setAnswerDone(false); setRevealed(false); setAnalysis(null); setCurrentErrors([])
+    }
+  }
 
   const setRate = (r) => {
     setSpeed(r)
@@ -296,6 +385,14 @@ export default function VideoStudy() {
     return () => window.removeEventListener('keydown', onKey)
   }, [togglePlay])
 
+  // 听写页：进句/切句/修正后自动聚焦输入槽
+  useEffect(() => {
+    if (step === 'dictate') {
+      const t = setTimeout(() => inputRef.current?.focus(), 120)
+      return () => clearTimeout(t)
+    }
+  }, [step, curIdx, answerDone, qMode])
+
   // 整篇跟读/精读：字幕跟随高亮
   useEffect(() => {
     if (!videoRef.current) return
@@ -320,42 +417,6 @@ export default function VideoStudy() {
     videoRef.current.addEventListener('timeupdate', onTime)
     return () => videoRef.current?.removeEventListener('timeupdate', onTime)
   }, [sentences, playSrc])
-
-  // ---------- 听写 ----------
-  const normDict = (s) => (s || '').replace(/[^\wа-яёА-ЯЁ\s]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
-  const checkDict = () => {
-    if (!cur) return
-    const target = normDict(cur.russian)
-    const input = normDict(dictInput)
-    const correct = target === input && input.length > 0
-    setDictResult({ correct, target: cur.russian, input })
-    if (correct) {
-      setDictDone(d => ({ ...d, [cur.id]: true }))
-      if (uiCfg.autoNextS) {
-        toast('正确！即将自动进入下一句')
-        setTimeout(() => {
-          setDictInput(''); setDictResult(null)
-          if (curIdxRef.current < sentences.length - 1) { setCurIdx(curIdxRef.current + 1); setActiveIdx(-1) }
-          else toast('全部句子听写完成 🎉')
-        }, 700)
-      } else {
-        toast('正确！按空格继续下一句')
-      }
-    } else {
-      toast('有错误，请再听一次')
-    }
-  }
-  const onKeyDown = (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); checkDict(); return }
-    if (e.key === ' ') {
-      if (dictResultRef.current && dictResultRef.current.correct) {
-        e.preventDefault()
-        setDictInput(''); setDictResult(null)
-        if (curIdxRef.current < sentences.length - 1) { setCurIdx(curIdxRef.current + 1); setActiveIdx(-1) }
-        else toast('全部句子听写完成 🎉')
-      }
-    }
-  }
 
   // ---------- 录音（跟读/口语共用） ----------
   const startRec = async (idx = -1) => {
@@ -657,7 +718,7 @@ export default function VideoStudy() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
           <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>
             {step === 'dictate'
-              ? '视频自动播一句停一句 · Enter 提交 · 正确后空格跳下一句'
+              ? '视频自动播一句停一句 · Enter 提交 · 答对自动进入下一句 · < 回到上一句'
               : '空格 播放/暂停 · ← → 上一句/下一句'}
           </span>
         </div>
@@ -694,50 +755,82 @@ export default function VideoStudy() {
               <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>请先「生成字幕」再开始听写</div>
             ) : (
               <>
-                <div style={{ padding: '30px 10px', textAlign: 'center' }}>
+                <div style={{ padding: '26px 10px 10px', textAlign: 'center' }}>
                   <div style={{ display: 'inline-block', width: '100%', maxWidth: 620 }}>
-                    <input
-                      value={dictInput}
-                      onChange={e => setDictInput(e.target.value)}
-                      onKeyDown={onKeyDown}
+                    {/* 逐词下划线输入槽（样式继承答题设置：单词长度/固定宽度/极简横线） */}
+                    <QuestionInput
+                      userInputWords={userInputWords}
+                      isJudging={qJudging}
+                      mode={qMode}
+                      inputRef={inputRef}
+                      value={inputValue}
+                      onChange={onDictChange}
+                      onKeyDown={handleInputKeyDown}
+                      errors={currentErrors}
+                      inputStyle={uiCfg.inputStyle || 'dynamic'}
                       placeholder="输入你听到的俄语…（Enter 提交）"
-                      autoFocus
-                      style={{
-                        width: '100%', border: 'none', borderBottom: '2px solid #d4d4d8',
-                        fontSize: 24, textAlign: 'center', padding: '8px 4px', outline: 'none',
-                        background: 'transparent', fontFamily: 'inherit',
-                      }}
                     />
                   </div>
                 </div>
-                {dictResult && (
-                  <div style={{ textAlign: 'center', marginBottom: 10 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: dictResult.correct ? '#16a34a' : '#dc2626', marginBottom: 4 }}>
-                      {dictResult.correct ? '✓ 完全正确！按空格进入下一句' : '✗ 有错误，请再听'}
-                    </div>
-                    {!dictResult.correct && (
-                      <div style={{ fontSize: 13, color: '#888' }}>
-                        你的输入：{dictResult.input || '（空）'}
+
+                {/* 标注答案面板（答对自动展示 / Ctrl+; 显示答案） */}
+                {(answerDone || revealed) && (
+                  <div style={{ maxWidth: 640, margin: '0 auto 6px' }}>
+                    <div style={{
+                      background: 'var(--qs-surface2, #fafafa)', border: '1px solid var(--qs-border, #eee)',
+                      borderRadius: 12, padding: '12px 16px', textAlign: 'left',
+                    }}>
+                      <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>
+                        {answerDone ? '✓ 完全正确！即将进入下一句' : '标准答案'}
                       </div>
-                    )}
+                      {analysis && analysis.words.length > 0 ? (
+                        <div style={{ fontSize: 17, lineHeight: 2, letterSpacing: 0.2 }}>
+                          {analysis.words.map((w, i) => (
+                            <span key={i} style={{ marginRight: 5 }}>
+                              <span style={{ color: w.posColor || '#18181b', fontWeight: 600 }}>{w.form}</span>
+                              {w.roleLabel && (
+                                <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 2, verticalAlign: 'super' }}>{w.roleLabel}</span>
+                              )}
+                              {' '}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 15, color: '#444', lineHeight: 1.9 }}>
+                          {analysis && analysis.stress ? analysis.stress : cur.russian}
+                        </div>
+                      )}
+                      {cur.chinese && (
+                        <div style={{ fontSize: 13, color: '#666', marginTop: 8, borderTop: '1px dashed #e2e8f0', paddingTop: 8 }}>
+                          {cur.chinese}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 8 }}>
-                  <button className="btn primary" onClick={() => playSeg(curIdx, { loop: !!uiCfg.loopPlay, times: uiCfg.listenSlowTimes ?? 1 })}>🔊 再听本句</button>
-                  <button className="btn" onClick={checkDict}>提交（Enter）</button>
-                  <button className="btn" onClick={() => {
-                    setDictDone(d => ({ ...d, [cur.id]: true }))
-                    setDictInput(''); setDictResult(null)
-                    if (curIdx < sentences.length - 1) { setCurIdx(curIdx + 1); setActiveIdx(-1) }
-                    else toast('全部句子听写完成 🎉')
-                  }}>跳过本句</button>
-                </div>
-                <div style={{ textAlign: 'center', fontSize: 12, color: '#bbb', marginTop: 14 }}>
-                  快捷键：Enter 提交 · 正确后按 空格 进入下一句
+
+                <div style={{ textAlign: 'center', fontSize: 12, color: '#bbb', marginTop: 10, marginBottom: 92 }}>
+                  {isFixMode || isFixInputMode
+                    ? '✗ 有错误词，按任意键开始修正（重新输入正确写法）'
+                    : '听一句打一句，Enter 提交 · 答对自动进入下一句'}
                 </div>
               </>
             )}
           </div>
+        )}
+
+        {/* 底部快捷键栏（中译俄答题页同款：< 上一句 · 快捷键 · > 提交/下一句） */}
+        {step === 'dictate' && cur && (
+          <ShortcutTips
+            mode={answerDone ? 'answer' : 'question'}
+            onSubmit={submitAnswer}
+            onNext={nextSentence}
+            onRetry={() => { qReset(); setAnswerDone(false); setRevealed(false); setAnalysis(null); setCurrentErrors([]) }}
+            onPlaySound={() => playSeg(curIdx, { loop: !!uiCfg.loopPlay, times: uiCfg.listenSlowTimes ?? 1 })}
+            onShowAnswer={() => { setRevealed(true); setAnswerDone(false); if (cur) analysisNow(cur) }}
+            onPrev={prevSentence}
+            inputRef={inputRef}
+          />
         )}
 
         {/* ===== ③ 精读纠错 ===== */}

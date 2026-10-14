@@ -230,7 +230,8 @@ export default function QuestionInput({
           userInputWords.map((word, index) => {
             const error = errorMap[index];
             const errorColor = error ? ERROR_COLORS[error.errorType] || "#E11D48" : null;
-            const isError = word.incorrect && error;
+            // 前端判题标错的词（word.incorrect）同样标红；errorType 只决定具体颜色
+            const isError = !!word.incorrect;
             const isPunct = isPunctuation(word.text);
 
             let className = isPunct ? "quest-word-punct" : "quest-word";
@@ -254,7 +255,7 @@ export default function QuestionInput({
                 className={className}
                 style={
                   isError
-                    ? { color: errorColor, borderBottomColor: errorColor, ...dynWidth }
+                    ? { color: errorColor || "#E11D48", borderBottomColor: errorColor || "#E11D48", ...dynWidth }
                     : dynWidth
                 }
               >
