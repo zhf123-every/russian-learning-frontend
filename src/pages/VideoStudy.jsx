@@ -938,17 +938,13 @@ export default function VideoStudy() {
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <div style={{ fontSize: 13, color: '#888' }}>第 {curIdx + 1} 句 / 共 {sentences.length} 句</div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn sm" onClick={() => { if (curIdx > 0) { setCurIdx(curIdx - 1); setActiveIdx(-1) } }}>上一句</button>
-                    <button className="btn sm" onClick={() => { if (curIdx < sentences.length - 1) { setCurIdx(curIdx + 1); setActiveIdx(-1) } }}>下一句</button>
-                  </div>
                 </div>
                 {!cur ? (
                   <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>请先「生成字幕」再跟读</div>
                 ) : (
                   <>
                     {uiCfg.listenShowEn !== false && (
-                      <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 18, lineHeight: 1.8, fontWeight: 500 }}>
+                      <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 18, lineHeight: 1.8, fontWeight: 500, textAlign: 'center' }}>
                         {renderSub(cur.russian)}
                       </div>
                     )}
@@ -973,6 +969,7 @@ export default function VideoStudy() {
                       </div>
                       {renderScore()}
                     </div>
+                    <div style={{ height: 92 }} />
                   </>
                 )}
               </>
@@ -1015,9 +1012,25 @@ export default function VideoStudy() {
                   </div>
                   {renderScore()}
                 </div>
+                <div style={{ height: 92 }} />
               </>
             )}
           </div>
+        )}
+
+        {/* 跟读底部快捷键栏：< 上一句 · 循环本句/下一句/录音 · > 下一句 */}
+        {step === 'recite' && cur && (
+          <ShortcutTips
+            mode="question"
+            playText="循环本句"
+            enterText="下一句"
+            showAnswerText={recording ? '停止录音' : (reciteMode === 'full' ? '整篇录音' : '开始录音')}
+            onSubmit={nextSentence}
+            onNext={nextSentence}
+            onPlaySound={() => playSeg(curIdx, { loop: true, times: 3 })}
+            onShowAnswer={() => (recording ? stopRec() : startRec(reciteMode === 'full' ? -1 : curIdx))}
+            onPrev={prevSentence}
+          />
         )}
 
         {/* ===== ⑤ 口语评测 ===== */}
