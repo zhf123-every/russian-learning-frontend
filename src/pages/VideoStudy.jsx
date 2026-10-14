@@ -25,6 +25,7 @@ import FullTextPanel from '../components/FullTextPanel'
 import { useQuestionInput } from '../hooks/useQuestionInput'
 import QuestionInput from '../components/quest/QuestionInput'
 import ShortcutTips from '../components/quest/ShortcutTips'
+import WukongAiAssistant from '../components/quest/WukongAiAssistant'
 import { sfxKey, playRightSound, playErrorSound } from '../lib/questSounds'
 import { ensureDictFull, annotateWords } from '../lib/wordAnnotate'
 import { inferRoles } from '../lib/roleRules'
@@ -873,10 +874,6 @@ export default function VideoStudy() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <div style={{ fontSize: 13, color: '#888' }}>第 {curIdx + 1} 句 / 共 {sentences.length} 句</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button className="btn sm" onClick={() => { if (curIdx > 0) { setCurIdx(curIdx - 1); setActiveIdx(-1) } }}>上一句</button>
-                <button className="btn sm" onClick={() => { if (curIdx < sentences.length - 1) { setCurIdx(curIdx + 1); setActiveIdx(-1) } }}>下一句</button>
-              </div>
             </div>
             {!cur ? (
               <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>请先「生成字幕」再精读</div>
@@ -897,10 +894,40 @@ export default function VideoStudy() {
                 {aiHtml && (
                   <div style={{ marginTop: 10, padding: 14, background: '#f8f8fb', borderRadius: 10, border: '1px solid #eee', fontSize: 14, lineHeight: 1.7, textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: aiHtml }} />
                 )}
-                <div style={{ textAlign: 'center', fontSize: 12, color: '#bbb', marginTop: 12 }}>提示：鼠标悬停字幕中的单词可查看释义 · 空格播放/暂停 · ←→ 切换句子</div>
+                <div style={{ height: 92 }} />
               </>
             )}
           </div>
+        )}
+
+        {/* 精读底部快捷键栏：< 上一句 · 循环本句/下一句/AI解析 · > 下一句 */}
+        {step === 'correct' && cur && (
+          <ShortcutTips
+            mode="question"
+            playText="循环本句"
+            enterText="下一句"
+            showAnswerText="AI解析"
+            onSubmit={nextSentence}
+            onNext={nextSentence}
+            onPlaySound={() => playSeg(curIdx, { loop: true, times: uiCfg.listenAnsTimes ?? 1 })}
+            onShowAnswer={runAI}
+            onPrev={prevSentence}
+          />
+        )}
+
+        {/* 精读页悟空助手（AI 解析逻辑不变；悟空问答预设适配"精读"场景） */}
+        {step === 'correct' && cur && (
+          <WukongAiAssistant
+            statement={{ russian: cur.russian, chinese: cur.chinese }}
+            modeLabel="精读"
+            presetQuestions={[
+              '请拆解这句话的语法结构：主干、修饰关系和词序。',
+              '请逐词讲解这句话，说明每个单词的意思和在句中的作用。',
+              '请标出这句话每个单词的重音，并说明朗读时的语调和停顿。',
+              '这句话的中文翻译为什么是这样？请解释每个词的对应关系。',
+            ]}
+            introText="正在精读这一句？有什么问题随时问悟空！"
+          />
         )}
 
         {/* ===== ④ 跟读 ===== */}

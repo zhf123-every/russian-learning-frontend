@@ -9,7 +9,9 @@ import Wukong3D from './Wukong3D'
 // 结构：3D 筋斗云（静止底座）+ 3D 悟空（Three.js 程序化建模），所有动作在 3D 空间完成
 // 待机(呼吸浮动) → 蹬棒腾跃 → 落地 → 招手（10s 循环）；拖拽时暂停动画
 // 融合设计：无投影光晕、无状态光点，透明画布直接透出答题页背景（白/深色都自然融入）
-// props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）
+// props: statement={russian, chinese} 当前练习句子；modeLabel 模式中文名（如"中译俄"）；
+//        presetQuestions 预设问题（默认面向"答题做题"场景，可传页面专属问题）；
+//        introText 弹窗引导文案（默认"有关于当前练习的问题？随时问我！"）
 const WUKONG_IDLE  = '/images/ai-assistant/side-stand.webp'      // 弹窗头图用 2D 形象
 const BTN_SIZE = 240
 
@@ -20,7 +22,11 @@ const PRESET_QUESTIONS = [
   '请讲解这道题里的重点单词和短语，说明它们在上下文里的意思。',
 ]
 
-export default function WukongAiAssistant({ statement, modeLabel = '练习', wrongStreak = 0 }) {
+export default function WukongAiAssistant({
+  statement, modeLabel = '练习', wrongStreak = 0,
+  presetQuestions = PRESET_QUESTIONS,
+  introText = '有关于当前练习的问题？随时问我！',
+}) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -264,10 +270,10 @@ export default function WukongAiAssistant({ statement, modeLabel = '练习', wro
             {/* 引导区 */}
             <div style={{ padding: '16px 18px 8px', textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: 'var(--qs-sub, #6b7280)', lineHeight: 1.7 }}>
-                有关于当前练习的问题？随时问我！
+                {introText}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, textAlign: 'left' }}>
-                {PRESET_QUESTIONS.map((q) => (
+                {presetQuestions.map((q) => (
                   <button
                     key={q} onClick={() => ask(q)} disabled={loading}
                     style={{
