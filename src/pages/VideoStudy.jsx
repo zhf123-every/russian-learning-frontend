@@ -880,12 +880,12 @@ export default function VideoStudy() {
             ) : (
               <>
                 {uiCfg.listenShowEn !== false && (
-                  <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 18, lineHeight: 1.8, fontWeight: 500, color: '#18181b' }}>
+                  <div style={{ padding: 16, background: '#fafafa', borderRadius: 10, border: '1px solid #eee', fontSize: 18, lineHeight: 1.8, fontWeight: 500, color: '#18181b', textAlign: 'center' }}>
                     {renderSub(cur.russian)}
                   </div>
                 )}
                 {uiCfg.listenShowZh !== false && cur.chinese && (
-                  <div style={{ padding: '8px 4px', fontSize: 14, color: '#888' }}>{cur.chinese}</div>
+                  <div style={{ padding: '8px 4px', fontSize: 14, color: '#888', textAlign: 'center' }}>{cur.chinese}</div>
                 )}
                 {aiHtml && (
                   <div style={{ marginTop: 10, padding: 14, background: '#f8f8fb', borderRadius: 10, border: '1px solid #eee', fontSize: 14, lineHeight: 1.7, textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: aiHtml }} />
