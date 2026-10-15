@@ -81,13 +81,14 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
   const [coverBusy, setCoverBusy] = useState(false)
   const [subsOpen, setSubsOpen] = useState(false)  // 手动粘贴字幕：点击后才展开
   const [manualSubs, setManualSubs] = useState('')
+  const [extraSub, setExtraSub] = useState('') // AI 识别出的、不在预设选项里的自定义二级标签（如新教材名），自动补充进下拉
   const fileInputRef = useRef(null)
   const adminKey = useAdminStore(s => s.adminKey)
 
   const handleChange = (field) => (e) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }))
   }
-  const setCat = (val) => setForm(prev => ({ ...prev, cat: val, subcat: (SUBCATS[val] || ['全部'])[0] || '全部' }))
+  const setCat = (val) => { setExtraSub(''); setForm(prev => ({ ...prev, cat: val, subcat: (SUBCATS[val] || ['全部'])[0] || '全部' })) }
 
   // 🤖 AI 自动打标二级筛选标签：根据主分类 + 标题/内容，后端 /api/course-tag 精准判断
   const [autoTagging, setAutoTagging] = useState(false)
@@ -109,7 +110,14 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
       if (!j.ok) throw new Error(j.error || 'AI 打标失败')
       const r = parseAIJSON(j.content)
       if (!r || !r.subcat) { toast('AI 未能判断出二级标签，请重试或手动选择'); return }
-      setForm(prev => ({ ...prev, subcat: r.subcat === '全部' ? '全部' : r.subcat }))
+      const preset = SUBCATS[form.cat] || ['全部']
+      // AI 结果限定在预设标签内（与商城页筛选标签一致）；识别到预设外的新标签（如新教材名）自动补充为可选项
+      if (r.subcat !== '全部' && !preset.includes(r.subcat)) {
+        setExtraSub(r.subcat)
+        setForm(prev => ({ ...prev, subcat: r.subcat }))
+      } else {
+        setForm(prev => ({ ...prev, subcat: r.subcat }))
+      }
       const conf = typeof r.confidence === 'number' ? Math.round(r.confidence * 100) + '%' : ''
       toast('AI 打标完成：' + r.subcat + (conf ? ' · 置信度 ' + conf : '') + (r.reason ? '（' + r.reason + '）' : ''))
     } catch (e) {
@@ -370,23 +378,20 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
         </div>
 
         <div className="field">
-          <label>二级筛选标签（AI 自动判断，可手动修改）</label>
+          <label>二级筛选标签（与商城页筛选标签一致）</label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input
-              list="rb-subcats"
+            <select
               value={form.subcat}
               onChange={handleChange('subcat')}
-              placeholder={form.cat === '教材同步' ? 'AI 识别教材名，如：走遍俄罗斯' : 'AI 判断二级标签，可手动修改'}
               style={{ flex: 1, minWidth: 0 }}
-            />
+            >
+              {((SUBCATS[form.cat] || ['全部'])).concat(extraSub && !(SUBCATS[form.cat] || []).includes(extraSub) ? [extraSub] : []).map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
             <button type="button" className="btn sm" onClick={autoTag} disabled={autoTagging} style={{ flexShrink: 0 }}>
               {autoTagging ? 'AI 分析中…' : '✨ AI 打标'}
             </button>
           </div>
-          <datalist id="rb-subcats">
-            {(SUBCATS[form.cat] || ['全部']).map(c => <option key={c} value={c} />)}
-          </datalist>
-          <div className="hint" style={{ marginTop: 4 }}>AI 根据标题与内容自动判断二级标签；教材同步会识别教材名并自动生成筛选标签。</div>
+          <div className="hint" style={{ marginTop: 4 }}>下拉选项与商城页对应分类的筛选标签一致；AI 自动匹配选择，识别到新教材名会自动补充为可选项。</div>
         </div>
 
         <div className="field">
