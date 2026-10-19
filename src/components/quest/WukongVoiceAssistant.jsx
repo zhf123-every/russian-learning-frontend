@@ -19,6 +19,15 @@ import { playGlobalAudio, stopGlobalAudio, preloadGlobalAudio } from '../../util
 const WUKONG_IDLE = '/images/ai-assistant/side-stand.webp'
 const BTN_SIZE = 240
 
+// 文字模式预设问题（答题过程中的解题向提问，与文字版悟空一致）
+const PRESET_QUESTIONS = [
+  '这道题我应该从哪里入手？请先给一个提示，不要直接给完整答案。',
+  '请解释这道题在考什么，以及我应该如何理解正确答案。',
+  '请拆一下这句话的语法结构，重点说明主干、修饰关系和词序。',
+  '请讲解这道题里的重点单词和短语，说明它们在上下文里的意思。',
+]
+const TEXT_INTRO = '有关于当前练习的问题？随时问我！'
+
 // 对话引导预设问题（无预生成引导包时的兜底）
 const FALLBACK_QUESTIONS = [
   '我们这课学了什么？请用俄语带我复习一下。',
@@ -79,6 +88,8 @@ export default function WukongVoiceAssistant({
   const [loading, setLoading] = useState(false)
   const [guided, setGuided] = useState(false)     // 引导语是否已播放（答题结束只播一次）
   const [voiceMode, setVoiceMode] = useState(false) // true=答题结束语音对话模式；false=答题过程文字问答模式
+  const voiceModeRef = useRef(false)
+  useEffect(() => { voiceModeRef.current = voiceMode }, [voiceMode])
   const scrollRef = useRef(null)
   const { listening, transcribing, setTranscribing, start, stop } = useVoiceRecorder()
   const historyRef = useRef([])
@@ -130,12 +141,22 @@ export default function WukongVoiceAssistant({
     playGlobalAudio(url)
   }, [])
 
-  // AI 对话上下文（本课内容 + 预生成引导）
+  // AI 对话上下文：文字模式=讲解当前题（与文字版悟空一致）；语音模式=本课主题口语教练
   const buildSystem = useCallback(() => {
     const ru = (lessonContext && Array.isArray(lessonContext.sentences) ? lessonContext.sentences : []).slice(0, 10).join('\n')
     const title = (lessonContext && lessonContext.title) || ''
     const curRu = statement?.russian || ''
     const curZh = statement?.chinese || ''
+    if (!voiceMode) {
+      return `你是"悟空"——俄语学习助教，正在学生做「${modeLabel}」练习时答疑。
+当前练习的俄语句子：${curRu}
+中文翻译：${curZh}
+本课/课时名：${title || '（未命名）'}
+本课学过的俄语句子（供讲解时引用）：
+${ru || '（无）'}
+请结合当前这道练习作答，不要泛泛而谈。需要时给出俄语原句、逐词解释、重音标注和中文翻译。
+如果学生问的是"怎么入手"，先给思路提示，不要直接给完整答案。`
+    }
     let d = ''
     if (dialogue && dialogue.greeting_ru) {
       d = `\n本课对话主题：${dialogue.topic || ''}\n开场引导语：${dialogue.greeting_ru}（${dialogue.greeting_zh || ''}）\n建议引导问句：${(dialogue.questions || []).join(' / ')}`
@@ -151,7 +172,7 @@ ${ru || '（无）'}
 2. 围绕本课主题主动提问引导对话，每次回复后可以追问一个小问题；
 3. 回复控制在 2-4 句俄语以内，中文只做辅助提示；
 4. 不要评价学生"答得好不好"，直接自然对话。`
-  }, [statement, modeLabel, lessonContext, dialogue])
+  }, [voiceMode, statement, modeLabel, lessonContext, dialogue])
 
   // 发送一条消息（文本或语音识别结果）
   const ask = useCallback(async (question) => {
@@ -169,8 +190,8 @@ ${ru || '（无）'}
       ])
       historyRef.current = [...historyRef.current, { role: 'assistant', content: reply }]
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
-      // 朗读回复中的俄语（整段朗读，若含中文可先取俄语句段）
-      speakRu(reply)
+      // 语音模式朗读回复中的俄语；文字模式不自动朗读（与文字版悟空一致）
+      if (voiceModeRef.current) speakRu(reply)
     } catch (e) {
       toast('AI 回复失败：' + (e && e.message || e))
       setMessages(prev => [...prev, { role: 'assistant', content: '（回复失败，请稍后再试）' }])
@@ -383,39 +404,65 @@ ${ru || '（无）'}
               >✕</button>
             </div>
 
-            {/* 引导区：本课话题 + 引导问题（点按即作为对话内容发出） */}
+            {/* 引导区：文字模式=预设解题问题；语音模式=本课话题引导问句（点按即发出） */}
             <div style={{ padding: '14px 18px 8px' }}>
-              {dialogue && dialogue.greeting_zh && (
-                <div style={{ fontSize: 13, color: 'var(--qs-sub, #6b7280)', lineHeight: 1.7, marginBottom: 10 }}>
-                  {dialogue.greeting_zh}
-                </div>
+              {voiceMode ? (
+                <>
+                  {dialogue && dialogue.greeting_zh && (
+                    <div style={{ fontSize: 13, color: 'var(--qs-sub, #6b7280)', lineHeight: 1.7, marginBottom: 10 }}>
+                      {dialogue.greeting_zh}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left' }}>
+                    {guideQuestions.map((q, i) => (
+                      <button
+                        key={q} onClick={() => ask(q)} disabled={loading}
+                        style={{
+                          textAlign: 'left', borderRadius: 12, padding: '9px 12px', fontSize: 13, lineHeight: 1.55, cursor: 'pointer',
+                          border: '1px solid var(--qs-border, #e5e7eb)', background: 'var(--qs-surface2, #fafafa)',
+                          color: 'var(--qs-text, #111)', transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--qs-active, #7C3AED)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--qs-active, #7C3AED) 8%, var(--qs-surface2, #fafafa))' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--qs-border, #e5e7eb)'; e.currentTarget.style.background = 'var(--qs-surface2, #fafafa)' }}
+                      >
+                        {q}
+                        {dialogue && dialogue.questions_zh && dialogue.questions_zh[i] ? (
+                          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--qs-sub, #9ca3af)', marginTop: 3 }}>{dialogue.questions_zh[i]}</span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 12.5, color: 'var(--qs-sub, #6b7280)', marginBottom: 8 }}>{TEXT_INTRO}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left' }}>
+                    {PRESET_QUESTIONS.map((q) => (
+                      <button
+                        key={q} onClick={() => ask(q)} disabled={loading}
+                        style={{
+                          textAlign: 'left', borderRadius: 12, padding: '9px 12px', fontSize: 13, lineHeight: 1.55, cursor: 'pointer',
+                          border: '1px solid var(--qs-border, #e5e7eb)', background: 'var(--qs-surface2, #fafafa)',
+                          color: 'var(--qs-text, #111)', transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--qs-active, #7C3AED)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--qs-active, #7C3AED) 8%, var(--qs-surface2, #fafafa))' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--qs-border, #e5e7eb)'; e.currentTarget.style.background = 'var(--qs-surface2, #fafafa)' }}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left' }}>
-                {guideQuestions.map((q, i) => (
-                  <button
-                    key={q} onClick={() => ask(q)} disabled={loading}
-                    style={{
-                      textAlign: 'left', borderRadius: 12, padding: '9px 12px', fontSize: 13, lineHeight: 1.55, cursor: 'pointer',
-                      border: '1px solid var(--qs-border, #e5e7eb)', background: 'var(--qs-surface2, #fafafa)',
-                      color: 'var(--qs-text, #111)', transition: 'all 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--qs-active, #7C3AED)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--qs-active, #7C3AED) 8%, var(--qs-surface2, #fafafa))' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--qs-border, #e5e7eb)'; e.currentTarget.style.background = 'var(--qs-surface2, #fafafa)' }}
-                  >
-                    {q}
-                    {dialogue && dialogue.questions_zh && dialogue.questions_zh[i] ? (
-                      <span style={{ display: 'block', fontSize: 11.5, color: 'var(--qs-sub, #9ca3af)', marginTop: 3 }}>{dialogue.questions_zh[i]}</span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* 对话区 */}
             <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '6px 18px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {messages.length === 0 && !loading && !transcribing && (
                 <div style={{ fontSize: 12.5, color: 'var(--qs-sub, #9ca3af)', textAlign: 'center', paddingTop: 18, lineHeight: 1.8 }}>
-                  {dialogue ? '按住麦克风说俄语，或点上方问题开始对话。' : '按住麦克风和我用俄语对话，我会围绕本课内容回应。'}
+                  {voiceMode
+                    ? (dialogue ? '按住麦克风说俄语，或点上方问题开始对话。' : '按住麦克风和我用俄语对话，我会围绕本课内容回应。')
+                    : '点上方问题或直接输入，我帮你讲解。'}
                 </div>
               )}
               {messages.map((m, i) => (
