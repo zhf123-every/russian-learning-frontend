@@ -7,6 +7,7 @@ import { useSettingsStore } from '../../store/settingsStore'
 import { resolveSkin } from '../../lib/petSkins'
 import Wukong3D from './Wukong3D'
 import { playGlobalAudio, stopGlobalAudio, preloadGlobalAudio } from '../../utils/audioService'
+import { getCachedTtsUrl } from '../../utils/ttsPreloadShared'
 
 // 悟空语音对话助手：中译俄答题页的 AI 口语对话教练。
 // - 预加载阶段（Preloader）已按本课内容生成对话引导包（dialogue prop），答题结束后自动打开并语音引导；
@@ -134,10 +135,13 @@ export default function WukongVoiceAssistant({
     } catch (e) { return 'alena' }
   }
 
-  // 朗读一段俄语文本（后端 TTS，跟随声音设置音色）
+  // 朗读一段俄语文本（后端 TTS，跟随声音设置音色；优先复用 Preloader 预载的缓存 URL → 秒播）
   const speakRu = useCallback((text) => {
     if (!text) return
-    const url = ttsUrl(text, currentVoice())
+    const v = currentVoice()
+    let url = ''
+    try { url = getCachedTtsUrl(text, v) } catch (e) { /* 忽略 */ }
+    if (!url) url = ttsUrl(text, v)
     if (!url) return
     preloadGlobalAudio(url)
     playGlobalAudio(url)
@@ -163,17 +167,17 @@ ${ru || '（无）'}
     if (dialogue && dialogue.greeting_ru) {
       d = `\n本课对话主题：${dialogue.topic || ''}\n开场引导语：${dialogue.greeting_ru}（${dialogue.greeting_zh || ''}）\n建议引导问句：${(dialogue.questions || []).join(' / ')}`
     }
-    return `你是"悟空"——俄语口语对话教练，正在陪学生练习「${modeLabel}」。
-学生刚做完本课练习题，现在进入口语对话环节。
+    return `你是"悟空"——一位耐心、温和的俄语口语老师，正在陪学生进行「${modeLabel}」本课主题的口语对话练习。
 本课/课时名：${title || '（未命名）'}
-本课学过的俄语句子（供你围绕话题提问、纠错、扩展）：
+本课学过的俄语句子（围绕这些内容提问、纠错、扩展）：
 ${ru || '（无）'}
 当前最后练习的句子：${curRu}（${curZh}）${d}
-对话规则：
-1. 主要说俄语，用简单、符合学生水平的句子；学生说错时给出正确说法并简短中文解释；
-2. 围绕本课主题主动提问引导对话，每次回复后可以追问一个小问题；
-3. 回复控制在 2-4 句俄语以内，中文只做辅助提示；
-4. 不要评价学生"答得好不好"，直接自然对话。`
+教学要求：
+1. 对话要持续、自然、不冷场：每轮回复都以一个新问题或新话题承接，让对话不断流；学生没话接时主动换个更简单的问题；
+2. 学生说得对：用简短俄语肯定（Отлично! Правильно! Верно!），再顺势扩展一个小问题；
+3. 学生说错或语法不正确：先温和指出正确说法，用中文简短解释错在哪，再请学生自己用俄语重说一遍正确的句子（引导语如「Попробуй ещё раз: ...」「Скажи по-другому」），必要时给出词序或关键词提示；
+4. 不厌其烦：学生反复说错也不要急，改用更简单的表达继续引导；学生可以用中文提问，你用俄语+中文解释；
+5. 回复以俄语为主（2-4 句），中文仅作解释/提示；不要评价学生"答得好不好"，直接自然对话。`
   }, [voiceMode, statement, modeLabel, lessonContext, dialogue])
 
   // 发送一条消息（文本或语音识别结果）
@@ -259,11 +263,11 @@ ${ru || '（无）'}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wrongStreak, ui.petHelp, ui.petHint])
 
-  // 答题结束语音模式下自动播放引导语（只一次；答题过程中的手动打开不自动播语音）
+  // 答题结束语音模式下自动播放引导语（AI 先开口引导，不只弹窗；只播一次；手动打开不自动播）
   useEffect(() => {
     if (!voiceMode || !open || guided || !dialogue || !dialogue.greeting_ru) return
     setGuided(true)
-    const t = setTimeout(() => speakRu(dialogue.greeting_ru), 500)
+    const t = setTimeout(() => speakRu(dialogue.greeting_ru), 300)
     return () => clearTimeout(t)
   }, [voiceMode, open, guided, dialogue, speakRu])
 
@@ -434,8 +438,22 @@ ${ru || '（无）'}
               {voiceMode ? (
                 <>
                   {dialogue && dialogue.greeting_zh && (
-                    <div style={{ fontSize: 13, color: 'var(--qs-sub, #6b7280)', lineHeight: 1.7, marginBottom: 10 }}>
-                      {dialogue.greeting_zh}
+                    <div style={{ fontSize: 13, color: 'var(--qs-sub, #6b7280)', lineHeight: 1.7, marginBottom: 10, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <span style={{ flex: 1 }}>{dialogue.greeting_zh}</span>
+                      <button
+                        onClick={() => speakRu(dialogue.greeting_ru)}
+                        title="播放引导语"
+                        aria-label="播放引导语"
+                        style={{
+                          flexShrink: 0, width: 26, height: 26, borderRadius: '50%', border: '1px solid var(--qs-border, #e5e7eb)',
+                          background: 'var(--qs-surface2, #f3f4f6)', color: 'var(--qs-text, #555)', cursor: 'pointer',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                        }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </button>
                     </div>
                   )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left' }}>

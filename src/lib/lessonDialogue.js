@@ -79,11 +79,15 @@ export async function preloadLessonDialogue(sentences, lesson, voice) {
   const dialogue = await buildLessonDialogue(sentences, lesson)
   if (!dialogue) return null
   const texts = [dialogue.greeting_ru, ...dialogue.questions].filter(Boolean)
-  // 尽力而为：预载引导语音频（并发，失败不阻塞）
+  // 尽力而为：预载引导语音频（并发，失败不阻塞），并把 URL 写入共享缓存 → 答题页秒播
   await Promise.all(texts.map(async (t) => {
     try {
       const url = await dialogueTtsUrl(t, voice || 'alena')
       if (url) {
+        try {
+          const { cacheTtsUrl } = await import('../utils/ttsPreloadShared')
+          cacheTtsUrl(t, url, voice || 'alena')
+        } catch (e) { /* 缓存非必须 */ }
         const a = new Audio()
         a.preload = 'auto'
         a.src = url
