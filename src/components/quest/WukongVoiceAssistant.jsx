@@ -230,7 +230,13 @@ ${ru || '（无）'}
       const r = await apiFetch('/api/transcribe-audio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio: b64 }),
+        body: JSON.stringify({
+          audio: b64,
+          // 发音容错：把本课学过的俄语句子带给后端，识别接近时自动纠回正确句
+          context: Array.isArray(lessonContext?.sentences)
+            ? lessonContext.sentences.map(s => (typeof s === 'string' ? s : (s && s.ru) || '')).filter(Boolean)
+            : [],
+        }),
         timeout: 60000,
       })
       const j = await r.json()
