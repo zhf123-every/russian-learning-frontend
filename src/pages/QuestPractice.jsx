@@ -41,6 +41,7 @@ import { getPosColor } from "../constants/posColors";
 import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
+import WukongAiAssistant from "../components/quest/WukongAiAssistant";
 import WukongVoiceAssistant from "../components/quest/WukongVoiceAssistant";
 import { getCachedDialogue, getDialoguePromise } from "../utils/ttsPreloadShared";
 import SettingsModal from "../components/SettingsModal";
@@ -1593,15 +1594,17 @@ export default function QuestPractice() {
         courseId={studyCourseId}
       />
 
-      {/* 悟空语音对话助手（右下角浮动孙悟空：按住说话 → 俄语转写 → AI 按本课主题回应 → 语音朗读；
-          答题结束自动打开并播放预载引导语） */}
+      {/* 悟空文字 AI 助手（左下角浮动孙悟空：答题过程中的文字问答/连错求助，原功能不变） */}
+      <WukongAiAssistant statement={currentStatement} modeLabel={aiModeLabel} wrongStreak={wrongStreak} />
+
+      {/* 悟空语音对话助手（右下角浮动孙悟空：预加载按本课生成对话引导，答题结束自动弹出并语音引导；
+          按住说话 → 俄语转写 → AI 按本课主题回应 → 语音朗读；答题过程中不主动弹出） */}
       <WukongVoiceAssistant
         statement={currentStatement}
         modeLabel={aiModeLabel}
         lessonContext={{ title: (localLesson && localLesson.title) || (studyCourseId || ''), sentences: lessonSentences }}
         dialogue={lessonDialogue}
         autoOpen={showSummary}
-        wrongStreak={wrongStreak}
       />
     </div>
   );

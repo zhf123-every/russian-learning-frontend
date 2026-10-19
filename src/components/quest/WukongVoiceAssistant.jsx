@@ -71,7 +71,7 @@ function useVoiceRecorder() {
 }
 
 export default function WukongVoiceAssistant({
-  statement, modeLabel = '练习', lessonContext = null, dialogue = null, autoOpen = false, wrongStreak = 0,
+  statement, modeLabel = '练习', lessonContext = null, dialogue = null, autoOpen = false,
 }) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([])
@@ -85,9 +85,9 @@ export default function WukongVoiceAssistant({
   const { ui } = useQuestSettings()
   const skinCfg = resolveSkin(ui.petSkin)
 
-  // ---- 3D 角色可拖拽位置（默认左下角，融入背景） ----
+  // ---- 3D 角色可拖拽位置（默认右下角，与文字版悟空（左下角）错开；融入背景） ----
   const [btnPos, setBtnPos] = useState(() => ({
-    x: 20,
+    x: (typeof window !== 'undefined' ? window.innerWidth : 1280) - BTN_SIZE - 20,
     y: (typeof window !== 'undefined' ? window.innerHeight : 720) - BTN_SIZE - 40,
   }))
   const dragRef = useRef({ dragging: false, moved: false, sx: 0, sy: 0, ox: 0, oy: 0 })
@@ -217,22 +217,11 @@ ${ru || '（无）'}
     }
   }
 
-  // 答题结束后自动打开 + 语音引导（只引导一次）
+  // 答题结束后自动打开 + 语音引导（只引导一次；答题过程中的连错求助由文字版悟空承担）
   useEffect(() => {
     if (!autoOpen || open || guided) return
     setOpen(true)
   }, [autoOpen, open, guided])
-
-  // 连续答错主动求助（对齐设置「宠物」面板 petHelp + petHint；与文字版悟空一致）
-  useEffect(() => {
-    if (ui.petHelp === false) return
-    if (wrongStreak <= 0) return
-    const hint = ui.petHint === 'always' ? 1 : (parseInt(ui.petHint || '3', 10) || 3)
-    if (wrongStreak % hint !== 0) return
-    setOpen(true)
-    ask(`我连续答错 ${wrongStreak} 次了，能帮我讲讲这道题怎么入手吗？先给思路提示，不要直接给完整答案。`)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wrongStreak, ui.petHelp, ui.petHint])
 
   useEffect(() => {
     if (!open || guided || !dialogue || !dialogue.greeting_ru) return
@@ -301,7 +290,7 @@ ${ru || '（无）'}
 
   return (
     <>
-      {/* 答题页左下角背景角色（可拖拽，融入页面背景） */}
+      {/* 答题页右下角背景角色（可拖拽，融入页面背景；答题过程中的文字对话/连错求助由文字版悟空承担） */}
       <button
         aria-label="悟空语音对话"
         onPointerDown={onBtnPointerDown}
