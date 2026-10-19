@@ -71,13 +71,14 @@ function useVoiceRecorder() {
 }
 
 export default function WukongVoiceAssistant({
-  statement, modeLabel = '练习', lessonContext = null, dialogue = null, autoOpen = false,
+  statement, modeLabel = '练习', lessonContext = null, dialogue = null, autoOpen = false, wrongStreak = 0,
 }) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [guided, setGuided] = useState(false)     // 引导语是否已播放（只播一次）
+  const [guided, setGuided] = useState(false)     // 引导语是否已播放（答题结束只播一次）
+  const [voiceMode, setVoiceMode] = useState(false) // true=答题结束语音对话模式；false=答题过程文字问答模式
   const scrollRef = useRef(null)
   const { listening, transcribing, setTranscribing, start, stop } = useVoiceRecorder()
   const historyRef = useRef([])
@@ -85,9 +86,9 @@ export default function WukongVoiceAssistant({
   const { ui } = useQuestSettings()
   const skinCfg = resolveSkin(ui.petSkin)
 
-  // ---- 3D 角色可拖拽位置（默认右下角，与文字版悟空（左下角）错开；融入背景） ----
+  // ---- 3D 角色可拖拽位置（默认答题页左下角，与背景悟空融为一体） ----
   const [btnPos, setBtnPos] = useState(() => ({
-    x: (typeof window !== 'undefined' ? window.innerWidth : 1280) - BTN_SIZE - 20,
+    x: 20,
     y: (typeof window !== 'undefined' ? window.innerHeight : 720) - BTN_SIZE - 40,
   }))
   const dragRef = useRef({ dragging: false, moved: false, sx: 0, sy: 0, ox: 0, oy: 0 })
@@ -217,18 +218,31 @@ ${ru || '（无）'}
     }
   }
 
-  // 答题结束后自动打开 + 语音引导（只引导一次；答题过程中的连错求助由文字版悟空承担）
+  // 答题结束后自动打开 + 语音引导（只引导一次；平时手动打开为文字问答模式）
   useEffect(() => {
     if (!autoOpen || open || guided) return
+    setVoiceMode(true)
     setOpen(true)
   }, [autoOpen, open, guided])
 
+  // 连续答错主动求助（答题过程中的文字求助，与设置「宠物」面板 petHelp + petHint 联动）
   useEffect(() => {
-    if (!open || guided || !dialogue || !dialogue.greeting_ru) return
+    if (ui.petHelp === false) return
+    if (wrongStreak <= 0) return
+    const hint = ui.petHint === 'always' ? 1 : (parseInt(ui.petHint || '3', 10) || 3)
+    if (wrongStreak % hint !== 0) return
+    setOpen(true)
+    ask(`我连续答错 ${wrongStreak} 次了，能帮我讲讲这道题怎么入手吗？先给思路提示，不要直接给完整答案。`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wrongStreak, ui.petHelp, ui.petHint])
+
+  // 答题结束语音模式下自动播放引导语（只一次；答题过程中的手动打开不自动播语音）
+  useEffect(() => {
+    if (!voiceMode || !open || guided || !dialogue || !dialogue.greeting_ru) return
     setGuided(true)
     const t = setTimeout(() => speakRu(dialogue.greeting_ru), 500)
     return () => clearTimeout(t)
-  }, [open, guided, dialogue, speakRu])
+  }, [voiceMode, open, guided, dialogue, speakRu])
 
   // 卸载时停止播放/录音
   useEffect(() => () => { stopGlobalAudio() }, [])
@@ -290,9 +304,10 @@ ${ru || '（无）'}
 
   return (
     <>
-      {/* 答题页右下角背景角色（可拖拽，融入页面背景；答题过程中的文字对话/连错求助由文字版悟空承担） */}
+      {/* 答题页左下角背景角色（可拖拽，融入页面背景）：
+          答题过程中=文字问答+连错求助；答题结束自动弹出并语音引导（按住说话） */}
       <button
-        aria-label="悟空语音对话"
+        aria-label="悟空AI助手"
         onPointerDown={onBtnPointerDown}
         onPointerMove={onBtnPointerMove}
         onPointerUp={onBtnPointerUp}
@@ -348,11 +363,13 @@ ${ru || '（无）'}
                 <img src={WUKONG_IDLE} alt="" style={{ width: 34, height: 34, objectFit: 'contain' }} />
                 <div>
                   <h2 style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>
-                    悟空口语对话{dialogue && dialogue.topic ? ' · ' + dialogue.topic : ''}
+                    {voiceMode
+                      ? '悟空口语对话' + (dialogue && dialogue.topic ? ' · ' + dialogue.topic : '')
+                      : '悟空AI助手'}
                   </h2>
                   <span style={{ fontSize: 11, color: 'var(--qs-sub, #6b7280)', display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-                    {listening ? '正在听你说话…' : transcribing ? '正在识别你的语音…' : '按住麦克风用俄语和我对话'}
+                    {listening ? '正在听你说话…' : transcribing ? '正在识别你的语音…' : voiceMode ? '按住麦克风用俄语和我对话' : '答题中的问题都可以问我'}
                   </span>
                 </div>
               </div>
