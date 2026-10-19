@@ -41,7 +41,8 @@ import { getPosColor } from "../constants/posColors";
 import AnswerPanel from "../components/quest/AnswerPanel";
 import SummaryPanel from "../components/quest/SummaryPanel";
 import ModePickerModal, { COURSE_MODES } from "../components/ModePickerModal";
-import WukongAiAssistant from "../components/quest/WukongAiAssistant";
+import WukongVoiceAssistant from "../components/quest/WukongVoiceAssistant";
+import { getCachedDialogue, getDialoguePromise } from "../utils/ttsPreloadShared";
 import SettingsModal from "../components/SettingsModal";
 import Icon from "../components/TopBarIcons";
 import LearningContentModal from "../components/LearningContentModal";
@@ -332,6 +333,31 @@ export default function QuestPractice() {
 
   const [localLesson, setLocalLesson] = useState(null);
   const [isLocalMode, setIsLocalMode] = useState(false);
+
+  // ---- 悟空语音对话：Preloader 按本课预生成的对话引导（缓存或进行中的 Promise）----
+  const [lessonDialogue, setLessonDialogue] = useState(null);
+  useEffect(() => {
+    let alive = true
+    const cached = getCachedDialogue(effectiveCourseId)
+    if (cached) { setLessonDialogue(cached); return }
+    const dp = getDialoguePromise(effectiveCourseId)
+    const p = dp || null
+    if (p) {
+      p.then((d) => { if (alive && d) setLessonDialogue(d) }).catch(() => {})
+    }
+    return () => { alive = false }
+  }, [effectiveCourseId])
+
+  // 本课全部俄语句子（注入悟空对话上下文）
+  const lessonSentences = useMemo(() => {
+    const list = []
+    for (const sq of sequences) {
+      for (const u of (sq && sq.units) || []) {
+        if (u && u.russian && u.russian.trim()) list.push(u.russian)
+      }
+    }
+    return list
+  }, [sequences])
 
   // ---- 计时器 ----
   const [elapsed, setElapsed] = useState(0);
@@ -1567,8 +1593,16 @@ export default function QuestPractice() {
         courseId={studyCourseId}
       />
 
-      {/* 悟空 AI 助手（右下角浮动孙悟空，点击弹出 AI 问答弹窗） */}
-      <WukongAiAssistant statement={currentStatement} modeLabel={aiModeLabel} wrongStreak={wrongStreak} />
+      {/* 悟空语音对话助手（右下角浮动孙悟空：按住说话 → 俄语转写 → AI 按本课主题回应 → 语音朗读；
+          答题结束自动打开并播放预载引导语） */}
+      <WukongVoiceAssistant
+        statement={currentStatement}
+        modeLabel={aiModeLabel}
+        lessonContext={{ title: (localLesson && localLesson.title) || (studyCourseId || ''), sentences: lessonSentences }}
+        dialogue={lessonDialogue}
+        autoOpen={showSummary}
+        wrongStreak={wrongStreak}
+      />
     </div>
   );
 }

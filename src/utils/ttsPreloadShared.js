@@ -55,3 +55,29 @@ export function getCachedLesson(unitId) {
   const c = getPreloadCache();
   return c.unitId === unitId ? c.lesson : null;
 }
+
+/**
+ * AI 语音对话引导缓存：Preloader 按本课内容预生成的对话引导包
+ * data: { topic, greeting_ru, greeting_zh, questions: [ru...], questions_zh: [zh...] }
+ */
+export function cacheDialogue(unitId, dialogue) {
+  const c = getPreloadCache();
+  c.dialogue = { unitId: unitId || "", data: dialogue || null };
+}
+
+/** 取预载的对话引导包（unitId 不一致返回 null） */
+export function getCachedDialogue(unitId) {
+  const c = getPreloadCache();
+  return c.dialogue && c.dialogue.unitId === unitId ? c.dialogue.data : null;
+}
+
+/** 记录「正在生成的对话引导 Promise」（Preloader 发起 → 答题页 await 复用，避免重复请求） */
+export function cacheDialoguePromise(unitId, promise) {
+  getPreloadCache().dialoguePromise = { unitId: unitId || "", promise: promise || null };
+}
+
+/** 取正在生成的对话引导 Promise（unitId 不一致返回 null） */
+export function getDialoguePromise(unitId) {
+  const c = getPreloadCache();
+  return c.dialoguePromise && c.dialoguePromise.unitId === unitId ? c.dialoguePromise.promise : null;
+}

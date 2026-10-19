@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { cacheLesson, cacheTtsUrl, cacheTtsAudio } from "../utils/ttsPreloadShared";
+import { cacheLesson, cacheTtsUrl, cacheTtsAudio, cacheDialoguePromise } from "../utils/ttsPreloadShared";
 import { ensureDictFull, warmUpIndex } from "../lib/wordAnnotate";
 import { apiFetch } from "../lib/api";
 import { useSettingsStore } from "../store/settingsStore";
+import { preloadLessonDialogue } from "../lib/lessonDialogue";
 
 // 后端基址（与各答题页一致：dev 走本地 8000，生产走 VITE_API_BASE）
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -201,6 +202,14 @@ export default function Preloader() {
           }
         });
         await Promise.all(workers);
+
+        // 6) AI 按本课内容预生成语音对话引导（异步进行，不阻塞进入答题页；
+        //    生成完成后写入共享缓存，答题页答题结束直接复用引导语与预载语音）
+        if (!cancelled) {
+          const dp = preloadLessonDialogue(sentences, lesson, voice);
+          cacheDialoguePromise(unitId, dp);
+          dp.then((d) => { if (!cancelled && d) console.log("[Preloader] 本课对话引导已就绪:", d.topic || ""); }).catch(() => {});
+        }
       } catch (e) {
         if (!cancelled) {
           console.error("[Preloader] 核心预载失败:", e);
