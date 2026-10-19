@@ -495,12 +495,20 @@ ${ru || '（无）'}
                 disabled={transcribing || loading}
                 title="按住说话"
                 style={{
-                  width: 44, height: 44, borderRadius: '50%', border: 'none', flexShrink: 0, cursor: 'pointer',
-                  background: listening ? '#EF4444' : 'var(--qs-active, #7C3AED)', color: '#fff', fontSize: 18,
-                  boxShadow: listening ? '0 0 0 6px rgba(239,68,68,0.2)' : '0 4px 14px rgba(124,58,237,0.35)',
-                  transition: 'all 0.15s ease', touchAction: 'none',
+                  width: 46, height: 46, borderRadius: '50%', border: listening ? '2px solid #EF4444' : '2px solid #111827',
+                  flexShrink: 0, cursor: 'pointer', background: 'transparent', color: listening ? '#EF4444' : '#111827',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: listening ? '0 0 0 6px rgba(239,68,68,0.18)' : 'none',
+                  transition: 'all 0.15s ease', touchAction: 'none', padding: 0,
                 }}
-              >🎤</button>
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              </button>
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
