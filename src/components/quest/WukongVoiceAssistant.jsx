@@ -105,16 +105,18 @@ export default function WukongVoiceAssistant({
   const dragRef = useRef({ dragging: false, moved: false, sx: 0, sy: 0, ox: 0, oy: 0 })
   const [btnDragging, setBtnDragging] = useState(false)
 
-  // ---- 弹窗可拖拽位置（打开时居中） ----
+  // ---- 弹窗可拖拽位置 + 可缩放尺寸（打开时居中） ----
   const [modalPos, setModalPos] = useState(null)
+  const [modalSize, setModalSize] = useState(null) // { w, h }，右下角手柄拖动缩放
   const modalDragRef = useRef({ dragging: false, sx: 0, sy: 0, ox: 0, oy: 0 })
+  const resizeRef = useRef({ dragging: false, sx: 0, sy: 0, sw: 0, sh: 0 })
   useEffect(() => {
     if (open) {
-      const w = Math.min(560, (window.innerWidth || 1280) - 32)
-      setModalPos({
-        x: Math.max(8, ((window.innerWidth || 1280) - w) / 2),
-        y: Math.max(8, ((window.innerHeight || 720) - 560) / 2),
-      })
+      const vw = window.innerWidth || 1280, vh = window.innerHeight || 720
+      const w = Math.min(560, vw - 32)
+      const h = Math.min(560, Math.round(vh * 0.72))
+      setModalPos({ x: Math.max(8, (vw - w) / 2), y: Math.max(8, (vh - h) / 2) })
+      setModalSize({ w, h })
     }
   }, [open])
 
@@ -318,7 +320,30 @@ ${ru || '（无）'}
     try { e.currentTarget.releasePointerCapture(e.pointerId) } catch (err) { /* 忽略 */ }
   }
 
-  const modalW = Math.min(560, (typeof window !== 'undefined' ? window.innerWidth : 1280) - 32)
+  // ---- 弹窗缩放（右下角手柄）----
+  const onResizeDown = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const d = resizeRef.current
+    d.dragging = true; d.sx = e.clientX; d.sy = e.clientY; d.sw = modalSize?.w || 560; d.sh = modalSize?.h || 420
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch (err) { /* 忽略 */ }
+  }
+  const onResizeMove = (e) => {
+    const d = resizeRef.current
+    if (!d.dragging) return
+    const vw = window.innerWidth || 1280, vh = window.innerHeight || 720
+    setModalSize({
+      w: Math.max(380, Math.min(vw - 24, d.sw + (e.clientX - d.sx))),
+      h: Math.max(300, Math.min(vh - 24, d.sh + (e.clientY - d.sy))),
+    })
+  }
+  const onResizeUp = (e) => {
+    const d = resizeRef.current
+    d.dragging = false
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch (err) { /* 忽略 */ }
+  }
+
+  const modalW = modalSize?.w || Math.min(560, (typeof window !== 'undefined' ? window.innerWidth : 1280) - 32)
   if (ui.petShow === false) return null
 
   const guideQuestions = (dialogue && dialogue.questions && dialogue.questions.length ? dialogue.questions : FALLBACK_QUESTIONS)
@@ -361,7 +386,7 @@ ${ru || '（无）'}
           <div
             style={{
               position: 'fixed', left: modalPos.x, top: modalPos.y, width: modalW,
-              maxHeight: '82vh', borderRadius: 20, overflow: 'hidden',
+              height: modalSize?.h || 'auto', borderRadius: 20, overflow: 'hidden',
               display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.45)',
               background: 'var(--qs-surface, #fff)', color: 'var(--qs-text, #111)',
               border: '1px solid var(--qs-border, #e5e7eb)', zIndex: 301,
@@ -527,6 +552,25 @@ ${ru || '（无）'}
                   background: 'var(--qs-active, #7C3AED)', color: '#fff', opacity: loading || !input.trim() ? 0.5 : 1, flexShrink: 0,
                 }}
               >发送</button>
+            </div>
+
+            {/* 右下角缩放手柄：拖动可随意放大缩小弹窗 */}
+            <div
+              onPointerDown={onResizeDown}
+              onPointerMove={onResizeMove}
+              onPointerUp={onResizeUp}
+              onPointerCancel={onResizeUp}
+              title="拖动调整窗口大小"
+              style={{
+                position: 'absolute', right: 0, bottom: 0, width: 24, height: 24,
+                cursor: 'nwse-resize', touchAction: 'none', zIndex: 4,
+                display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: 3,
+                color: 'var(--qs-sub, #9ca3af)',
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15L15 21M21 10L10 21M21 5L5 21" />
+              </svg>
             </div>
           </div>
         </>
