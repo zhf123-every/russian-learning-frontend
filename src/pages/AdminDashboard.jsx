@@ -320,7 +320,18 @@ export default function AdminDashboard() {
       const sj = await sr.json()
       if (sj.ok) {
         setCloudCount(next.length)
-        setCloudMsg('✅ 已从云端删除该课程，商城已同步')
+        // 修复①：同步更新云端课程 state → 列表立即移除该课程，不再需要手动刷新才消失
+        setCloudCourses(prev => (Array.isArray(prev) ? prev : []).filter(v => !(v.kind === 'course' && v.id === id)))
+        // 修复②：同 id 的本地副本一并清理，避免刷新后本地数据把「已删除的云端课程」又显示回来
+        let localCleaned = false
+        const localList = getCourses()
+        const keptLocal = localList.filter(c => c.id !== id)
+        if (keptLocal.length !== localList.length) {
+          saveCourses(keptLocal)
+          refresh()
+          localCleaned = true
+        }
+        setCloudMsg('✅ 已从云端删除该课程，商城已同步' + (localCleaned ? '（本地同名副本已一并清理）' : ''))
         setCloudBusy(false)
         return true
       }
