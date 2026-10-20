@@ -243,8 +243,8 @@ export function expandUnitToChunkSteps(unit, zhIdx) {
   }
 
   const N = chunks.length;
-  // 整句中文：数据预处理好的正确译文（sentence.chinese / zh），前端直接展示，绝不逐词拼接
-  const fullZh = String(unit.chinese || unit.zh || "").trim();
+  // 整句中文：数据预处理好的正确译文（sentence.fullZh 完整翻译优先 / chinese / zh），前端直接展示，绝不逐词拼接
+  const fullZh = String(unit.fullZh || unit.chinese || unit.zh || "").trim();
   // 每块中文（面包屑副标题）：AI 存的块级中文优先；否则统一为整句中文
   const zhList = chunks.map((_, i) => {
     const ci = rawChunks ? rawChunks[i] : null;

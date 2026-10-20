@@ -171,7 +171,7 @@ function adaptLocalLesson(lesson) {
       sequenceOrder: idx + 1,
       russian: ru || "",
       stressMarked: tokens.join(" "),
-      chinese: zh || "",
+      chinese: (extra?.fullZh || zh) || "",
       action: "", grammarNote: "", newElement: "",
       // Excel 上传的句子成分（逐词角色序列，数量与词数对齐时生效）/ 语法标签
       syntactic: Array.isArray(extra?.syntactic) ? extra.syntactic : null,

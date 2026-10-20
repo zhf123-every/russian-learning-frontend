@@ -732,15 +732,18 @@ export default function AdminDashboard() {
             const roles = synRaw.split(/[、,，;；/|→\s]+/).map(x => x.trim()).filter(Boolean)
             if (roles.length === nTok) { syntactic = roles; synMatched++ } else { synMismatch++ }
           }
-          // 释义列：逐词中文释义，同样按词序对齐才生效（词卡优先显示，未填/不对齐回退词典）
+          // 释义列：整句完整翻译（用户约定：释义 = 完整中文翻译，原样保存，界面优先显示）
+          // 若该列恰好按词序对齐词数，同时作为逐词释义（词卡显示）；未对齐不影响完整翻译生效
           const meanRaw = meanIdx >= 0 ? String(aoa[i][meanIdx] ?? '').trim() : ''
           let meaning
+          let fullZh = ''
           if (meanRaw) {
+            fullZh = meanRaw
             const ms = meanRaw.split(/[、,，;；/|→\s]+/).map(x => x.trim()).filter(Boolean)
             if (ms.length === nTok) { meaning = ms; meanMatched++ } else { meanMismatch++ }
           }
           const tag = tagIdx >= 0 ? String(aoa[i][tagIdx] ?? '').trim() : ''
-          rows.push({ ru, zh, ...(syntactic ? { syntactic } : {}), ...(meaning ? { meaning } : {}), ...(tag ? { tag } : {}) })
+          rows.push({ ru, zh, ...(fullZh && fullZh !== zh ? { fullZh } : {}), ...(syntactic ? { syntactic } : {}), ...(meaning ? { meaning } : {}), ...(tag ? { tag } : {}) })
         }
         if (!rows.length) throw new Error('没有解析到有效句子：第二行起需填写俄语例句')
         setImportPreview({
@@ -780,7 +783,7 @@ export default function AdminDashboard() {
         console.warn('[source-file] 云端自动保存失败（不影响本课使用）：', e && e.message)
       }
     }
-    flash(`✅ 已导入 ${importPreview.rows.length} 句（顺序=文件行顺序）` + (importPreview.skipped ? `，跳过 ${importPreview.skipped} 个空行` : '') + (noZh ? `，${noZh} 句缺中文可逐句「编」补齐` : '') + (importPreview.synMatched ? `，${importPreview.synMatched} 句带句子成分标注` : (importPreview.synMismatch ? `，${importPreview.synMismatch} 句成分与词数不符已忽略` : '')) + (importPreview.meanMatched ? `，${importPreview.meanMatched} 句带逐词释义` : (importPreview.meanMismatch ? `，${importPreview.meanMismatch} 句释义与词数不符已忽略` : '')) + (savedCloud ? `，原始 Excel 已自动保存` : '，点「💾 保存课时内容」生效'))
+    flash(`✅ 已导入 ${importPreview.rows.length} 句（顺序=文件行顺序）` + (importPreview.skipped ? `，跳过 ${importPreview.skipped} 个空行` : '') + (noZh ? `，${noZh} 句缺中文可逐句「编」补齐` : '') + (importPreview.synMatched ? `，${importPreview.synMatched} 句带句子成分标注` : (importPreview.synMismatch ? `，${importPreview.synMismatch} 句成分与词数不符已忽略` : '')) + (importPreview.rows.filter(s => s.fullZh).length ? `，${importPreview.rows.filter(s => s.fullZh).length} 句带完整翻译` : '') + (savedCloud ? `，原始 Excel 已自动保存` : '，点「💾 保存课时内容」生效'))
     setImportFile(null)
     setImportPreview(null)
   }
@@ -819,7 +822,7 @@ export default function AdminDashboard() {
   const startEditSent = (i) => {
     const s = (activeUnit.sentences || [])[i]
     setEditSentIdx(i)
-    setEditSent({ ru: s.ru || '', zh: s.chinese || s.zh || '', chunks: Array.isArray(s.chunks) ? JSON.stringify(s.chunks) : '' })
+    setEditSent({ ru: s.ru || '', zh: s.chinese || s.zh || '', fullZh: s.fullZh || '', chunks: Array.isArray(s.chunks) ? JSON.stringify(s.chunks) : '' })
   }
   const saveEditSent = () => {
     const ru = editSent.ru.trim()
@@ -829,7 +832,8 @@ export default function AdminDashboard() {
     catch (e) { flash('chunks 不是合法 JSON 数组'); return }
     if (chunks !== undefined && !Array.isArray(chunks)) { flash('chunks 必须是数组'); return }
     const sentences = [...(activeUnit.sentences || [])]
-    sentences[editSentIdx] = { ...sentences[editSentIdx], ru, zh: editSent.zh.trim(), chinese: editSent.zh.trim(), chunks }
+    const fullZh = editSent.fullZh.trim()
+    sentences[editSentIdx] = { ...sentences[editSentIdx], ru, zh: editSent.zh.trim(), chinese: editSent.zh.trim(), ...(fullZh ? { fullZh } : {}), chunks }
     patchUnit({ sentences })
     setEditSentIdx(-1)
   }
@@ -935,7 +939,8 @@ export default function AdminDashboard() {
                             <span className="text-xs font-semibold text-gray-600">编辑例句（手动修正中文 / 意群块）</span>
                           </div>
                           <input className="input input-bordered input-sm w-full text-sm mb-1.5" placeholder="俄语（ru）" value={editSent.ru} onChange={e => setEditSent({ ...editSent, ru: e.target.value })} />
-                          <input className="input input-bordered input-sm w-full text-sm mb-1.5" placeholder="地道中文（chinese）" value={editSent.zh} onChange={e => setEditSent({ ...editSent, zh: e.target.value })} />
+                          <input className="input input-bordered input-sm w-full text-sm mb-1.5" placeholder="逐词中文（zh，逐词对应）" value={editSent.zh} onChange={e => setEditSent({ ...editSent, zh: e.target.value })} />
+                          <input className="input input-bordered input-sm w-full text-sm mb-1.5" placeholder="完整翻译（fullZh，优先显示，可留空=用逐词中文）" value={editSent.fullZh} onChange={e => setEditSent({ ...editSent, fullZh: e.target.value })} />
                           <input className="input input-bordered input-sm w-full font-mono text-xs mb-2" placeholder={'chunks JSON 数组，如 ["Кто это?"]（可留空 = 前端按本地规则切块）'} value={editSent.chunks} onChange={e => setEditSent({ ...editSent, chunks: e.target.value })} />
                           <div className="flex gap-2">
                             <button className="btn btn-primary btn-xs" onClick={saveEditSent}>保存</button>
@@ -947,7 +952,7 @@ export default function AdminDashboard() {
                           <span className="text-xs font-bold text-gray-400 w-6 shrink-0 pt-0.5">{String(i + 1).padStart(2, '0')}</span>
                           <div className="min-w-0 flex-1">
                             <div className="text-sm text-gray-900">{s.ru}</div>
-                            <div className="text-xs text-gray-400 mt-0.5">{s.chinese || s.zh || <span className="text-amber-600">（缺中文，点「编」手动补齐）</span>}</div>
+                            <div className="text-xs text-gray-400 mt-0.5">{s.fullZh || s.chinese || s.zh || <span className="text-amber-600">（缺中文，点「编」手动补齐）</span>}</div>
                             {Array.isArray(s.chunks) && s.chunks.length > 0 && (
                               <div className="text-[10px] text-gray-300 mt-0.5 font-mono">意群块：{s.chunks.join(' | ')}</div>
                             )}
@@ -973,7 +978,7 @@ export default function AdminDashboard() {
                 <label htmlFor="unit-sent-file" className="cursor-pointer block">
                   <div className="text-3xl">📄</div>
                   <div className="mt-1 text-sm font-semibold text-primary">点击选择 CSV / Excel 文件</div>
-                  <div className="mt-0.5 text-[11px] text-gray-400">支持 .csv / .xlsx · 表头兼容：俄语列（ru / 俄语 / 俄语原文）＋中文列（zh / 中文 / 中文翻译）＋释义列（释义 / 词义，按词序填每个词的释义，如「银行 我 知道」）＋句子成分列（句子成分 / 句法成分 / 角色，按词序填「主语 谓语 宾语」）＋语法标签列（语法标签 / tag）· 其余列自动忽略 · 文件行顺序即学习顺序 · CSV 请用 UTF-8 编码</div>
+                  <div className="mt-0.5 text-[11px] text-gray-400">支持 .csv / .xlsx · 表头兼容：俄语列（ru / 俄语 / 俄语原文）＋中文列（zh / 中文 / 中文翻译，逐词对应）＋完整翻译列（释义 / 词义 / meaning，整句地道翻译，优先显示）＋句子成分列（句子成分 / 句法成分 / 角色，按词序填「主语 谓语 宾语」）＋语法标签列（语法标签 / tag）· 其余列自动忽略 · 文件行顺序即学习顺序 · CSV 请用 UTF-8 编码</div>
                 </label>
                 <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2">
                   <label htmlFor="unit-sent-file" className="btn btn-primary btn-sm cursor-pointer">📂 选择文件</label>
@@ -987,7 +992,7 @@ export default function AdminDashboard() {
               {importPreview && (
                 <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5">
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-xs font-semibold text-gray-700">📎 {importPreview.fileName}：解析到 <b className="text-primary">{importPreview.rows.length} 句</b>{importPreview.skipped ? `（跳过 ${importPreview.skipped} 个空行）` : ''}{importPreview.cols?.syn ? ` · 识别句子成分列「${importPreview.cols.syn}」` : ''}{importPreview.synMatched ? `（${importPreview.synMatched} 句生效）` : ''}{importPreview.synMismatch ? `，${importPreview.synMismatch} 句成分数量与词数不符已忽略` : ''}{importPreview.cols?.meaning ? ` · 识别释义列「${importPreview.cols.meaning}」` : ''}{importPreview.meanMatched ? `（${importPreview.meanMatched} 句生效）` : ''}{importPreview.meanMismatch ? `，${importPreview.meanMismatch} 句释义数量与词数不符已忽略` : ''}{importPreview.cols?.tag ? ` · 语法标签列「${importPreview.cols.tag}」` : ''}</span>
+                    <span className="text-xs font-semibold text-gray-700">📎 {importPreview.fileName}：解析到 <b className="text-primary">{importPreview.rows.length} 句</b>{importPreview.skipped ? `（跳过 ${importPreview.skipped} 个空行）` : ''}{importPreview.cols?.syn ? ` · 识别句子成分列「${importPreview.cols.syn}」` : ''}{importPreview.synMatched ? `（${importPreview.synMatched} 句生效）` : ''}{importPreview.synMismatch ? `，${importPreview.synMismatch} 句成分数量与词数不符已忽略` : ''}{importPreview.cols?.meaning ? ` · 识别完整翻译列「${importPreview.cols.meaning}」（${importPreview.rows.filter(s => s.fullZh).length} 句生效）` : ''}{importPreview.cols?.tag ? ` · 语法标签列「${importPreview.cols.tag}」` : ''}</span>
                     <div className="flex items-center gap-2">
                       <button className="btn btn-ghost btn-xs" onClick={() => { setImportFile(null); setImportPreview(null) }}>取消</button>
                       <button className="btn btn-primary btn-xs" onClick={applyImportedSentences}>✅ 导入到本课时（替换现有句子）</button>
@@ -998,7 +1003,7 @@ export default function AdminDashboard() {
                       <div key={i} className="flex items-center gap-2 text-xs">
                         <span className="font-bold text-gray-400 w-6 shrink-0 text-right">{i + 1}</span>
                         <span className="font-mono text-gray-800 min-w-0 truncate flex-1">{s.ru}</span>
-                        <span className="text-gray-400 shrink-0 max-w-[40%] truncate">{s.zh}</span>
+                        <span className="text-gray-400 shrink-0 max-w-[40%] truncate">{s.fullZh || s.zh}</span>
                         {Array.isArray(s.syntactic) && (
                           <span className="shrink-0 text-[10px] text-primary/80 font-mono max-w-[30%] truncate">{s.syntactic.join(' ')}</span>
                         )}
