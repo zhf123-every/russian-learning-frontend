@@ -221,11 +221,15 @@ export default function AdminCourseNew() {
   }
 
   // 保存/发布前解析封面：dataURL → 上传 B2 拿持久地址；已持久化（b2:// 或 http）原样返回
+  // 修复：上传失败时不再把 dataURL 原样兜底存进 localStorage——base64 大图会把本地存储撑爆，
+  // 之后所有保存都报「浏览器储存不可用」。失败改用占位图保存，提示用户稍后可重新上传。
   const resolveCover = async () => {
     const raw = form.cover || form.coverUrl || ''
     if (String(raw).startsWith('data:')) {
       const b2 = await uploadCoverToB2(raw)
-      return b2 || raw
+      if (b2) return b2
+      flash('⚠️ 封面云端上传失败（后端可能冷启动），本次用占位图保存；保存后编辑课程可重新上传封面')
+      return 'https://picsum.photos/seed/course_' + Date.now() + '/400/280'
     }
     return raw
   }
@@ -367,7 +371,10 @@ export default function AdminCourseNew() {
         base.createdAt = Date.now()
         list.push(base)
       }
-      if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
+      if (!saveCourses(list)) {
+        flash('❌ 保存失败：浏览器存储不可用（本地课程数据可能已超 5MB 上限，或浏览器禁用了存储）。请先在列表页「导出课程数据」备份，删除部分课程或封面后重试；也可清理浏览器站点数据后重新登录')
+        return
+      }
       // 保存成功真实反馈：消息写入 sessionStorage，跳转后由列表页读取显示（本页 toast 会随组件卸载消失，跳转后看不到）
       let msg = ''
       if (editingId) {
@@ -406,7 +413,10 @@ export default function AdminCourseNew() {
         base.createdAt = Date.now()
         list.push(base)
       }
-      if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
+      if (!saveCourses(list)) {
+        flash('❌ 发布失败：浏览器存储不可用（本地课程数据可能已超 5MB 上限，或浏览器禁用了存储）。请先在列表页「导出课程数据」备份，删除部分课程或封面后重试；也可清理浏览器站点数据后重新登录')
+        return
+      }
       sessionStorage.setItem('rlearn_admin_flash', JSON.stringify({ msg: '✅ 已发布上架《' + base.title + '》，商城/访客端立即可见', title: base.title }))
       // 发布即全网可见：自动同步到云端（需已登录管理员）
       await syncToCloud()

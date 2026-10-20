@@ -16,12 +16,33 @@ export function getCourses() {
 }
 
 // 保存课程列表（覆盖写入）
+// 修复：封面 dataURL（base64 大图）曾因上传失败「兜底」写入本地，一门课可吃掉数 MB，
+// 超 Chrome 约 5MB 配额后所有保存都报「浏览器储存不可用」。
+// 1) 保存前先把 dataURL 封面降级为占位图（封面已上传成功的 b2:// 或 http 不受影响）；
+// 2) 写入失败自动重试一次，仍失败返回 false（调用方提示导出备份）。
 export function saveCourses(list) {
+  // 防御性深拷贝一份，避免直接改调用方引用
+  const safe = Array.isArray(list) ? list.map(c => ({ ...c })) : []
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(safe))
     return true
   } catch (e) {
-    return false
+    // 常见原因：QuotaExceededError（本地存储已满）。降级所有 dataURL 封面 → 占位图，再试一次
+    const cleaned = safe.map(c => {
+      if (c && typeof c.cover === 'string' && c.cover.startsWith('data:')) {
+        return { ...c, cover: 'https://picsum.photos/seed/' + (c.id || Math.random().toString(36).slice(2)) + '/400/280' }
+      }
+      return c
+    })
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned))
+      console.warn('[storage] 本地存储已满，已自动将 dataURL 封面降级为占位图后保存成功')
+      return true
+    } catch (e2) {
+      const sizeKB = Math.round((JSON.stringify(cleaned).length || 0) / 1024)
+      console.error('[storage] 保存失败（存储不可用）: ', e2 && e2.message, '约', sizeKB, 'KB')
+      return false
+    }
   }
 }
 
