@@ -338,15 +338,23 @@ export default function AdminCourseNew() {
   }
 
   // 保存草稿
+  // 修复：编辑「已发布 / 定时 / 已下架」课程时，保存修改不再降级为草稿（保留原发布状态），
+  // 并自动重新同步云端——否则本地改了，商城/访客端读到的仍是云端旧数据（表现为「保存后没有变化」）。
   const saveDraft = async () => {
     const coverResolved = await resolveCover()
     const base = buildCourse('draft', coverResolved)
     if (!base) return
     const list = getCourses()
+    let needSync = false
     if (editingId) {
       const i = list.findIndex(c => c.id === editingId)
-      if (i >= 0) list[i] = { ...list[i], ...base, units: Array.isArray(list[i].units) ? list[i].units : [], id: editingId }
-      flash('草稿已更新')
+      if (i >= 0) {
+        const prev = list[i]
+        const keepStatus = (prev.status && prev.status !== 'draft') ? prev.status : base.status
+        list[i] = { ...prev, ...base, status: keepStatus, units: Array.isArray(prev.units) ? prev.units : [], id: editingId }
+        needSync = keepStatus !== 'draft'
+        flash(needSync ? '✅ 修改已保存，正在同步云端保持商城最新…' : '草稿已更新')
+      }
     } else {
       base.id = 'course_' + Date.now()
       base.createdAt = Date.now()
@@ -354,6 +362,14 @@ export default function AdminCourseNew() {
       flash('课程档案已保存（草稿），下一步搭课程序')
     }
     if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
+    // 已发布/定时课程：保存修改后自动同步云端，商城/访客端立即更新（不再要求手动再「发布」）
+    if (needSync) {
+      if (isLoggedIn) {
+        await syncToCloud()
+      } else {
+        flash('⚠️ 修改已保存到本地；该课程已发布，请登录后台后点「同步到云端」，商城才会更新')
+      }
+    }
     navigate('/admin') // 保存成功 → 回课程列表页
   }
 

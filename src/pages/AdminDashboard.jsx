@@ -677,6 +677,15 @@ export default function AdminDashboard() {
         .catch((e) => console.warn('[segments] 语块生成触发失败（下次打开自动补跑）：', e && e.message))
       // 注：不再随保存生成 6 列表格——上传的 Excel 行顺序即学习页答题顺序，上传即用（无需后端生成/轮换）
     }
+    // —— 修复：已发布课程修改课时内容后自动重新同步云端 ——
+    // 之前「保存课时内容」只写本地 localStorage，商城/访客端/学习页（无本地数据的设备）读云端旧数据 → 表现为保存后没变化
+    if (active && active.status && active.status !== 'draft') {
+      if (isLoggedIn) {
+        syncToCloud().catch(() => {})
+      } else {
+        flash('⚠️ 已保存到本地；该课程已发布，请登录后台后点「同步到云端」，商城/学习页才会更新')
+      }
+    }
     setView('units')
   }
 
