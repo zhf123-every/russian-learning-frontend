@@ -195,8 +195,11 @@ export default function AdminCourseNew() {
   // 封面 dataURL → 上传 B2（thumbs 目录）→ 返回 b2:// URL；失败返回 ''（用占位图兜底）
   // 修复：全程加超时——后端 Render 免费实例冷启动时，presign 与 PUT 均可能长时间无响应，无超时会导致「保存草稿/发布」无限等待、无反馈
   // 再修复：冷启动场景自动重试一次（首次请求会唤醒后端，等 3 秒后重试通常已就绪），大幅降低「保存后封面变占位图」概率
+  // 诊断：失败时记录具体环节与状态码，resolveCover 拼进 toast，用户可看到「授权接口失败」还是「直传 B2 失败」
+  let coverUploadErr = ''
   const uploadCoverToB2 = async (dataUrl) => {
-    if (!isLoggedIn) return ''
+    coverUploadErr = ''
+    if (!isLoggedIn) { coverUploadErr = '未登录，无法上传云端' ; return '' }
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const pr = await apiFetch('/api/upload/presign', {
@@ -205,22 +208,30 @@ export default function AdminCourseNew() {
           body: JSON.stringify(authBody({ filename: 'cover_' + Date.now() + '_' + attempt + '.jpg', kind: 'image', contentType: 'image/jpeg' })),
           timeout: 30000, // 冷启动 30-60s，给 30s（失败走兜底占位图，不阻塞保存）
         })
-        const pj = await pr.json()
-        if (pj.ok && pj.uploadUrl) {
+        let pj = null
+        try { pj = await pr.json() } catch (e) { /* 非 JSON */ }
+        if (!pj || pj.ok !== true || !pj.uploadUrl) {
+          coverUploadErr = '授权接口 ' + (pr && pr.status || '?') + (pj && pj.error ? '：' + pj.error : '')
+          // 继续走重试
+        } else {
           const blob = await (await fetch(dataUrl)).blob()
+          let putStatus = 0
           const res = await new Promise((resolve) => {
             const xhr = new XMLHttpRequest()
             xhr.open('PUT', pj.uploadUrl, true)
             xhr.setRequestHeader('Content-Type', 'image/jpeg')
             xhr.timeout = 30000 // PUT 也限时 30s，避免 B2 慢/网络抖动时无限等待
-            xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300)
-            xhr.onerror = () => resolve(false)
-            xhr.ontimeout = () => resolve(false)
+            xhr.onload = () => { putStatus = xhr.status; resolve(putStatus >= 200 && putStatus < 300) }
+            xhr.onerror = () => { putStatus = 0; resolve(false) }
+            xhr.ontimeout = () => { putStatus = 0; resolve(false) }
             xhr.send(blob)
           })
           if (res) return pj.objectUrl
+          coverUploadErr = '直传 B2 失败（HTTP ' + (putStatus || '网络错误/超时') + '，可能被 CORS 拦截或网络中断）'
         }
-      } catch (e) { /* 尝试重试 */ }
+      } catch (e) {
+        coverUploadErr = '授权接口异常：' + ((e && e.message) || (e && e.name) || '未知')
+      }
       if (attempt === 1) await new Promise(r => setTimeout(r, 3000))
     }
     return ''
@@ -234,7 +245,7 @@ export default function AdminCourseNew() {
     if (String(raw).startsWith('data:')) {
       const b2 = await uploadCoverToB2(raw)
       if (b2) return b2
-      flash('⚠️ 封面云端上传失败（后端可能冷启动），本次用占位图保存；保存后编辑课程可重新上传封面')
+      flash('⚠️ 封面云端上传失败：' + (coverUploadErr || '未知原因') + '。本次用占位图保存；可稍后重试，或改用较小的图片（建议 1MB 内）')
       return 'https://picsum.photos/seed/course_' + Date.now() + '/400/280'
     }
     return raw
