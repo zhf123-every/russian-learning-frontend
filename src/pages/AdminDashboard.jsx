@@ -20,6 +20,7 @@ import ContributeModal from '../components/ContributeModal'
 // —— 后台课程封面：b2:// 云端封面异步解析为预签名可显示链接（<img> 不认 b2:// 协议） ——
 function AdminCourseCover({ src, className }) {
   const [url, setUrl] = useState(() => (src && !String(src).startsWith("b2://") ? src : ""));
+  const [retried, setRetried] = useState(false);
   useEffect(() => {
     let alive = true;
     const s = String(src || "");
@@ -30,9 +31,13 @@ function AdminCourseCover({ src, className }) {
     }
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src]);
+  }, [src, retried]);
   if (!url) return null;
-  return <img src={url} alt="" className={className} onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />;
+  return <img src={url} alt="" className={className} onError={(e) => {
+    // 封面加载失败：b2:// 封面先重新解析一次（拿新的预签名 URL），避免偶发坏缓存/签名问题导致永久空白
+    if (!retried && String(src || "").startsWith("b2://")) { setRetried(true); return; }
+    e.currentTarget.style.visibility = "hidden";
+  }} />;
 }
 
 // —— P0 登录门禁：未登录（无账号 token、无旧密钥）时显示登录/注册卡片 ——
