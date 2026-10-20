@@ -302,6 +302,16 @@ export default function AdminDashboard() {
     window.setTimeout(() => setToast(''), 3000)
   }
 
+  // 读取来自「新建/编辑课程页」的保存成功提示（sessionStorage 跨页传递，随本页 mount 显示）
+  useEffect(() => {
+    const msg = sessionStorage.getItem('rlearn_admin_flash')
+    if (msg) {
+      sessionStorage.removeItem('rlearn_admin_flash')
+      flash(msg)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // 从云端删除该课程（商城/前端读云端名单，删除必须同步云端才会生效）
   // 修复：读名单/写回放宽超时（后端 Render 免费实例冷启动可能 30-60s，此前 12s 默认超时被 abort → “signal is aborted without reason”），并自动重试一次
   const removeFromCloud = async (id) => {

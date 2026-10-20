@@ -114,6 +114,7 @@ export default function AdminCourseNew() {
 
   // P1-C：后端分类树（一级分类/二级标签动态化；失败回退静态 CATS/TAG_POOL）
   const [dbCats, setDbCats] = useState(null)
+  const [saving, setSaving] = useState(false) // 保存/发布进行中：按钮禁用防重复点击，并给出真实进度反馈
   useEffect(() => {
     let alive = true
     apiFetch('/api/categories/tree', {
@@ -192,13 +193,15 @@ export default function AdminCourseNew() {
   const onCoverDrop = (e) => { e.preventDefault(); e.stopPropagation(); applyCoverFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) }
 
   // 封面 dataURL → 上传 B2（thumbs 目录）→ 返回 b2:// URL；失败返回 ''（用占位图兜底）
+  // 修复：全程加超时——后端 Render 免费实例冷启动时，presign 与 PUT 均可能长时间无响应，无超时会导致「保存草稿/发布」无限等待、无反馈
   const uploadCoverToB2 = async (dataUrl) => {
     try {
       if (!isLoggedIn) return ''
       const pr = await apiFetch('/api/upload/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authBody({ filename: 'cover_' + Date.now() + '.jpg', kind: 'image', contentType: 'image/jpeg' }))
+        body: JSON.stringify(authBody({ filename: 'cover_' + Date.now() + '.jpg', kind: 'image', contentType: 'image/jpeg' })),
+        timeout: 30000, // 冷启动 30-60s，给 30s（失败走兜底占位图，不阻塞保存）
       })
       const pj = await pr.json()
       if (!pj.ok || !pj.uploadUrl) return ''
@@ -207,8 +210,10 @@ export default function AdminCourseNew() {
         const xhr = new XMLHttpRequest()
         xhr.open('PUT', pj.uploadUrl, true)
         xhr.setRequestHeader('Content-Type', 'image/jpeg')
+        xhr.timeout = 30000 // PUT 也限时 30s，避免 B2 慢/网络抖动时无限等待
         xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300)
         xhr.onerror = () => resolve(false)
+        xhr.ontimeout = () => resolve(false)
         xhr.send(blob)
       })
       return res ? pj.objectUrl : ''
@@ -341,58 +346,73 @@ export default function AdminCourseNew() {
   // 修复：编辑「已发布 / 定时 / 已下架」课程时，保存修改不再降级为草稿（保留原发布状态），
   // 并自动重新同步云端——否则本地改了，商城/访客端读到的仍是云端旧数据（表现为「保存后没有变化」）。
   const saveDraft = async () => {
-    const coverResolved = await resolveCover()
-    const base = buildCourse('draft', coverResolved)
-    if (!base) return
-    const list = getCourses()
-    let needSync = false
-    if (editingId) {
-      const i = list.findIndex(c => c.id === editingId)
-      if (i >= 0) {
-        const prev = list[i]
-        const keepStatus = (prev.status && prev.status !== 'draft') ? prev.status : base.status
-        list[i] = { ...prev, ...base, status: keepStatus, units: Array.isArray(prev.units) ? prev.units : [], id: editingId }
-        needSync = keepStatus !== 'draft'
-        flash(needSync ? '✅ 修改已保存，正在同步云端保持商城最新…' : '草稿已更新')
-      }
-    } else {
-      base.id = 'course_' + Date.now()
-      base.createdAt = Date.now()
-      list.push(base)
-      flash('课程档案已保存（草稿），下一步搭课程序')
-    }
-    if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
-    // 已发布/定时课程：保存修改后自动同步云端，商城/访客端立即更新（不再要求手动再「发布」）
-    if (needSync) {
-      if (isLoggedIn) {
-        await syncToCloud()
+    if (saving) return
+    setSaving(true)
+    try {
+      const coverResolved = await resolveCover()
+      const base = buildCourse('draft', coverResolved)
+      if (!base) return
+      const list = getCourses()
+      let needSync = false
+      if (editingId) {
+        const i = list.findIndex(c => c.id === editingId)
+        if (i >= 0) {
+          const prev = list[i]
+          const keepStatus = (prev.status && prev.status !== 'draft') ? prev.status : base.status
+          list[i] = { ...prev, ...base, status: keepStatus, units: Array.isArray(prev.units) ? prev.units : [], id: editingId }
+          needSync = keepStatus !== 'draft'
+        }
       } else {
-        flash('⚠️ 修改已保存到本地；该课程已发布，请登录后台后点「同步到云端」，商城才会更新')
+        base.id = 'course_' + Date.now()
+        base.createdAt = Date.now()
+        list.push(base)
       }
+      if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
+      // 保存成功真实反馈：消息写入 sessionStorage，跳转后由列表页读取显示（本页 toast 会随组件卸载消失，跳转后看不到）
+      let msg = ''
+      if (editingId) {
+        msg = needSync
+          ? (isLoggedIn ? '✅ 修改已保存，云端已同步，商城已更新' : '✅ 修改已保存（本地）；该课程已发布，请点「同步到云端」更新商城')
+          : '✅ 草稿已更新'
+      } else {
+        msg = '✅ 已保存草稿《' + base.title + '》，可点「搭课程序」进入下一步'
+      }
+      sessionStorage.setItem('rlearn_admin_flash', msg)
+      // 已发布/定时课程：保存修改后自动同步云端，商城/访客端立即更新（不再要求手动再「发布」）
+      if (needSync && isLoggedIn) {
+        await syncToCloud()
+      }
+      navigate('/admin') // 保存成功 → 回课程列表页（列表页读取 sessionStorage 展示成功提示）
+    } finally {
+      setSaving(false)
     }
-    navigate('/admin') // 保存成功 → 回课程列表页
   }
 
   // 直接发布上架（发布后自动同步到云端，全网可见，游戏商城页/商城立即可见）
   const publish = async () => {
-    const coverResolved = await resolveCover()
-    const base = buildCourse('published', coverResolved)
-    if (!base) return
-    const list = getCourses()
-    if (editingId) {
-      const i = list.findIndex(c => c.id === editingId)
-      if (i >= 0) list[i] = { ...list[i], ...base, units: Array.isArray(list[i].units) ? list[i].units : [], id: editingId }
-      flash('已更新并发布上架！')
-    } else {
-      base.id = 'course_' + Date.now()
-      base.createdAt = Date.now()
-      list.push(base)
-      flash('已发布上架！共 ' + list.length + ' 个课程')
+    if (saving) return
+    setSaving(true)
+    try {
+      const coverResolved = await resolveCover()
+      const base = buildCourse('published', coverResolved)
+      if (!base) return
+      const list = getCourses()
+      if (editingId) {
+        const i = list.findIndex(c => c.id === editingId)
+        if (i >= 0) list[i] = { ...list[i], ...base, units: Array.isArray(list[i].units) ? list[i].units : [], id: editingId }
+      } else {
+        base.id = 'course_' + Date.now()
+        base.createdAt = Date.now()
+        list.push(base)
+      }
+      if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
+      sessionStorage.setItem('rlearn_admin_flash', '✅ 已发布上架《' + base.title + '》，商城/访客端立即可见')
+      // 发布即全网可见：自动同步到云端（需已登录管理员）
+      await syncToCloud()
+      navigate('/admin') // 发布成功 → 回课程列表页
+    } finally {
+      setSaving(false)
     }
-    if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
-    // 发布即全网可见：自动同步到云端（需已登录管理员）
-    await syncToCloud()
-    navigate('/admin') // 发布成功 → 回课程列表页
   }
 
   return (
@@ -539,11 +559,12 @@ export default function AdminCourseNew() {
           </div>
 
           <div className="mt-5 flex items-center gap-3 flex-wrap">
-            <button className="btn btn-primary" onClick={saveDraft}>💾 保存草稿</button>
-            <button className="btn btn-outline" onClick={publish}>🚀 发布上架</button>
+            <button className="btn btn-primary" onClick={saveDraft} disabled={saving}>{saving ? '⏳ 保存中…（封面上传/同步云端）' : '💾 保存草稿'}</button>
+            <button className="btn btn-outline" onClick={publish} disabled={saving}>{saving ? '⏳ 发布中…' : '🚀 发布上架'}</button>
             <button className="btn btn-ghost" onClick={() => { setForm(emptyForm()); setEditingId(''); flash('表单已清空') }}>清空表单</button>
             <button className="btn btn-outline btn-sm ml-auto" onClick={() => navigate('/admin')}>← 取消，返回列表</button>
           </div>
+          {saving && <div className="mt-2 text-xs text-gray-400">正在保存… 若选中了封面图，会先上传封面到云端（后端启动时可能需要 10~30 秒），请稍候，不要重复点击。</div>}
           <div className="mt-3 text-xs text-gray-400">
             💡 第一步只建「课程档案」：保存草稿后不会出现在商城；保存后回列表点「搭课程序」进入第二步。
           </div>
