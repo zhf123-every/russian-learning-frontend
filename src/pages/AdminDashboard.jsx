@@ -303,43 +303,54 @@ export default function AdminDashboard() {
   }
 
   // 从云端删除该课程（商城/前端读云端名单，删除必须同步云端才会生效）
+  // 修复：读名单/写回放宽超时（后端 Render 免费实例冷启动可能 30-60s，此前 12s 默认超时被 abort → “signal is aborted without reason”），并自动重试一次
   const removeFromCloud = async (id) => {
     if (!isLoggedIn) { flash('请先登录后台，才能删除云端课程'); return false }
     setCloudBusy(true)
     setCloudMsg('正在从云端删除…')
-    try {
-      const r = await apiFetch('/api/videos/list')
+    const attempt = async () => {
+      const r = await apiFetch('/api/videos/list', { timeout: 60000 })
       const j = await r.json()
-      if (!j.ok || !Array.isArray(j.videos)) { setCloudMsg('读取云端列表失败，请重试'); setCloudBusy(false); return false }
+      if (!j.ok || !Array.isArray(j.videos)) throw new Error(j.error || '读取云端列表失败')
       const next = j.videos.filter(v => !(v.kind === 'course' && v.id === id))
       const sr = await apiFetch('/api/videos/sync', {
         method: 'POST',
+        timeout: 120000,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(authBody({ videos: next })),
       })
       const sj = await sr.json()
-      if (sj.ok) {
-        setCloudCount(next.length)
-        // 修复①：同步更新云端课程 state → 列表立即移除该课程，不再需要手动刷新才消失
-        setCloudCourses(prev => (Array.isArray(prev) ? prev : []).filter(v => !(v.kind === 'course' && v.id === id)))
-        // 修复②：同 id 的本地副本一并清理，避免刷新后本地数据把「已删除的云端课程」又显示回来
-        let localCleaned = false
-        const localList = getCourses()
-        const keptLocal = localList.filter(c => c.id !== id)
-        if (keptLocal.length !== localList.length) {
-          saveCourses(keptLocal)
-          refresh()
-          localCleaned = true
-        }
-        setCloudMsg('✅ 已从云端删除该课程，商城已同步' + (localCleaned ? '（本地同名副本已一并清理）' : ''))
-        setCloudBusy(false)
-        return true
+      if (!sj.ok) throw new Error(sj.error || '未知错误')
+      return { next }
+    }
+    try {
+      let result
+      try {
+        result = await attempt()
+      } catch (err) {
+        // 首次失败多半是后端冷启动（休眠唤醒需要 30-60s），等 3 秒自动重试一次（此时后端已被唤醒）
+        setCloudMsg('后端可能正在冷启动，正在自动重试…')
+        await new Promise(res => setTimeout(res, 3000))
+        result = await attempt()
       }
-      setCloudMsg('云端删除失败：' + (sj.error || '未知错误'))
+      const { next } = result
+      setCloudCount(next.length)
+      // 修复①：同步更新云端课程 state → 列表立即移除该课程，不再需要手动刷新才消失
+      setCloudCourses(prev => (Array.isArray(prev) ? prev : []).filter(v => !(v.kind === 'course' && v.id === id)))
+      // 修复②：同 id 的本地副本一并清理，避免刷新后本地数据把「已删除的云端课程」又显示回来
+      let localCleaned = false
+      const localList = getCourses()
+      const keptLocal = localList.filter(c => c.id !== id)
+      if (keptLocal.length !== localList.length) {
+        saveCourses(keptLocal)
+        refresh()
+        localCleaned = true
+      }
+      setCloudMsg('✅ 已从云端删除该课程，商城已同步' + (localCleaned ? '（本地同名副本已一并清理）' : ''))
       setCloudBusy(false)
-      return false
+      return true
     } catch (e) {
-      setCloudMsg('云端删除失败：' + (e.message || '网络错误'))
+      setCloudMsg('云端删除失败：' + (e.message || '网络错误') + '（若为后端冷启动，请稍候 1 分钟再试一次）')
       setCloudBusy(false)
       return false
     }
