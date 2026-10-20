@@ -194,30 +194,36 @@ export default function AdminCourseNew() {
 
   // 封面 dataURL → 上传 B2（thumbs 目录）→ 返回 b2:// URL；失败返回 ''（用占位图兜底）
   // 修复：全程加超时——后端 Render 免费实例冷启动时，presign 与 PUT 均可能长时间无响应，无超时会导致「保存草稿/发布」无限等待、无反馈
+  // 再修复：冷启动场景自动重试一次（首次请求会唤醒后端，等 3 秒后重试通常已就绪），大幅降低「保存后封面变占位图」概率
   const uploadCoverToB2 = async (dataUrl) => {
-    try {
-      if (!isLoggedIn) return ''
-      const pr = await apiFetch('/api/upload/presign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authBody({ filename: 'cover_' + Date.now() + '.jpg', kind: 'image', contentType: 'image/jpeg' })),
-        timeout: 30000, // 冷启动 30-60s，给 30s（失败走兜底占位图，不阻塞保存）
-      })
-      const pj = await pr.json()
-      if (!pj.ok || !pj.uploadUrl) return ''
-      const blob = await (await fetch(dataUrl)).blob()
-      const res = await new Promise((resolve) => {
-        const xhr = new XMLHttpRequest()
-        xhr.open('PUT', pj.uploadUrl, true)
-        xhr.setRequestHeader('Content-Type', 'image/jpeg')
-        xhr.timeout = 30000 // PUT 也限时 30s，避免 B2 慢/网络抖动时无限等待
-        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300)
-        xhr.onerror = () => resolve(false)
-        xhr.ontimeout = () => resolve(false)
-        xhr.send(blob)
-      })
-      return res ? pj.objectUrl : ''
-    } catch (e) { return '' }
+    if (!isLoggedIn) return ''
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const pr = await apiFetch('/api/upload/presign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(authBody({ filename: 'cover_' + Date.now() + '_' + attempt + '.jpg', kind: 'image', contentType: 'image/jpeg' })),
+          timeout: 30000, // 冷启动 30-60s，给 30s（失败走兜底占位图，不阻塞保存）
+        })
+        const pj = await pr.json()
+        if (pj.ok && pj.uploadUrl) {
+          const blob = await (await fetch(dataUrl)).blob()
+          const res = await new Promise((resolve) => {
+            const xhr = new XMLHttpRequest()
+            xhr.open('PUT', pj.uploadUrl, true)
+            xhr.setRequestHeader('Content-Type', 'image/jpeg')
+            xhr.timeout = 30000 // PUT 也限时 30s，避免 B2 慢/网络抖动时无限等待
+            xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300)
+            xhr.onerror = () => resolve(false)
+            xhr.ontimeout = () => resolve(false)
+            xhr.send(blob)
+          })
+          if (res) return pj.objectUrl
+        }
+      } catch (e) { /* 尝试重试 */ }
+      if (attempt === 1) await new Promise(r => setTimeout(r, 3000))
+    }
+    return ''
   }
 
   // 保存/发布前解析封面：dataURL → 上传 B2 拿持久地址；已持久化（b2:// 或 http）原样返回
