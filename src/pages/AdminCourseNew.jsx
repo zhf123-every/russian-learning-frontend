@@ -133,10 +133,10 @@ export default function AdminCourseNew() {
 
   const setField = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
 
-  // 提示（2.5 秒自动消失）
-  const flash = (msg) => {
+  // 提示（默认 3 秒自动消失；错误/重要提示可传更长时长）
+  const flash = (msg, ms = 3000) => {
     setToast(msg)
-    window.setTimeout(() => setToast(''), 3000)
+    window.setTimeout(() => setToast(''), ms)
   }
 
   // —— AI 自动生成课程简介（基于「课程内容说明」写真实简介；无素材时只按标题写概括）——
@@ -192,21 +192,54 @@ export default function AdminCourseNew() {
   const onPickCover = (e) => { applyCoverFile(e.target.files && e.target.files[0]) }
   const onCoverDrop = (e) => { e.preventDefault(); e.stopPropagation(); applyCoverFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) }
 
-  // 封面 dataURL → 上传 B2（thumbs 目录）→ 返回 b2:// URL；失败返回 ''（用占位图兜底）
+  // 封面压缩：canvas 等比缩放 + JPEG 质量控制，保证上传体积 ≤1MB，显著降低 B2 直传超时/失败概率
+  // （教材封面截图 PNG 常 1-3MB，直接 PUT 在慢网络/后端冷启动下易超时 → 触发占位图兜底；压缩后几乎不会触发）
+  const compressCoverDataUrl = async (dataUrl, maxSide = 900, maxBytes = 1024 * 1024) => {
+    try {
+      const img = new Image()
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = dataUrl })
+      const draw = (side) => {
+        const scale = Math.min(1, side / Math.max(img.width, img.height))
+        const w = Math.max(1, Math.round(img.width * scale))
+        const h = Math.max(1, Math.round(img.height * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        return canvas
+      }
+      const toBlob = (c, q) => new Promise((res) => c.toBlob(res, 'image/jpeg', q))
+      let canvas = draw(maxSide)
+      let quality = 0.85
+      let blob = await toBlob(canvas, quality)
+      while (blob && blob.size > maxBytes && quality > 0.5) {
+        quality -= 0.1
+        blob = await toBlob(canvas, quality)
+      }
+      if (blob && blob.size > maxBytes) { // 仍超限：再降分辨率重压一次
+        canvas = draw(600)
+        blob = await toBlob(canvas, 0.7)
+      }
+      if (blob) return blob
+    } catch (e) { /* 压缩失败回退原图 */ }
+    return await (await fetch(dataUrl)).blob()
+  }
+
+  // 封面 dataURL → 上传 B2（thumbs 目录）→ 返回 b2:// URL；失败返回 ''（调用方据 coverUploadErr 决定是否保存）
   // 修复：全程加超时——后端 Render 免费实例冷启动时，presign 与 PUT 均可能长时间无响应，无超时会导致「保存草稿/发布」无限等待、无反馈
-  // 再修复：冷启动场景自动重试一次（首次请求会唤醒后端，等 3 秒后重试通常已就绪），大幅降低「保存后封面变占位图」概率
-  // 诊断：失败时记录具体环节与状态码，resolveCover 拼进 toast，用户可看到「授权接口失败」还是「直传 B2 失败」
+  // 再修复：冷启动场景自动重试 2 次（首次请求会唤醒后端，等 3 秒后重试通常已就绪），大幅降低「保存后封面变占位图」概率
+  // 诊断：失败时记录具体环节与状态码，resolveCover 拼进提示，用户可看到「授权接口失败」还是「直传 B2 失败」
   let coverUploadErr = ''
   const uploadCoverToB2 = async (dataUrl) => {
     coverUploadErr = ''
     if (!isLoggedIn) { coverUploadErr = '未登录，无法上传云端' ; return '' }
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= 3; attempt++) { // 首试 + 2 次重试，间隔 3s（覆盖冷启动唤醒）
       try {
         const pr = await apiFetch('/api/upload/presign', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(authBody({ filename: 'cover_' + Date.now() + '_' + attempt + '.jpg', kind: 'image', contentType: 'image/jpeg' })),
-          timeout: 30000, // 冷启动 30-60s，给 30s（失败走兜底占位图，不阻塞保存）
+          timeout: 60000, // 跨地区网络较慢 + 后端冷启动，放宽到 60s
         })
         let pj = null
         try { pj = await pr.json() } catch (e) { /* 非 JSON */ }
@@ -214,13 +247,13 @@ export default function AdminCourseNew() {
           coverUploadErr = '授权接口 ' + (pr && pr.status || '?') + (pj && pj.error ? '：' + pj.error : '')
           // 继续走重试
         } else {
-          const blob = await (await fetch(dataUrl)).blob()
+          const blob = await compressCoverDataUrl(dataUrl) // 上传前压缩 ≤1MB，避免大图 PUT 超时
           let putStatus = 0
           const res = await new Promise((resolve) => {
             const xhr = new XMLHttpRequest()
             xhr.open('PUT', pj.uploadUrl, true)
             xhr.setRequestHeader('Content-Type', 'image/jpeg')
-            xhr.timeout = 30000 // PUT 也限时 30s，避免 B2 慢/网络抖动时无限等待
+            xhr.timeout = 60000 // PUT 限时 60s，覆盖跨地区慢网络
             xhr.onload = () => { putStatus = xhr.status; resolve(putStatus >= 200 && putStatus < 300) }
             xhr.onerror = () => { putStatus = 0; resolve(false) }
             xhr.ontimeout = () => { putStatus = 0; resolve(false) }
@@ -232,23 +265,23 @@ export default function AdminCourseNew() {
       } catch (e) {
         coverUploadErr = '授权接口异常：' + ((e && e.message) || (e && e.name) || '未知')
       }
-      if (attempt === 1) await new Promise(r => setTimeout(r, 3000))
+      if (attempt < 3) await new Promise(r => setTimeout(r, 3000))
     }
     return ''
   }
 
   // 保存/发布前解析封面：dataURL → 上传 B2 拿持久地址；已持久化（b2:// 或 http）原样返回
-  // 修复：上传失败时不再把 dataURL 原样兜底存进 localStorage——base64 大图会把本地存储撑爆，
-  // 之后所有保存都报「浏览器储存不可用」。失败改用占位图保存，提示用户稍后可重新上传。
+  // 修复（2026-10-20 交接）：上传失败时【不再静默用 picsum 占位图保存】——返回失败原因，
+  // 由 saveDraft/publish 决定是否保存，保证「保存成功 = 封面确实上传成功」，
+  // 用户不会再遇到「保存成功但封面变成随机风景占位图」。
   const resolveCover = async () => {
     const raw = form.cover || form.coverUrl || ''
     if (String(raw).startsWith('data:')) {
       const b2 = await uploadCoverToB2(raw)
-      if (b2) return b2
-      flash('⚠️ 封面云端上传失败：' + (coverUploadErr || '未知原因') + '。本次用占位图保存；可稍后重试，或改用较小的图片（建议 1MB 内）')
-      return 'https://picsum.photos/seed/course_' + Date.now() + '/400/280'
+      if (b2) return { url: b2, err: '' }
+      return { url: '', err: coverUploadErr || '未知原因' }
     }
-    return raw
+    return { url: raw, err: '' }
   }
 
   // 课件上传：多选（PDF/Word/MP3/MP4）→ 本地 URL 模拟
@@ -370,8 +403,13 @@ export default function AdminCourseNew() {
     if (saving) return
     setSaving(true)
     try {
-      const coverResolved = await resolveCover()
-      const base = buildCourse('draft', coverResolved)
+      const coverRes = await resolveCover()
+      if (coverRes.err) {
+        // 封面上传失败 → 阻止保存：用户明确感知失败（而不是「保存成功但封面是占位图」）
+        flash('⚠️ 封面云端上传失败，本次未保存：' + coverRes.err + '。请点「保存草稿」重试，或改用较小的图片（建议 1MB 内）。若后端暂不可用，可稍后再保存。', 8000)
+        return
+      }
+      const base = buildCourse('draft', coverRes.url)
       if (!base) return
       const list = getCourses()
       let needSync = false
@@ -418,8 +456,13 @@ export default function AdminCourseNew() {
     if (saving) return
     setSaving(true)
     try {
-      const coverResolved = await resolveCover()
-      const base = buildCourse('published', coverResolved)
+      const coverRes = await resolveCover()
+      if (coverRes.err) {
+        // 封面上传失败 → 阻止发布：用户明确感知失败（而不是「发布成功但封面是占位图」）
+        flash('⚠️ 封面云端上传失败，本次未发布：' + coverRes.err + '。请重试，或改用较小的图片（建议 1MB 内）。若后端暂不可用，可稍后再发布。', 8000)
+        return
+      }
+      const base = buildCourse('published', coverRes.url)
       if (!base) return
       const list = getCourses()
       if (editingId) {
@@ -592,7 +635,7 @@ export default function AdminCourseNew() {
             <button className="btn btn-ghost" onClick={() => { setForm(emptyForm()); setEditingId(''); flash('表单已清空') }}>清空表单</button>
             <button className="btn btn-outline btn-sm ml-auto" onClick={() => navigate('/admin')}>← 取消，返回列表</button>
           </div>
-          {saving && <div className="mt-2 text-xs text-gray-400">正在保存… 若选中了封面图，会先上传封面到云端（后端启动时可能需要 10~30 秒），请稍候，不要重复点击。</div>}
+          {saving && <div className="mt-2 text-xs text-gray-400">正在保存… 若选中了封面图，会先压缩并上传封面到云端（后端启动或跨地区网络时可能需要 10~60 秒），请稍候，不要重复点击。</div>}
           <div className="mt-3 text-xs text-gray-400">
             💡 第一步只建「课程档案」：保存草稿后不会出现在商城；保存后回列表点「搭课程序」进入第二步。
           </div>
