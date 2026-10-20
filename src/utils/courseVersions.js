@@ -6,6 +6,7 @@ import { getCourses, saveCourses } from './storage.js'
 
 const VERSION_KEY = 'rlearn_v1_course_versions'
 const MAX_VERSIONS = 20 // 每门课最多保留 20 个历史版本，超出丢最旧
+const VERSION_BUDGET = 1_500_000 // 全局版本历史体积预算（JSON UTF-16 码元，≈1.5MB），超出后从最旧版本开始删，防止撑爆 localStorage 配额
 
 function readAll() {
   try {
@@ -16,6 +17,25 @@ function readAll() {
     }
   } catch (e) { /* 损坏忽略 */ }
   return {}
+}
+
+/** 全局体积预算：超出时按时间从最旧版本删起（每门课至少保留最新 1 版） */
+function enforceBudget(all) {
+  const size = () => { try { return JSON.stringify(all).length } catch (e) { return 0 } }
+  if (size() <= VERSION_BUDGET) return
+  const entries = []
+  for (const cid of Object.keys(all)) {
+    const l = all[cid]
+    if (Array.isArray(l)) for (const v of l) if (v && v.ts) entries.push({ cid, v })
+  }
+  entries.sort((a, b) => a.v.ts - b.v.ts) // 最旧在前
+  for (const { cid, v } of entries) {
+    if (size() <= VERSION_BUDGET) break
+    const l = all[cid]
+    if (!Array.isArray(l) || l.length <= 1) continue // 每门课至少保留最新 1 版
+    const i = l.indexOf(v)
+    if (i >= 0) l.splice(i, 1)
+  }
 }
 
 function writeAll(all) {
@@ -62,6 +82,7 @@ export function saveCourseVersion(course, reason = '课时内容保存') {
   // 截断：保留最近 MAX_VERSIONS 条
   const trimmed = list.length > MAX_VERSIONS ? list.slice(list.length - MAX_VERSIONS) : list
   all[course.id] = trimmed
+  enforceBudget(all) // 全局体积预算：超限自动删最旧版本，防止撑爆 localStorage
   writeAll(all)
   return true
 }
