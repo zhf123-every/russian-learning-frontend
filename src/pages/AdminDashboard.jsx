@@ -303,11 +303,32 @@ export default function AdminDashboard() {
   }
 
   // 读取来自「新建/编辑课程页」的保存成功提示（sessionStorage 跨页传递，随本页 mount 显示）
+  // 带 title 时定位到该课程行并滚动到视口中央 + 短暂高亮（新建草稿排在列表末尾，用户不滚动会以为没保存成功）
   useEffect(() => {
-    const msg = sessionStorage.getItem('rlearn_admin_flash')
-    if (msg) {
-      sessionStorage.removeItem('rlearn_admin_flash')
-      flash(msg)
+    const raw = sessionStorage.getItem('rlearn_admin_flash')
+    if (!raw) return
+    sessionStorage.removeItem('rlearn_admin_flash')
+    let msg = raw, title = ''
+    try {
+      const o = JSON.parse(raw)
+      msg = o.msg || raw
+      title = o.title || ''
+    } catch (e) { /* 旧格式纯文本 */ }
+    flash(msg)
+    if (title) {
+      window.setTimeout(() => {
+        const rows = document.querySelectorAll('table tbody tr')
+        for (const tr of rows) {
+          const td = tr.querySelector('td:nth-child(3)')
+          if (td && (td.textContent || '').trim().startsWith(title)) {
+            tr.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            tr.style.transition = 'background-color 0.6s ease'
+            tr.style.backgroundColor = '#fef9c3'
+            window.setTimeout(() => { tr.style.backgroundColor = '' }, 4000)
+            break
+          }
+        }
+      }, 600)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

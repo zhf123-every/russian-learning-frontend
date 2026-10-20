@@ -375,9 +375,10 @@ export default function AdminCourseNew() {
           ? (isLoggedIn ? '✅ 修改已保存，云端已同步，商城已更新' : '✅ 修改已保存（本地）；该课程已发布，请点「同步到云端」更新商城')
           : '✅ 草稿已更新'
       } else {
-        msg = '✅ 已保存草稿《' + base.title + '》，可点「搭课程序」进入下一步'
+        msg = '✅ 已保存草稿《' + base.title + '》，已显示在列表（可点「搭课程序」进入下一步）'
       }
-      sessionStorage.setItem('rlearn_admin_flash', msg)
+      // 传标题：列表页据此定位并滚动到新课程行（新建草稿排列表末尾，不自动滚动用户会看不到）
+      sessionStorage.setItem('rlearn_admin_flash', JSON.stringify({ msg, title: base.title }))
       // 已发布/定时课程：保存修改后自动同步云端，商城/访客端立即更新（不再要求手动再「发布」）
       if (needSync && isLoggedIn) {
         await syncToCloud()
@@ -406,7 +407,7 @@ export default function AdminCourseNew() {
         list.push(base)
       }
       if (!saveCourses(list)) { flash('保存失败：浏览器存储不可用'); return }
-      sessionStorage.setItem('rlearn_admin_flash', '✅ 已发布上架《' + base.title + '》，商城/访客端立即可见')
+      sessionStorage.setItem('rlearn_admin_flash', JSON.stringify({ msg: '✅ 已发布上架《' + base.title + '》，商城/访客端立即可见', title: base.title }))
       // 发布即全网可见：自动同步到云端（需已登录管理员）
       await syncToCloud()
       navigate('/admin') // 发布成功 → 回课程列表页
