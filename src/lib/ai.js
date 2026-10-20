@@ -1,29 +1,49 @@
 // 通用 AI 中转：由后端持有密钥，前端不再直接调用第三方 AI 接口
 import { apiFetch, API_BASE } from './api'
 
-export async function chat({ messages } = {}) {
+// AI 请求超时：后端 Render 免费实例冷启动 30-60s + 大模型生成 10-60s，90s 偏紧会被掐断（报 abort）
+const AI_TIMEOUT = 150000
+
+// 单次 AI 调用；AbortError（超时被前端掐断）时自动等 3s 重试一次——
+// 首次超时多半是后端冷启动，重试时后端已被唤醒，基本必成
+async function chatOnce(messages, timeout) {
   const r = await apiFetch('/api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages }),
-    timeout: 90000, // Render 免费层冷启动 30-50s + 大模型生成 10-30s，12s 默认超时会误判失败
+    timeout,
   })
   const j = await r.json()
   if (!j.ok) throw new Error(j.error || 'AI 接口错误')
   return j.content
 }
 
+async function chatWithRetry(messages, timeout) {
+  try {
+    return await chatOnce(messages, timeout)
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      await new Promise(res => setTimeout(res, 3000)) // 等后端冷启动完成
+      try {
+        return await chatOnce(messages, timeout)
+      } catch (e2) {
+        if (e2 && e2.name === 'AbortError') {
+          throw new Error('AI 请求超时（后端启动或生成较慢），请稍候 1 分钟再试')
+        }
+        throw e2
+      }
+    }
+    throw e
+  }
+}
+
+export async function chat({ messages } = {}) {
+  return chatWithRetry(messages, AI_TIMEOUT)
+}
+
 // 调用后端 /api/ai（统一 AI 入口，密钥在服务端环境变量中）
 export async function callAI(messages) {
-  const r = await apiFetch('/api/ai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages }),
-    timeout: 90000,
-  })
-  const j = await r.json()
-  if (!j.ok) throw new Error(j.error || 'AI 接口错误')
-  return j.content
+  return chatWithRetry(messages, AI_TIMEOUT)
 }
 
 // 解析 AI 返回的 JSON（去除 markdown 代码块包裹；支持对象与数组）
@@ -55,25 +75,45 @@ export function parseAIJSON(content) {
   return null
 }
 
+// 通用包装：AbortError（超时被前端掐断）时等 3s 自动重试一次，重试仍超时给友好文案
+async function retryOnAbort(fn, friendlyMsg) {
+  try {
+    return await fn()
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      await new Promise(res => setTimeout(res, 3000))
+      try {
+        return await fn()
+      } catch (e2) {
+        if (e2 && e2.name === 'AbortError') throw new Error(friendlyMsg)
+        throw e2
+      }
+    }
+    throw e
+  }
+}
+
 // 语法解释：调用后端 /api/grammar（服务端持有密钥）
 export async function explainSentence(text) {
-  const r = await apiFetch('/api/grammar', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sentence: text }),
-    timeout: 90000,
-  })
-  if (!r.ok) {
-    let errMsg = '语法解析失败（HTTP ' + r.status + '）'
-    try {
-      const j = await r.json()
-      if (j && j.error) errMsg = j.error
-    } catch (e) { /* body 非 JSON，忽略 */ }
-    throw new Error(errMsg)
-  }
-  const j = await r.json()
-  if (!j.ok) throw new Error(j.error || '语法解析失败')
-  return j.content
+  return retryOnAbort(async () => {
+    const r = await apiFetch('/api/grammar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sentence: text }),
+      timeout: AI_TIMEOUT,
+    })
+    if (!r.ok) {
+      let errMsg = '语法解析失败（HTTP ' + r.status + '）'
+      try {
+        const j = await r.json()
+        if (j && j.error) errMsg = j.error
+      } catch (e) { /* body 非 JSON，忽略 */ }
+      throw new Error(errMsg)
+    }
+    const j = await r.json()
+    if (!j.ok) throw new Error(j.error || '语法解析失败')
+    return j.content
+  }, '语法解析超时（后端启动或生成较慢），请稍候再试')
 }
 
 // Blob 转 base64（用于上传录音）
@@ -111,16 +151,18 @@ export async function reciteCompare(audioBlob, standardText) {
 // 句子精析：逐词（重音/词性/词义）+ 句子成分 + 中译 + 语法解析
 // 返回 { words:[{word,stressed,pos,mean}], components:[{text,role}], translation, grammar }
 export async function analyzeSentence(sentence) {
-  const r = await apiFetch('/api/sentence-analysis', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sentence }),
-    timeout: 90000,
-  })
-  if (!r.ok) throw new Error('句子解析失败（HTTP ' + r.status + '）')
-  const j = await r.json()
-  if (!j.ok) throw new Error(j.error || '句子解析失败')
-  return j.result
+  return retryOnAbort(async () => {
+    const r = await apiFetch('/api/sentence-analysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sentence }),
+      timeout: AI_TIMEOUT,
+    })
+    if (!r.ok) throw new Error('句子解析失败（HTTP ' + r.status + '）')
+    const j = await r.json()
+    if (!j.ok) throw new Error(j.error || '句子解析失败')
+    return j.result
+  }, '句子解析超时（后端启动或生成较慢），请稍候再试')
 }
 
 // 口语评测：录音 + 标准原文 → 五档分数 + 逐词标注 + 重音停顿建议
