@@ -198,10 +198,14 @@ export function useQuestionInput({
           }
         }
       });
-      // 如果光标在最后一个词后面，激活最后一个非 fixed 词
+      // 如果光标没有命中任何可输入词（如落在人名/专有名词区间），
+      // 优先激活「光标之后的第一个可输入词」，避免直接跳到最后一个空槽
       if (cursorPos !== undefined && !newWords.some(w => w.isActive) && newWords.length > 0) {
         const inputWords = newWords.filter(w => !w.fixed);
-        if (inputWords.length > 0) inputWords[inputWords.length - 1].isActive = true;
+        if (inputWords.length > 0) {
+          const next = inputWords.find(w => cursorPos <= w.end);
+          (next || inputWords[inputWords.length - 1]).isActive = true;
+        }
       }
       return newWords;
     });
@@ -236,14 +240,25 @@ export function useQuestionInput({
 
   /**
    * 根据光标位置更新当前激活词（紫色高亮）
+   * 人名/专有名词（fixed）不参与激活：光标落在其区间时，激活其后的第一个可输入词
    */
   const updateActiveWord = useCallback((cursorPos) => {
     setUserInputWords((prevWords) => {
       const newWords = prevWords.map((w) => ({ ...w, isActive: false }));
+      let hit = false;
       for (const word of newWords) {
+        if (word.fixed) continue;
         if (cursorPos >= word.start && cursorPos <= word.end) {
           word.isActive = true;
+          hit = true;
           break;
+        }
+      }
+      if (!hit) {
+        const inputWords = newWords.filter(w => !w.fixed);
+        if (inputWords.length > 0) {
+          const next = inputWords.find(w => cursorPos <= w.end);
+          (next || inputWords[inputWords.length - 1]).isActive = true;
         }
       }
       return newWords;
