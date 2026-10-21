@@ -151,6 +151,9 @@ export function useQuestionInput({
     const words = [];
     let id = 0;
     const tokens = String(answerText).split(" ");
+    // 诊断日志：打印 answerText 和 tokens，排查"Анна?重复"的问题
+    console.log("[useQuestionInput] answerText:", JSON.stringify(answerText));
+    console.log("[useQuestionInput] tokens:", tokens);
     let prevEndsSentence = false; // 前一个 token 以句末标点（.!?…）结尾 → 当前大写词是新句首，不算名字
     tokens.forEach((text) => {
       const isWordTok = isWord(text);
