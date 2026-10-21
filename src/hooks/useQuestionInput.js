@@ -7,7 +7,10 @@
  *  - Fix_Input：逐词修正，空格跳下一个错词，Backspace 回退上一个错词
  *
  * 核心数据结构 userInputWords：
- *  [{ id, text, userInput, incorrect, isActive, start, end }]
+ *  [{ id, text, userInput, incorrect, isActive, start, end, fixed }]
+ *
+ * fixed = 专有名词自动填充词（如 "Анна?"），无需用户输入，始终显示答案；
+ *        判题时从双方输入中排除后再比对（忽略大小写）。
  *
  * 与句乐部 Vue 版的对应关系：
  *  - Vue reactive → React useState
@@ -35,11 +38,15 @@ function isWord(text) {
   return WORD_REGEX.test(text);
 }
 
+// 去首尾标点（用于判题归一与 fixed 词匹配，避免 "друг." != "друг" 误判）
+const stripPunct = (s) =>
+  s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, "");
+
 function createWord(text, id) {
   return {
     id,
     text,            // 标准答案的词（如 "люблю"）
-    userInput: "",   // 用户输入的这个词
+    userInput: "",   // 用户输入的这个词（fixed 词为答案本身）
     incorrect: false, // 是否错误（提交后标记）
     isActive: false,  // 当前光标是否在这个词上（紫色高亮）
     fixed: false,     // 已给词（人名/专有名词直接显示，不用打）
@@ -91,6 +98,9 @@ function isPlaceStem(text) {
  * @param {Object} options.isComposingRef - 输入法组合状态 ref（来自 useKeyboardShortcuts）
  * @param {Function} options.onCorrect    - 答对回调
  * @param {Function} options.onWrong      - 答错回调
+ * @param {boolean} options.ignoreCase    - 判题是否忽略大小写（默认 true）
+ * @param {string[]} options.nameWords    - 专有名词表（命中且非地名 → 自动填充）
+ * @param {string[]} options.ordinaryWords - 普通词表（命中 → 禁用大写自动填充规则）
  */
 export function useQuestionInput({
   answerText,
@@ -144,7 +154,7 @@ export function useQuestionInput({
   }, []);
 
   // ==========================================================
-  // 初始化：根据标准答案拆分单词
+  // 初始化：根据标准答案拆分单词，判定自动填充（fixed）
   // ==========================================================
   useEffect(() => {
     if (!answerText) return;
@@ -197,31 +207,39 @@ export function useQuestionInput({
    * 从输入框字符串同步到单词数组
    * 计算每个词的 userInput / start / end
    * 保留 incorrect 状态（提交标记的错误不因输入变化而重置）
+   *
+   * 【核心修复】已给人名（fixed）在遇到用户输入的匹配词时消费掉该词，
+   * 避免后续词整体错位（原 bug：输入 "где анна? она дома" 时 анна? 重复、дома 无槽位）
    */
   const syncFromInput = useCallback((value, cursorPos) => {
     setUserInputWords((prevWords) => {
       const newWords = prevWords.map((w) => ({ ...w, isActive: false }));
       const parts = value.split(" ");
-      let partIdx = 0;
+      let partIdx = 0; // 用户输入词消费指针
       let position = 0;
       newWords.forEach((word) => {
         if (word.fixed) {
-          // 已给人名：始终显示标准答案，不消耗用户输入的空格位
-          word.userInput = word.text;
-          word.start = position;
-          word.end = position + word.text.length;
-          position += word.text.length + 1;
+          // 用户输入的下一个词若与该人名匹配（忽略大小写/标点），消费掉它，防止错位
+          const nextInput = parts[partIdx] || "";
+          if (
+            nextInput &&
+            stripPunct(nextInput).toLowerCase() ===
+              stripPunct(word.text).toLowerCase()
+          ) {
+            partIdx++;
+          }
+          word.userInput = word.text; // 已给人名：始终显示标准答案
         } else {
           const input = parts[partIdx] || "";
           partIdx++;
           word.userInput = input;
-          word.start = position;
-          word.end = position + input.length;
-          position += input.length + 1;
-          // 根据光标位置判断当前激活词（fixed 词不激活，光标应落在非 fixed 词上）
-          if (cursorPos !== undefined && cursorPos >= word.start && cursorPos <= word.end && !word.fixed) {
-            word.isActive = true;
-          }
+        }
+        word.start = position;
+        word.end = position + word.userInput.length;
+        position += word.userInput.length + 1;
+        // 根据光标位置判断当前激活词（fixed 词不激活，光标应落在非 fixed 词上）
+        if (cursorPos !== undefined && cursorPos >= word.start && cursorPos <= word.end && !word.fixed) {
+          word.isActive = true;
         }
       });
       // 如果光标没有命中任何可输入词（如落在人名/专有名词区间），
@@ -372,10 +390,12 @@ export function useQuestionInput({
 
   /**
    * 清空指定词的用户输入，设置为当前编辑词，同步到输入框，移动光标
+   * （已给人名不会被标记错误，不会进入 Fix，这里仅做防御）
    */
   const clearAndFocusWord = useCallback(
     (word) => {
       if (!word) return;
+      if (word.fixed) return;
       currentEditWordIdRef.current = word.id;
 
       // 先计算新的单词数组和输入框值（不在 setState 回调中调用另一个 setState）
@@ -494,15 +514,15 @@ export function useQuestionInput({
    */
   const markIncorrectFromErrors = useCallback((errors) => {
     setUserInputWords((prevWords) => {
-      const stripPunct = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, '');
+      const stripPunctLocal = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, '');
       const norm = (s) => (ignoreCase ? s.toLowerCase() : s);
-      const ans = (answerText || "").trim().split(/\s+/).filter(Boolean).map(stripPunct).map(norm);
+      const ans = (answerText || "").trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm);
       const newWords = prevWords.map((w) => ({ ...w, incorrect: false }));
       (errors || []).forEach((err) => {
         if (err.wordIndex >= 0 && err.wordIndex < newWords.length) {
           const w = newWords[err.wordIndex];
           if (w.fixed) return;
-          const uw = norm(stripPunct(w.userInput));
+          const uw = norm(stripPunctLocal(w.userInput));
           const aw = ans[err.wordIndex];
           if (ignoreCase && uw && aw && uw === aw) return;
           w.incorrect = true;
@@ -515,22 +535,25 @@ export function useQuestionInput({
   /**
    * 提交答案
    * - Fix 模式下不提交（Enter 会被 handleKeyboardInput 拦截进入 Fix_Input）
-   * - 调用后端判题，有错 → Fix 模式，无错 → 清空并回调 onCorrect
+   * - 前端判题：把自动填充（fixed）词从双方输入中排除后比对（忽略大小写）
+   *   · 数量不同 → 立即错误
+   *   · 数量相同且顺序一致 → 正确
+   *   · 数量相同但顺序不一致 → 按位置标记错误
    */
   const submitAnswer = useCallback(async () => {
     if (mode === MODES.FIX) return;
     if (isJudging) return;
 
-    // ===== 前端快速判题：词集合匹配（忽略语序），瞬间出结果 =====
+    // ===== 前端快速判题：词序比对（忽略语序），瞬间出结果 =====
     // 去掉词首尾的标点符号，避免 "друг." != "друг" 的误判
     // 「忽略大小写」设置：开→小写归一；关→严格大小写
-    const stripPunct = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, '');
+    const stripPunctLocal = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, '');
     const norm = (s) => (ignoreCase ? s.toLowerCase() : s);
-    const userWords = inputValue.trim().split(/\s+/).filter(Boolean).map(stripPunct).map(norm).filter(Boolean);
-    const allAnswerWords = (answerText || "").trim().split(/\s+/).filter(Boolean).map(stripPunct).map(norm).filter(Boolean);
+    const userWords = inputValue.trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm).filter(Boolean);
+    const allAnswerWords = (answerText || "").trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm).filter(Boolean);
     // 已给人名/专有名词：从标准答案和用户输入中都排除（用户多打了人名也不误判）
     const fixedSet = new Set(
-      userInputWords.filter(w => w.fixed).map(w => norm(stripPunct(w.text)))
+      userInputWords.filter(w => w.fixed).map(w => norm(stripPunctLocal(w.text)))
     );
     const answerWords = allAnswerWords.filter(w => !fixedSet.has(w));
     const userWordsFiltered = userWords.filter(w => !fixedSet.has(w));
@@ -737,7 +760,12 @@ export function useQuestionInput({
     setMode(MODES.INPUT);
     setInputValue("");
     setUserInputWords((prevWords) =>
-      prevWords.map((w) => ({ ...w, userInput: "", incorrect: false, isActive: false }))
+      prevWords.map((w) => ({
+        ...w,
+        userInput: w.fixed ? w.text : "",
+        incorrect: false,
+        isActive: false,
+      }))
     );
     currentEditWordIdRef.current = null;
     usedHintRef.current = false;
