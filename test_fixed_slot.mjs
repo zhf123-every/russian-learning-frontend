@@ -153,5 +153,39 @@ console.log("[9] 判题 — 词数不同仍判错");
 check("缺词判错", !judge("где она", "Где Анна? Она дома.", w1).ok);
 check("多词判错", !judge("где анна? она дома дома", "Где Анна? Она дома.", w1).ok);
 
+console.log("[10] 空格跳词 — 填完 где 按空格 → 跳到 она（跳过 fixed Анна?）");
+function spaceJump(words) {
+  const activeIdx = words.findIndex((w) => w.isActive);
+  let nextIdx = -1;
+  for (let i = activeIdx + 1; i < words.length; i++) {
+    if (!words[i].fixed) { nextIdx = i; break; }
+  }
+  if (nextIdx >= 0) {
+    const joined = words.map((w) => w.userInput).join(" ");
+    const synced = syncFromInput(words, joined, words[nextIdx].start);
+    synced.forEach((w, i) => { w.isActive = i === nextIdx; });
+    return { words: synced, joined };
+  }
+  return { words, joined: null };
+}
+// где 填上，光标在 где（初始 active 是 где）
+let w10 = w1.map(w => ({ ...w }));
+w10[0].userInput = "где";
+const j1 = spaceJump(w10);
+check("跳词后 она 激活", j1.words[2].isActive === true && j1.words[0].isActive === false,
+  j1.words.map(w => (w.isActive ? "ACTIVE:" : "") + w.text).join("|"));
+check("跳词后输入框为 где Анна?（词间空格）", j1.joined === "где Анна?  ", "[" + j1.joined + "]");
+// она 填上再跳
+let w10b = j1.words.map(w => ({ ...w }));
+w10b[2].userInput = "она";
+const j2 = spaceJump(w10b);
+check("再跳词 → дома 激活", j2.words[3].isActive === true && j2.words[2].isActive === false,
+  j2.words.map(w => (w.isActive ? "ACTIVE:" : "") + w.text).join("|"));
+// 跳词后打 дома
+let w10c = j2.words.map(w => ({ ...w }));
+const afterDoma = syncFromInput(w10c, "где Анна? она дома", 18);
+check("跳词后输入 дома 成功", afterDoma[3].userInput === "дома", afterDoma.map(w=>w.userInput).join("|"));
+check("最终判题正确", judge("где Анна? она дома", "Где Анна? Она дома.", afterDoma).ok, judge("где Анна? она дома", "Где Анна? Она дома.", afterDoma).reason);
+
 console.log("\n结果: PASS " + pass + " / FAIL " + fail);
 process.exit(fail === 0 ? 0 : 1);

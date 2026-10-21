@@ -634,17 +634,32 @@ export function useQuestionInput({
         return;
       }
 
-      // 2. Input/Fix_Input 模式 + 空格 + 最后一个词激活 → 空格提交
-      //    （空格提交开关由外部控制，这里预留 handleSpaceSubmit 回调）
+      // 2. INPUT 模式 + 空格 → 跳到下一个可输入词（跳过已给人名），阻止空格字符插入
+      //    （避免空格插入后依赖光标计算跳槽；输入法组合中不拦截，保护中文/俄文 IME 上屏）
       if (
-        mode !== MODES.FIX &&
+        mode === MODES.INPUT &&
         e.code === "Space" &&
-        lastWordIsActive()
+        !(isComposingRef?.current ?? false)
       ) {
-        // 空格提交逻辑由外部 onSpaceSubmit 决定是否启用
-        // 如果启用，外部会调用 submitAnswer()
-        // 这里只做事件拦截，防止空格输入到下一个词
-        // e.preventDefault();  // 由外部决定是否阻止
+        e.preventDefault();
+        const activeIdx = userInputWords.findIndex((w) => w.isActive);
+        let nextIdx = -1;
+        for (let i = activeIdx + 1; i < userInputWords.length; i++) {
+          if (!userInputWords[i].fixed) {
+            nextIdx = i;
+            break;
+          }
+        }
+        if (nextIdx >= 0) {
+          const next = userInputWords[nextIdx];
+          // 先把输入框同步为「已填词 + 词间空格」形式（含 fixed 词，位置对齐），
+          // 再激活目标词并定位光标，避免用户接着打字时与前词粘连
+          const joined = userInputWords.map((w) => w.userInput).join(" ");
+          setInputValue(joined);
+          syncFromInput(joined, next.start);
+          setTimeout(() => setCursorPosition(next.start), 0);
+        }
+        return;
       }
 
       // 3. Fix 模式：按任意键 → 定位第一个错误词并清空
@@ -687,6 +702,9 @@ export function useQuestionInput({
     },
     [
       mode,
+      userInputWords,
+      setCursorPosition,
+      isComposingRef,
       lastWordIsActive,
       fixFirstIncorrectWord,
       isLastIncorrectWord,
