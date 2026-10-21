@@ -51,13 +51,31 @@ function createWord(text, id) {
 // 判断是否为人名/专有名词（启发式：非句首、非分句句首、首字母大写）
 // 说明：只认首字母大写会把句中被误大写的普通词（如 "Здравствуйте! Разрешите…"）也当名字。
 // 判定分三层（初始化 useEffect 中执行）：
-//   1) nameWords（词典词性=专有名词/人名）→ 权威：直接显示
+//   1) nameWords（词典词性=人名）→ 权威：直接显示
 //   2) ordinaryWords（词典标注为普通词性）→ 反证：即使大写也正常输入
-//   3) 启发式兜底：非句首真词 + 非分句句首 + 首字母大写（真名通常词典未收录）
+//   3) 启发式兜底：非句首真词 + 非分句句首 + 首字母大写 + 非地名词干（真名通常词典未收录）
 function isProperNoun(text) {
   const clean = String(text || "").replace(/^[^А-Яа-яЁё]+|[^А-Яа-яЁё-]+$/g, "");
   if (!clean) return false;
   return /^[А-ЯЁ]/.test(clean);
+}
+
+// 常见俄语地名/机构专有名词词干（国家、城市、街道、景点等，含常见变格）
+// 这类词首字母大写但不是人名，不应被当作「人名直接显示」跳过输入
+const PLACE_STEMS = [
+  'москв', 'росси', 'российск', 'кита', 'китайск', 'петербург', 'санкт-петербург',
+  'пекин', 'франци', 'француз', 'германи', 'немецк', 'итали', 'испани', 'англи',
+  'америк', 'европ', 'сибир', 'украин', 'белорус', 'казахстан', 'шанха', 'харбин',
+  'баку', 'байкал', 'волг', 'урал', 'кремл', 'дон', 'осак', 'токио', 'лондон',
+  'париж', 'берлин', 'рим', 'московск', 'чехов', 'гагарин', 'пушкин', 'чисты', 'икеа',
+  'мир', 'площад', 'проспект', 'улиц', 'переулк', 'набережн', 'вокзал', 'аэропорт',
+  'станц', 'музе', 'театр', 'университет', 'институт', 'компани', 'банк', 'завод',
+  'фабрик', 'магазин'
+];
+function isPlaceStem(text) {
+  const lower = String(text || "").toLowerCase().replace(/^[^а-яё]+|[^а-яё-]+$/g, "");
+  if (!lower || lower.length < 3) return false;
+  return PLACE_STEMS.some((s) => lower.startsWith(s) || lower.endsWith(s));
 }
 
 // ============================================================
@@ -147,8 +165,10 @@ export function useQuestionInput({
         const lower = clean.toLowerCase();
         const dictName = nameSet.has(lower);
         const knownOrdinary = ordinarySet.has(lower);
-        const heuristicName = !isFirstRealWord && !prevEndsSentence && /^[А-ЯЁ]/.test(clean);
-        w.fixed = dictName || (!knownOrdinary && heuristicName);
+        // 地名/机构专有名词（国家、城市、街道、景点等）不是人名：即使大写也照常输入
+        const isPlace = isPlaceStem(clean);
+        const heuristicName = !isPlace && !isFirstRealWord && !prevEndsSentence && /^[А-ЯЁ]/.test(clean);
+        w.fixed = (dictName && !isPlace) || (!knownOrdinary && heuristicName);
         if (w.fixed) w.userInput = text; // 预设为正确文本
         words.push(w);
       }

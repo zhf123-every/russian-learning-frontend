@@ -529,7 +529,12 @@ export default function QuestPractice() {
   // ---- 词典词性标注（预分析完成后）：专有名词/人名 → 直接显示；普通词性 → 大写也不算名字 ----
   const { nameWords, ordinaryWords } = useMemo(() => {
     const ws = currentStatement?.words || [];
-    const isNamePos = (p) => /专有|人名|proper|name/i.test(String(p || ""));
+    const isNamePos = (p) => {
+      const pos = String(p || "");
+      // 地名/地理类专有名词不是人名：不进入名字名单（交给启发式+地名词干黑名单判定）
+      if (/地名|геогр|топоним|город|страна|река|площадь|улиц|проспект|университет/i.test(pos)) return false;
+      return /人名|proper|name|личн|фамили|имя собств/i.test(pos);
+    };
     const names = [];
     const ordinary = [];
     ws.forEach((w) => {
