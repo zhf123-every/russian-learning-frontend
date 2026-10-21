@@ -230,6 +230,18 @@ export function useQuestionInput({
           (next || inputWords[inputWords.length - 1]).isActive = true;
         }
       }
+      // 修复：光标位置超过最后一个词的 end 时，强制激活最后一个词
+      // （解决"最后一个词打不出来"的问题——用户按空格后，光标在空格后面，
+      //   但最后一个词的 end 是 15，光标位置是 16，没有命中）
+      if (cursorPos !== undefined && newWords.length > 0) {
+        const inputWords = newWords.filter(w => !w.fixed);
+        if (inputWords.length > 0) {
+          const last = inputWords[inputWords.length - 1];
+          if (cursorPos > last.end) {
+            last.isActive = true;
+          }
+        }
+      }
       return newWords;
     });
   }, []);
