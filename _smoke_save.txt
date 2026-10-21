@@ -1,0 +1,6 @@
+① 生成短链 · sentence="Я люблю еду" · hash=e7e947c9532def2f
+   rows=22 · verifyTable=通过
+② save · HTTP 200 · {"ok":true,"saved":1}
+③ read · HTTP 200 · items=1
+   回读 rows=22 · seq 首末=1..22 · verifyTable=通过
+✅ P2 持久化端到端冒烟通过：生成 → 入库 → 学生端可读

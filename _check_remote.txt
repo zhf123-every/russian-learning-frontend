@@ -1,0 +1,7 @@
+local_compress=False
+local_block=True
+local_picsum_fallback=True
+remote_compress=False
+remote_block=False
+remote_picsum_fallback=True
+remote_oldflash=False

@@ -1,0 +1,373 @@
+{
+  "intents": [
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "skeleton",
+      "compose": [],
+      "groupId": "G_01"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "否定",
+      "source": "template",
+      "templateText": "не",
+      "groupId": "G_02"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "组合",
+      "groupId": "G_02"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "negation",
+      "groupId": "G_02"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "不定式",
+      "source": "template",
+      "templateText": "делать",
+      "groupId": "G_03"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "宾语",
+      "source": "template",
+      "templateText": "это",
+      "groupId": "G_03"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "组合",
+      "groupId": "G_03"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "object_pos",
+      "groupId": "G_03"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "否定组合",
+      "source": "reuse",
+      "groupId": "G_03"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "object_neg",
+      "groupId": "G_03"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "时间",
+      "source": "pool",
+      "poolKey": "time",
+      "groupId": "G_04",
+      "poolIndex": 0
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "time_pos",
+      "groupId": "G_04"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "time_neg",
+      "groupId": "G_04"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "地点",
+      "source": "pool",
+      "poolKey": "place",
+      "groupId": "G_05",
+      "poolIndex": 0
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "组合",
+      "groupId": "G_05"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "place_pos",
+      "groupId": "G_05"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "否定组合",
+      "source": "reuse",
+      "groupId": "G_05"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "place_neg",
+      "groupId": "G_05"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "时间",
+      "source": "pool",
+      "poolKey": "time",
+      "groupId": "G_05",
+      "poolIndex": 0
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "time_neg",
+      "groupId": "G_05"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "谓语",
+      "source": "pool",
+      "poolKey": "predicates",
+      "groupId": "G_06",
+      "poolIndex": 0
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "补语",
+      "source": "reuse",
+      "groupId": "G_06"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "predicate_pos",
+      "groupId": "G_06"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "否定组合",
+      "source": "template",
+      "templateText": "не",
+      "groupId": "G_06"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "predicate_neg",
+      "groupId": "G_06"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "不定式",
+      "source": "pool",
+      "poolKey": "objects",
+      "poolField": "inf",
+      "groupId": "G_07",
+      "poolIndex": 0
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "补语",
+      "source": "pool",
+      "poolKey": "objects",
+      "groupId": "G_07",
+      "poolIndex": 0
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "组合",
+      "groupId": "G_07"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "object_pos",
+      "groupId": "G_07"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "时间",
+      "source": "pool",
+      "poolKey": "time",
+      "groupId": "G_07",
+      "poolIndex": 0
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "time_pos",
+      "groupId": "G_07"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "否定组合",
+      "source": "reuse",
+      "groupId": "G_07"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "swap_neg",
+      "groupId": "G_07"
+    },
+    {
+      "kind": "part",
+      "cardType": "积木",
+      "role": "频率",
+      "source": "template",
+      "templateText": "каждый день",
+      "groupId": "G_08"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "time_pos",
+      "groupId": "G_08"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "freq_neg",
+      "groupId": "G_08"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "review",
+      "groupId": "G_09",
+      "hint": "复习：object_pos"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "review",
+      "groupId": "G_09",
+      "hint": "复习：time_pos"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "review",
+      "groupId": "G_09",
+      "hint": "复习：time_neg"
+    },
+    {
+      "kind": "full",
+      "cardType": "完整句",
+      "template": "review",
+      "groupId": "G_09",
+      "hint": "复习：predicate_neg"
+    }
+  ],
+  "tokens": [
+    "Я",
+    "люблю",
+    "читать",
+    "книги"
+  ],
+  "pool": {
+    "negation": [
+      {
+        "ru": "не",
+        "zh": "不"
+      }
+    ],
+    "time": [
+      {
+        "ru": "сейчас",
+        "zh": "现在"
+      },
+      {
+        "ru": "сегодня",
+        "zh": "今天"
+      }
+    ],
+    "place": [
+      {
+        "ru": "здесь",
+        "zh": "这里"
+      }
+    ],
+    "degree": [
+      {
+        "ru": "очень",
+        "zh": "非常"
+      }
+    ],
+    "evaluation": [
+      {
+        "ru": "важно",
+        "zh": "重要"
+      },
+      {
+        "ru": "хорошо",
+        "zh": "好"
+      },
+      {
+        "ru": "невозможно",
+        "zh": "不可能"
+      },
+      {
+        "ru": "возможно",
+        "zh": "可能"
+      }
+    ],
+    "predicates": [
+      {
+        "ru": "хочу",
+        "zh": "想"
+      },
+      {
+        "ru": "нужно",
+        "zh": "需要"
+      },
+      {
+        "ru": "должен",
+        "zh": "必须"
+      }
+    ],
+    "objects": [
+      {
+        "ru": "еду",
+        "zh": "食物",
+        "inf": "есть"
+      }
+    ],
+    "preposition": [
+      {
+        "ru": "для меня",
+        "zh": "对我来说"
+      }
+    ],
+    "connector": [
+      {
+        "ru": "поэтому",
+        "zh": "所以"
+      }
+    ]
+  },
+  "sentence": "Я люблю читать книги"
+}

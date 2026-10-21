@@ -1,0 +1,281 @@
+﻿TAP version 13
+# [segmentEngine] AI 切块两次均失败/校验未过，机械兜底 + pending { sentenceHash: '212de783976473ae', difficulty: 'easy' }
+# [segmentEngine] verifyIndexes 失败（索引非法） {
+#   sentenceHash: '6609041021faecb9',
+#   difficulty: 'easy',
+#   segments: [ { indexes: [Array] }, { indexes: [Array] } ]
+# }
+# [segmentEngine] verifyIndexes 失败（索引非法） {
+#   sentenceHash: '6609041021faecb9',
+#   difficulty: 'easy',
+#   segments: [ { indexes: [Array] }, { indexes: [Array] } ]
+# }
+# [segmentEngine] AI 切块两次均失败/校验未过，机械兜底 + pending { sentenceHash: '6609041021faecb9', difficulty: 'easy' }
+# Subtest: 场景1 normalizeSentence & sentenceHash（原文俄语化 + 确定性 hash）
+    # Subtest: 数字俄语化：500 лет. → пятьсот лет.
+    ok 1 - 数字俄语化：500 лет. → пятьсот лет.
+      ---
+      duration_ms: 1.0083
+      type: 'test'
+      ...
+    # Subtest: 去首尾空白
+    ok 2 - 去首尾空白
+      ---
+      duration_ms: 0.2424
+      type: 'test'
+      ...
+    # Subtest: 空输入返回空串（不抛错）
+    ok 3 - 空输入返回空串（不抛错）
+      ---
+      duration_ms: 0.1318
+      type: 'test'
+      ...
+    # Subtest: 同句同难度 hash 确定且一致
+    ok 4 - 同句同难度 hash 确定且一致
+      ---
+      duration_ms: 0.677
+      type: 'test'
+      ...
+    # Subtest: 不同句子 hash 不同；难度不参与 hash（后端 cache 键=(hash,difficulty) 两列）
+    ok 5 - 不同句子 hash 不同；难度不参与 hash（后端 cache 键=(hash,difficulty) 两列）
+      ---
+      duration_ms: 1.6271
+      type: 'test'
+      ...
+    # Subtest: hash 与后端一致性：sha256(normalizeSentence(text)).hex() 前 16 位（探针 H1 对齐）
+    ok 6 - hash 与后端一致性：sha256(normalizeSentence(text)).hex() 前 16 位（探针 H1 对齐）
+      ---
+      duration_ms: 0.2042
+      type: 'test'
+      ...
+    1..6
+ok 1 - 场景1 normalizeSentence & sentenceHash（原文俄语化 + 确定性 hash）
+  ---
+  duration_ms: 5.4117
+  type: 'suite'
+  ...
+# Subtest: 场景2 splitTokens（空格拆分 + 标点附着）
+    # Subtest: 普通句子拆为词
+    ok 1 - 普通句子拆为词
+      ---
+      duration_ms: 1.122
+      type: 'test'
+      ...
+    # Subtest: 独立标点附着到前一个词
+    ok 2 - 独立标点附着到前一个词
+      ---
+      duration_ms: 0.3214
+      type: 'test'
+      ...
+    # Subtest: 词尾标点保持附着
+    ok 3 - 词尾标点保持附着
+      ---
+      duration_ms: 0.3482
+      type: 'test'
+      ...
+    # Subtest: 空句子返回空数组
+    ok 4 - 空句子返回空数组
+      ---
+      duration_ms: 0.3956
+      type: 'test'
+      ...
+    # Subtest: 数字句流水线：splitTokens(normalize(s)) join == 俄语化原句（tokens 是 "пятьсот" 而非 "500"）
+    ok 5 - 数字句流水线：splitTokens(normalize(s)) join == 俄语化原句（tokens 是 "пятьсот" 而非 "500"）
+      ---
+      duration_ms: 0.2956
+      type: 'test'
+      ...
+    1..5
+ok 2 - 场景2 splitTokens（空格拆分 + 标点附着）
+  ---
+  duration_ms: 2.8605
+  type: 'suite'
+  ...
+# Subtest: 场景3 verifyIndexes（并集不重不漏 + 组内连续 + 升序重排）
+    # Subtest: 合法分组原样通过并升序重排
+    ok 1 - 合法分组原样通过并升序重排
+      ---
+      duration_ms: 0.4155
+      type: 'test'
+      ...
+    # Subtest: 重复索引 → null
+    ok 2 - 重复索引 → null
+      ---
+      duration_ms: 0.106
+      type: 'test'
+      ...
+    # Subtest: 漏索引（并集不覆盖全部）→ null
+    ok 3 - 漏索引（并集不覆盖全部）→ null
+      ---
+      duration_ms: 0.0933
+      type: 'test'
+      ...
+    # Subtest: 越界索引 → null
+    ok 4 - 越界索引 → null
+      ---
+      duration_ms: 0.097
+      type: 'test'
+      ...
+    # Subtest: 组内不连续（跳号）→ null
+    ok 5 - 组内不连续（跳号）→ null
+      ---
+      duration_ms: 0.1536
+      type: 'test'
+      ...
+    # Subtest: 非整数/布尔索引 → null
+    ok 6 - 非整数/布尔索引 → null
+      ---
+      duration_ms: 0.1082
+      type: 'test'
+      ...
+    1..6
+ok 3 - 场景3 verifyIndexes（并集不重不漏 + 组内连续 + 升序重排）
+  ---
+  duration_ms: 1.1724
+  type: 'suite'
+  ...
+# Subtest: 场景4 verifySegments（拼接逐字符 == 原句；translation 不参与校验；chinese/type 缺失不阻塞）
+    # Subtest: 拼接 == 俄语化原句 → ok
+    ok 1 - 拼接 == 俄语化原句 → ok
+      ---
+      duration_ms: 0.2704
+      type: 'test'
+      ...
+    # Subtest: 拼接 != 原句 → ok=false 且给出差异（tokens 未俄语化 vs 原句已俄语化）
+    ok 2 - 拼接 != 原句 → ok=false 且给出差异（tokens 未俄语化 vs 原句已俄语化）
+      ---
+      duration_ms: 0.3141
+      type: 'test'
+      ...
+    # Subtest: translation 缺失/乱码不参与拼接校验，chinese/type 缺失允许留空不阻塞
+    ok 3 - translation 缺失/乱码不参与拼接校验，chinese/type 缺失允许留空不阻塞
+      ---
+      duration_ms: 0.1365
+      type: 'test'
+      ...
+    # Subtest: 故意插入零宽字符 U+200B → 逐字符比较必须拦下
+    ok 4 - 故意插入零宽字符 U+200B → 逐字符比较必须拦下
+      ---
+      duration_ms: 0.1109
+      type: 'test'
+      ...
+    1..4
+ok 4 - 场景4 verifySegments（拼接逐字符 == 原句；translation 不参与校验；chinese/type 缺失不阻塞）
+  ---
+  duration_ms: 0.99
+  type: 'suite'
+  ...
+# Subtest: 场景5 aiSegment（easy/medium 调 LLM，hard 直构；fallback 重试1次；pending 不重试；内存缓存）
+    # Subtest: easy：deps.httpPost 收到 sentence_hash/russian_text/tokens/difficulty；返回内部结构
+    ok 1 - easy：deps.httpPost 收到 sentence_hash/russian_text/tokens/difficulty；返回内部结构
+      ---
+      duration_ms: 1.2826
+      type: 'test'
+      ...
+    # Subtest: medium：走后端 llm-segment，固定搭配整组保留
+    ok 2 - medium：走后端 llm-segment，固定搭配整组保留
+      ---
+      duration_ms: 0.3742
+      type: 'test'
+      ...
+    # Subtest: hard：不调 LLM（httpPost 调用 0 次），前端直构整句一组
+    ok 3 - hard：不调 LLM（httpPost 调用 0 次），前端直构整句一组
+      ---
+      duration_ms: 1.2199
+      type: 'test'
+      ...
+    # Subtest: 后端 fallback:true → 重试 1 次；仍失败 → 机械兜底 + pending
+    ok 4 - 后端 fallback:true → 重试 1 次；仍失败 → 机械兜底 + pending
+      ---
+      duration_ms: 1.4133
+      type: 'test'
+      ...
+    # Subtest: 后端 pending:true → 不重试，返回 reviewStatus=generating（占位在途，非人工校对）
+    ok 5 - 后端 pending:true → 不重试，返回 reviewStatus=generating（占位在途，非人工校对）
+      ---
+      duration_ms: 0.3142
+      type: 'test'
+      ...
+    # Subtest: deps 缺失 httpPost → 抛错（含 httpPost 字样，不静默用全局 fetch）
+    ok 6 - deps 缺失 httpPost → 抛错（含 httpPost 字样，不静默用全局 fetch）
+      ---
+      duration_ms: 0.5492
+      type: 'test'
+      ...
+    # Subtest: 内存缓存：第二次同句同难度 → httpPost 调用 0 次
+    ok 7 - 内存缓存：第二次同句同难度 → httpPost 调用 0 次
+      ---
+      duration_ms: 0.2943
+      type: 'test'
+      ...
+    1..7
+ok 5 - 场景5 aiSegment（easy/medium 调 LLM，hard 直构；fallback 重试1次；pending 不重试；内存缓存）
+  ---
+  duration_ms: 5.8481
+  type: 'suite'
+  ...
+# Subtest: 场景6 兜底链路（buildMachineFallback + verifySegments 失败告警上报）
+    # Subtest: 机械兜底：每 3 词一组，末组按实际，review_status=pending
+    ok 1 - 机械兜底：每 3 词一组，末组按实际，review_status=pending
+      ---
+      duration_ms: 0.1628
+      type: 'test'
+      ...
+    # Subtest: hard 直构：整句一组 type=sentence chinese=translation
+    ok 2 - hard 直构：整句一组 type=sentence chinese=translation
+      ---
+      duration_ms: 0.1004
+      type: 'test'
+      ...
+    # Subtest: 后端成功但前端 verify 失败 → console.error + saveSegments 回写 pending（禁止静默兜底）
+    ok 3 - 后端成功但前端 verify 失败 → console.error + saveSegments 回写 pending（禁止静默兜底）
+      ---
+      duration_ms: 1.4812
+      type: 'test'
+      ...
+    1..3
+ok 6 - 场景6 兜底链路（buildMachineFallback + verifySegments 失败告警上报）
+  ---
+  duration_ms: 1.8652
+  type: 'suite'
+  ...
+# Subtest: 场景7 批量生成与缓存读取（并发上限、单句失败不阻塞、generating 降级）
+    # Subtest: 3 句并发，中间 1 句 httpPost 抛 Error(network) → done 2 / failed 1 / pending 0
+    ok 1 - 3 句并发，中间 1 句 httpPost 抛 Error(network) → done 2 / failed 1 / pending 0
+      ---
+      duration_ms: 0.9503
+      type: 'test'
+      ...
+    # Subtest: 并发上限 ≤ 5（BATCH=3 分批，12 句全完成，单句失败不阻塞）
+    ok 2 - 并发上限 ≤ 5（BATCH=3 分批，12 句全完成，单句失败不阻塞）
+      ---
+      duration_ms: 243.0727
+      type: 'test'
+      ...
+    # Subtest: checkCache：返回 Map（key=sentenceHash::difficulty），status=generating / segments 空 → 供前端降级
+    ok 3 - checkCache：返回 Map（key=sentenceHash::difficulty），status=generating / segments 空 → 供前端降级
+      ---
+      duration_ms: 0.6164
+      type: 'test'
+      ...
+    # Subtest: saveSegments：转发 items 到 /api/admin/segments/save
+    ok 4 - saveSegments：转发 items 到 /api/admin/segments/save
+      ---
+      duration_ms: 0.3101
+      type: 'test'
+      ...
+    1..4
+ok 7 - 场景7 批量生成与缓存读取（并发上限、单句失败不阻塞、generating 降级）
+  ---
+  duration_ms: 245.2465
+  type: 'suite'
+  ...
+1..7
+# tests 35
+# suites 7
+# pass 35
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 408.5334

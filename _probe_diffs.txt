@@ -1,0 +1,8 @@
+﻿EASY fetch-error: fetch failed
+MEDIUM: ok=true cached=undefined fallback=undef reason= rows=44 ms=18191
+  fulls=20 containsCore=true
+  adjDup=[]
+HARD: ok=true cached=undefined fallback=undef reason= rows=44 ms=19030
+  fulls=20 containsCore=true
+  adjDup=[]
+done

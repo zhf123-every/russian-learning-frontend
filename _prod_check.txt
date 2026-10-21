@@ -1,0 +1,4 @@
+﻿scripts=["/assets/index-DUEz_mHZ.js","/dict-data.js"]
+main=/assets/index-DUEz_mHZ.js len=2731676 has_table_fill=true
+has_json_call=true
+ctx=g,russian_text:dt,tokens:ct,difficulty:o,intents:i,pool:a||void 0};let ot="";for(let pt=0;pt<2;pt++){let ht=null;try{ht=await at("/api/admin/segments/table-fill",d),ht&&typeof ht.json=="function"&&(ht=await ht.json().catch(()=>({})))}catch(ft){console.error("[jlTable] table-fill 网络错误",{sentenceHash:g,difficulty:o,error:String(ft&&ft.message||ft)}),ot="network";continue}if(ht&&ht.pending)return{ok:

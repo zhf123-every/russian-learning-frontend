@@ -1,0 +1,7 @@
+﻿fill easy: ok=true cached=true fallback=undef rows=44 ms=5054
+fill medium: ok=false cached=undefined fallback=undef rows=0 ms=878
+fill hard: ok=true cached=true fallback=undef rows=44 ms=3565
+items to save = 2
+save: ok=false saved=undefined err=无权限：仅管理员可管理用户
+read: ok=true items=0
+done

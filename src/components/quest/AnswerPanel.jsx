@@ -77,6 +77,7 @@ const ROLE_LABELS_MAP = {
   predicate: "谓语",
   object: "宾语",
   attribute: "定语",
+  attributive: "定语", // ROLE_ZH_TO_KEY 映射用的是 attributive，需兼容
   adverbial: "状语",
   predicative: "表语",
   complement: "补语",

@@ -1,0 +1,9 @@
+﻿[main 6b97fe9] P1-D 前端：VIP 购买弹窗（套餐下单/人工确认兜底/状态轮询）+ 订单管理页 + 课程详情接云端 VIP + 商城入口
+ 11 files changed, 376 insertions(+), 34 deletions(-)
+ create mode 100644 _b1.txt
+ create mode 100644 _c1.txt
+ create mode 100644 _c2.txt
+ create mode 100644 _commit.txt
+ create mode 100644 _push.txt
+ create mode 100644 src/components/VipModal.jsx
+ create mode 100644 src/pages/AdminOrders.jsx

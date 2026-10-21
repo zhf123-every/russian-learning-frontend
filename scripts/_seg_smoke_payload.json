@@ -1,0 +1,28 @@
+[
+  {
+    "sentence": "Я люблю книгу.",
+    "normalized": "Я люблю книгу.",
+    "sentence_hash": "b186482aedd7d79f",
+    "difficulty": "easy",
+    "russian_text": "Я люблю книгу.",
+    "tokens": [
+      "Я",
+      "люблю",
+      "книгу."
+    ]
+  },
+  {
+    "sentence": "Этому городу уже 500 лет.",
+    "normalized": "Этому городу уже пятьсот лет.",
+    "sentence_hash": "212de783976473ae",
+    "difficulty": "easy",
+    "russian_text": "Этому городу уже пятьсот лет.",
+    "tokens": [
+      "Этому",
+      "городу",
+      "уже",
+      "пятьсот",
+      "лет."
+    ]
+  }
+]

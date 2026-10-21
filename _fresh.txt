@@ -1,0 +1,2 @@
+﻿HTTP 200 · 5.3s · intents=18（短链）· sentence="Это мой друг"
+→ fallback: group_ai_none

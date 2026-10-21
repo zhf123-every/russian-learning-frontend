@@ -1,0 +1,6 @@
+﻿
+== fresh_sentence ==
+ok=false cached=undefined fallback=true prompt_v=? rows=0
+VERDICT=DIRTY ❌
+fullCount=0 containsCore=false
+--- 全表 ---

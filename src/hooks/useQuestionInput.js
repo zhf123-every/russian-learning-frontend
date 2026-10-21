@@ -167,7 +167,10 @@ export function useQuestionInput({
         const knownOrdinary = ordinarySet.has(lower);
         // 地名/机构专有名词（国家、城市、街道、景点等）不是人名：即使大写也照常输入
         const isPlace = isPlaceStem(clean);
-        const heuristicName = !isPlace && !isFirstRealWord && !prevEndsSentence && /^[А-ЯЁ]/.test(clean);
+        // 常见大写代词（она/он/оно/они/мы/вы/я/ты）不是人名：即使大写开头也正常输入
+        const PRONOUNS = new Set(["она", "он", "оно", "они", "мы", "вы", "я", "ты", "кто", "что", "где", "когда", "куда", "почему", "зачем", "как"]);
+        const isPronoun = PRONOUNS.has(lower);
+        const heuristicName = !isPlace && !isPronoun && !isFirstRealWord && !prevEndsSentence && /^[А-ЯЁ]/.test(clean);
         w.fixed = (dictName && !isPlace) || (!knownOrdinary && heuristicName);
         if (w.fixed) w.userInput = text; // 预设为正确文本
         words.push(w);
@@ -212,8 +215,8 @@ export function useQuestionInput({
           word.start = position;
           word.end = position + input.length;
           position += input.length + 1;
-          // 根据光标位置判断当前激活词
-          if (cursorPos !== undefined && cursorPos >= word.start && cursorPos <= word.end) {
+          // 根据光标位置判断当前激活词（fixed 词不激活，光标应落在非 fixed 词上）
+          if (cursorPos !== undefined && cursorPos >= word.start && cursorPos <= word.end && !word.fixed) {
             word.isActive = true;
           }
         }
@@ -530,12 +533,10 @@ export function useQuestionInput({
       return;
     }
 
-    // 词数相同 → 排序后比较词集合（忽略语序）
-    const sortedUser = [...userWordsFiltered].sort();
-    const sortedAnswer = [...answerWords].sort();
-    const setMatch = sortedUser.every((w, i) => w === sortedAnswer[i]);
+    // 词数相同 → 按顺序逐词比较（俄语词序虽灵活，但学习阶段应按标准答案顺序判定，让用户掌握正确语序）
+    const seqMatch = userWordsFiltered.every((w, i) => w === answerWords[i]);
 
-    if (setMatch) {
+    if (seqMatch) {
       // 词集合匹配（包括灵活语序）→ 立即跳转正确答案页
       setMode(MODES.INPUT);
       setInputValue("");

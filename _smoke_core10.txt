@@ -1,0 +1,9 @@
+﻿node : 网络错误第 1 次，5s 后重试: fetch failed
+所在位置 行:1 字符: 99
++ ... v:CORE="1"; node scripts/_table_fill_smoke.mjs "Я люблю еду" "我喜欢食物"  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (网络错误第 1 次，5s 后重试: fetch failed:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+网络错误第 2 次，5s 后重试: fetch failed
+网络错误（生产接口未部署/离线？）: fetch failed

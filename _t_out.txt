@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: slotTablesToSequences: 只收 ok 行，pending 句不出现
+ok 1 - slotTablesToSequences: 只收 ok 行，pending 句不出现
+  ---
+  duration_ms: 1.8114
+  type: 'test'
+  ...
+# Subtest: slotTablesToSequences: 每行一步、顺序 = seq、序号不出现在展示字段
+ok 2 - slotTablesToSequences: 每行一步、顺序 = seq、序号不出现在展示字段
+  ---
+  duration_ms: 1.0245
+  type: 'test'
+  ...
+# Subtest: slotTablesToSequences: 粒度标记（积木=word/chunk，完整句=sentence）
+ok 3 - slotTablesToSequences: 粒度标记（积木=word/chunk，完整句=sentence）
+  ---
+  duration_ms: 0.386
+  type: 'test'
+  ...
+# Subtest: slotTablesToSequences: 现有难度过滤兼容（beginner 全放行 / advanced 只整句）
+ok 4 - slotTablesToSequences: 现有难度过滤兼容（beginner 全放行 / advanced 只整句）
+  ---
+  duration_ms: 0.3934
+  type: 'test'
+  ...
+# Subtest: slotTablesToItems: 每行一个听写 item、按 seq 顺序、pending 过滤
+ok 5 - slotTablesToItems: 每行一个听写 item、按 seq 顺序、pending 过滤
+  ---
+  duration_ms: 0.5028
+  type: 'test'
+  ...
+# Subtest: slotTablesToItems: 听写难度过滤复用（intermediate → 只留 medium 档）
+ok 6 - slotTablesToItems: 听写难度过滤复用（intermediate → 只留 medium 档）
+  ---
+  duration_ms: 0.3763
+  type: 'test'
+  ...
+# Subtest: 空输入 / 全 pending：返回空数组（页面降级）
+ok 7 - 空输入 / 全 pending：返回空数组（页面降级）
+  ---
+  duration_ms: 0.1514
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 158.6897

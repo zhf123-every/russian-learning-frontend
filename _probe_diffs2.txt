@@ -1,0 +1,9 @@
+﻿EASY: ok=true cached=undefined fallback=undef reason= rows=44 ms=17882
+  fulls=20 containsCore=true
+  adjDup=[]
+MEDIUM: ok=false cached=undefined fallback=undef reason= rows=0 ms=577
+  → {"ok":false,"error":"无权限：仅管理员可管理用户"}
+HARD: ok=true cached=true fallback=undef reason= rows=44 ms=3713
+  fulls=20 containsCore=true
+  adjDup=[]
+done

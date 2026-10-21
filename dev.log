@@ -2,8 +2,9 @@
 > russian-learning-react@0.1.0 dev
 > vite
 
+Re-optimizing dependencies because lockfile has changed
 
-  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m5854[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m4406[22m[2m[0m ms[22m
 
   [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
   [32m➜[39m  [1mNetwork[22m: [36mhttp://198.18.0.1:[1m5173[22m/[39m
@@ -11,172 +12,101 @@
   [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.8:[1m5173[22m/[39m
 [2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
 /*! 🌼 daisyUI 5.7.42 */
-[2m21:44:21[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/videos/list[39m
+[2m22:15:51[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/videos/list[39m
 Error: Client network socket disconnected before secure TLS connection was established
     at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
     at TLSSocket.emit (node:events:531:35)
     at endReadableNT (node:internal/streams/readable:1698:12)
     at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
-[2m21:48:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m22:03:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/GameDetail.jsx, /src/styles/tailwind.css[22m
-[2m22:08:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m22:13:05[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m22:13:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m22:15:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m22:20:51[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/videos/list[39m
+[2m22:25:19[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/categories/tree[39m
 Error: Client network socket disconnected before secure TLS connection was established
     at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
     at TLSSocket.emit (node:events:531:35)
     at endReadableNT (node:internal/streams/readable:1698:12)
     at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
-[2m22:30:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m22:30:09[22m [31m[1m[vite][22m[39m [31mInternal server error: C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\pages\AdminDashboard.jsx: Unexpected token (875:98)
-
-[0m [90m 873 |[31m                   [33m<[31m[33mp[31m className[33m=[31m[32m"text-xs text-gray-400 mt-1"[31m[33m>[31m按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。粘贴 {pathId[33m,[31m steps} [33mJSON[31m 后立即显示在这里。[33m<[31m[33m/[31m[33mp[31m[33m>[31m
- [90m 874 |[31m                   {([33m![31mactiveUnit[33m.[31mscaffoldingPaths [33m||[31m [33m![31mactiveUnit[33m.[31mscaffoldingPaths[33m.[31mlength) [33m?[31m (
-[31m[1m>[22m[31m[90m 875 |[31m                     [33m<[31m[33mp[31m className[33m=[31m[32m"py-6 text-center text-sm text-gray-400"[31m[33m>[31m还没有路径。在下方「批量导入 [33mJSON」粘贴[31m {[33m&[31mquot[33m;[31mpathId[33m&[31mquot[33m;[31m[33m,[31m [33m&[31mquot[33m;[31msteps[33m&[31mquot[33m;[31m} 数据即可。[33m<[31m[33m/[31m[33mp[31m[33m>[31m
- [90m     |[31m                                                                                                   [31m[1m^[22m[31m
- [90m 876 |[31m                   ) [33m:[31m (
- [90m 877 |[31m                     [33m<[31m[33mdiv[31m className[33m=[31m[32m"mt-3 space-y-3 max-h-[480px] overflow-y-auto pr-1"[31m[33m>[31m
- [90m 878 |[31m                       {(activeUnit[33m.[31mscaffoldingPaths [33m||[31m [])[33m.[31mmap((p[33m,[31m pi) [33m=>[31m ([0m[39m
-  Plugin: [35mvite:react-babel[39m
-  File: [36mC:/Users/张宏飞/Desktop/website_source/russian-learning-frontend-main/src/pages/AdminDashboard.jsx[39m:875:98
-[33m  873|                    <p className="text-xs text-gray-400 mt-1">按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。粘贴 {pathId, steps} JSON 后立即显示在这里。</p>
-  874|                    {(!activeUnit.scaffoldingPaths || !activeUnit.scaffoldingPaths.length) ? (
-  875|                      <p className="py-6 text-center text-sm text-gray-400">还没有路径。在下方「批量导入 JSON」粘贴 {&quot;pathId&quot;, &quot;steps&quot;} 数据即可。</p>
-     |                                                                                                    ^
-  876|                    ) : (
-  877|                      <div className="mt-3 space-y-3 max-h-[480px] overflow-y-auto pr-1">[39m
-      at constructor (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:369:19)
-      at JSXParserMixin.raise (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:6620:19)
-      at JSXParserMixin.unexpected (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:6640:16)
-      at JSXParserMixin.parseExprAtom (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11468:22)
-      at JSXParserMixin.parseExprAtom (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4780:20)
-      at JSXParserMixin.parseExprSubscripts (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11102:23)
-      at JSXParserMixin.parseUpdate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11087:21)
-      at JSXParserMixin.parseMaybeUnary (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11067:23)
-      at JSXParserMixin.parseMaybeUnaryOrPrivate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10920:61)
-      at JSXParserMixin.parseExprOps (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10925:23)
-      at JSXParserMixin.parseMaybeConditional (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10902:23)
-      at JSXParserMixin.parseMaybeAssign (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10852:21)
-      at JSXParserMixin.parseExpressionBase (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10805:23)
-      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10801:39
-      at JSXParserMixin.allowInAnd (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12455:12)
-      at JSXParserMixin.parseExpression (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10801:17)
-      at JSXParserMixin.jsxParseExpressionContainer (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4648:31)
-      at JSXParserMixin.jsxParseElementAt (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4727:36)
-      at JSXParserMixin.jsxParseElement (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4765:17)
-      at JSXParserMixin.parseExprAtom (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4775:19)
-      at JSXParserMixin.parseExprSubscripts (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11102:23)
-      at JSXParserMixin.parseUpdate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11087:21)
-      at JSXParserMixin.parseMaybeUnary (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11067:23)
-      at JSXParserMixin.parseMaybeUnaryOrPrivate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10920:61)
-      at JSXParserMixin.parseExprOps (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10925:23)
-      at JSXParserMixin.parseMaybeConditional (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10902:23)
-      at JSXParserMixin.parseMaybeAssign (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10852:21)
-      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10821:39
-      at JSXParserMixin.allowInAnd (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12455:12)
-      at JSXParserMixin.parseMaybeAssignAllowIn (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10821:17)
-      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12522:17)
-      at JSXParserMixin.parseParenAndDistinguishExpression (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11701:28)
-      at JSXParserMixin.parseExprAtom (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11357:23)
-      at JSXParserMixin.parseExprAtom (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4780:20)
-      at JSXParserMixin.parseExprSubscripts (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11102:23)
-      at JSXParserMixin.parseUpdate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11087:21)
-      at JSXParserMixin.parseMaybeUnary (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11067:23)
-      at JSXParserMixin.parseMaybeUnaryOrPrivate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10920:61)
-      at JSXParserMixin.parseExprOps (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10925:23)
-      at JSXParserMixin.parseMaybeConditional (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10902:23)
-      at JSXParserMixin.parseMaybeAssign (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10852:21)
-      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10821:39
-      at JSXParserMixin.allowInAnd (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12455:12)
-      at JSXParserMixin.parseMaybeAssignAllowIn (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10821:17)
-      at JSXParserMixin.parseConditional (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10912:30)
-      at JSXParserMixin.parseMaybeConditional (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10906:17)
-      at JSXParserMixin.parseMaybeAssign (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10852:21)
-      at JSXParserMixin.parseExpressionBase (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10805:23)
-      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10801:39
-      at JSXParserMixin.allowInAnd (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12455:12)
-[2m22:30:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m22:30:50[22m [31m[1m[vite][22m[39m [31mInternal server error: C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\pages\AdminDashboard.jsx: Unexpected token (875:98)
-
-[0m [90m 873 |[31m                   [33m<[31m[33mp[31m className[33m=[31m[32m"text-xs text-gray-400 mt-1"[31m[33m>[31m按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。粘贴 pathId [33m+[31m steps 结构 [33mJSON[31m 后立即显示在这里。[33m<[31m[33m/[31m[33mp[31m[33m>[31m
- [90m 874 |[31m                   {([33m![31mactiveUnit[33m.[31mscaffoldingPaths [33m||[31m [33m![31mactiveUnit[33m.[31mscaffoldingPaths[33m.[31mlength) [33m?[31m (
-[31m[1m>[22m[31m[90m 875 |[31m                     [33m<[31m[33mp[31m className[33m=[31m[32m"py-6 text-center text-sm text-gray-400"[31m[33m>[31m还没有路径。在下方「批量导入 [33mJSON」粘贴[31m {[33m&[31mquot[33m;[31mpathId[33m&[31mquot[33m;[31m[33m,[31m [33m&[31mquot[33m;[31msteps[33m&[31mquot[33m;[31m} 数据即可。[33m<[31m[33m/[31m[33mp[31m[33m>[31m
- [90m     |[31m                                                                                                   [31m[1m^[22m[31m
- [90m 876 |[31m                   ) [33m:[31m (
- [90m 877 |[31m                     [33m<[31m[33mdiv[31m className[33m=[31m[32m"mt-3 space-y-3 max-h-[480px] overflow-y-auto pr-1"[31m[33m>[31m
- [90m 878 |[31m                       {(activeUnit[33m.[31mscaffoldingPaths [33m||[31m [])[33m.[31mmap((p[33m,[31m pi) [33m=>[31m ([0m[39m
-  Plugin: [35mvite:react-babel[39m
-  File: [36mC:/Users/张宏飞/Desktop/website_source/russian-learning-frontend-main/src/pages/AdminDashboard.jsx[39m:875:98
-[33m  873|                    <p className="text-xs text-gray-400 mt-1">按 pathId 分组展示；每个 step 就是答题页的一个关卡，顺序即教学顺序。粘贴 pathId + steps 结构 JSON 后立即显示在这里。</p>
-  874|                    {(!activeUnit.scaffoldingPaths || !activeUnit.scaffoldingPaths.length) ? (
-  875|                      <p className="py-6 text-center text-sm text-gray-400">还没有路径。在下方「批量导入 JSON」粘贴 {&quot;pathId&quot;, &quot;steps&quot;} 数据即可。</p>
-     |                                                                                                    ^
-  876|                    ) : (
-  877|                      <div className="mt-3 space-y-3 max-h-[480px] overflow-y-auto pr-1">[39m
-      at constructor (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:369:19)
-      at JSXParserMixin.raise (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:6620:19)
-      at JSXParserMixin.unexpected (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:6640:16)
-      at JSXParserMixin.parseExprAtom (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11468:22)
-      at JSXParserMixin.parseExprAtom (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4780:20)
-      at JSXParserMixin.parseExprSubscripts (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11102:23)
-      at JSXParserMixin.parseUpdate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11087:21)
-      at JSXParserMixin.parseMaybeUnary (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11067:23)
-      at JSXParserMixin.parseMaybeUnaryOrPrivate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10920:61)
-      at JSXParserMixin.parseExprOps (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10925:23)
-      at JSXParserMixin.parseMaybeConditional (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10902:23)
-      at JSXParserMixin.parseMaybeAssign (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10852:21)
-      at JSXParserMixin.parseExpressionBase (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10805:23)
-      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10801:39
-      at JSXParserMixin.allowInAnd (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12455:12)
-      at JSXParserMixin.parseExpression (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10801:17)
-      at JSXParserMixin.jsxParseExpressionContainer (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4648:31)
-      at JSXParserMixin.jsxParseElementAt (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4727:36)
-      at JSXParserMixin.jsxParseElement (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4765:17)
-      at JSXParserMixin.parseExprAtom (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4775:19)
-      at JSXParserMixin.parseExprSubscripts (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11102:23)
-      at JSXParserMixin.parseUpdate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11087:21)
-      at JSXParserMixin.parseMaybeUnary (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11067:23)
-      at JSXParserMixin.parseMaybeUnaryOrPrivate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10920:61)
-      at JSXParserMixin.parseExprOps (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10925:23)
-      at JSXParserMixin.parseMaybeConditional (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10902:23)
-      at JSXParserMixin.parseMaybeAssign (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10852:21)
-      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10821:39
-      at JSXParserMixin.allowInAnd (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12455:12)
-      at JSXParserMixin.parseMaybeAssignAllowIn (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10821:17)
-      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12522:17)
-      at JSXParserMixin.parseParenAndDistinguishExpression (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11701:28)
-      at JSXParserMixin.parseExprAtom (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11357:23)
-      at JSXParserMixin.parseExprAtom (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:4780:20)
-      at JSXParserMixin.parseExprSubscripts (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11102:23)
-      at JSXParserMixin.parseUpdate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11087:21)
-      at JSXParserMixin.parseMaybeUnary (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:11067:23)
-      at JSXParserMixin.parseMaybeUnaryOrPrivate (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10920:61)
-      at JSXParserMixin.parseExprOps (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10925:23)
-      at JSXParserMixin.parseMaybeConditional (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10902:23)
-      at JSXParserMixin.parseMaybeAssign (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10852:21)
-      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10821:39
-      at JSXParserMixin.allowInAnd (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12455:12)
-      at JSXParserMixin.parseMaybeAssignAllowIn (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10821:17)
-      at JSXParserMixin.parseConditional (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10912:30)
-      at JSXParserMixin.parseMaybeConditional (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10906:17)
-      at JSXParserMixin.parseMaybeAssign (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10852:21)
-      at JSXParserMixin.parseExpressionBase (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10805:23)
-      at C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:10801:39
-      at JSXParserMixin.allowInAnd (C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\node_modules\@babel\parser\lib\index.js:12455:12)
-[2m22:30:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m23:35:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m23:54:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m23:57:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m23:59:38[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/ai[39m
-Error: socket hang up
-    at TLSSocket.socketOnEnd (node:_http_client:599:25)
+[2m22:25:35[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/categories/tree[39m
+Error: connect ETIMEDOUT 198.18.0.9:443
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1638:16)
+[2m22:28:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
+[2m22:35:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
+[2m22:35:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
+[2m22:36:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
+[2m22:58:11[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/videos/list[39m
+Error: Client network socket disconnected before secure TLS connection was established
+    at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
     at TLSSocket.emit (node:events:531:35)
     at endReadableNT (node:internal/streams/readable:1698:12)
     at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
-[2m00:06:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m00:06:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
-[2m00:09:33[22m [36m[1m[vite][22m[39m [32mvite.config.js changed, restarting server...[39m
-[2m00:09:33[22m [36m[1m[vite][22m[39m server restarted.
-[2m00:10:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminDashboard.jsx, /src/styles/tailwind.css[22m
+[2m22:58:46[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/videos/list[39m
+Error: Client network socket disconnected before secure TLS connection was established
+    at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
+    at TLSSocket.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+[2m23:00:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/GameStore.jsx, /src/styles/tailwind.css[22m
+[2m23:00:23[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/videos/list[39m
+Error: Client network socket disconnected before secure TLS connection was established
+    at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
+    at TLSSocket.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+[2m23:07:43[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/AdminLayout.jsx, /src/styles/tailwind.css[22m
+[2m23:09:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx, /src/styles/tailwind.css[22m
+[2m23:09:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx, /src/styles/tailwind.css[22m
+[2m23:10:16[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\pages\AdminExcels.jsx, /src/styles/tailwind.css[22m
+[2m23:11:04[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/videos/list[39m
+Error: Client network socket disconnected before secure TLS connection was established
+    at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
+    at TLSSocket.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+[2m23:55:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/AdminCourseNew.jsx, /src/styles/tailwind.css[22m
+[2m23:55:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/GameStore.jsx, /src/styles/tailwind.css[22m
+[2m23:55:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/GameStore.jsx, /src/styles/tailwind.css[22m
+[2m23:56:01[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/GameStore.jsx, /src/styles/tailwind.css[22m
+[2m23:56:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/GameStore.jsx, /src/styles/tailwind.css[22m
+[2m23:56:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/GameStore.jsx, /src/styles/tailwind.css[22m
+[2m23:56:27[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/GameStore.jsx, /src/styles/tailwind.css[22m
+[2m23:57:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/GameStore.jsx, /src/styles/tailwind.css[22m
+[2m00:16:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/AdminDashboard.jsx, /@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx[22m
+[2m00:16:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx, /src/styles/tailwind.css[22m
+[2m00:23:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/AdminDashboard.jsx, /@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx[22m
+[2m00:23:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/AdminDashboard.jsx, /@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx[22m
+[2m01:11:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m01:11:57[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m01:12:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m01:12:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestListening.jsx, /src/styles/tailwind.css[22m
+[2m01:12:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestListening.jsx, /src/styles/tailwind.css[22m
+[2m01:12:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestListening.jsx, /src/styles/tailwind.css[22m
+[2m01:12:47[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestListening.jsx, /src/styles/tailwind.css[22m
+[2m01:12:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestListening.jsx, /src/styles/tailwind.css[22m
+[2m01:13:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m01:13:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m01:13:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestSpeaking.jsx, /src/styles/tailwind.css[22m
+[2m01:13:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestSpeaking.jsx, /src/styles/tailwind.css[22m
+[2m01:13:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestSpeaking.jsx, /src/styles/tailwind.css[22m
+[2m01:13:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestSpeaking.jsx, /src/styles/tailwind.css[22m
+[2m01:13:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestSpeaking.jsx, /src/styles/tailwind.css[22m
+[2m01:15:58[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/videos/list[39m
+Error: Client network socket disconnected before secure TLS connection was established
+    at TLSSocket.onConnectEnd (node:internal/tls/wrap:1839:19)
+    at TLSSocket.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+[2m01:30:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestDictation.jsx, /src/pages/QuestPractice.jsx, /src/pages/QuestListening.jsx, /src/pages/QuestSpeaking.jsx, /@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx[22m
+[2m01:30:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestDictation.jsx, /src/pages/QuestPractice.jsx, /src/pages/QuestListening.jsx, /src/pages/QuestSpeaking.jsx[22m
+[2m01:39:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestDictation.jsx, /src/pages/QuestPractice.jsx, /src/pages/QuestListening.jsx, /src/pages/QuestSpeaking.jsx[22m
+[2m01:45:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestDictation.jsx, /src/pages/QuestPractice.jsx, /src/pages/QuestListening.jsx, /src/pages/QuestSpeaking.jsx[22m
+[2m01:54:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/QuestDictation.jsx, /src/pages/QuestPractice.jsx, /src/pages/QuestListening.jsx, /src/pages/QuestSpeaking.jsx[22m
+[2m01:54:10[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx, /src/styles/tailwind.css[22m
+[2m01:54:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx, /src/styles/tailwind.css[22m
+[2m01:54:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m01:54:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestDictation.jsx, /src/styles/tailwind.css[22m
+[2m02:06:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m02:06:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m02:06:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/QuestPractice.jsx, /src/styles/tailwind.css[22m
+[2m02:14:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx, /src/styles/tailwind.css[22m
+[2m02:14:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx, /src/styles/tailwind.css[22m
+[2m02:23:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/AdminDashboard.jsx, /@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx[22m
+[2m02:32:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/AdminDashboard.jsx, /@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx[22m
+[2m02:42:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/tailwind.css, /src/pages/AdminDashboard.jsx, /@fs/C:\Users\张宏飞\Desktop\website_source\russian-learning-frontend-main\src\components\LearningContentModal.jsx[22m

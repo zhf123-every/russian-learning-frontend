@@ -1,0 +1,8 @@
+remote_bytes=3431027
+remote_sha256=9bb31b53cc6db0a7
+remote_has_newblock=True
+remote_has_oldflash=False
+remote_has_picsum=True
+local_bytes=3431027
+local_sha256=9bb31b53cc6db0a7
+local_has_newblock=True

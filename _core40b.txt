@@ -1,0 +1,2 @@
+﻿HTTP 200 · 6.5s · intents=41（核心长链）· sentence="Я люблю еду"
+→ fallback: group_ai_none
