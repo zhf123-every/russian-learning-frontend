@@ -28,6 +28,7 @@ import { recordPeak, addDailyExp, recordCase } from "../lib/questStats";
 import { analyzeSentence } from "../lib/ai";
 import { ensureDictFull, annotateWords, warmUpIndex } from "../lib/wordAnnotate";
 import { inferRoles } from "../lib/roleRules";
+import { preloadAnnotations, preloadAnnotationsAsync } from "../lib/annotateCache";
 import { expandSequencesWithChunks } from "../lib/chunking";
 import { scaffoldingToSequences } from "../lib/scaffolding";
 import { segmentsToSequences, filterSegmentsByDifficulty } from "../lib/segmentsToQuestions";
@@ -868,7 +869,14 @@ export default function QuestPractice() {
   useEffect(() => {
     if (!loading && !loadError && sequences.length) {
       // 立即预热全词典 + 构建词形索引（25MB 静态资源，浏览器缓存；答对时重音/性数格即时可标注）
-      ensureDictFull().then(() => warmUpIndex());
+      ensureDictFull().then(() => {
+        warmUpIndex();
+        // 预标注前 20 句（用户答对时直接用缓存，不用等）
+        const allSentences = sequences.flatMap(seq => (seq.units || []).map(u => ({ ru: u.russian || u.russian || "" })));
+        preloadAnnotations(allSentences, 20);
+        // 异步预标注后面的句子（延迟 100ms，不阻塞 UI）
+        preloadAnnotationsAsync(allSentences, 20);
+      });
     }
   }, [loading, loadError, sequences.length]);
 

@@ -22,6 +22,7 @@ import { useEffect, useCallback, useState, useRef, useMemo, Fragment } from "rea
 import { getPosLabel, getPosColor, buildGrammarLabel } from "../../constants/posColors";
 import { annotateWords, ensureDictFull } from "../../lib/wordAnnotate";
 import { inferRoles, roleKeyFromZh } from "../../lib/roleRules";
+import { getCachedAnnotation } from "../../lib/annotateCache";
 import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQuestSettings";
 
 import { playGlobalAudio, stopGlobalAudio } from "../../utils/audioService";
@@ -231,9 +232,13 @@ export default function AnswerPanel({
       raw = tokens.map((t) => ({ ru: t, chinese: statement.chinese || "" }));
     }
     if (statement?.russian) {
-      const dictWords = annotateWords(statement.russian);
-      if (dictWords.length) {
-        const roleWords = inferRoles(statement.russian, dictWords);
+      // 优先用缓存（预标注过的句子直接用，不用等词典加载）
+      let roleWords = getCachedAnnotation(statement.russian);
+      if (!roleWords) {
+        // 缓存未命中 → 现算
+        const dictWords = annotateWords(statement.russian);
+        roleWords = inferRoles(statement.russian, dictWords);
+      }
         // Excel 上传的逐词句子成分（数量与词数对齐时）为权威标注，直接覆盖引擎推断的角色
         const excelRoles = Array.isArray(statement?.syntactic) ? statement.syntactic : null;
         const excelOk = excelRoles && excelRoles.length === roleWords.length;
@@ -262,7 +267,6 @@ export default function AnswerPanel({
             order: i,
           };
         });
-      }
     }
     return raw;
   }, [statement?.words, statement?.russian, dictReady]);
