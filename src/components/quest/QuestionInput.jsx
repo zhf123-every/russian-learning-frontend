@@ -258,8 +258,8 @@ export default function QuestionInput({
                     : dynWidth
                 }
               >
-                {/* 已输入的文字显示在下划线上方；未输入时为空（只显示下划线） */}
-                {word.userInput ? word.userInput : isPunct ? word.text : ""}
+                {/* fixed 的词：直接显示标准答案，不显示 userInput（避免重复） */}
+                {word.fixed ? word.text : (word.userInput ? word.userInput : isPunct ? word.text : "")}
               </div>
             );
           })
