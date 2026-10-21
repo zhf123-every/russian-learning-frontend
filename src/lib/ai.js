@@ -1,8 +1,8 @@
 // 通用 AI 中转：由后端持有密钥，前端不再直接调用第三方 AI 接口
 import { apiFetch, API_BASE } from './api'
 
-// AI 请求超时：后端 Render 免费实例冷启动 30-60s + 大模型生成 10-60s，90s 偏紧会被掐断（报 abort）
-const AI_TIMEOUT = 150000
+// AI 请求超时：后端 Render 免费实例冷启动 30-60s + 大模型生成 10-60s，150s 偏紧会被掐断（报 abort）
+const AI_TIMEOUT = 180000
 
 // 单次 AI 调用；AbortError（超时被前端掐断）时自动等 3s 重试一次——
 // 首次超时多半是后端冷启动，重试时后端已被唤醒，基本必成
