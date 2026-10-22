@@ -20,6 +20,7 @@
  *   组装题打 chunkIsFinal:true → 现有 granularityOfUnit 判定为 sentence。
  */
 import { filterSequencesByDifficulty, filterItemsByDifficulty } from "./scaffolding.js";
+import { ruNumbersInText } from "./ruNumbers.js";
 
 const DIFF_LABEL = { easy: "初级", medium: "中级", hard: "高级" };
 
@@ -29,7 +30,7 @@ function cleanText(v) {
 
 /** 一条 ok 语块 → 零件题 unit（与 scaffoldingToSequences 的 unit 同构） */
 function segToPartUnit(seg, sequenceId, seqIdx, order, sentenceNo, diffLabel) {
-  const russian = cleanText(seg.text);
+  const russian = ruNumbersInText(cleanText(seg.text));
   const tokens = russian.split(/\s+/).filter(Boolean);
   const words = tokens.map((w, i) => ({
     order: i,
@@ -67,7 +68,7 @@ function segToPartUnit(seg, sequenceId, seqIdx, order, sentenceNo, diffLabel) {
 /** 一句三档 → 组装题 unit（整句；中级=按语块分段、高级=整句一块） */
 function segToFullUnit(segments, sequenceId, seqIdx, translation, sentenceNo, diffKey) {
   const ordered = [...segments].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-  const russian = ordered.map((s) => cleanText(s.text)).filter(Boolean).join(" ");
+  const russian = ruNumbersInText(ordered.map((s) => cleanText(s.text)).filter(Boolean).join(" "));
   const tokens = russian.split(/\s+/).filter(Boolean);
   // 块级中文共享到块内每个词（词卡至少不空；逐词翻译属已知缺口，P4 可补）
   const words = tokens.map((w, i) => {
@@ -204,7 +205,7 @@ export function segmentsToItems(items, wordsMap) {
     for (const it of group) {
       const diffKey = cleanText(it.difficulty) || "medium";
       const segments = [...it.segments].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-      const russian = segments.map((s) => cleanText(s.text)).filter(Boolean).join(" ");
+      const russian = ruNumbersInText(segments.map((s) => cleanText(s.text)).filter(Boolean).join(" "));
       const zhText = cleanText(it.translation);
       // 优先用后端 quest_words 表返回的逐词标注；其次用传入的 wordsMap（前端调 statements 接口拿的）；最后简单 split 兜底
       let words;

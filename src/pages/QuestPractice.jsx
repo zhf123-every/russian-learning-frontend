@@ -31,6 +31,7 @@ import { inferRoles } from "../lib/roleRules";
 import { preloadAnnotations, preloadAnnotationsAsync } from "../lib/annotateCache";
 import { expandSequencesWithChunks } from "../lib/chunking";
 import { scaffoldingToSequences } from "../lib/scaffolding";
+import { ruNumbersInText } from "../lib/ruNumbers";
 import { segmentsToSequences, filterSegmentsByDifficulty } from "../lib/segmentsToQuestions";
 import { loadSlotTablesForUnit } from "../lib/loadSlotTables";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
@@ -111,8 +112,8 @@ function adaptBuildSteps(data) {
         return {
           ...w,
           order: i,
-          form: w.stress_marked || w.word || w.lemma || "",
-          lemma: w.lemma || w.word || "",
+          form: ruNumbersInText(w.stress_marked || w.word || w.lemma || ""),
+          lemma: ruNumbersInText(w.lemma || w.word || ""),
           pos: w.pos || "",
           posColor: w.pos ? getPosColor(w.pos) : "",
           grammarLabel,
@@ -125,7 +126,7 @@ function adaptBuildSteps(data) {
         id: `${fam.sequence_id}_${step.step_order ?? idx + 1}`,
         sequenceId: fam.sequence_id,
         sequenceOrder: step.step_order ?? idx + 1,
-        russian: step.target_sentence || "",
+        russian: ruNumbersInText(step.target_sentence || ""),
         stressMarked,
         chinese: step.chinese || "",
         action: step.action || "",
@@ -158,7 +159,9 @@ function adaptLocalLesson(lesson) {
   const words = Array.isArray(lesson.words) ? lesson.words.filter(w => w && w.ru) : [];
 
   const buildUnit = (ru, zh, idx, extra) => {
-    const tokens = String(ru || "").trim().split(/\s+/).filter(Boolean);
+    // 阿拉伯数字 → 俄语数词（55 → пятьдесят пять）：词槽/判题/TTS 统一用俄语形式
+    const ruText = ruNumbersInText(String(ru || "").trim());
+    const tokens = ruText.split(/\s+/).filter(Boolean);
     const mean = Array.isArray(extra?.meaning) ? extra.meaning : null;
     const meanOk = mean && mean.length === tokens.length;
     const ws = tokens.map((w, i) => ({
@@ -170,7 +173,7 @@ function adaptLocalLesson(lesson) {
       id: `local_${idx + 1}`,
       sequenceId: "local",
       sequenceOrder: idx + 1,
-      russian: ru || "",
+      russian: ruText,
       stressMarked: tokens.join(" "),
       chinese: (extra?.fullZh || zh) || "",
       action: "", grammarNote: "", newElement: "",

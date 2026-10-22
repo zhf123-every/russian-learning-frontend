@@ -16,12 +16,14 @@
  * 直接是最终形态，前端不再现切 chunking。
  */
 
+import { ruNumbersInText } from "./ruNumbers.js";
+
 // paths → sequences（QuestPractice / QuestListening / QuestSpeaking 共用）
 export function scaffoldingToSequences(paths, title) {
   return (Array.isArray(paths) ? paths : []).map((p, pi) => {
     const steps = (Array.isArray(p.steps) ? p.steps : []).filter((s) => s && String(s.russian || s.ru || "").trim());
     const units = steps.map((st, si) => {
-      const russian = String(st.russian || st.ru || "").trim();
+      const russian = ruNumbersInText(String(st.russian || st.ru || "").trim());
       const tokens = russian.split(/\s+/).filter(Boolean);
       const allChunks = Array.isArray(st.allChunks) ? st.allChunks : [];
       const newSet = new Set(
@@ -204,7 +206,7 @@ export function scaffoldingToItems(paths) {
     const steps = (Array.isArray(p.steps) ? p.steps : []).filter((s) => s && String(s.russian || s.ru || "").trim());
     steps.forEach((st, si) => {
       if (!st || !String(st.russian || st.ru || "").trim()) return;
-      const russian = String(st.russian || st.ru || "").trim();
+      const russian = ruNumbersInText(String(st.russian || st.ru || "").trim());
       const allChunks = Array.isArray(st.allChunks) ? st.allChunks : [];
       const words = allChunks.length
         ? allChunks.map((c) => ({ ru: c.word || c.ru || "", zh: c.translation || c.zh || c.mean || "" }))

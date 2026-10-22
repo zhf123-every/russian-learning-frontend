@@ -14,6 +14,7 @@ import { addStudyTime } from "../lib/learningStats";
 import { addDailyExp } from "../lib/questStats";
 import { expandSequencesWithChunks } from "../lib/chunking";
 import { scaffoldingToSequences } from "../lib/scaffolding";
+import { ruNumbersInText } from "../lib/ruNumbers";
 import { segmentsToSequences, filterSegmentsByDifficulty } from "../lib/segmentsToQuestions";
 import { loadSlotTablesForUnit } from "../lib/loadSlotTables";
 import { getCachedTtsUrl, getCachedTtsAudio, getCachedLesson } from "../utils/ttsPreloadShared";
@@ -77,8 +78,8 @@ function adaptBuildSteps(data) {
       const rawWords = Array.isArray(step.words) ? step.words : [];
       const words = rawWords.map((w, i) => ({
         ...w, order: i,
-        form: w.stress_marked || w.word || w.lemma || "",
-        lemma: w.lemma || w.word || "",
+        form: ruNumbersInText(w.stress_marked || w.word || w.lemma || ""),
+        lemma: ruNumbersInText(w.lemma || w.word || ""),
         pos: w.pos || "",
         grammarLabel: [w.gender, w.grammar_case, w.number === "复数" ? "复数" : ""].filter(Boolean).join("·"),
         roleLabel: w.syntactic_role || "",
@@ -88,7 +89,7 @@ function adaptBuildSteps(data) {
         id: `${fam.sequence_id}_${step.step_order ?? idx + 1}`,
         sequenceId: fam.sequence_id,
         sequenceOrder: step.step_order ?? idx + 1,
-        russian: step.target_sentence || "",
+        russian: ruNumbersInText(step.target_sentence || ""),
         stressMarked: words.map((w) => w.form).filter(Boolean).join(" "),
         chinese: step.chinese || "",
         action: step.action || "",
@@ -117,11 +118,12 @@ function adaptLocalLesson(lesson) {
   const sentences = Array.isArray(lesson.sentences) ? lesson.sentences.filter(x => x && x.ru) : [];
   const words = Array.isArray(lesson.words) ? lesson.words.filter(w => w && w.ru) : [];
   const buildUnit = (ru, zh, idx) => {
-    const tokens = String(ru || "").trim().split(/\s+/).filter(Boolean);
+    const ruText = ruNumbersInText(String(ru || "").trim());
+    const tokens = ruText.split(/\s+/).filter(Boolean);
     const ws = tokens.map((w, i) => ({ order: i, form: w, lemma: w, pos: "", grammarLabel: "", roleLabel: "" }));
     return {
       id: `local_${idx + 1}`, sequenceId: "local", sequenceOrder: idx + 1,
-      russian: ru || "", stressMarked: tokens.join(" "), chinese: zh || "",
+      russian: ruText, stressMarked: tokens.join(" "), chinese: zh || "",
       action: "", grammarNote: "", newElement: "", words: ws,
       acceptableAnswers: [{ wordOrder: tokens.map((_, i) => i), wordVariants: {}, isDefault: true, note: "" }],
     };
