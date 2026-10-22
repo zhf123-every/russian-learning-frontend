@@ -58,7 +58,7 @@ const ROLE_COLORS = {
   default: "#9CA3AF",
 };
 
-// 边框色（与 ROLE_COLORS 同步：标签/边框同色；4px 粗边框 + 8c 半透明，粗而不生硬）
+// 边框色（与 ROLE_COLORS 同步：标签/边框同色；1px 细边框 + b3 半透明，回到最初细边框观感）
 const ROLE_BORDER_COLORS = {
   subject: "#4ADE80",      // 主语 - 亮绿
   predicate: "#FB923C",    // 谓语 - 浅橙
@@ -358,8 +358,8 @@ export default function AnswerPanel({
                         <div
                           className="word-card"
                           style={isGroup
-                            ? { ...styles.wordCard, borderWidth: gBorder ? "4px" : "1px", borderColor: gBorder ? `${gBorder}8c` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
-                            : { ...styles.wordCard, borderWidth: gBorder ? "4px" : "1px", borderColor: gBorder ? `${gBorder}8c` : "var(--qs-border, #E5E7EB)" }}
+                            ? { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}b3` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
+                            : { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}b3` : "var(--qs-border, #E5E7EB)" }}
                         >
                           {gLabel && <span style={{ ...styles.roleTag, background: gBorder || "#9CA3AF" }}>{gLabel}</span>}
                           {g.items.map(({ w, i }, j) => {
@@ -391,7 +391,7 @@ export default function AnswerPanel({
                             })();
                             const cellStyle = {
                               display: "flex", flexDirection: "column", alignItems: "center",
-                              padding: "0 14px", minWidth: 100, minHeight: 190, justifyContent: "flex-start",
+                              padding: "0 14px", minWidth: 100, minHeight: 120, justifyContent: "flex-start",
                               cursor: "pointer",
                               borderRight: (isGroup && j < g.items.length - 1) ? ("1px dashed " + (gBorder ? `${gBorder}80` : "var(--qs-border, #E5E7EB)")) : "none",
                             };
@@ -412,10 +412,6 @@ export default function AnswerPanel({
                                   <div style={{ ...styles.underline, background: effColor }} />
                                   {/* 中文释义（直接用课程上传的中文） */}
                                   {uiCfg.showWordTrans !== false && chinese && <div style={styles.chinese}>{chinese}</div>}
-                                  {/* 语法标注（性数格） */}
-                                  {grammarLabel && <div style={{ ...styles.pos, fontSize: "10px", color: "var(--qs-sub, #9CA3AF)", marginTop: "2px" }}>{grammarLabel}</div>}
-                                  {/* 词性（词性色） */}
-                                  {uiCfg.showPos !== false && posLabel && <div style={{ ...styles.pos, color: effColor }}>{posLabel}</div>}
                                 </div>
                               </Fragment>
                             );
@@ -524,10 +520,10 @@ const styles = {
     alignItems: "center",
     padding: "20px 16px 14px",
     minWidth: 100,
-    minHeight: 190, // 统一卡片高度：有无角色标签/词性/性数格的词卡等高
+    minHeight: 120, // 统一卡片高度：单词+释义两行，短卡片
     justifyContent: "flex-start",
     border: "1px solid var(--qs-border, #E5E7EB)",
-    borderRadius: 12,
+    borderRadius: 20,
     background: "var(--qs-surface2, #fff)",
   },
   roleTag: {
