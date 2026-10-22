@@ -44,7 +44,7 @@ function splitClauses(words, sentence) {
   words.forEach((w, gi) => {
     cur.push(w);
     const t = toks[gi] || "";
-    const hasEndPunct = /[.,;:!?…]$/.test(t);
+    const hasEndPunct = /[.,;:!?…](?:—|–)?$/.test(t);
     const isBreaker = CLAUSE_BREAKERS.has(lemmaOf2(w));
     if (hasEndPunct || isBreaker) {
       clauses.push(cur);

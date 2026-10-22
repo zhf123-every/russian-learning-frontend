@@ -64,30 +64,39 @@ function splitTokens(ru) {
 export function splitSentenceToChunks(ru) {
   const toks = splitTokens(ru);
   const chunks = [];
+  let pendingDash = "";
   let i = 0;
   while (i < toks.length) {
     const t = toks[i];
     if (PUNCT.has(t)) {
-      // 逗号/破折号：仍是块边界（其后另起新块），但附着前块保留标点 → 中文翻译带逗号/句号
-      if (chunks.length) chunks[chunks.length - 1] += t;             // 所有标点附着前块（句号/逗号/破折号…）
+      // 破折号是分句边界：若像其他标点一样粘连前一 token（"идёшь?—"），
+      // 整句重建时两侧无空格，分句引擎按尾标点切分失效 → 后句的 Я 等主格代词被误判为宾语。
+      // 因此破折号作为前缀附着下一块（"— Я"），整句保留 "? — Я" 两侧空格。
+      if (t === "—" || t === "–") {
+        pendingDash = t + " ";
+      } else if (chunks.length) {
+        chunks[chunks.length - 1] += t; // 句号/逗号/问号等仍附着前块（中文翻译带标点）
+      }
       i += 1;
       continue;
     }
+    const word = (pendingDash || "") + t;
+    pendingDash = "";
     const next = toks[i + 1];
     if (next && !PUNCT.has(next)) {
       if (FIXED_PHRASES.has(t + " " + next)) {                       // 固定短语合并
-        chunks.push(t + " " + next);
+        chunks.push(word + " " + next);
         i += 2;
         continue;
       }
       // 指示代词 + 后随词合块：「Это Анна」（这是安娜）主系表一块，避免「这是」「安娜」两碎块
       if (DEMONSTRATIVES.has(String(t).toLowerCase())) {
-        chunks.push(t + " " + next);
+        chunks.push(word + " " + next);
         i += 2;
         continue;
       }
     }
-    chunks.push(t);
+    chunks.push(word);
     i += 1;
   }
   // 块数上限：超过 7 块时合并尾部相邻块（从后往前两两合并，保留头部细粒度）
