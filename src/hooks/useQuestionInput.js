@@ -592,15 +592,16 @@ export function useQuestionInput({
     }
 
     // 词数相同但词不匹配 → 立即标记错误（已给人名不标红）
+    // 按位置顺序比较：乱序输入时错位词标红，让用户看到是哪个词顺序不对
     setUserInputWords((prevWords) => {
       const newWords = prevWords.map((w) => ({ ...w }));
-      const answerSet = new Set(answerWords);
+      const seq = newWords.filter(x => !x.fixed);
       newWords.forEach((w) => {
         if (w.fixed) { w.incorrect = false; return; }
-        // 非 fixed 词按用户输入顺序比较
-        const idx = newWords.filter(x => !x.fixed).findIndex(x => x.id === w.id);
+        const idx = seq.findIndex(x => x.id === w.id);
         const userWord = userWordsFiltered[idx] || "";
-        if (!answerSet.has(norm(userWord))) w.incorrect = true;
+        // 顺序比较（忽略大小写）：与答案同位置词不一致 → 标红
+        if (norm(userWord) !== (answerWords[idx] || "")) w.incorrect = true;
       });
       return newWords;
     });

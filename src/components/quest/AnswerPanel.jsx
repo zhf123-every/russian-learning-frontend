@@ -33,42 +33,44 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 内存缓存：音色::text -> audio_url，避免重复请求（切换音色后自动命中新 key，旧缓存作废）
 const ttsCache = new Map();
 
-// 句法角色 → 颜色映射（对齐句乐部实测：边框/标签用角色色，主语橙/谓语红/宾语蓝）
-// 虚词角色（否定/前置词/连接词/语气词/感叹词/数词）补专属色，与词性色区分，避免边框=下划线同色
+// 句法角色 → 颜色映射（边框/标签用角色色，与词性下划线色完全区分）
+// 词性下划线色（已占用，边框色一律避开）：
+// 名词蓝#3B82F6、动词绿#22C55E、形容词紫#A855F7、副词黄#EAB308、代词红#EF4444、
+// 介词靛蓝、连词粉#EC4899、感叹词橙#F97316、助词青#06B6D4、数词紫#A855F7、默认灰#9CA3AF
+// 边框色采用 12 个互不相同的亮色（深夜黑底也清晰可辨），同一色系用明度/饱和度拉开
 const ROLE_COLORS = {
-  subject: "#B45309",
-  predicate: "#BE123C",
-  object: "#2563EB",
-  adverbial: "#F59E0B",
-  attribute: "#C026D3",    // 定语 - 品红紫（区别于形容词词性紫 #A855F7，避免边框=下划线）
-  predicative: "#14B8A6",
-  complement: "#BE185D",   // 补语 - 玫红（区别于连词词性粉 #EC4899，避免边框=下划线）
-  negation: "#374151",      // 否定 - 深石板灰（与 default 浅灰区分）
-  preposition: "#0EA5E9",   // 前置词 - 天蓝（区别于介词词性深靛蓝/宾语蓝）
-  conjunction: "#D97706",   // 连接词 - 暗金黄（区别于连词词性粉/副词黄）
-  particle: "#7C3AED",      // 语气词 - 深紫罗兰（区别于助词词性青）
-  interjection: "#DB2777",  // 感叹词 - 洋红（区别于感叹词词性橙）
-  numeral: "#16A34A",       // 数词 - 深绿（区别于数词词性紫/动词绿）
+  subject: "#F59E0B",      // 主语 - 橙金（避开副词黄）
+  predicate: "#F43F5E",    // 谓语 - 玫瑰红（避开代词红）
+  object: "#38BDF8",       // 宾语 - 天蓝（避开名词蓝，sky 偏亮青）
+  adverbial: "#A3E635",    // 状语 - 黄绿（避开副词黄/动词绿）
+  attribute: "#E879F9",    // 定语 - 粉紫（避开形容词紫，fuchsia 偏粉）
+  predicative: "#2DD4BF",  // 表语 - 青绿（避开助词青）
+  complement: "#FDA4AF",   // 补语 - 浅粉（避开连词粉，rose 偏暖）
+  negation: "#94A3B8",     // 否定 - 灰蓝（避开默认灰）
+  preposition: "#FDBA74",  // 前置词 - 杏橙（避开感叹词橙）
+  conjunction: "#4ADE80",  // 连接词 - 亮绿（避开动词绿）
+  particle: "#A78BFA",     // 语气词 - 淡紫罗兰（避开形容词紫/粉紫）
+  interjection: "#67E8F9", // 感叹词 - 亮青（避开助词青/天蓝）
+  numeral: "#FBBF24",      // 数词 - 亮黄（避开副词黄/橙金）
   default: "#9CA3AF",
 };
 
-// 边框色（与所有词性下划线完全不重合）
-// 词性下划线：名词蓝#3B82F6、动词绿#22C55E、形容词紫#A855F7、副词黄#EAB308、代词红#EF4444、
-//            介词靛蓝、连词粉#EC4899、感叹词橙#F97316、助词青#06B6D4、数词紫#A855F7
+// 边框色（与所有词性下划线完全不重复，12 角色两两不同）
 const ROLE_BORDER_COLORS = {
-  subject: "#B45309",      // 主语（代词红）→ 棕
-  predicate: "#7C3AED",    // 谓语（动词绿）→ 深紫
-  object: "#C026D3",       // 宾语（名词蓝）→ 品红
-  adverbial: "#14B8A6",    // 状语（副词黄）→ 青
-  attribute: "#BE185D",    // 定语（形容词紫）→ 玫红
-  predicative: "#D97706",  // 表语 → 深金
-  complement: "#0EA5E9",   // 补语 → 天蓝
-  negation: "#6B7280",     // 否定 → 深灰
-  preposition: "#84CC16",  // 前置词（介词靛蓝）→ 黄绿
-  conjunction: "#16A34A",  // 连接词（连词粉）→ 深绿
-  particle: "#DB2777",     // 语气词（助词青）→ 洋红
-  interjection: "#9333EA", // 感叹词（感叹词橙）→ 深紫
-  numeral: "#B45309",      // 数词（数词紫）→ 棕
+  subject: "#F59E0B",      // 主语 - 橙金
+  predicate: "#F43F5E",    // 谓语 - 玫瑰红
+  object: "#38BDF8",       // 宾语 - 天蓝
+  adverbial: "#A3E635",    // 状语 - 黄绿
+  attribute: "#E879F9",    // 定语 - 粉紫
+  attributive: "#E879F9",  // 定语（兼容 attributive 写法，修复"定语灰色边框"）
+  predicative: "#2DD4BF",  // 表语 - 青绿（与主语橙金拉开，不再相近）
+  complement: "#FDA4AF",   // 补语 - 浅粉
+  negation: "#94A3B8",     // 否定 - 灰蓝
+  preposition: "#FDBA74",  // 前置词 - 杏橙
+  conjunction: "#4ADE80",  // 连接词 - 亮绿
+  particle: "#A78BFA",     // 语气词 - 淡紫罗兰
+  interjection: "#67E8F9", // 感叹词 - 亮青
+  numeral: "#FBBF24",      // 数词 - 亮黄（不再与主语同色）
   default: "#9CA3AF",
 };
 
@@ -345,8 +347,8 @@ export default function AnswerPanel({
                         <div
                           className="word-card"
                           style={isGroup
-                            ? { ...styles.wordCard, borderColor: gBorder ? `${gBorder}33` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
-                            : { ...styles.wordCard, borderColor: gBorder ? `${gBorder}33` : "var(--qs-border, #E5E7EB)" }}
+                            ? { ...styles.wordCard, borderColor: gBorder ? `${gBorder}b3` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
+                            : { ...styles.wordCard, borderColor: gBorder ? `${gBorder}b3` : "var(--qs-border, #E5E7EB)" }}
                         >
                           {gLabel && <span style={{ ...styles.roleTag, background: gBorder || "#9CA3AF" }}>{gLabel}</span>}
                           {g.items.map(({ w, i }, j) => {
@@ -380,7 +382,7 @@ export default function AnswerPanel({
                               display: "flex", flexDirection: "column", alignItems: "center",
                               padding: "0 14px", minWidth: 100, minHeight: 190, justifyContent: "flex-start",
                               cursor: "pointer",
-                              borderRight: (isGroup && j < g.items.length - 1) ? ("1px dashed " + (gBorder ? `${gBorder}40` : "var(--qs-border, #E5E7EB)")) : "none",
+                              borderRight: (isGroup && j < g.items.length - 1) ? ("1px dashed " + (gBorder ? `${gBorder}80` : "var(--qs-border, #E5E7EB)")) : "none",
                             };
                             return (
                               <Fragment key={i}>
@@ -526,7 +528,7 @@ const styles = {
     borderRadius: 10,
     fontSize: 11,
     fontWeight: 700,
-    color: "#fff",
+    color: "#111827", // 亮色背景上深色文字保证对比度（深夜/白天都清晰）
     whiteSpace: "nowrap",
     letterSpacing: 0.5,
   },

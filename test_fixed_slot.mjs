@@ -187,5 +187,34 @@ const afterDoma = syncFromInput(w10c, "где Анна? она дома", 18);
 check("跳词后输入 дома 成功", afterDoma[3].userInput === "дома", afterDoma.map(w=>w.userInput).join("|"));
 check("最终判题正确", judge("где Анна? она дома", "Где Анна? Она дома.", afterDoma).ok, judge("где Анна? она дома", "Где Анна? Она дома.", afterDoma).reason);
 
+console.log("[11] 判题 — 乱序输入必须判错 + 错位词标红（顺序比较）");
+function judgeRed(words, inputValue, answerText) {
+  const norm = (s) => s.toLowerCase();
+  const userWords = inputValue.trim().split(/\s+/).filter(Boolean).map(stripPunct).map(norm).filter(Boolean);
+  const answerWords = (answerText || "").trim().split(/\s+/).filter(Boolean).map(stripPunct).map(norm).filter(Boolean);
+  const fixedWords = new Set(words.filter((w) => w.fixed).map((w) => norm(stripPunct(w.text))));
+  const userNonFixed = userWords.filter((w) => !fixedWords.has(w));
+  const answerNonFixed = answerWords.filter((w) => !fixedWords.has(w));
+  const seqMatch = userNonFixed.every((w, i) => w === answerNonFixed[i]);
+  // 词数相同但顺序不同的分支：按位置顺序比较，错位词标红
+  const red = [];
+  if (userNonFixed.length === answerNonFixed.length && !seqMatch) {
+    userNonFixed.forEach((w, i) => { if (w !== (answerNonFixed[i] || "")) red.push({ idx: i, word: w }); });
+  }
+  return { ok: seqMatch && userNonFixed.length === answerNonFixed.length, red };
+}
+// Она дома.（无 fixed）乱序 дома она
+const w11 = initWords("Она дома.");
+let r11 = judgeRed(w11, "дома она", "Она дома.");
+check("乱序判错", r11.ok === false, "ok=" + r11.ok);
+check("两个错位词都标红", r11.red.length === 2, JSON.stringify(r11.red));
+// Где Анна? Она дома. 乱序 дома она где（анна? 省略/或已自动填充）
+let r11b = judgeRed(w1, "дома она где", "Где Анна? Она дома.");
+check("乱序(带fixed)判错", r11b.ok === false, "ok=" + r11b.ok);
+check("错位词标红(дома/где 错位、она 位置对不红)", r11b.red.length === 2, JSON.stringify(r11b.red));
+// 正确顺序不标红
+let r11c = judgeRed(w1, "где она дома", "Где Анна? Она дома.");
+check("正确顺序不标红", r11c.ok === true && r11c.red.length === 0, JSON.stringify(r11c));
+
 console.log("\n结果: PASS " + pass + " / FAIL " + fail);
 process.exit(fail === 0 ? 0 : 1);
