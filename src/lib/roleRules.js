@@ -154,10 +154,64 @@ function applyLocativePattern(clause) {
   return true
 }
 
+// 模板4：破折号判断句（无 esto、无动词）"X — Y" → X=主语、Y=表语、破折号两侧的形容词/物主代词=定语
+// 例：Москва — большой город. → Москва=主语、большой=定语、город=表语；Мой брат — врач. → мой=定语、брат=主语、врач=表语
+function applyDashPattern(clause) {
+  const n = clause.length;
+  if (n < 3) return false;
+  if (clause.some((w) => w.pos === "verb")) return false;
+  let di = -1;
+  for (let i = 0; i < n; i++) {
+    if (clause[i].isDash) { di = i; break; }
+  }
+  if (di <= 0 || di >= n - 1) return false; // 破折号必须在中间
+  // 破折号前：最后一个不在介词后的名词/代词（主语）
+  let si = -1;
+  for (let i = di - 1; i >= 0; i--) {
+    if (isNounish2(clause[i]) && !isPrepAfter2(i, clause)) { si = i; break; }
+  }
+  if (si < 0) return false;
+  // 破折号后：第一个名词（表语），没有再找代词/数词
+  let pi = -1;
+  for (let i = di + 1; i < n; i++) {
+    if (clause[i].pos === "noun" && !isPrepAfter2(i, clause)) { pi = i; break; }
+  }
+  if (pi < 0) {
+    for (let i = di + 1; i < n; i++) {
+      if (isNounish2(clause[i]) && !isPrepAfter2(i, clause)) { pi = i; break; }
+    }
+  }
+  if (pi < 0) return false;
+  clause[si].syntacticRole = "subject"; clause[si].roleLabel = "主语";
+  clause[pi].syntacticRole = "predicative"; clause[pi].roleLabel = "表语";
+  // 破折号两侧的形容词/物主代词 → 定语（含主语前修饰词，避免被"主语后形容词→表语"误标）
+  for (let i = 0; i < n; i++) {
+    if (i === si || i === pi) continue;
+    const w = clause[i];
+    if (w.syntacticRole) continue;
+    if (w.pos === "adjective" || (w.pos === "pronoun" && POSSESSIVE.has(lemmaOf2(w)))) { w.syntacticRole = "attribute"; w.roleLabel = "定语"; }
+  }
+  return true;
+}
+
 export function inferRoles(sentence, dictWords) {
-  const words = (dictWords || []).map((w) => ({ ...w }));
+  const src = (dictWords || []).map((w) => ({ ...w }));
+  // 破折号占位：annotateWords 会过滤独立破折号 token，导致 words 与原句 tokens 错位（分句标点判断漂移）。
+  // 这里按原句把破折号以占位词插回（pos:"dash"），保证分句/模板/标点判断与真实词序对齐；
+  // 全部规则跑完后在返回前移除占位（破折号显示由 AnswerPanel 的 punct 另行处理）。
+  const toks = String(sentence || "").split(/\s+/).filter(Boolean);
+  const words = [];
+  let wi = 0;
+  toks.forEach((t) => {
+    if (/^[—–-]+$/.test(t)) {
+      words.push({ form: t, lemma: t, pos: "dash", isDash: true });
+    } else {
+      words.push(src[wi] || { form: t, lemma: t });
+      wi++;
+    }
+  });
   const n = words.length;
-  if (!n) return words;
+  if (!n) return src;
 
   const isVerb = (w) => w.pos === "verb";
   const isNounish = (w) => w.pos === "noun" || w.pos === "pronoun" || w.pos === "numeral";
@@ -167,10 +221,11 @@ export function inferRoles(sentence, dictWords) {
   // 分句（按句末标点/对比转折连接词切），每块独立应用句型模板与主语判定
   const clauses = splitClauses(words, sentence);
 
-  // 0) 高频句型模板优先标注（"Это X" / "X — это Y" / "Тут X"）：杜绝定语/表语/宾语互标错
+  // 0) 高频句型模板优先标注（"Это X" / "X — это Y" / "Тут X" / 破折号判断句 "X — Y"）：杜绝定语/表语/宾语互标错
   clauses.forEach((clause) => { applyEstePattern(clause); });
   clauses.forEach((clause) => { applyEsteMiddlePattern(clause); });
   clauses.forEach((clause) => { applyLocativePattern(clause); });
+  clauses.forEach((clause) => { applyDashPattern(clause); });
 
   // 1) 谓语：动词（系动词亦谓语）；动词后紧跟的第二个动词（不定式）→ 补语（"Я люблю читать"）
   for (let i = 0; i < n; i++) {
@@ -220,11 +275,14 @@ export function inferRoles(sentence, dictWords) {
       w.syntacticRole = "predicative"; w.roleLabel = "表语";
       return;
     }
-    // 无动词：主语之后的主格名词/形容词 → 表语（同分句内）
+    // 无动词：主语之后的主格名词/形容词 → 表语（同分句内）。
+    // 排除"该词前已有谓语动词"的情形（"Я люблю читать книги" 中 книги 是宾语；
+    // 系动词句的表语由 COPULA 规则独立处理）。
     if (i > 0) {
       const inClause = clauses.find((c) => c.includes(w));
       const hasSubjectBefore = inClause && inClause.slice(0, i).some((cw) => cw.syntacticRole === "subject");
-      if (hasSubjectBefore &&
+      const verbBefore = inClause && inClause.slice(0, i).some((cw) => cw.pos === "verb");
+      if (hasSubjectBefore && !verbBefore &&
           (w.pos === "adjective" || (w.pos === "noun" && w.grammarCase === "nom"))) {
         w.syntacticRole = "predicative"; w.roleLabel = "表语";
       }
@@ -239,13 +297,22 @@ export function inferRoles(sentence, dictWords) {
     }
   });
 
-  // 4.5) 谓语动词后的名词（未标记，含无格标注的不变格名词如 кофе）→ 宾语
+  // 4.5) 谓语动词后的名词（未标记，含无格标注的不变格名词如 кофе）→ 宾语；
+  //      中间隔不定式补语也算（"Я люблю читать книги" → книги 是宾语，不是表语/待确认）
   words.forEach((w, i) => {
     if (w.syntacticRole) return;
     if (isNounish(w) && i > 0) {
-      const prev = words[i - 1];
-      if (prev && prev.syntacticRole === "predicate") {
-        w.syntacticRole = "object"; w.roleLabel = "宾语";
+      // 向前找最近的动词；若该动词是谓语或补语（不定式链），且中间只有动词/补语 → 宾语
+      for (let j = i - 1; j >= 0; j--) {
+        const prev = words[j];
+        if (prev.pos === "verb") {
+          if (prev.syntacticRole === "predicate" || prev.syntacticRole === "complement") {
+            const between = words.slice(j + 1, i);
+            const onlyVerbish = between.every((b) => b.pos === "verb" || b.syntacticRole === "complement");
+            if (onlyVerbish) { w.syntacticRole = "object"; w.roleLabel = "宾语"; }
+          }
+          break;
+        }
       }
     }
   });
@@ -281,7 +348,8 @@ export function inferRoles(sentence, dictWords) {
     if (!w.syntacticRole) { w.syntacticRole = "default"; w.roleLabel = "待确认"; }
   });
 
-  return words;
+  // 移除破折号占位词（破折号显示由 AnswerPanel 的 punct/dashMap 按原句另行渲染）
+  return words.filter((w) => !w.isDash);
 }
 
 // Excel「句子成分」列的逐词角色名 → 引擎 role key 映射（课程上传的权威标注直接驱动答题页角色颜色/标签）

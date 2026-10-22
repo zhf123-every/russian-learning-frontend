@@ -492,10 +492,14 @@ const DISAMBIG = {
 };
 
 // 带消歧的索引写入：非首选 lemma 遇到该词形已被占时跳过，首选可覆盖
+// 同形多格位：主格（nom）优先——俄语阳性无生命名词/形容词主格=宾格（город/большой），
+// 若按 nom→acc 顺序写入则后写的 acc 覆盖 nom，导致主格名词被判宾格（表语误判宾语）。
 function setIdx(idx, form, entry) {
   const nf = normForm(form);
   const pref = DISAMBIG[nf];
   if (pref && pref !== entry.lemma && idx.has(nf)) return;
+  const prev = idx.get(nf);
+  if (prev && prev.caseCode === "nom" && entry.caseCode !== "nom") return; // 同形多格位：主格优先
   idx.set(nf, entry);
 }
 
@@ -668,6 +672,20 @@ export function annotateWords(sentence) {
     }
 
     const hit = idx.get(n);
+    // 简版词典原形优先：RU_DICT（教学高频词）收录的原形词，词性/释义权威。
+    // 防 dict-full 变格表同形误占（如 большой 被其它阴性形容词的前置格形式占用 → 错标 前置格/阴性），
+    // 变格词形（большого 等）RU_DICT 无 → 仍走 dict-full。
+    const base0 = RU_DICT[n];
+    if (base0) {
+      const pos0 = ruPosToEn(base0.p);
+      return {
+        form: cleanToken(w), lemma: n, pos: pos0,
+        posColor: getPosColor(pos0),
+        gender: ruGender(base0.p),
+        chinese: cleanZhText(base0.z || zhOf(n, n)) || "",
+        roleLabel: "",
+      };
+    }
     // dict-full 命中且 pos 有值（非空非"default"）→ 直接用
     if (hit && hit.pos && hit.pos !== "default") {
       return {
