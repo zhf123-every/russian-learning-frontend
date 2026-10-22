@@ -33,44 +33,47 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 内存缓存：音色::text -> audio_url，避免重复请求（切换音色后自动命中新 key，旧缓存作废）
 const ttsCache = new Map();
 
-// 句法角色 → 颜色映射（边框/标签用角色色，与词性下划线色完全区分）
-// 词性下划线色（已占用，边框色一律避开）：
-// 名词蓝#3B82F6、动词绿#22C55E、形容词紫#A855F7、副词黄#EAB308、代词红#EF4444、
-// 介词靛蓝、连词粉#EC4899、感叹词橙#F97316、助词青#06B6D4、数词紫#A855F7、默认灰#9CA3AF
-// 边框色采用 12 个互不相同的亮色（深夜黑底也清晰可辨），同一色系用明度/饱和度拉开
+// 句法角色 → 颜色映射（边框/标签用角色色，与词性下划线色按"色相反差"拉开）
+// 词性下划线色：名词蓝#3B82F6(217°)、动词绿#22C55E(142°)、形容词紫#A855F7(269°)、
+// 副词黄#EAB308(45°)、代词红#EF4444(0°)、前置词靛蓝#818CF8(239°)、连词粉#EC4899(330°)、
+// 感叹词橙#F97316(25°)、助词青#06B6D4(186°)、数词紫#A855F7(269°)、默认灰#9CA3AF
+// 每个角色边框色与其最常见搭配词性下划线色的色相差 ≥76°，保证同卡强烈反差：
+//   定语金黄↔形容词紫141°、宾语粉紫↔名词蓝85°、主语亮绿↔名词蓝82°/代词红135°、
+//   谓语浅橙↔动词绿114°、状语天蓝↔副词黄154°、前置词青柠↔靛蓝158°等
+// 同屏高频组合（主语/谓语/前置词/宾语/表语/定语 同句出现）色相两两拉开（≥46°）
 const ROLE_COLORS = {
-  subject: "#F59E0B",      // 主语 - 橙金（避开副词黄）
-  predicate: "#F43F5E",    // 谓语 - 玫瑰红（避开代词红）
-  object: "#38BDF8",       // 宾语 - 天蓝（避开名词蓝，sky 偏亮青）
-  adverbial: "#A3E635",    // 状语 - 黄绿（避开副词黄/动词绿）
-  attribute: "#E879F9",    // 定语 - 粉紫（避开形容词紫，fuchsia 偏粉）
-  predicative: "#2DD4BF",  // 表语 - 青绿（避开助词青）
-  complement: "#FDA4AF",   // 补语 - 浅粉（避开连词粉，rose 偏暖）
+  subject: "#4ADE80",      // 主语 - 亮绿（vs 名词蓝82°/代词红135°，恒同屏组合互异）
+  predicate: "#FB923C",    // 谓语 - 浅橙（vs 动词绿114°，与主语/宾语/前置词同屏拉开）
+  object: "#E879F9",       // 宾语 - 粉紫（vs 名词蓝85°，与谓语浅橙同屏86°）
+  adverbial: "#38BDF8",    // 状语 - 天蓝（vs 副词黄154°）
+  attribute: "#FACC15",    // 定语 - 金黄（vs 形容词紫141°，截图冲突修复）
+  predicative: "#F43F5E",  // 表语 - 玫红（vs 名词蓝133°/形容词紫81°）
+  complement: "#FDA4AF",   // 补语 - 浅粉（vs 动词绿152°，与表语同色相但亮度差大，罕见词）
   negation: "#94A3B8",     // 否定 - 灰蓝（避开默认灰）
-  preposition: "#FDBA74",  // 前置词 - 杏橙（避开感叹词橙）
-  conjunction: "#4ADE80",  // 连接词 - 亮绿（避开动词绿）
-  particle: "#A78BFA",     // 语气词 - 淡紫罗兰（避开形容词紫/粉紫）
-  interjection: "#67E8F9", // 感叹词 - 亮青（避开助词青/天蓝）
-  numeral: "#FBBF24",      // 数词 - 亮黄（避开副词黄/橙金）
+  preposition: "#84CC16",  // 前置词 - 青柠（vs 前置词靛蓝158°，与谓语/状语同屏拉开）
+  conjunction: "#22D3EE",  // 连接词 - 青（vs 连词粉143°）
+  particle: "#A78BFA",     // 语气词 - 淡紫罗兰（vs 助词青76°）
+  interjection: "#2DD4BF", // 感叹词 - 青绿（vs 感叹词橙141°）
+  numeral: "#FBBF24",      // 数词 - 亮黄（vs 数词紫136°）
   default: "#9CA3AF",
 };
 
-// 边框色（与所有词性下划线完全不重复，12 角色两两不同）
+// 边框色（与 ROLE_COLORS 同步：标签/边框同色；均为不透明纯色，配合 2.5px 粗边框）
 const ROLE_BORDER_COLORS = {
-  subject: "#F59E0B",      // 主语 - 橙金
-  predicate: "#F43F5E",    // 谓语 - 玫瑰红
-  object: "#38BDF8",       // 宾语 - 天蓝
-  adverbial: "#A3E635",    // 状语 - 黄绿
-  attribute: "#E879F9",    // 定语 - 粉紫
-  attributive: "#E879F9",  // 定语（兼容 attributive 写法，修复"定语灰色边框"）
-  predicative: "#2DD4BF",  // 表语 - 青绿（与主语橙金拉开，不再相近）
+  subject: "#4ADE80",      // 主语 - 亮绿
+  predicate: "#FB923C",    // 谓语 - 浅橙
+  object: "#E879F9",       // 宾语 - 粉紫
+  adverbial: "#38BDF8",    // 状语 - 天蓝
+  attribute: "#FACC15",    // 定语 - 金黄
+  attributive: "#FACC15",  // 定语（兼容 attributive 写法，修复"定语灰色边框"）
+  predicative: "#F43F5E",  // 表语 - 玫红
   complement: "#FDA4AF",   // 补语 - 浅粉
   negation: "#94A3B8",     // 否定 - 灰蓝
-  preposition: "#FDBA74",  // 前置词 - 杏橙
-  conjunction: "#4ADE80",  // 连接词 - 亮绿
+  preposition: "#84CC16",  // 前置词 - 青柠
+  conjunction: "#22D3EE",  // 连接词 - 青
   particle: "#A78BFA",     // 语气词 - 淡紫罗兰
-  interjection: "#67E8F9", // 感叹词 - 亮青
-  numeral: "#FBBF24",      // 数词 - 亮黄（不再与主语同色）
+  interjection: "#2DD4BF", // 感叹词 - 青绿
+  numeral: "#FBBF24",      // 数词 - 亮黄
   default: "#9CA3AF",
 };
 
@@ -355,8 +358,8 @@ export default function AnswerPanel({
                         <div
                           className="word-card"
                           style={isGroup
-                            ? { ...styles.wordCard, borderColor: gBorder ? `${gBorder}b3` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
-                            : { ...styles.wordCard, borderColor: gBorder ? `${gBorder}b3` : "var(--qs-border, #E5E7EB)" }}
+                            ? { ...styles.wordCard, borderWidth: gBorder ? "2.5px" : "1px", borderColor: gBorder ? gBorder : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
+                            : { ...styles.wordCard, borderWidth: gBorder ? "2.5px" : "1px", borderColor: gBorder ? gBorder : "var(--qs-border, #E5E7EB)" }}
                         >
                           {gLabel && <span style={{ ...styles.roleTag, background: gBorder || "#9CA3AF" }}>{gLabel}</span>}
                           {g.items.map(({ w, i }, j) => {
