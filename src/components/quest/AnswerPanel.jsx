@@ -273,17 +273,23 @@ export default function AnswerPanel({
     return raw;
   }, [statement?.words, statement?.russian, dictReady]);
 
-  // 原句标点对齐：第 i 个词后是否跟标点（逗号/句号/感叹号…），词卡之间原样显示
-  const punctMap = useMemo(() => {
+  // 原句标点对齐：第 i 个词后是否跟标点（逗号/句号/感叹号…），词卡之间原样显示。
+  // 破折号例外：不粘连前词（避免 "?—" 挤在词卡右侧），改为显示在下一个词卡左侧（"? — Я" 俄语排版）
+  const punct = useMemo(() => {
     const map = {};
+    const dashMap = {};
     const toks = String(statement?.russian || "").match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?|[.,!?;:…—–]/g) || [];
     let wi = 0;
     toks.forEach((t) => {
       if (/[.,!?;:…—–]/.test(t)) {
-        if (wi > 0) map[wi - 1] = (map[wi - 1] || "") + t;
+        if (t === "—" || t === "–") {
+          dashMap[wi] = (dashMap[wi] || "") + t;
+        } else if (wi > 0) {
+          map[wi - 1] = (map[wi - 1] || "") + t;
+        }
       } else { wi++; }
     });
-    return map;
+    return { map, dashMap };
   }, [statement?.russian]);
 
   if (!statement) return null;
@@ -343,6 +349,8 @@ export default function AnswerPanel({
                     const lastIdx = g.items[g.items.length - 1].i;
                     return (
                       <Fragment key={gi}>
+                        {/* 破折号：显示在词卡框外左侧（"? — Я" 两侧空格排版） */}
+                        {punct.dashMap[g.items[0].i] && <span style={{ ...styles.stmtPunct, marginTop: 0, alignSelf: "center" }}>{punct.dashMap[g.items[0].i]}</span>}
                         <div className="word-cell" style={styles.wordCell}>
                         <div
                           className="word-card"
@@ -411,7 +419,7 @@ export default function AnswerPanel({
                           })}
                         </div>
                         {/* 末尾标点：显示在词卡框外右侧（word-cell 内不换行，垂直居中），不再被挤到词卡下方 */}
-                        {punctMap[lastIdx] && <span style={{ ...styles.stmtPunct, marginTop: 0, alignSelf: "center" }}>{punctMap[lastIdx]}</span>}
+                        {punct.map[lastIdx] && <span style={{ ...styles.stmtPunct, marginTop: 0, alignSelf: "center" }}>{punct.map[lastIdx]}</span>}
                         </div>
                       </Fragment>
                     );
