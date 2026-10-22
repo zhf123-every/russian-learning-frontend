@@ -25,7 +25,10 @@ export const useAdminStore = create((set, get) => ({
   user: loadUser(),
 
   // 是否具备后台访问资格（admin/editor/viewer 或旧密钥）
-  get isLoggedIn() {
+  // 必须用函数字段而非 getter：zustand set 会用 Object.assign 合并 state，
+  // 合并时对 getter 求值（此刻登录字段还没写入）并固化成旧布尔值 → 登录后 isLoggedIn 永远 false。
+  // 函数引用被复制后调用时内部 get() 永远实时，免疫固化。
+  isLoggedIn: () => {
     const s = get()
     if (s.token && s.user && BACKEND_ROLES.includes(s.user.role)) return true
     if (s.adminKey) return true

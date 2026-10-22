@@ -50,7 +50,9 @@ const emptyForm = () => ({
 export default function AdminCourseNew() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { isLoggedIn, authBody } = useAdminStore()
+  const { token, user, adminKey, authBody } = useAdminStore()
+  // isLoggedIn 实时计算（不能依赖 store getter：zustand set 用 Object.assign 合并时会把 getter 求值固化成旧布尔值）
+  const isLoggedIn = !!((token && user && (user.role === 'admin' || user.role === 'editor' || user.role === 'viewer')) || adminKey)
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState('')    // 非空 = 编辑模式（?edit=id 进入）
   const [toast, setToast] = useState('')
