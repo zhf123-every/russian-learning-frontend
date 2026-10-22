@@ -58,7 +58,7 @@ const ROLE_COLORS = {
   default: "#9CA3AF",
 };
 
-// 边框色（与 ROLE_COLORS 同步：标签/边框同色；4px 粗边框 + b3 半透明，粗而不生硬）
+// 边框色（与 ROLE_COLORS 同步：标签/边框同色；4px 粗边框 + 8c 半透明，粗而不生硬）
 const ROLE_BORDER_COLORS = {
   subject: "#4ADE80",      // 主语 - 亮绿
   predicate: "#FB923C",    // 谓语 - 浅橙
@@ -358,8 +358,8 @@ export default function AnswerPanel({
                         <div
                           className="word-card"
                           style={isGroup
-                            ? { ...styles.wordCard, borderWidth: gBorder ? "4px" : "1px", borderColor: gBorder ? `${gBorder}b3` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
-                            : { ...styles.wordCard, borderWidth: gBorder ? "4px" : "1px", borderColor: gBorder ? `${gBorder}b3` : "var(--qs-border, #E5E7EB)" }}
+                            ? { ...styles.wordCard, borderWidth: gBorder ? "4px" : "1px", borderColor: gBorder ? `${gBorder}8c` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
+                            : { ...styles.wordCard, borderWidth: gBorder ? "4px" : "1px", borderColor: gBorder ? `${gBorder}8c` : "var(--qs-border, #E5E7EB)" }}
                         >
                           {gLabel && <span style={{ ...styles.roleTag, background: gBorder || "#9CA3AF" }}>{gLabel}</span>}
                           {g.items.map(({ w, i }, j) => {
