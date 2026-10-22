@@ -477,7 +477,7 @@ export default function QuestPractice() {
   }, [currentSequenceIndex, currentUnitIndex]);
 
   const ensureAnalysis = useCallback(async (stmt) => {
-    if (!stmt || stmt.spellWord || !stmt.russian) return;
+    if (!stmt || !stmt.russian) return;
     const key = String(stmt.russian).trim();
     // 纯本地确定性标注：词典（重音/词性/性数格）+ 形态规则引擎（句子成分），即时完成，不依赖 AI
     await ensureDictFull();

@@ -12,7 +12,7 @@ export const POS_COLORS = {
   adjective: "#A855F7",    // 形容词 - 紫
   adverb: "#EAB308",       // 副词 - 黄
   pronoun: "#EF4444",      // 代词 - 红
-  preposition: "oklch(23.27% 0.0249 284.3)",  // 介词 - 靛蓝
+  preposition: "#818CF8",  // 前置词 - 亮靛蓝（避开名词蓝#3B82F6/动词绿#22C55E/形容词紫#A855F7等）
   conjunction: "#EC4899",  // 连词 - 粉
   interjection: "#F97316", // 感叹词 - 橙
   numeral: "#A855F7",      // 数词 - 紫（同形容词）
@@ -27,7 +27,7 @@ export const POS_LABELS = {
   adjective: "形容词",
   adverb: "副词",
   pronoun: "代词",
-  preposition: "介词",
+  preposition: "前置词",
   conjunction: "连词",
   interjection: "感叹词",
   numeral: "数词",

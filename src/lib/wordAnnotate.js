@@ -44,14 +44,14 @@ function normForm(word) {
   return (word || "")
     .replace(/'/g, "") // 去重音撇号（词典变格表带 '，句中原文不带，统一用无重音形式匹配）
     .replace(/\u0301/g, "") // 去 Unicode 组合重音符（句中原文 é 的真实重音，如 "Э́то"）
-    .replace(/^[«"'(]+|[»"').,;:!?…]+$/g, "")
+    .replace(/^[«"'(]+|[»"').,;:!?…—–-]+$/g, "")
     .toLowerCase()
     .trim();
 }
 
 // 去掉 token 尾部标点（词卡显示用；标点由 AnswerPanel 按原句另行渲染）
 function cleanToken(word) {
-  return String(word || "").replace(/[.,!?;:…—–]+$/g, "").trim();
+  return String(word || "").replace(/[.,!?;:…—–-]+$/g, "").trim();
 }
 
 // 高频虚词硬编码表（词典未收录时的兜底标注，key 为 normForm 无重音小写原形）
@@ -238,6 +238,12 @@ const FUNCTION_WORDS = {
   "зачем": { pos: "adverb", zh: "为什么" },
   "почему": { pos: "adverb", zh: "为什么" },
   "как": { pos: "adverb", zh: "怎样/如何" },
+  // ---- 词典兜底补词（dict-full/简版词典缺失，导致词卡无词性无成分）----
+  "домой": { pos: "adverb", zh: "回家/向家里" },
+  "отдыхать": { pos: "verb", zh: "休息" },
+  "москва": { pos: "noun", zh: "莫斯科", gender: "feminine", number: "singular" },
+  "москве": { pos: "noun", zh: "莫斯科", gender: "feminine", number: "singular", grammarCase: "prepositional" },
+  "москву": { pos: "noun", zh: "莫斯科", gender: "feminine", number: "singular", grammarCase: "accusative" },
 };
 
 // 高频动词现在时变位补充表（dict-full.js 未就绪/加载失败时的兜底）
@@ -615,7 +621,7 @@ export function warmUpIndex() {
  */
 export function annotateWords(sentence) {
   const idx = buildIndex();
-  const tokens = (sentence || "").split(/\s+/).filter(Boolean);
+  const tokens = (sentence || "").split(/\s+/).filter(Boolean).filter((t) => !/^[—–-]+$/.test(t));
 
   // 兜底查询：FUNCTION_WORDS + VERB_FORMS（dict-full pos 为空/"default" 时也走这里补全）
   const lookupFallback = (n) => {
