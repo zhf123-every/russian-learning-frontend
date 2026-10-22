@@ -186,6 +186,19 @@ export function inferRoles(sentence, dictWords) {
 
   // 2) 主语：每个分句第一个"不在介词后"的主格名词/代词/数词（无格标注的句首名词/代词也判主语）
   //    句型模板已标过主语的分句（Это X / 处所存在句）不再找第二个主语，避免 "Это не вода" 中 вода 被误标主语
+  // 2.0) 人称代词主格保护：я/ты/мы/вы/он/она/оно/они 主格形式在俄语中恒为主语（не в介词后），
+  //     优先于"非主格→宾语"的通用规则，杜绝 "Куда ты идёшь? — Я иду в школу." 中 Я 被误标宾语
+  const PERSONAL_NOM = new Set(["я", "ты", "мы", "вы", "он", "она", "оно", "они"]);
+  clauses.forEach((clause) => {
+    for (let i = 0; i < clause.length; i++) {
+      const w = clause[i];
+      if (w.syntacticRole) continue;
+      if (PERSONAL_NOM.has(lemmaOf(w)) && !(i > 0 && clause[i - 1].pos === "preposition")) {
+        w.syntacticRole = "subject"; w.roleLabel = "主语";
+        break;
+      }
+    }
+  });
   clauses.forEach((clause) => {
     if (clause.some((cw) => cw.syntacticRole === "subject")) return;
     for (let i = 0; i < clause.length; i++) {

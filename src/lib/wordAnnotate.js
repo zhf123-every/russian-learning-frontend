@@ -659,6 +659,9 @@ export function annotateWords(sentence) {
       return {
         form: cleanToken(w), lemma: n, pos: fw.pos,
         posColor: getPosColor(fw.pos),
+        gender: fw.gender || "",
+        grammarCase: fw.grammarCase || "",
+        number: fw.number || "",
         chinese: cleanZhText(fw.zh) || "",
         roleLabel: "",
       };
