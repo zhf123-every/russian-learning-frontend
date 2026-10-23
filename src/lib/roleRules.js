@@ -289,6 +289,31 @@ export function inferRoles(sentence, dictWords) {
     }
   });
 
+  // 4.1) 限定修饰短语：代词/数词 紧邻名词之前（不在介词后）→ 该词=定语
+  //      "Он звонит каждый день" → каждый=定语（修饰 день）；"Я люблю его брата" → его=定语
+  //      避免限定代词被 4.5 误判为宾语、且让紧跟名词获得正确成分归属
+  words.forEach((w, i) => {
+    if (w.syntacticRole) return;
+    const nxt = i + 1 < words.length ? words[i + 1] : null;
+    if ((w.pos === "pronoun" || w.pos === "numeral") && nxt && nxt.pos === "noun" && !isPrepAfter(i)) {
+      w.syntacticRole = "attribute"; w.roleLabel = "定语";
+    }
+  });
+
+  // 4.15) 时间名词状语：谓语动词之后、无介词且不在介词后的时间名词（带/不带限定词）
+  //       "Он звонит каждый день" → день=时间状语（每天）；"Мы работаем весь день" 同理
+  const TIME_NOUNS = new Set(["день", "утро", "вечер", "ночь", "неделя", "месяц", "год", "час", "минута", "секунда", "раз", "время"]);
+  words.forEach((w, i) => {
+    if (w.syntacticRole) return;
+    if (w.pos === "noun" && TIME_NOUNS.has(lemmaOf(w)) && !isPrepAfter(i)) {
+      let hasPred = false;
+      for (let j = i - 1; j >= 0; j--) {
+        if (words[j].syntacticRole === "predicate" || words[j].syntacticRole === "complement") { hasPred = true; break; }
+      }
+      if (hasPred) { w.syntacticRole = "adverbial"; w.roleLabel = "状语"; }
+    }
+  });
+
   // 4) 宾语：非主格名词/代词/数词（不在介词后）
   words.forEach((w, i) => {
     if (w.syntacticRole) return;

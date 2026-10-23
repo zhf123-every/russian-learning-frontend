@@ -48,13 +48,13 @@ const ROLE_COLORS = {
   adverbial: "#38BDF8",    // 状语 - 天蓝（vs 副词黄154°）
   attribute: "#FACC15",    // 定语 - 金黄（vs 形容词紫141°，截图冲突修复）
   predicative: "#F43F5E",  // 表语 - 玫红（vs 名词蓝133°/形容词紫81°）
-  complement: "#FDA4AF",   // 补语 - 浅粉（vs 动词绿152°，与表语同色相但亮度差大，罕见词）
+  complement: "#DB2777",   // 补语 - 深粉红（vs 表语玫红 亮度拉开）
   negation: "#94A3B8",     // 否定 - 灰蓝（避开默认灰）
   preposition: "#84CC16",  // 前置词 - 青柠（vs 前置词靛蓝158°，与谓语/状语同屏拉开）
-  conjunction: "#22D3EE",  // 连接词 - 青（vs 连词粉143°）
+  conjunction: "#0369A1",  // 连接词 - 深青蓝（vs 状语天蓝 亮度拉开，修复"连接词/状语边框相近"）
   particle: "#A78BFA",     // 语气词 - 淡紫罗兰（vs 助词青76°）
-  interjection: "#2DD4BF", // 感叹词 - 青绿（vs 感叹词橙141°）
-  numeral: "#FBBF24",      // 数词 - 亮黄（vs 数词紫136°）
+  interjection: "#0F766E", // 感叹词 - 深青绿（vs 状语天蓝/连接词深青蓝 亮度拉开）
+  numeral: "#B45309",      // 数词 - 暗金棕（vs 定语金黄 亮度拉开）
   default: "#9CA3AF",
 };
 
@@ -67,13 +67,13 @@ const ROLE_BORDER_COLORS = {
   attribute: "#FACC15",    // 定语 - 金黄
   attributive: "#FACC15",  // 定语（兼容 attributive 写法，修复"定语灰色边框"）
   predicative: "#F43F5E",  // 表语 - 玫红
-  complement: "#FDA4AF",   // 补语 - 浅粉
+  complement: "#DB2777",   // 补语 - 深粉红
   negation: "#94A3B8",     // 否定 - 灰蓝
   preposition: "#84CC16",  // 前置词 - 青柠
-  conjunction: "#22D3EE",  // 连接词 - 青
+  conjunction: "#0369A1",  // 连接词 - 深青蓝（vs 状语天蓝区分）
   particle: "#A78BFA",     // 语气词 - 淡紫罗兰
-  interjection: "#2DD4BF", // 感叹词 - 青绿
-  numeral: "#FBBF24",      // 数词 - 亮黄
+  interjection: "#0F766E", // 感叹词 - 深青绿
+  numeral: "#B45309",      // 数词 - 暗金棕
   default: "#9CA3AF",
 };
 
