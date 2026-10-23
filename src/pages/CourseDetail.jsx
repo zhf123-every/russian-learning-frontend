@@ -8,6 +8,7 @@ import { toast } from '../lib/toast'
 import { isCoursePurchased } from '../lib/courseAccess'
 import { apiFetch } from '../lib/api'
 import { useAdminStore } from '../store/adminStore'
+import { thumbUrl } from '../lib/thumb'
 import VipModal from '../components/VipModal'
 
 export default function CourseDetail() {
@@ -106,7 +107,7 @@ export default function CourseDetail() {
         {/* 封面 */}
         <div className={`detail-cover relative flex w-full shrink-0 items-center justify-center overflow-hidden md:w-[300px] ${typeof course.cover === 'string' && course.cover.startsWith('bg-') ? course.cover : 'bg-gradient-to-br from-violet-100 to-purple-200'}`}>
           {course.posterUrl || course.thumbnail ? (
-            <img src={course.posterUrl || course.thumbnail} alt={course.title} className="h-full w-full object-cover" onError={e => { e.currentTarget.style.display = 'none' }} />
+            <img src={thumbUrl(course.posterUrl || course.thumbnail)} alt={course.title} className="h-full w-full object-cover" onError={e => { e.currentTarget.style.display = 'none' }} />
           ) : (
             <span className="select-none text-7xl font-black text-purple-700/60">{String(course.title || '课').charAt(0)}</span>
           )}

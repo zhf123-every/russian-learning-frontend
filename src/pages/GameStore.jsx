@@ -10,6 +10,7 @@ import { toast } from '../lib/toast'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { apiFetch } from '../lib/api'
 import { getCloudCache } from '../lib/cloudPrefetch'
+import { thumbUrl } from '../lib/thumb'
 import { resolvePlayUrl } from '../lib/playUrl'
 import VipModal from '../components/VipModal'
 import { isCourseVisible } from '../utils/courseSchedule'
@@ -502,7 +503,7 @@ export default function GameStore() {
                           className={`aspect-video rounded-xl overflow-hidden mb-2 flex items-center justify-center group-hover:shadow-lg transition relative ${
                             it.thumbnail ? '' : (it.cover && !String(it.cover).includes('://') ? `bg-gradient-to-br ${it.cover}` : 'bg-base-200')
                           }`}
-                          style={it.thumbnail ? { backgroundImage: `url(${it.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                          style={it.thumbnail ? { backgroundImage: `url(${thumbUrl(it.thumbnail)})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
                         >
                           {!it.thumbnail && it.kind !== 'video' && (
                             <span className={`font-extrabold text-base ${it.ink}`}>{it.word}</span>

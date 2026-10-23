@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getVideoPlay, createPlayer } from '../lib/videoPlayer'
+import { thumbUrl } from '../lib/thumb'
 import { resolvePlayUrl } from '../lib/playUrl'
 import { analyzeSentence, pronunciationScore } from '../lib/ai'
 import { useGameVideoStore } from '../store/gameVideoStore'
@@ -683,7 +684,7 @@ export default function VideoStudy() {
               <video
                 ref={videoRef}
                 src={playSrc}
-                poster={video.posterUrl || video.thumbnail}
+                poster={thumbUrl(video.posterUrl || video.thumbnail)}
                 controls
                 playsInline
                 style={{ width: '100%', height: '100%', display: 'block', background: '#000' }}

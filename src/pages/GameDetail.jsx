@@ -12,6 +12,7 @@ import { getCourseById } from '../utils/courseService'
 import { getUnitDoneMap } from '../lib/lessonProgress'
 import { pullCloudProgress } from '../lib/cloudProgress'
 import { getCourseStats, fmtDuration, fmtLastAt } from '../lib/learningStats'
+import { thumbUrl } from '../lib/thumb'
 import { isCoursePurchased } from '../lib/courseAccess'
 import { isCourseVisible, fmtSchedule } from '../utils/courseSchedule'
 import { resolvePlayUrl } from '../lib/playUrl'
@@ -122,15 +123,12 @@ export default function GameDetail() {
   const [courseStats, setCourseStats] = useState({ totalMs: 0, lastAt: 0 })
   const [purchased, setPurchased] = useState(false)
 
-  // 封面：b2:// 云端封面解析为可显示链接；普通 http/blob 原样使用
+  // 封面：b2:// 云端封面经代理转成可显示链接（302 到签名直链，永不过期）；http/blob 原样
   const [coverSrc, setCoverSrc] = useState('')
   useEffect(() => {
     let alive = true
     const src = game?.posterUrl || game?.thumbnail || game?.cover || ''
-    setCoverSrc(src && String(src).startsWith('b2://') ? '' : src)
-    if (src && String(src).startsWith('b2://')) {
-      resolvePlayUrl(src).then((u) => { if (alive) setCoverSrc(u) }).catch(() => { if (alive) setCoverSrc('') })
-    }
+    setCoverSrc(thumbUrl(src))
     return () => { alive = false }
   }, [game?.posterUrl, game?.thumbnail, game?.cover])
 

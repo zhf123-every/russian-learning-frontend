@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCourseStore } from '../store/courseStore'
 import AddMaterialModal from '../components/AddMaterialModal'
+import { thumbUrl } from '../lib/thumb'
 import TranscribeModal from '../components/TranscribeModal'
 import { generateVideoThumbnail, formatDuration, formatDate } from '../lib/thumbnail'
 
@@ -55,7 +56,7 @@ export default function CustomMaterials() {
         <div className="videos-grid v2">
           {materials.map(m => (
             <div key={m.id} className="video-card" onClick={() => navigate('/study/' + m.id)}>
-              <div className="thumb" style={{ backgroundImage: `url(${m.thumbnail})` }}>
+              <div className="thumb" style={{ backgroundImage: `url(${thumbUrl(m.thumbnail)})` }}>
                 <span className="thumb-score">{m.level || '自定义'}</span>
               </div>
               <div className="vc-body">
