@@ -281,7 +281,9 @@ export default function AnswerPanel({
   const punct = useMemo(() => {
     const map = {};
     const dashMap = {};
-    const toks = String(statement?.russian || "").match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?|[.,!?;:…—–]/g) || [];
+    const FULL2 = { "，": ",", "。": ".", "？": "?", "！": "!", "；": ";", "：": ":" };
+    const toks = (String(statement?.russian || "").match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?|[.,!?;:…—–，。？！；：]/g) || [])
+      .map((t) => FULL2[t] || t);
     let wi = 0;
     toks.forEach((t) => {
       if (/[.,!?;:…—–]/.test(t)) {

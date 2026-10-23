@@ -166,14 +166,20 @@ export function useQuestionInput({
     console.log("[useQuestionInput] tokens:", tokens);
     let prevEndsSentence = false; // 前一个 token 以句末标点（.!?…）结尾 → 当前大写词是新句首，不算名字
     tokens.forEach((text) => {
-      const isWordTok = isWord(text);
+      // 词尾标点拆为独立槽位（答题区直接显示标点）："знаю," → 词"знаю" + 标点","；"метро." → 词"метро" + 标点"."
+      // 标点槽 fixed=true：直接显示、无下划线、不参与输入/判题
+      let wordText = String(text || "");
+      let tailPunct = "";
+      const tm = String(text || "").match(/^(.*?)([.,!?;:…—–]+)$/);
+      if (tm && tm[1]) { wordText = tm[1]; tailPunct = tm[2]; }
+      const isWordTok = isWord(wordText);
       if (isWordTok) {
-        const w = createWord(text, id++);
+        const w = createWord(wordText, id++);
         // 三层判定：
         //   1) 词典词性权威：标注为专有名词/人名 → 直接显示
         //   2) 词典反证：标注为普通词性 → 即使首字母大写也正常输入
         //   3) 启发式兜底：非句首真词 + 非分句句首 + 首字母大写（真名通常词典未收录）
-        const clean = String(text).replace(/^[^А-Яа-яЁё]+|[^А-Яа-яЁё-]+$/g, "");
+        const clean = String(wordText).replace(/^[^А-Яа-яЁё]+|[^А-Яа-яЁё-]+$/g, "");
         const isFirstRealWord = words.length === 0;
         const lower = clean.toLowerCase();
         const dictName = nameSet.has(lower);
@@ -185,8 +191,15 @@ export function useQuestionInput({
         const isPronoun = PRONOUNS.has(lower);
         const heuristicName = !isPlace && !isPronoun && !isFirstRealWord && !prevEndsSentence && /^[А-ЯЁ]/.test(clean);
         w.fixed = (dictName && !isPlace) || (!knownOrdinary && heuristicName);
-        if (w.fixed) w.userInput = text; // 预设为正确文本
+        if (w.fixed) w.userInput = wordText; // 预设为正确文本
         words.push(w);
+      }
+      // 独立标点槽：直接显示（如逗号/句号/破折号），无下划线、不参与输入
+      if (tailPunct) {
+        const pw = createWord(tailPunct, id++);
+        pw.fixed = true;
+        pw.userInput = tailPunct;
+        words.push(pw);
       }
       // 更新「是否新句首」：token 以句末标点结尾 → 下一个大写词是新句首（要打，不算名字）
       if (/[.!?…]["'"»)]*$/.test(text)) prevEndsSentence = true;
