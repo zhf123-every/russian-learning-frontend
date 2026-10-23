@@ -53,7 +53,7 @@ export default function CourseContributeModal({ onClose }) {
     textbook: '',  // AI 自动打标：教材版本（投稿时 AI 生成，可改）
   })
   const [submitting, setSubmitting] = useState(false)
-  const adminKey = useAdminStore(s => s.adminKey)
+  const authBody = useAdminStore(s => s.authBody)
 
   const setField = (field, val) => setForm(prev => ({ ...prev, [field]: val }))
   const setCat = (val) => setForm(prev => ({ ...prev, cat: val, subcat: (SUBCATS[val] || ['全部'])[0] || '全部' }))
@@ -291,7 +291,7 @@ export default function CourseContributeModal({ onClose }) {
       const pr = await apiFetch('/api/upload/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: 'cover.jpg', kind: 'image', contentType: 'image/jpeg', adminKey })
+        body: JSON.stringify(authBody({ filename: 'cover.jpg', kind: 'image', contentType: 'image/jpeg' }))
       })
       const pj = await pr.json()
       if (!pj.ok || !pj.uploadUrl) return ''
@@ -375,7 +375,7 @@ export default function CourseContributeModal({ onClose }) {
         const sr = await apiFetch('/api/videos/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ videos: sanitizeForCloud([...videos, ...courses]), adminKey })
+          body: JSON.stringify(authBody({ videos: sanitizeForCloud([...videos, ...courses]) }))
         })
         const sj = await sr.json()
         if (!sj.ok) { cloudOk = false; console.warn('云端名单同步失败:', sj.error) }

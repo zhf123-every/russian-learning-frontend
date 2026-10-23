@@ -26,7 +26,9 @@ export default function SquarePage() {
   const adminKey = useAdminStore(s => s.adminKey)
   const adminLogin = useAdminStore(s => s.login)
   const adminLogout = useAdminStore(s => s.logout)
-  const isAdmin = !!adminKey
+  const authBody = useAdminStore(s => s.authBody)
+  const isLoggedIn = useAdminStore(s => s.isLoggedIn)
+  const isAdmin = isLoggedIn()
 
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [showContribute, setShowContribute] = useState(false)
@@ -45,7 +47,7 @@ export default function SquarePage() {
   }
   const doDelete = async (item) => {
     if (!window.confirm(`确定删除「${item.title}」？此操作不可撤销。`)) return
-    try { await deleteItem(item.id, adminKey); toast('已删除') }
+    try { await deleteItem(item.id, authBody()); toast('已删除') }
     catch (e) { toast('删除失败：' + (e.message || '请重试')) }
   }
 
@@ -127,7 +129,7 @@ export default function SquarePage() {
       </div>
 
       {showContribute && (
-        <ContributeModal onClose={() => setShowContribute(false)} onSubmit={(data) => submitItem(data, adminKey)} />
+        <ContributeModal onClose={() => setShowContribute(false)} onSubmit={(data) => submitItem(data, authBody())} />
       )}
       {showTranscribe && (
         <TranscribeModal onClose={() => { setShowTranscribe(false); setTranscribeItem(null) }} item={transcribeItem} />

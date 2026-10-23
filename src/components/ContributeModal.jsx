@@ -83,7 +83,8 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
   const [manualSubs, setManualSubs] = useState('')
   const [extraSub, setExtraSub] = useState('') // AI 识别出的、不在预设选项里的自定义二级标签（如新教材名），自动补充进下拉
   const fileInputRef = useRef(null)
-  const adminKey = useAdminStore(s => s.adminKey)
+  const isLoggedIn = useAdminStore(s => s.isLoggedIn)
+  const authBody = useAdminStore(s => s.authBody)
 
   const handleChange = (field) => (e) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }))
@@ -130,7 +131,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
   const pickFile = () => fileInputRef.current && fileInputRef.current.click()
 
   const uploadToB2 = async (file) => {
-    if (!adminKey) { toast('请先登录管理员后再上传本地视频'); return }
+    if (!isLoggedIn()) { toast('请先登录管理员后再上传本地视频'); return }
     setUploading(true); setUploadPct(0); setUploadName(file.name); setUploadOk(null)
     // 并行：上传同时自动提取视频封面
     setCoverBusy(true)
@@ -146,7 +147,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
       const pr = await apiFetch('/api/upload/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, kind: 'video', contentType: file.type || 'video/mp4', adminKey })
+        body: JSON.stringify(authBody({ filename: file.name, kind: 'video', contentType: file.type || 'video/mp4' }))
       })
       const pj = await pr.json()
       if (!pj.ok) { setUploadOk(false); toast('获取上传授权失败：' + (pj.error || '未知错误')); return }
@@ -186,7 +187,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
       const pr = await apiFetch('/api/upload/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: 'cover.jpg', kind: 'image', contentType: 'image/jpeg', adminKey })
+        body: JSON.stringify(authBody({ filename: 'cover.jpg', kind: 'image', contentType: 'image/jpeg' }))
       })
       const pj = await pr.json()
       if (!pj.ok || !pj.uploadUrl) return fallbackUrl
@@ -283,7 +284,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
         const sr = await apiFetch('/api/videos/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ videos: sanitizeForCloud(mergedAll), adminKey })
+          body: JSON.stringify(authBody({ videos: sanitizeForCloud(mergedAll) }))
         })
         const sj = await sr.json()
         if (!sj.ok) { cloudOk = false; console.warn('云端名单同步失败:', sj.error) }

@@ -38,11 +38,13 @@ export const useSquareStore = create((set, get) => ({
     }
   },
 
-  async submitItem(item, adminKey) {
+  async submitItem(item, auth) {
+    // auth 兼容：新登录传 authBody()（含 token/adminKey），旧密钥登录传字符串 adminKey
+    const authObj = (auth && typeof auth === 'object') ? auth : { adminKey: auth || '' }
     const r = await apiFetch('/api/square/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...item, adminKey: adminKey || '' }),
+      body: JSON.stringify({ ...item, ...authObj }),
     })
     const j = await r.json()
     if (!j.ok) throw new Error(j.error || '投稿失败')
@@ -53,11 +55,13 @@ export const useSquareStore = create((set, get) => ({
     return j
   },
 
-  async deleteItem(id, adminKey) {
+  async deleteItem(id, auth) {
+    // auth 兼容：新登录传 authBody()（含 token/adminKey），旧密钥登录传字符串 adminKey
+    const authObj = (auth && typeof auth === 'object') ? auth : { adminKey: auth || '' }
     const r = await apiFetch('/api/square/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, adminKey: adminKey || '' }),
+      body: JSON.stringify({ id, ...authObj }),
     })
     const j = await r.json()
     if (!j.ok) throw new Error(j.error || '删除失败')

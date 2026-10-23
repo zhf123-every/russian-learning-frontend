@@ -12,7 +12,8 @@ export default function TranscribeModal({ onClose, item }) {
   const addMaterial = useCourseStore(s => s.addMaterial)
   const settings = useSettingsStore(s => s.settings)
   const submitItem = useSquareStore(s => s.submitItem)
-  const adminKey = useAdminStore(s => s.adminKey)
+  const isLoggedIn = useAdminStore(s => s.isLoggedIn)
+  const authBody = useAdminStore(s => s.authBody)
   const isSquareItem = !!(item && item.id)
   const [url, setUrl] = useState(isSquareItem ? (item.videoUrl || '') : '')
   const [title, setTitle] = useState(isSquareItem ? (item.title || '') : '')
@@ -51,7 +52,7 @@ export default function TranscribeModal({ onClose, item }) {
 
     // 广场素材：字幕写回服务端（同 id 更新），无需新建素材
     if (isSquareItem) {
-      if (!adminKey) { toast('请先进入管理模式（右上角「管理」）'); return }
+      if (!isLoggedIn()) { toast('请先进入管理模式（右上角「管理」）'); return }
       setBusy(true)
       try {
         await submitItem({
@@ -59,7 +60,7 @@ export default function TranscribeModal({ onClose, item }) {
           title: title.trim() || item.title,
           sentences,
           tags: Array.from(new Set([...(item.tags || []), '转写'])),
-        }, adminKey)
+        }, authBody())
         toast('字幕已写回素材：' + sentences.length + ' 句')
         onClose()
         navigate('/square')
