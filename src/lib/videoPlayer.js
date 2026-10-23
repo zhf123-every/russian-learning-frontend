@@ -39,6 +39,13 @@ export function createPlayer(play, videoEl) {
     _messageHandler: null,
   }
 
+  // direct：监听 video 元素的加载/解码错误（编码不受支持等），上报 onError
+  if (videoEl) {
+    videoEl.onerror = () => {
+      if (h.onError) h.onError('src', '视频加载失败（编码不受浏览器支持或地址无效）')
+    }
+  }
+
   // ---- direct：精确控制 ----
   function directSeek(t) {
     if (!h.videoEl) return
@@ -47,7 +54,11 @@ export function createPlayer(play, videoEl) {
   function directPlay() {
     if (!h.videoEl) return
     h.videoEl.playbackRate = h.rate
-    h.videoEl.play().catch(() => {})
+    h.videoEl.play().catch((err) => {
+      // 播放失败不再静默吞掉：通知上层（如编码不受支持），便于展示转码入口
+      h.playing = false
+      if (h.onError) h.onError('play', (err && err.message) || '播放失败（视频编码可能不受浏览器支持）')
+    })
     h.playing = true
   }
   function directPause() {

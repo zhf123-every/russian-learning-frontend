@@ -81,6 +81,7 @@ export default function VideoStudy() {
   useEffect(() => { const h = () => setUiCfg(loadUiCfg()); window.addEventListener('storage', h); return () => window.removeEventListener('storage', h) }, [])
   useEffect(() => { const h = () => setIsFs(!!document.fullscreenElement); document.addEventListener('fullscreenchange', h); return () => document.removeEventListener('fullscreenchange', h) }, [])
   const [videoError, setVideoError] = useState('')
+  const [transcoding, setTranscoding] = useState(false)
   const [aiHtml, setAiHtml] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [popWord, setPopWord] = useState(null)
@@ -236,6 +237,50 @@ export default function VideoStudy() {
     pRef.current = p
     return () => { if (pRef.current) { pRef.current.pause(); pRef.current.stopLoop() } }
   }, [playSrc])
+
+  // 播放失败 → 后台转码为浏览器兼容格式（H.264），完成后自动切换播放
+  const startTranscode = async () => {
+    if (!video?.videoUrl) return
+    setTranscoding(true)
+    try {
+      const r = await apiFetch('/api/transcode-async', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: video.videoUrl, id: video.id || '' }),
+        timeout: 30000,
+      })
+      const j = await r.json()
+      if (!j.ok) throw new Error(j.error || '提交转码失败')
+      const taskId = j.task_id
+      toast('正在后台转码为浏览器兼容格式（约几分钟），完成后自动播放')
+      const t0 = Date.now()
+      while (Date.now() - t0 < 20 * 60 * 1000) {
+        await new Promise(res => setTimeout(res, 6000))
+        const s = await apiFetch('/api/transcode-async/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task_id: taskId }),
+          timeout: 30000,
+        })
+        const sj = await s.json()
+        if (sj.status === 'done') {
+          if (sj.url) {
+            const newSrc = await resolvePlayUrl(sj.url)
+            setPlaySrc(newSrc)
+            setVideoError('')
+            toast('转码完成，已切换为兼容格式播放')
+          }
+          return
+        }
+        if (sj.status === 'error') throw new Error(sj.error || '转码失败')
+      }
+      throw new Error('转码超过 20 分钟未完成，请稍后重试')
+    } catch (e) {
+      toast('转码失败：' + (e.message || '请重试'))
+    } finally {
+      setTranscoding(false)
+    }
+  }
 
   // 播放状态与 <video> 元素同步（播完自动暂停 / 用户手动暂停都反映到 paused）
   useEffect(() => {
@@ -715,7 +760,12 @@ export default function VideoStudy() {
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(24,24,27,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#fff', zIndex: 5, textAlign: 'center', padding: 16 }}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>⚠️ 视频无法播放</div>
               <div style={{ fontSize: 13, opacity: 0.9 }}>{videoError}</div>
-              <button type="button" onClick={() => setVideoError('')} style={{ marginTop: 4, background: 'transparent', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', padding: '6px 14px', borderRadius: 999, fontSize: 12, cursor: 'pointer' }}>关闭提示</button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 6 }}>
+                <button type="button" onClick={startTranscode} disabled={transcoding} style={{ background: '#4C6FFF', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 999, fontSize: 13, cursor: 'pointer' }}>
+                  {transcoding ? '⏳ 转码中（几分钟）…' : '🎞️ 自动转码为兼容格式'}
+                </button>
+                <button type="button" onClick={() => setVideoError('')} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', padding: '6px 14px', borderRadius: 999, fontSize: 12, cursor: 'pointer' }}>关闭提示</button>
+              </div>
             </div>
           )}
         </div>
