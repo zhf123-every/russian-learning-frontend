@@ -42,6 +42,7 @@ export function createPlayer(play, videoEl) {
   // direct：监听 video 元素的加载/解码错误（编码不受支持等），上报 onError
   if (videoEl) {
     videoEl.onerror = () => {
+      if (h._stallTimer) { clearTimeout(h._stallTimer); h._stallTimer = null }
       if (h.onError) h.onError('src', '视频加载失败（编码不受浏览器支持或地址无效）')
     }
   }
@@ -60,9 +61,25 @@ export function createPlayer(play, videoEl) {
       if (h.onError) h.onError('play', (err && err.message) || '播放失败（视频编码可能不受浏览器支持）')
     })
     h.playing = true
+    // 启动「卡死检测」：部分浏览器对 H.265/HEVC 只出音频/静默失败，不触发 error 事件。
+    // 若 4 秒内画面始终没有解出帧（videoWidth=0）且时间无进展，判定编码不受支持，上报上层展示转码入口。
+    if (h._stallTimer) clearTimeout(h._stallTimer)
+    h._stallTimer = setTimeout(() => {
+      h._stallTimer = null
+      try {
+        const v = h.videoEl
+        const moved = v.currentTime > 0.05
+        const hasFrame = v.videoWidth > 0
+        if (!moved && !hasFrame && !v.ended) {
+          h.playing = false
+          if (h.onError) h.onError('decode', '视频格式浏览器无法解码（可能是 H.265/HEVC）——点「自动转码为兼容格式」即可正常播放')
+        }
+      } catch (e) {}
+    }, 4000)
   }
   function directPause() {
     if (!h.videoEl) return
+    if (h._stallTimer) { clearTimeout(h._stallTimer); h._stallTimer = null }
     h.videoEl.pause()
     h.playing = false
   }
@@ -169,6 +186,11 @@ export function createPlayer(play, videoEl) {
   // 绑定 <video> 的 timeupdate（仅 direct）
   if (h.type === 'direct' && h.videoEl) {
     h.videoEl.addEventListener('timeupdate', () => {
+      // 时间有进展说明解码正常，取消卡死检测
+      if (h._stallTimer && h.videoEl.currentTime > 0.05) {
+        clearTimeout(h._stallTimer)
+        h._stallTimer = null
+      }
       h._currentTime = h.videoEl.currentTime
       h._duration = h.videoEl.duration || 0
       h._tick()
