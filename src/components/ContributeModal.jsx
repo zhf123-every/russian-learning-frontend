@@ -379,10 +379,10 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
       let cloudOk = true
       let lastSyncError = ''
       try {
-        // 1) 先取云端现有名单
+        // 1) 先取云端现有名单（放宽超时：Render 免费实例冷启动可能 30-60s）
         let cloudList = []
         try {
-          const cr = await apiFetch('/api/videos/list')
+          const cr = await apiFetch('/api/videos/list', { timeout: 60000 })
           const cj = await cr.json()
           if (cj.ok && Array.isArray(cj.videos)) cloudList = cj.videos
         } catch (e) { /* 云端不可读时按空处理 */ }
@@ -398,6 +398,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
         const mergedAll = [...mergedVideos, ...mergedCourses]
         const sr = await apiFetch('/api/videos/sync', {
           method: 'POST',
+          timeout: 120000,   // 全量名单写入 + B2 上传可能超过 12s 默认超时，放宽到 120s（冷启动时尤为重要）
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(authBody({ videos: sanitizeForCloud(mergedAll) }))
         })
