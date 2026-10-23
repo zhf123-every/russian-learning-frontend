@@ -266,6 +266,20 @@ export function inferRoles(sentence, dictWords) {
     }
   });
 
+  // 2.5) 疑问副词引导的无动词从句：где/куда/откуда/когда/почему/как/зачем + 名词（非介词后）→ 名词=主语
+  //      "Я знаю, где метро" → метро=主语；chunking 丢弃中文逗号后同型 "Я знаю где метро" 同样命中；
+  //      "Куда ты идёшь?" 中 ты 是代词不触发；"где работает Анна" 中 Анна 前是动词不触发
+  const WHERE_ADV = new Set(["где", "куда", "откуда", "когда", "почему", "как", "зачем"]);
+  words.forEach((w, i) => {
+    if (w.syntacticRole) return;
+    if (isNounish(w) && i > 0 && !isPrepAfter(i)) {
+      const prev = words[i - 1];
+      if (prev && prev.pos === "adverb" && WHERE_ADV.has(lemmaOf(prev))) {
+        w.syntacticRole = "subject"; w.roleLabel = "主语";
+      }
+    }
+  });
+
   // 3) 表语：系动词之后的名词/代词/形容词；无动词时主语后的形容词/名词（"Это дом." → дом 表语）
   words.forEach((w, i) => {
     if (w.syntacticRole) return;
