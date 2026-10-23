@@ -367,6 +367,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
       const saved = useGameVideoStore.getState().submit(payload)
       // 同步到云端：合并式写入（云端已有条目 + 本机新增），绝不用本机残缺名单覆盖云端，所有访客都能看到
       let cloudOk = true
+      let lastSyncError = ''
       try {
         // 1) 先取云端现有名单
         let cloudList = []
@@ -391,10 +392,10 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
           body: JSON.stringify(authBody({ videos: sanitizeForCloud(mergedAll) }))
         })
         const sj = await sr.json()
-        if (!sj.ok) { cloudOk = false; console.warn('云端名单同步失败:', sj.error) }
-      } catch (e) { cloudOk = false; console.warn('云端名单同步异常:', e.message) }
+        if (!sj.ok) { cloudOk = false; lastSyncError = sj.error || '后端未知错误'; console.warn('云端名单同步失败:', sj.error) }
+      } catch (e) { cloudOk = false; lastSyncError = e.message || '网络异常'; console.warn('云端名单同步异常:', e.message) }
       if (!cloudOk) {
-        toast('⚠️ 视频已保存到本机，但云端共享失败（可能是管理员密钥失效或后端异常）。请退出后重新登录管理员，再投稿一次即可让所有人看到。')
+        toast('⚠️ 视频已保存到本机，但云端共享失败：' + lastSyncError + '（请退出后重新登录管理员，再投稿一次即可让所有人看到）')
       }
       if (!saved) {
         toast('⚠️ 投稿已记录但本地保存失败（浏览器存储不可用），换设备后看不到。请检查浏览器是否隐私模式或禁用了存储')
