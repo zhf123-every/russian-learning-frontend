@@ -60,28 +60,35 @@ function extractVideoCover(file) {
   })
 }
 
-export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
+export default function ContributeModal({ onClose, onSubmit, onSubmitted, initial }) {
   const navigate = useNavigate()
+  const isEdit = !!initial
   const [form, setForm] = useState({
-    title: '',
-    cat: '影视俄语',
-    subcat: '全部',
-    level: 'A1',
-    stage: '零基础',
-    videoUrl: '',
-    thumbnail: '',
-    posterUrl: '',
+    title: initial?.title || '',
+    cat: initial?.cat || '影视俄语',
+    subcat: initial?.subcat || '全部',
+    level: initial?.level || 'A1',
+    stage: initial?.stage || '零基础',
+    videoUrl: initial?.videoUrl || '',
+    thumbnail: initial?.thumbnail || '',
+    posterUrl: initial?.posterUrl || '',
   })
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadPct, setUploadPct] = useState(0)
   const [uploadName, setUploadName] = useState('')
-  const [uploadOk, setUploadOk] = useState(null)   // true=上传成功 false=上传失败 null=未开始
-  const [cover, setCover] = useState('')           // 自动提取的封面 dataURL
+  const [uploadOk, setUploadOk] = useState(isEdit ? true : null)   // true=上传成功 false=上传失败 null=未开始（编辑模式已有视频视为已上传）
+  const [cover, setCover] = useState('')           // 自动提取/手动上传的封面 dataURL
   const [coverBusy, setCoverBusy] = useState(false)
-  const [subsOpen, setSubsOpen] = useState(false)  // 手动粘贴字幕：点击后才展开
+  const [subsOpen, setSubsOpen] = useState(!!(initial?.sentences || []).length)  // 手动粘贴字幕：点击后才展开（编辑模式有字幕默认展开）
   const [manualSubs, setManualSubs] = useState('')
-  const [autoSubs, setAutoSubs] = useState([])   // 自动生成的字幕句子 [{id, russian, chinese}]（可编辑）
+  const [autoSubs, setAutoSubs] = useState((initial?.sentences || []).map((s, i) => ({
+    id: i + 1,
+    russian: (s.russian || s.text || '').trim(),
+    chinese: (s.chinese || '').trim(),
+  })))   // 自动生成/预填的字幕句子 [{id, russian, chinese}]（可编辑）
+  // 编辑模式：原封面地址（b2/http）保留；用户手动/自动换了封面后优先用新封面
+  const initialThumb = initial?.thumbnail || initial?.posterUrl || ''
   const [subsBusy, setSubsBusy] = useState(false) // 自动生成字幕进行中
   const [extraSub, setExtraSub] = useState('') // AI 识别出的、不在预设选项里的自定义二级标签（如新教材名），自动补充进下拉
   const fileInputRef = useRef(null)
@@ -319,7 +326,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
     }
     setSubmitting(true)
     try {
-      const id = 'game_video_' + Date.now()
+      const id = initial?.id || 'game_video_' + Date.now()
 
       // 字幕来源：自动生成优先（可编辑），无自动字幕时用手动粘贴兜底
       let sentences = []
@@ -334,8 +341,9 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
       }
 
       // 封面若是本地提取的 base64，先传到 B2 拿云端地址，避免名单体积过大
-      let thumbUrl = cover || `https://picsum.photos/seed/${id}/400/280`
-      let posterUrl = cover || `https://picsum.photos/seed/${id}/1280/720`
+      // 编辑模式：用户没换封面时保留原封面（b2/http 云端地址）
+      let thumbUrl = cover || initialThumb || `https://picsum.photos/seed/${id}/400/280`
+      let posterUrl = cover || initialThumb || `https://picsum.photos/seed/${id}/1280/720`
       if (cover && String(cover).startsWith('data:')) {
         const up = await uploadCoverToB2(cover, thumbUrl)
         if (up) { thumbUrl = up; posterUrl = up }
@@ -364,7 +372,9 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
         createdAt: Date.now(),
         tags: ['mp4', form.cat, form.subcat, form.level, form.stage]
       }
-      const saved = useGameVideoStore.getState().submit(payload)
+      const saved = isEdit
+        ? useGameVideoStore.getState().update(id, payload)   // 编辑：同 id 覆盖，保留在原位置
+        : useGameVideoStore.getState().submit(payload)       // 新建：插入最前
       // 同步到云端：合并式写入（云端已有条目 + 本机新增），绝不用本机残缺名单覆盖云端，所有访客都能看到
       let cloudOk = true
       let lastSyncError = ''
@@ -404,9 +414,9 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
         return
       }
       if (sentences.length) {
-        toast('投稿成功！已发布到游戏商城·通关视频，含 ' + sentences.length + ' 句字幕')
+        toast((isEdit ? '已更新！' : '投稿成功！') + '已发布到游戏商城·通关视频，含 ' + sentences.length + ' 句字幕')
       } else {
-        toast('投稿成功！已发布到游戏商城·通关视频·' + form.cat + (form.subcat && form.subcat !== '全部' ? ' / ' + form.subcat : ''))
+        toast((isEdit ? '已更新！' : '投稿成功！') + '已发布到游戏商城·通关视频·' + form.cat + (form.subcat && form.subcat !== '全部' ? ' / ' + form.subcat : ''))
       }
       // 管理后台场景：留在当前页并把结果交给调用方（不自动跳转商城）
       if (onSubmitted) {
@@ -426,8 +436,10 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
   return (
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520, maxHeight: '88vh', overflowY: 'auto' }}>
-        <h2>投稿到通关视频</h2>
-        <p className="hint">上传本地视频，直传云端永久保存；发布后出现在「游戏商城 → 通关视频」分类中。</p>
+        <h2>{isEdit ? '重新上传视频（保留原字幕和封面）' : '投稿到通关视频'}</h2>
+        <p className="hint">{isEdit
+          ? '换一个视频文件直接替换；标题、字幕、封面、分类都已带出，可修改后保存。'
+          : '上传本地视频，直传云端永久保存；发布后出现在「游戏商城 → 通关视频」分类中。'}</p>
 
         <div className="field">
           <label>标题</label>
@@ -578,7 +590,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
         <div className="mfoot">
           <button className="btn" onClick={onClose} disabled={submitting}>取消</button>
           <button className="btn primary" onClick={handleSubmit} disabled={submitting || uploading || !uploadOk}>
-            {uploading ? '上传中…' : (submitting ? '提交中...' : '投稿')}
+            {uploading ? '上传中…' : (submitting ? '提交中...' : (isEdit ? '保存修改' : '投稿'))}
           </button>
         </div>
       </div>

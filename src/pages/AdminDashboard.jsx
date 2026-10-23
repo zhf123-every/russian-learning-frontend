@@ -170,6 +170,7 @@ export default function AdminDashboard() {
   // —— 视频学习页视频上传（复用投稿链路：presign → B2 → 云端名单；/video-study/:id 可学）——
   const [showVideoUpload, setShowVideoUpload] = useState(false)
   const [videoUploadMsg, setVideoUploadMsg] = useState('')
+  const [editVideo, setEditVideo] = useState(null)   // 重新上传：待编辑的视频条目（预填投稿弹窗）
   const uploadedVideos = useGameVideoStore(s => s.videos)
 
   // 顶部栏「同步云端」跳转入口：带 ?sync=1 → 提示在下方同步区操作，并清除参数
@@ -307,69 +308,8 @@ export default function AdminDashboard() {
     window.setTimeout(() => setToast(''), 3000)
   }
 
-  // 重新上传视频：直接替换已有条目的视频文件（保留标题/字幕/分类），并同步云端名单
-  const reuploadVideo = (v) => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'video/*'
-    input.onchange = async () => {
-      const file = input.files && input.files[0]
-      if (!file) return
-      try {
-        flash('正在上传新视频（直传云端）…')
-        setVideoUploadMsg('正在上传新视频（直传云端）…')
-        const pr = await apiFetch('/api/upload/presign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(authBody({ filename: file.name, kind: 'video', contentType: file.type || 'video/mp4' })),
-          timeout: 30000,
-        })
-        const pj = await pr.json()
-        if (!pj.ok) { flash('获取上传授权失败：' + (pj.error || '未知错误')); setVideoUploadMsg(''); return }
-        const res = await new Promise((resolve) => {
-          const xhr = new XMLHttpRequest()
-          xhr.open('PUT', pj.uploadUrl, true)
-          xhr.setRequestHeader('Content-Type', pj.contentType)
-          xhr.upload.onprogress = (e) => { if (e.lengthComputable) setVideoUploadMsg('正在上传新视频：' + Math.round(e.loaded / e.total * 100) + '%') }
-          xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, body: (xhr.responseText || '').slice(0, 200) })
-          xhr.onerror = () => resolve({ ok: false, status: 0, body: '' })
-          xhr.send(file)
-        })
-        if (!res.ok) { flash('上传失败：' + (res.body || '网络错误')); setVideoUploadMsg(''); return }
-        // 替换本地条目视频地址
-        useGameVideoStore.getState().update(v.id, { videoUrl: pj.objectUrl })
-        // 同步云端名单：本地视频（更新后）+ 云端课程 全量写回（同 id 覆盖）
-        try {
-          let cloud = []
-          try {
-            const r = await apiFetch('/api/videos/list', { timeout: 60000 })
-            const j = await r.json()
-            if (j.ok && Array.isArray(j.videos)) cloud = j.videos
-          } catch (e) { /* 读不到按空处理 */ }
-          const cloudVids = cloud.filter(x => x.kind !== 'course')
-          const cloudCrs = cloud.filter(x => x.kind === 'course')
-          const localVids = useGameVideoStore.getState().videos
-          const seenV = new Set()
-          const mergedVids = [...localVids, ...cloudVids].filter(x => { if (seenV.has(x.id)) return false; seenV.add(x.id); return true })
-          const sr = await apiFetch('/api/videos/sync', {
-            method: 'POST',
-            timeout: 120000,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(authBody({ videos: [...mergedVids, ...cloudCrs] })),
-          })
-          const sj = await sr.json()
-          if (sj.ok) { flash('✅ 视频已替换为新文件，云端已同步'); setVideoUploadMsg('✅ 已重新上传：' + file.name) }
-          else { flash('本地已替换，但云端同步失败：' + (sj.error || '未知错误')) }
-        } catch (e) {
-          flash('本地已替换，但云端同步失败：' + (e.message || '网络错误'))
-        }
-      } catch (e) {
-        flash('重新上传失败：' + (e.message || '请重试'))
-        setVideoUploadMsg('')
-      }
-    }
-    input.click()
-  }
+  // 重新上传视频：打开投稿弹窗并预填原字幕/封面/分类，换文件后「保存修改」（同 id 覆盖）
+  const reuploadVideo = (v) => { setEditVideo(v); setShowVideoUpload(true) }
 
   // 读取来自「新建/编辑课程页」的保存成功提示（sessionStorage 跨页传递，随本页 mount 显示）
   // 带 title 时定位到该课程行并滚动到视口中央 + 短暂高亮（新建草稿排在列表末尾，用户不滚动会以为没保存成功）
@@ -1423,9 +1363,14 @@ export default function AdminDashboard() {
             )}
             {showVideoUpload && (
               <ContributeModal
-                onClose={() => setShowVideoUpload(false)}
+                key={editVideo ? editVideo.id : 'new'}
+                initial={editVideo}
+                onClose={() => { setShowVideoUpload(false); setEditVideo(null) }}
                 onSubmitted={(payload) => {
-                  setVideoUploadMsg('上传成功！视频ID：' + payload.id + ' → 打开 /video-study/' + payload.id + ' 即可开始学习（云端同步后所有访客可见）')
+                  setVideoUploadMsg(editVideo
+                    ? '✅ 视频已更新：' + payload.title + ' → 打开 /video-study/' + payload.id + ' 查看（云端已同步）'
+                    : '上传成功！视频ID：' + payload.id + ' → 打开 /video-study/' + payload.id + ' 即可开始学习（云端同步后所有访客可见）')
+                  setEditVideo(null)
                 }}
               />
             )}
