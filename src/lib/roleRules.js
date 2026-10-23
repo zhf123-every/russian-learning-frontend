@@ -337,17 +337,18 @@ export function inferRoles(sentence, dictWords) {
   });
 
   // 4.5) 谓语动词后的名词（未标记，含无格标注的不变格名词如 кофе）→ 宾语；
-  //      中间隔不定式补语也算（"Я люблю читать книги" → книги 是宾语，不是表语/待确认）
+  //      中间隔不定式补语也算（"Я люблю читать книги" → книги 是宾语，不是表语/待确认）；
+  //      中间隔形容词（定语）也算（"Она учит китайский язык" → язык 是宾语，китайский 随后由定语规则标注）
   words.forEach((w, i) => {
     if (w.syntacticRole) return;
     if (isNounish(w) && i > 0) {
-      // 向前找最近的动词；若该动词是谓语或补语（不定式链），且中间只有动词/补语 → 宾语
+      // 向前找最近的动词；若该动词是谓语或补语（不定式链），且中间只有动词/补语/形容词 → 宾语
       for (let j = i - 1; j >= 0; j--) {
         const prev = words[j];
         if (prev.pos === "verb") {
           if (prev.syntacticRole === "predicate" || prev.syntacticRole === "complement") {
             const between = words.slice(j + 1, i);
-            const onlyVerbish = between.every((b) => b.pos === "verb" || b.syntacticRole === "complement");
+            const onlyVerbish = between.every((b) => b.pos === "verb" || b.syntacticRole === "complement" || b.pos === "adjective");
             if (onlyVerbish) { w.syntacticRole = "object"; w.roleLabel = "宾语"; }
           }
           break;
