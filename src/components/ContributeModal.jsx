@@ -85,6 +85,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
   const [subsBusy, setSubsBusy] = useState(false) // 自动生成字幕进行中
   const [extraSub, setExtraSub] = useState('') // AI 识别出的、不在预设选项里的自定义二级标签（如新教材名），自动补充进下拉
   const fileInputRef = useRef(null)
+  const coverInputRef = useRef(null)
   const isLoggedIn = useAdminStore(s => s.isLoggedIn)
   const authBody = useAdminStore(s => s.authBody)
 
@@ -131,6 +132,25 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
   }
 
   const pickFile = () => fileInputRef.current && fileInputRef.current.click()
+
+  // 手动上传封面：选择本地图片 → dataURL 覆盖自动提取的封面（投稿时自动传 B2）
+  const pickCoverFile = (e) => {
+    const f = e.target.files && e.target.files[0]
+    if (!f) return
+    const r = new FileReader()
+    r.onload = () => {
+      const dataUrl = String(r.result)
+      setCover(dataUrl)
+      setForm(prev => ({ ...prev, thumbnail: dataUrl, posterUrl: dataUrl }))
+      toast('封面已选择，投稿时自动上传云端')
+    }
+    r.readAsDataURL(f)
+    e.target.value = ''
+  }
+  const clearCover = () => {
+    setCover('')
+    setForm(prev => ({ ...prev, thumbnail: '', posterUrl: '' }))
+  }
 
   // ✨ 自动生成字幕：视频上传云端后，后端直接下载 B2 视频并转写出俄语句子（带时间戳）
   const genAutoSubs = async () => {
@@ -395,7 +415,14 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
         </div>
 
         <div className="field">
-          <label>封面（自动从视频提取）</label>
+          <label>封面（自动从视频提取，也可手动上传）</label>
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={pickCoverFile}
+          />
           {cover ? (
             <img src={cover} alt="封面" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 8, marginTop: 4, border: '1px solid var(--border, #eee)' }} />
           ) : (
@@ -403,6 +430,14 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
               {coverBusy ? '正在从视频提取封面…' : '选择视频并上传成功后自动生成'}
             </div>
           )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+            <button type="button" className="btn sm" onClick={() => coverInputRef.current && coverInputRef.current.click()} disabled={coverBusy}>
+              {cover ? '更换封面图片' : '上传封面图片（可选）'}
+            </button>
+            {cover && (
+              <button type="button" className="btn sm" onClick={clearCover}>移除，用自动封面</button>
+            )}
+          </div>
         </div>
 
         <div className="field">
