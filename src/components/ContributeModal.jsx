@@ -199,6 +199,37 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
     setAutoSubs(prev => prev.map((s, i) => (i === idx ? { ...s, [field]: val } : s)))
   }
 
+  // 字幕编辑框按 Enter：光标在句子中间 → 从光标处拆成两行；在行首 → 上方插空行；在行尾 → 下方插空行
+  const handleAutoSubEnter = (idx, e) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const el = e.target
+    const pos = (el.selectionStart != null) ? el.selectionStart : el.value.length
+    const v = el.value
+    const before = v.slice(0, pos)
+    const after = v.slice(pos)
+    const newId = Date.now() + '-' + idx
+    if (!before.trim() && !after.trim()) return
+    if (!before.trim()) {
+      // 行首：上方插入一个空行，方便手动补一句
+      setAutoSubs(prev => { const n = [...prev]; n.splice(idx, 0, { id: newId, russian: '', chinese: '' }); return n })
+      return
+    }
+    if (!after.trim()) {
+      // 行尾：下方插入一个空行
+      setAutoSubs(prev => { const n = [...prev]; n.splice(idx + 1, 0, { id: newId, russian: '', chinese: '' }); return n })
+      return
+    }
+    // 光标在中间：拆成两行，中文释义留在原行
+    setAutoSubs(prev => {
+      const n = [...prev]
+      const old = n[idx]
+      n[idx] = { ...old, russian: before }
+      n.splice(idx + 1, 0, { id: newId, russian: after, chinese: '' })
+      return n
+    })
+  }
+
   const uploadToB2 = async (file) => {
     if (!isLoggedIn()) { toast('请先登录管理员后再上传本地视频'); return }
     setUploading(true); setUploadPct(0); setUploadName(file.name); setUploadOk(null)
@@ -515,6 +546,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
                       <input
                         value={s.russian}
                         onChange={e => setAutoSubField(i, 'russian', e.target.value)}
+                        onKeyDown={e => handleAutoSubEnter(i, e)}
                         placeholder="俄语"
                         style={{ flex: 1, minWidth: 0, padding: '6px 8px', fontSize: 14 }}
                       />
@@ -536,7 +568,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
                 />
               )}
               <div className="hint" style={{ marginTop: 4 }}>
-                自动生成：上传视频后点「✨ 自动生成字幕」，后端识别俄语语音并逐句分段，可编辑后随投稿发布。
+                自动生成：上传视频后点「✨ 自动生成字幕」，后端识别俄语语音并逐句分段，可编辑后随投稿发布。在俄语输入框按 <b>Enter</b> 可在光标处拆成两行（断句不理想时可手动拆分）。
               </div>
             </>
           )}
