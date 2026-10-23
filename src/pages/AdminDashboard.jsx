@@ -1366,10 +1366,16 @@ export default function AdminDashboard() {
                 key={editVideo ? editVideo.id : 'new'}
                 initial={editVideo}
                 onClose={() => { setShowVideoUpload(false); setEditVideo(null) }}
-                onSubmitted={(payload) => {
+                onSubmitted={(payload, sync) => {
+                  const cloudOk = sync && sync.cloudOk
+                  const syncError = (sync && sync.syncError) || '未知原因'
                   setVideoUploadMsg(editVideo
-                    ? '✅ 视频已更新：' + payload.title + ' → 打开 /video-study/' + payload.id + ' 查看（云端已同步）'
-                    : '上传成功！视频ID：' + payload.id + ' → 打开 /video-study/' + payload.id + ' 即可开始学习（云端同步后所有访客可见）')
+                    ? (cloudOk
+                        ? '✅ 视频已更新：' + payload.title + ' → 打开 /video-study/' + payload.id + ' 查看（云端已同步，所有访客可见）'
+                        : '⚠️ 视频已更新到本机，但云端同步失败：' + syncError + '。请退出账号 → 账号密码重新登录 → 再点一次「保存修改」，即可让所有访客看到')
+                    : (cloudOk
+                        ? '上传成功！视频ID：' + payload.id + '（云端已同步，所有访客可见）→ 打开 /video-study/' + payload.id + ' 开始学习'
+                        : '⚠️ 视频已保存到本机，但云端同步失败：' + syncError + '。请退出账号 → 账号密码重新登录 → 再点一次「保存修改」，即可让所有访客看到'))
                   setEditVideo(null)
                 }}
               />

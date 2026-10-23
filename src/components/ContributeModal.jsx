@@ -404,25 +404,25 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
         const sj = await sr.json()
         if (!sj.ok) { cloudOk = false; lastSyncError = sj.error || '后端未知错误'; console.warn('云端名单同步失败:', sj.error) }
       } catch (e) { cloudOk = false; lastSyncError = e.message || '网络异常'; console.warn('云端名单同步异常:', e.message) }
-      if (!cloudOk) {
-        toast('⚠️ 视频已保存到本机，但云端共享失败：' + lastSyncError + '（请退出后重新登录管理员，再投稿一次即可让所有人看到）')
-      }
       if (!saved) {
         toast('⚠️ 投稿已记录但本地保存失败（浏览器存储不可用），换设备后看不到。请检查浏览器是否隐私模式或禁用了存储')
         onClose()
         navigate('/unlocked-games')
         return
       }
+      // 管理后台场景：把最终结果（含云端同步真实状态）交给调用方统一显示，避免成功/失败 toast 互相覆盖
+      if (onSubmitted) {
+        onSubmitted(payload, { cloudOk, syncError: lastSyncError })
+        onClose()
+        return
+      }
+      if (!cloudOk) {
+        toast('⚠️ 视频已保存到本机，但云端共享失败：' + lastSyncError + '（请退出后重新登录管理员，再投稿一次即可让所有人看到）')
+      }
       if (sentences.length) {
         toast((isEdit ? '已更新！' : '投稿成功！') + '已发布到游戏商城·通关视频，含 ' + sentences.length + ' 句字幕')
       } else {
         toast((isEdit ? '已更新！' : '投稿成功！') + '已发布到游戏商城·通关视频·' + form.cat + (form.subcat && form.subcat !== '全部' ? ' / ' + form.subcat : ''))
-      }
-      // 管理后台场景：留在当前页并把结果交给调用方（不自动跳转商城）
-      if (onSubmitted) {
-        onSubmitted(payload)
-        onClose()
-        return
       }
       onClose()
       navigate('/unlocked-games')
