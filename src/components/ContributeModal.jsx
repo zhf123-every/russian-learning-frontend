@@ -5,6 +5,7 @@ import { apiFetch } from '../lib/api'
 import { parseAIJSON } from '../lib/ai'
 import { useAdminStore } from '../store/adminStore'
 import { useGameVideoStore } from '../store/gameVideoStore'
+import { useGameCourseStore } from '../store/gameCourseStore'
 
 // ===== 投稿分类（对标句乐部：主分类 + 子分类两层，与课程投稿一致） =====
 const MAIN_CATS = ['教材同步', '考试备考', '少儿俄语', '基础俄语', '场景俄语', '阅读听力', '影视俄语', '音乐俄语']
