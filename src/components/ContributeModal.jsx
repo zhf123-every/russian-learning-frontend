@@ -81,6 +81,8 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
   const [coverBusy, setCoverBusy] = useState(false)
   const [subsOpen, setSubsOpen] = useState(false)  // 手动粘贴字幕：点击后才展开
   const [manualSubs, setManualSubs] = useState('')
+  const [autoSubs, setAutoSubs] = useState([])   // 自动生成的字幕句子 [{id, russian, chinese}]（可编辑）
+  const [subsBusy, setSubsBusy] = useState(false) // 自动生成字幕进行中
   const [extraSub, setExtraSub] = useState('') // AI 识别出的、不在预设选项里的自定义二级标签（如新教材名），自动补充进下拉
   const fileInputRef = useRef(null)
   const isLoggedIn = useAdminStore(s => s.isLoggedIn)
@@ -129,6 +131,34 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
   }
 
   const pickFile = () => fileInputRef.current && fileInputRef.current.click()
+
+  // ✨ 自动生成字幕：视频上传云端后，后端直接下载 B2 视频并转写出俄语句子（带时间戳）
+  const genAutoSubs = async () => {
+    if (!form.videoUrl) { toast('请先上传视频，再自动生成字幕'); return }
+    setSubsBusy(true)
+    try {
+      const r = await apiFetch('/api/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: form.videoUrl }),
+        timeout: 300000, // 下载视频 + 语音识别可能要几分钟，放宽超时
+      })
+      const j = await r.json()
+      if (!j.ok) throw new Error(j.error || '转写失败')
+      if (!j.segments || !j.segments.length) { toast('未识别到俄语语音（视频可能没有音频轨，或内容不是俄语）'); return }
+      setAutoSubs(j.segments.map((s, i) => ({ id: i + 1, russian: (s.text || '').trim(), chinese: '' })))
+      setSubsOpen(true)
+      toast('字幕生成完成：' + j.segments.length + ' 句，可编辑后投稿')
+    } catch (e) {
+      toast('自动生成字幕失败：' + (e.message || '请重试'))
+    } finally {
+      setSubsBusy(false)
+    }
+  }
+
+  const setAutoSubField = (idx, field, val) => {
+    setAutoSubs(prev => prev.map((s, i) => (i === idx ? { ...s, [field]: val } : s)))
+  }
 
   const uploadToB2 = async (file) => {
     if (!isLoggedIn()) { toast('请先登录管理员后再上传本地视频'); return }
@@ -221,9 +251,13 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
     try {
       const id = 'game_video_' + Date.now()
 
-      // 手动粘贴字幕（兜底）：点击展开后粘贴 SRT/VTT/纯文本，逐行断句
+      // 字幕来源：自动生成优先（可编辑），无自动字幕时用手动粘贴兜底
       let sentences = []
-      if (manualSubs.trim()) {
+      if (autoSubs.length) {
+        sentences = autoSubs
+          .map((s, i) => ({ id: i + 1, russian: (s.russian || '').trim(), chinese: (s.chinese || '').trim() }))
+          .filter(s => s.russian)
+      } else if (manualSubs.trim()) {
         const { parseTextToSentences } = await import('../lib/srt')
         const { sentences: parsed } = parseTextToSentences(manualSubs)
         sentences = parsed.map((s, i) => ({ id: i + 1, russian: s.text, chinese: '' }))
@@ -408,19 +442,47 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
         </div>
 
         <div className="field">
-          {!subsOpen ? (
-            <button type="button" className="btn sm" onClick={() => setSubsOpen(true)}>＋ 手动粘贴字幕（可选）</button>
-          ) : (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {!subsOpen && (
+              <button type="button" className="btn sm" onClick={() => setSubsOpen(true)}>＋ 手动粘贴字幕（可选）</button>
+            )}
+            <button type="button" className="btn sm" onClick={genAutoSubs} disabled={subsBusy || !uploadOk || submitting}>
+              {subsBusy ? '⏳ 字幕生成中…' : '✨ 自动生成字幕'}
+            </button>
+          </div>
+          {subsOpen && (
             <>
-              <label>手动粘贴字幕（兜底，SRT / VTT / 纯文本）</label>
-              <textarea
-                rows={4}
-                value={manualSubs}
-                onChange={e => setManualSubs(e.target.value)}
-                placeholder={'没有字幕时兜底用：\n\nSRT 例子：\n1\n00:00:01,000 --> 00:00:04,000\nПривет, как дела?'}
-              />
+              <label>{autoSubs.length ? '字幕（自动生成，可编辑）' : '手动粘贴字幕（兜底，SRT / VTT / 纯文本）'}</label>
+              {autoSubs.length ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                  {autoSubs.map((s, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, color: '#999', width: 22, flexShrink: 0 }}>{i + 1}</span>
+                      <input
+                        value={s.russian}
+                        onChange={e => setAutoSubField(i, 'russian', e.target.value)}
+                        placeholder="俄语"
+                        style={{ flex: 1, minWidth: 0, padding: '6px 8px', fontSize: 14 }}
+                      />
+                      <input
+                        value={s.chinese}
+                        onChange={e => setAutoSubField(i, 'chinese', e.target.value)}
+                        placeholder="中文（可留空）"
+                        style={{ flex: 1, minWidth: 0, padding: '6px 8px', fontSize: 14 }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <textarea
+                  rows={4}
+                  value={manualSubs}
+                  onChange={e => setManualSubs(e.target.value)}
+                  placeholder={'没有字幕时兜底用：\n\nSRT 例子：\n1\n00:00:01,000 --> 00:00:04,000\nПривет, как дела?'}
+                />
+              )}
               <div className="hint" style={{ marginTop: 4 }}>
-                不贴也可以：投稿后到游戏商城视频卡点「生成字幕」，自动转写 B2 视频。
+                自动生成：上传视频后点「✨ 自动生成字幕」，后端识别俄语语音并逐句分段，可编辑后随投稿发布。
               </div>
             </>
           )}
