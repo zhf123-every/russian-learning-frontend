@@ -152,23 +152,42 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted }) {
     setForm(prev => ({ ...prev, thumbnail: '', posterUrl: '' }))
   }
 
-  // ✨ 自动生成字幕：视频上传云端后，后端直接下载 B2 视频并转写出俄语句子（带时间戳）
+  // ✨ 自动生成字幕：提交后台任务 → 轮询状态（长视频不再被服务器 60s 断连）
   const genAutoSubs = async () => {
     if (!form.videoUrl) { toast('请先上传视频，再自动生成字幕'); return }
     setSubsBusy(true)
     try {
-      const r = await apiFetch('/api/transcribe', {
+      const r = await apiFetch('/api/transcribe-async', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: form.videoUrl }),
-        timeout: 300000, // 下载视频 + 语音识别可能要几分钟，放宽超时
+        timeout: 30000,
       })
       const j = await r.json()
-      if (!j.ok) throw new Error(j.error || '转写失败')
-      if (!j.segments || !j.segments.length) { toast('未识别到俄语语音（视频可能没有音频轨，或内容不是俄语）'); return }
-      setAutoSubs(j.segments.map((s, i) => ({ id: i + 1, russian: (s.text || '').trim(), chinese: '' })))
-      setSubsOpen(true)
-      toast('字幕生成完成：' + j.segments.length + ' 句，可编辑后投稿')
+      if (!j.ok) throw new Error(j.error || '提交转写任务失败')
+      const taskId = j.task_id
+      const t0 = Date.now()
+      // 轮询最多 10 分钟；长视频下载+识别通常 1-3 分钟
+      while (Date.now() - t0 < 10 * 60 * 1000) {
+        await new Promise(res => setTimeout(res, 5000))
+        const s = await apiFetch('/api/transcribe-async/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task_id: taskId }),
+          timeout: 30000,
+        })
+        const sj = await s.json()
+        if (sj.status === 'done') {
+          if (!sj.segments || !sj.segments.length) { toast('未识别到俄语语音（视频可能没有音频轨，或内容不是俄语）'); return }
+          setAutoSubs(sj.segments.map((seg, i) => ({ id: i + 1, russian: (seg.text || '').trim(), chinese: '' })))
+          setSubsOpen(true)
+          toast('字幕生成完成：' + sj.segments.length + ' 句，可编辑后投稿')
+          return
+        }
+        if (sj.status === 'error') throw new Error(sj.error || '转写失败')
+        // running：给用户进度反馈（5 秒一轮，不打扰）
+      }
+      throw new Error('转写超过 10 分钟未完成，请稍后重试或换更短的视频')
     } catch (e) {
       toast('自动生成字幕失败：' + (e.message || '请重试'))
     } finally {
