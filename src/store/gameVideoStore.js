@@ -23,6 +23,13 @@ export const useGameVideoStore = create((set, get) => ({
     set({ videos })
   },
 
+  // 替换条目的部分字段（如重新上传后的 videoUrl），保留其余（标题/字幕/分类）
+  update(id, patch) {
+    const videos = get().videos.map(v => (v.id === id ? { ...v, ...patch } : v))
+    saveLS(LS_GAME_VIDEOS, videos)
+    set({ videos })
+  },
+
   // 已投稿的视频总数（用于解锁判断：投稿即已解锁，无需再点解锁）
   isUploaded(id) {
     return get().videos.some(v => v.id === id)
