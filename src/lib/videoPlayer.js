@@ -27,7 +27,7 @@ export function createPlayer(play, videoEl) {
     src: play ? play.src : null,
     videoEl,
     segStart: 0,
-    segEnd: 0,
+    segEnd: null,   // 初始 null：未进入单句/循环播放模式时不做段边界限制，否则播放/拖动会被直接卡在 0
     loop: false,
     loopContinuous: false,
     rate: 1.0,
@@ -237,6 +237,7 @@ export function createPlayer(play, videoEl) {
   h.stopLoop = () => {
     h.loop = false
     h.loopContinuous = false
+    h.segEnd = null   // 停止段播放后释放边界，避免残留 segEnd 卡住后续「整篇播放」/拖动
     if (h._timer) { clearTimeout(h._timer); h._timer = null }
   }
   h.getCurrentTime = () => {
@@ -254,6 +255,8 @@ export function createPlayer(play, videoEl) {
   h.playFull = () => {
     h.loop = false
     h.loopContinuous = false
+    h.segStart = 0
+    h.segEnd = null   // 关键：清除残留段边界。否则 directTick 会在 currentTime >= segEnd-0.05 时暂停并跳回句首，导致「播放一声就停、拖进度条也被跳回 0」
     if (h._timer) { clearTimeout(h._timer); h._timer = null }
     h.seek(0)
     h.play()
