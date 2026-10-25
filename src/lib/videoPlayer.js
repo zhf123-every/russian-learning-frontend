@@ -62,20 +62,20 @@ export function createPlayer(play, videoEl) {
     })
     h.playing = true
     // 启动「卡死检测」：部分浏览器对 H.265/HEVC 只出音频/静默失败，不触发 error 事件。
-    // 若 4 秒内画面始终没有解出帧（videoWidth=0）且时间无进展，判定编码不受支持，上报上层展示转码入口。
+    // 判定只看画面是否解出帧（videoWidth>0），不看 currentTime——
+    // HEVC 场景音频能解（时间在走、有声音）但视频画面永远解不出，若用时间判断会被误判为正常。
     if (h._stallTimer) clearTimeout(h._stallTimer)
     h._stallTimer = setTimeout(() => {
       h._stallTimer = null
       try {
         const v = h.videoEl
-        const moved = v.currentTime > 0.05
         const hasFrame = v.videoWidth > 0
-        if (!moved && !hasFrame && !v.ended) {
+        if (!hasFrame && !v.ended && !v.error) {
           h.playing = false
           if (h.onError) h.onError('decode', '视频格式浏览器无法解码（可能是 H.265/HEVC）——点「自动转码为兼容格式」即可正常播放')
         }
       } catch (e) {}
-    }, 4000)
+    }, 5000)
   }
   function directPause() {
     if (!h.videoEl) return
@@ -186,8 +186,9 @@ export function createPlayer(play, videoEl) {
   // 绑定 <video> 的 timeupdate（仅 direct）
   if (h.type === 'direct' && h.videoEl) {
     h.videoEl.addEventListener('timeupdate', () => {
-      // 时间有进展说明解码正常，取消卡死检测
-      if (h._stallTimer && h.videoEl.currentTime > 0.05) {
+      // 画面解出帧（videoWidth>0）才说明视频解码正常，取消卡死检测；
+      // 仅时间在走（只有音频能解）不能取消——H.265/HEVC 正是「有声音、无画面」的症状。
+      if (h._stallTimer && h.videoEl.videoWidth > 0) {
         clearTimeout(h._stallTimer)
         h._stallTimer = null
       }

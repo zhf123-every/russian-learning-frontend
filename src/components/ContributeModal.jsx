@@ -79,6 +79,11 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
   const [uploadPct, setUploadPct] = useState(0)
   const [uploadName, setUploadName] = useState('')
   const [uploadOk, setUploadOk] = useState(isEdit ? true : null)   // true=上传成功 false=上传失败 null=未开始（编辑模式已有视频视为已上传）
+  // 上传后自动后台转码（HEVC/H.265 等浏览器不支持的编码 → H.264/AAC 兼容格式）
+  const [transcoding, setTranscoding] = useState(false)
+  const [transcodeMsg, setTranscodeMsg] = useState('')
+  const submittedIdRef = useRef(null)   // 已投稿条目的 id：转码完成时若已投稿，自动把本地播放地址更新为兼容格式
+  const videoIdRef = useRef(null)       // 本次上传的视频 id（上传时就确定，投稿时复用，转码后端可据 id 更新云端名单）
   const [cover, setCover] = useState('')           // 自动提取/手动上传的封面 dataURL
   const [coverBusy, setCoverBusy] = useState(false)
   const [subsOpen, setSubsOpen] = useState(!!(initial?.sentences || []).length)  // 手动粘贴字幕：点击后才展开（编辑模式有字幕默认展开）
@@ -280,6 +285,10 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
       setUploadPct(100)
       setUploadOk(true)
       toast('视频已上传云端，封面已自动提取')
+      // 上传成功后自动提交后台转码：手机拍的视频多为 H.265/HEVC，浏览器直接播不了（有声音无画面），
+      // 转成 H.264/AAC 兼容格式后所有浏览器都能正常播放。转码完成前「投稿」按钮会暂时禁用。
+      if (!videoIdRef.current) videoIdRef.current = initial?.id || 'game_video_' + Date.now()
+      startAutoTranscode(pj.objectUrl, videoIdRef.current)
     } catch (e) {
       setUploadOk(false)
       toast('上传异常：' + (e.message || '请重试'))
@@ -312,6 +321,60 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
     } catch (e) { return fallbackUrl }
   }
 
+  // 上传后自动后台转码：提交 /api/transcode-async → 轮询到完成 → 把 form.videoUrl 换成兼容格式地址。
+  // 若期间用户已投稿（localStorage 有同 id 条目），完成时自动更新本地条目，播放页直接可用新地址。
+  const startAutoTranscode = async (url, vidId) => {
+    setTranscoding(true)
+    setTranscodeMsg('正在后台转码为浏览器兼容格式（约 1-3 分钟），转码完成前暂不能投稿…')
+    try {
+      const r = await apiFetch('/api/transcode-async', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, id: vidId || '' }),
+        timeout: 30000,
+      })
+      const j = await r.json()
+      if (!j.ok || !j.task_id) throw new Error(j.error || '提交转码失败')
+      const t0 = Date.now()
+      while (Date.now() - t0 < 20 * 60 * 1000) {
+        await new Promise(res => setTimeout(res, 6000))
+        const s = await apiFetch('/api/transcode-async/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task_id: j.task_id }),
+          timeout: 30000,
+        })
+        const sj = await s.json()
+        if (sj.status === 'done' && sj.url) {
+          setForm(prev => ({ ...prev, videoUrl: sj.url }))
+          const submittedId = submittedIdRef.current
+          if (submittedId) {
+            const { useGameVideoStore } = await import('../store/gameVideoStore')
+            const st = useGameVideoStore.getState()
+            if (st.videos.some(v => v.id === submittedId)) {
+              st.update(submittedId, { videoUrl: sj.url })
+              setTranscodeMsg('✓ 转码完成，已自动把视频更新为浏览器兼容格式')
+              toast('✓ 视频转码完成，已自动更新为兼容格式，可正常播放')
+            } else {
+              setTranscodeMsg('✓ 转码完成，视频已是浏览器兼容格式，可投稿')
+            }
+          } else {
+            setTranscodeMsg('✓ 转码完成，视频已是浏览器兼容格式，可投稿')
+            toast('✓ 转码完成，视频已是浏览器兼容格式，可以投稿了')
+          }
+          return
+        }
+        if (sj.status === 'error') throw new Error(sj.error || '转码失败')
+      }
+      throw new Error('转码超过 20 分钟未完成')
+    } catch (e) {
+      setTranscodeMsg('自动转码未完成（' + (e.message || '请重试') + '）——可继续投稿，播放页会提供「自动转码」按钮')
+      toast('自动转码失败：' + (e.message || '请重试') + '。可先投稿，播放页可手动转码')
+    } finally {
+      setTranscoding(false)
+    }
+  }
+
   // 云端名单清洗：去掉 dataURL 大字段，保证 sync body 小且干净
   const sanitizeForCloud = (list) => list.map(v => {
     const c = { ...v }
@@ -321,13 +384,18 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
   })
 
   const handleSubmit = async () => {
+    if (transcoding) {
+      toast('视频正在后台转码为浏览器兼容格式（约 1-3 分钟），转码完成后即可投稿')
+      return
+    }
     if (!form.title || !form.videoUrl) {
       toast('请填写标题并上传视频')
       return
     }
     setSubmitting(true)
     try {
-      const id = initial?.id || 'game_video_' + Date.now()
+      const id = initial?.id || videoIdRef.current || 'game_video_' + Date.now()
+      submittedIdRef.current = id   // 记录投稿 id：转码完成时若已投稿，自动更新本地播放地址
 
       // 字幕来源：自动生成优先（可编辑），无自动字幕时用手动粘贴兜底
       let sentences = []
@@ -471,6 +539,11 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
                     : ''}
             </div>
           )}
+          {transcodeMsg && (
+            <div className="hint" style={{ marginTop: 4, color: transcoding ? '#8a6d3b' : '#5C8A6B' }}>
+              {transcoding ? '⏳ ' + transcodeMsg : '✅ ' + transcodeMsg}
+            </div>
+          )}
           {uploading && (
             <div style={{ height: 6, background: '#eee', borderRadius: 3, marginTop: 6, overflow: 'hidden' }}>
               <div style={{ width: uploadPct + '%', height: '100%', background: '#9B7B5E', transition: 'width .2s' }} />
@@ -591,8 +664,8 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
 
         <div className="mfoot">
           <button className="btn" onClick={onClose} disabled={submitting}>取消</button>
-          <button className="btn primary" onClick={handleSubmit} disabled={submitting || uploading || !uploadOk}>
-            {uploading ? '上传中…' : (submitting ? '提交中...' : (isEdit ? '保存修改' : '投稿'))}
+          <button className="btn primary" onClick={handleSubmit} disabled={submitting || uploading || !uploadOk || transcoding} title={transcoding ? '视频正在后台转码为兼容格式，稍候即可投稿' : undefined}>
+            {uploading ? '上传中…' : (transcoding ? '⏳ 转码中…' : (submitting ? '提交中...' : (isEdit ? '保存修改' : '投稿')))}
           </button>
         </div>
       </div>

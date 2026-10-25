@@ -266,6 +266,14 @@ export default function VideoStudy() {
         const sj = await s.json()
         if (sj.status === 'done') {
           if (sj.url) {
+            // 持久化：把本地投稿条目的播放地址更新为兼容格式，刷新后不再卡（云端名单由后端转码线程按 id 更新）
+            if (video?.videoUrl && video.videoUrl.startsWith('b2://') && sj.url.startsWith('b2://')) {
+              try {
+                const { useGameVideoStore } = await import('../store/gameVideoStore')
+                const st = useGameVideoStore.getState()
+                if (st.videos.some(v => v.id === video.id)) st.update(video.id, { videoUrl: sj.url })
+              } catch (e) { /* 忽略 */ }
+            }
             const newSrc = await resolvePlayUrl(sj.url)
             setPlaySrc(newSrc)
             setVideoError('')
