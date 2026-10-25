@@ -327,14 +327,25 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
     setTranscoding(true)
     setTranscodeMsg('正在后台转码为浏览器兼容格式（约 1-3 分钟），转码完成前暂不能投稿…')
     try {
-      const r = await apiFetch('/api/transcode-async', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, id: vidId || '' }),
-        timeout: 30000,
-      })
-      const j = await r.json()
-      if (!j.ok || !j.task_id) throw new Error(j.error || '提交转码失败')
+      let j
+      const submitTranscode = async () => {
+        const r = await apiFetch('/api/transcode-async', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, id: vidId || '' }),
+          timeout: 90000, // Render 免费实例冷启动/排队可能很慢，放宽到 90s
+        })
+        const jj = await r.json()
+        if (!jj.ok || !jj.task_id) throw new Error(jj.error || '提交转码失败')
+        return jj
+      }
+      try {
+        j = await submitTranscode()
+      } catch (e0) {
+        if (String(e0.message || '').includes('已有转码任务')) throw e0
+        await new Promise(res => setTimeout(res, 2000))
+        j = await submitTranscode() // 网络抖动时自动重试 1 次
+      }
       const t0 = Date.now()
       while (Date.now() - t0 < 20 * 60 * 1000) {
         await new Promise(res => setTimeout(res, 6000))
@@ -342,7 +353,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ task_id: j.task_id }),
-          timeout: 30000,
+          timeout: 60000,
         })
         const sj = await s.json()
         if (sj.status === 'done' && sj.url) {
@@ -451,7 +462,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
         // 1) 先取云端现有名单（放宽超时：Render 免费实例冷启动可能 30-60s）
         let cloudList = []
         try {
-          const cr = await apiFetch('/api/videos/list', { timeout: 60000 })
+          const cr = await apiFetch('/api/videos/list', { timeout: 90000 })
           const cj = await cr.json()
           if (cj.ok && Array.isArray(cj.videos)) cloudList = cj.videos
         } catch (e) { /* 云端不可读时按空处理 */ }
@@ -467,7 +478,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
         const mergedAll = [...mergedVideos, ...mergedCourses]
         const sr = await apiFetch('/api/videos/sync', {
           method: 'POST',
-          timeout: 120000,   // 全量名单写入 + B2 上传可能超过 12s 默认超时，放宽到 120s（冷启动时尤为重要）
+          timeout: 180000,   // 全量名单写入 + B2 上传可能超过默认超时；Render 免费实例网络慢（实测 list 可达 30s+），放宽到 180s
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(authBody({ videos: sanitizeForCloud(mergedAll) }))
         })
