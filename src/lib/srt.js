@@ -186,6 +186,47 @@ export function plainToSentences(text) {
   return merged.filter(s => s.text.trim())
 }
 
+// 解析「时间戳 + 文本」两行式字幕（用户整理的常见格式）：
+//   0:00
+//   Привет, Аня.
+//   0:01
+//   Привет, Иван. Как дела?
+// 时间戳支持 M:SS 或 MM:SS（可选毫秒 :. 分隔），返回 [{ start, end, text }]
+export function parseTimestampLines(text) {
+  const lines = (text || '').replace(/\r\n/g, '\n').split('\n').map(l => l.trim())
+  const tsRe = /^(\d+):(\d{2})(?:[.,:](\d{1,3}))?$/
+  const cues = []
+  let curTs = null
+  let curText = []
+  const flush = () => {
+    if (curTs !== null && curText.length) {
+      const t = curText.join(' ').trim()
+      if (t) cues.push({ ts: curTs, text: t })
+    }
+    curText = []
+  }
+  for (const l of lines) {
+    if (!l) { continue }
+    const m = l.match(tsRe)
+    if (m) {
+      flush()
+      const ms = m[3] ? (m[3].length === 3 ? parseInt(m[3]) : parseInt(m[3]) * 10) : 0
+      curTs = parseInt(m[1]) * 60 + parseInt(m[2]) + ms / 1000
+    } else {
+      curText.push(l)
+    }
+  }
+  flush()
+  // 转为带 start/end 的句子：end 取下一句 start；最后一句按词数估算
+  const out = []
+  for (let i = 0; i < cues.length; i++) {
+    const c = cues[i]
+    let end = i + 1 < cues.length ? cues[i + 1].ts : c.ts + Math.max(4, Math.min(12, c.text.split(/\s+/).filter(Boolean).length * 0.7))
+    out.push({ start: c.ts, end, text: cleanVtt(c.text) })
+  }
+  return out
+}
+
 // 统一入口：有字幕用 cues，无字幕用 plainToSentences
 export function parseTextToSentences(text) {
   const cues = parseSubtitles(text)

@@ -82,6 +82,8 @@ export default function VideoStudy() {
   useEffect(() => { const h = () => setIsFs(!!document.fullscreenElement); document.addEventListener('fullscreenchange', h); return () => document.removeEventListener('fullscreenchange', h) }, [])
   const [videoError, setVideoError] = useState('')
   const [transcoding, setTranscoding] = useState(false)
+  const [subsModalOpen, setSubsModalOpen] = useState(false) // 粘贴字幕替换弹窗
+  const [subsText, setSubsText] = useState('')
   const [aiHtml, setAiHtml] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [popWord, setPopWord] = useState(null)
@@ -608,6 +610,32 @@ export default function VideoStudy() {
     }
   }
 
+  // 粘贴带时间戳的字幕并替换（支持「0:00 + 文本」两行式格式）
+  const applySubsText = async () => {
+    if (!subsText.trim()) { toast('请先粘贴字幕内容'); return }
+    const { parseTimestampLines } = await import('../lib/srt')
+    let cues = []
+    try { cues = parseTimestampLines(subsText) } catch (e) { /* 解析失败走空 */ }
+    if (!cues.length) {
+      toast('未识别到「时间戳+文本」格式。请按每两行一组粘贴：0:00 回车 句子文本 回车 0:01 回车 句子文本 …')
+      return
+    }
+    const sents = cues.map((c, i) => ({ id: i + 1, russian: c.text, chinese: '', start: c.start, end: c.end }))
+    setSentences(sents)
+    if (uploaded) {
+      const { useGameVideoStore } = await import('../store/gameVideoStore')
+      const item = { ...uploaded, sentences: sents }
+      const others = useGameVideoStore.getState().videos.filter(x => x.id !== videoId)
+      useGameVideoStore.setState({ videos: [item, ...others] })
+      try {
+        const { saveLS } = await import('../lib/persistence')
+        saveLS('rlearn_v1_game_videos', [item, ...others])
+      } catch (e) { /* 忽略 */ }
+    }
+    setSubsModalOpen(false)
+    toast('已用粘贴的字幕替换（' + sents.length + ' 句），可开始学习')
+  }
+
   // 手柄弹窗选模式 → 切 step（并重置页面状态）
   const switchMode = (modeKey) => {
     const next = MODE_STEP_MAP[modeKey] || 'listen'
@@ -821,9 +849,12 @@ export default function VideoStudy() {
         ) : (
           <div style={{ padding: '10px 14px', background: '#f0f9ff', borderRadius: 10, color: '#1e40af', fontSize: 13, lineHeight: 1.6, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
             <span>本素材已有 <b>{sentences.length} 句字幕</b>{sentences.length > 0 && cur?.russian ? '，可正常学习' : ''}。觉得字幕和视频对不上？</span>
-            <button type="button" className="btn sm" onClick={() => {
-              if (window.confirm('重新识别字幕将覆盖当前 ' + sentences.length + ' 句字幕，确定继续？（约 30-60 秒）')) genSubs()
-            }} style={{ fontSize: 12 }}>🔄 重新生成字幕</button>
+            <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button type="button" className="btn sm" onClick={() => { setSubsText(''); setSubsModalOpen(true) }} style={{ fontSize: 12 }}>📋 粘贴字幕替换</button>
+              <button type="button" className="btn sm" onClick={() => {
+                if (window.confirm('重新识别字幕将覆盖当前 ' + sentences.length + ' 句字幕，确定继续？（约 30-60 秒）')) genSubs()
+              }} style={{ fontSize: 12 }}>🔄 重新生成字幕</button>
+            </span>
           </div>
         )}
 
@@ -1134,6 +1165,30 @@ export default function VideoStudy() {
           sentences={sentences}
           onClose={() => setShowFullText(false)}
         />
+      )}
+
+      {/* 粘贴字幕替换弹窗 */}
+      {subsModalOpen && (
+        <div className="modal-mask" onClick={() => setSubsModalOpen(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 580, maxHeight: '86vh', overflowY: 'auto' }}>
+            <h2>📋 粘贴字幕替换</h2>
+            <p className="hint" style={{ fontSize: 12, lineHeight: 1.7 }}>
+              支持「时间戳 + 文本」格式（每两行一组），时间戳为 M:SS 或 MM:SS：<br />
+              0:00<br />Привет, Аня.<br />0:01<br />Привет, Иван. Как дела?
+            </p>
+            <textarea
+              rows={14}
+              value={subsText}
+              onChange={e => setSubsText(e.target.value)}
+              placeholder={'0:00\nПривет, Аня.\n0:01\nПривет, Иван. Как дела?\n…'}
+              style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'Consolas, monospace', fontSize: 13, padding: 8, border: '1px solid #ddd', borderRadius: 8 }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button className="btn sm" onClick={() => setSubsModalOpen(false)}>取消</button>
+              <button className="btn sm primary" onClick={applySubsText}>保存替换</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
