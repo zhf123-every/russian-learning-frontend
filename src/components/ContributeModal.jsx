@@ -285,10 +285,17 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
       setUploadPct(100)
       setUploadOk(true)
       toast('视频已上传云端，封面已自动提取')
-      // 上传成功后自动提交后台转码：手机拍的视频多为 H.265/HEVC，浏览器直接播不了（有声音无画面），
-      // 转成 H.264/AAC 兼容格式后所有浏览器都能正常播放。转码完成前「投稿」按钮会暂时禁用。
+      // 是否需要转码：只有 mp4 可能是 HEVC/H.265（浏览器有声音无画面）；webm/mov/m4v 等浏览器原生支持，无需转码。
+      // 避免对 webm 等格式白触发转码请求（免费后端转码慢且可能超时）。
+      const ext = (file.name.split('.').pop() || '').toLowerCase()
+      const needsTranscode = ext === 'mp4' || ext === 'm4v'
       if (!videoIdRef.current) videoIdRef.current = initial?.id || 'game_video_' + Date.now()
-      startAutoTranscode(pj.objectUrl, videoIdRef.current)
+      if (needsTranscode) {
+        startAutoTranscode(pj.objectUrl, videoIdRef.current)
+      } else {
+        setTranscodeMsg('✓ 视频为浏览器原生支持格式（' + ext + '），无需转码，可直接投稿')
+        toast('✓ 视频为浏览器原生支持格式，可直接投稿')
+      }
     } catch (e) {
       setUploadOk(false)
       toast('上传异常：' + (e.message || '请重试'))
