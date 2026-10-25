@@ -825,6 +825,22 @@ export function useQuestionInput({
   }, []);
 
   // ==========================================================
+  // 点击词槽：直接激活该词并定位光标
+  // 不依赖隐藏输入框的光标换算（输入框与词槽布局宽度不一致时点击会错位到第一个词）
+  // ==========================================================
+  const handleSlotClick = useCallback((word) => {
+    if (!word || word.fixed) return;
+    setUserInputWords((prevWords) =>
+      prevWords.map((w) => ({ ...w, isActive: w.id === word.id }))
+    );
+    if (inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.setSelectionRange(word.start, word.end);
+    }
+    setCursorPosition(word.start);
+  }, [inputRef, setCursorPosition]);
+
+  // ==========================================================
   // 返回
   // ==========================================================
   return {
@@ -837,6 +853,7 @@ export function useQuestionInput({
     handleChange,
     handleInputKeyDown,
     handleKeyboardInput,
+    handleSlotClick,
     // 操作
     submitAnswer,
     submitToBackend,

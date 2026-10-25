@@ -40,6 +40,7 @@ export default function QuestionInput({
   value = "",
   onChange,
   onKeyDown,
+  onSlotClick,
   errors = [],
   isJudging = false,
   inputStyle = "underline",
@@ -178,7 +179,9 @@ export default function QuestionInput({
           padding-bottom: 2px;
         }
 
-        /* 隐藏的真实输入框 —— 绝对定位覆盖在单词行上方 */
+        /* 隐藏的真实输入框 —— 绝对定位覆盖在单词行上方。
+           点击不拦截（pointer-events: none），由词槽 div 的 onClick 定位光标，
+           避免输入框文本宽度与词槽布局不一致时点击错位到第一个词 */
         .quest-input-real {
           position: absolute;
           top: 0;
@@ -186,6 +189,7 @@ export default function QuestionInput({
           width: 100%;
           height: 100%;
           opacity: 0;
+          pointer-events: none;
           border: none;
           outline: none;
           background: transparent;
@@ -257,6 +261,7 @@ export default function QuestionInput({
                     ? { color: errorColor || "#E11D48", borderBottomColor: errorColor || "#E11D48", ...dynWidth }
                     : dynWidth
                 }
+                onClick={onSlotClick && !word.fixed ? () => onSlotClick(word) : undefined}
               >
                 {/* fixed 的词：直接显示标准答案，不显示 userInput（避免重复） */}
                 {word.fixed ? word.text : (word.userInput ? word.userInput : isPunct ? word.text : "")}

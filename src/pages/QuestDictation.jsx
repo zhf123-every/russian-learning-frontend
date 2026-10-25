@@ -475,6 +475,7 @@ export default function QuestDictation() {
     isFixInputMode,
     reset,
     submitAnswer,
+    handleSlotClick,
   } = useQuestionInput({
     answerText: currentStatement?.russian || "",
     statementId: currentStatement?.id || "",
@@ -1289,6 +1290,7 @@ export default function QuestDictation() {
             value={inputValue}
             onChange={handleChange}
             onKeyDown={wrappedHandleKeyDown}
+            onSlotClick={handleSlotClick}
             errors={currentErrors}
             inputStyle={ui.inputStyle || 'dynamic'}
           />

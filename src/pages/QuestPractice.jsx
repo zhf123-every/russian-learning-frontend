@@ -562,6 +562,7 @@ export default function QuestPractice() {
     reset,
     submitAnswer,
     markHintUsed,
+    handleSlotClick,
     handleInputKeyDown: _rawHandleInputKeyDown,
   } = useQuestionInput({
     answerText: currentStatement?.russian || "",
@@ -1538,6 +1539,7 @@ export default function QuestPractice() {
             value={inputValue}
             onChange={handleChange}
             onKeyDown={handleInputKeyDown}
+            onSlotClick={handleSlotClick}
             errors={currentErrors}
             inputStyle={ui.inputStyle || 'dynamic'}
           />

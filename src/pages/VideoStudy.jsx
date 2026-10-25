@@ -169,6 +169,7 @@ export default function VideoStudy() {
     handleInputKeyDown,
     submitAnswer,
     reset: qReset,
+    handleSlotClick: qSlotClick,
   } = useQuestionInput({
     answerText: cur?.russian || '',
     statementId: cur?.id != null ? String(cur.id) : '',
@@ -838,6 +839,7 @@ export default function VideoStudy() {
                       value={inputValue}
                       onChange={onDictChange}
                       onKeyDown={handleInputKeyDown}
+                      onSlotClick={qSlotClick}
                       errors={currentErrors}
                       inputStyle={uiCfg.inputStyle || 'dynamic'}
                       placeholder="输入你听到的俄语…（Enter 提交）"
