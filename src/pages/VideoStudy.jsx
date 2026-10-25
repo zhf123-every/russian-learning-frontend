@@ -792,11 +792,18 @@ export default function VideoStudy() {
       {/* ===== 步骤内容区 ===== */}
       <div style={{ flex: 1, maxWidth: 760, width: '100%', margin: '0 auto', padding: '16px 16px 48px' }}>
 
-        {sentences.length === 0 && (
+        {sentences.length === 0 ? (
           <div style={{ padding: 14, background: '#fef3c7', borderRadius: 10, color: '#92400e', fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>
             <b>该视频暂无字幕。</b>{' '}
             {step === 'listen' ? '可先盲听整篇（按空格开始）；' : '精读/跟读/口语需要字幕断句：'}
             <button type="button" className="btn sm primary" onClick={genSubs} style={{ fontSize: 12, marginTop: 6 }}>生成字幕</button>
+          </div>
+        ) : (
+          <div style={{ padding: '10px 14px', background: '#f0f9ff', borderRadius: 10, color: '#1e40af', fontSize: 13, lineHeight: 1.6, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <span>本素材已有 <b>{sentences.length} 句字幕</b>{sentences.length > 0 && cur?.russian ? '，可正常学习' : ''}。觉得字幕和视频对不上？</span>
+            <button type="button" className="btn sm" onClick={() => {
+              if (window.confirm('重新识别字幕将覆盖当前 ' + sentences.length + ' 句字幕，确定继续？（约 30-60 秒）')) genSubs()
+            }} style={{ fontSize: 12 }}>🔄 重新生成字幕</button>
           </div>
         )}
 
