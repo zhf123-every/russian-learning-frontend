@@ -42,6 +42,16 @@ function isWord(text) {
 const stripPunct = (s) =>
   s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, "");
 
+// 拼接词槽为输入框字符串：纯标点槽（fixed 且 text 为标点）不参与，
+// 避免句尾标点漏进输入框导致输入位置/判题混乱（标点仅在词槽渲染区显示）
+const joinInputWords = (words) =>
+  (words || [])
+    .filter((w) => !(w.fixed && /^[.,!?;:…'"()\[\]{}\-–—]+$/.test((w.text || "").trim())))
+    .map((w) => w.userInput || "")
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 function createWord(text, id) {
   return {
     id,
@@ -286,7 +296,7 @@ export function useQuestionInput({
    */
   const syncFromWords = useCallback(() => {
     setUserInputWords((prevWords) => {
-      const newValue = prevWords.map((w) => w.userInput).join(" ");
+      const newValue = joinInputWords(prevWords);
       setInputValue(newValue);
       return prevWords;
     });
@@ -435,7 +445,7 @@ export function useQuestionInput({
         if (targetWord) newCursorPos = targetWord.start;
 
         // 同步输入框值
-        const newValue = newWords.map((w) => w.userInput).join(" ");
+        const newValue = joinInputWords(newWords);
         setInputValue(newValue);
 
         return newWords;
@@ -672,9 +682,9 @@ export function useQuestionInput({
         }
         if (nextIdx >= 0) {
           const next = userInputWords[nextIdx];
-          // 先把输入框同步为「已填词 + 词间空格」形式（含 fixed 词，位置对齐），
+          // 先把输入框同步为「已填词 + 词间空格」形式（含人名等 fixed 词，位置对齐），
           // 再激活目标词并定位光标，避免用户接着打字时与前词粘连
-          const joined = userInputWords.map((w) => w.userInput).join(" ");
+          const joined = joinInputWords(userInputWords);
           setInputValue(joined);
           syncFromInput(joined, next.start);
           setTimeout(() => setCursorPosition(next.start), 0);

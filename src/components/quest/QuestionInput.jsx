@@ -150,18 +150,18 @@ export default function QuestionInput({
           font-weight: 700;
         }
 
-        /* 标点符号：无下划线，直接显示 */
+        /* 标点符号：无下划线，直接显示。缩小并变淡，避免与单词同字号显得突兀 */
         .quest-word-punct {
           height: 4rem;
           font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          font-size: 3em;
-          line-height: 1;
+          font-size: 1.5em;
+          line-height: 1.4;
           font-weight: 400;
-          color: var(--qs-sub, rgba(32, 32, 32, 0.6));
+          color: rgba(128, 128, 128, 0.45);
           display: inline-flex;
           align-items: flex-end;
           justify-content: center;
-          padding-bottom: 2px;
+          padding-bottom: 6px;
         }
 
         /* 已给人名/专有名词：纯文字显示，无下划线、无槽位 */
