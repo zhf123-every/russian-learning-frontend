@@ -360,8 +360,8 @@ export default function AnswerPanel({
                         <div
                           className="word-card"
                           style={isGroup
-                            ? { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}cc` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
-                            : { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}cc` : "var(--qs-border, #E5E7EB)" }}
+                            ? { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}b3` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
+                            : { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}b3` : "var(--qs-border, #E5E7EB)" }}
                         >
                           {gLabel && <span style={{ ...styles.roleTag, background: gBorder || "#9CA3AF" }}>{gLabel}</span>}
                           {g.items.map(({ w, i }, j) => {
