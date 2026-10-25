@@ -557,32 +557,52 @@ export default function VideoStudy() {
     setPopWord({ word, x: e.clientX, y: e.clientY })
   }
 
-  // 生成字幕
+  // 生成字幕（异步任务模式：提交 /api/transcribe-async 后台识别 → 轮询结果）
+  // 长视频（1-3 分钟以上）用同步接口会在 12s 默认超时下必然失败，故与投稿弹窗一致走异步任务。
   const genSubs = async () => {
     if (!video?.videoUrl) { toast('该视频没有可用的播放地址（可能是测试残留记录）。请在游戏商城页重新投稿该视频后再试'); return }
-    toast('正在转写，可能需要 30-60 秒…')
+    toast('已提交转写任务，正在后台识别俄语语音…（约 1-3 分钟）')
     try {
-      const r = await apiFetch('/api/transcribe', {
+      const r = await apiFetch('/api/transcribe-async', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: video.videoUrl, model: 'tiny' }),
+        body: JSON.stringify({ url: video.videoUrl }),
+        timeout: 30000,
       })
       const j = await r.json()
-      if (!j.ok) { toast('转写失败：' + (j.error || '')); return }
-      if (!j.segments || !j.segments.length) { toast('未识别出句子'); return }
-      const sents = j.segments.map((s, i) => ({ id: i + 1, russian: s.text, chinese: '', start: s.start, end: s.end }))
-      setSentences(sents)
-      if (uploaded) {
-        const { useGameVideoStore } = await import('../store/gameVideoStore')
-        const item = { ...uploaded, sentences: sents }
-        const others = useGameVideoStore.getState().videos.filter(x => x.id !== videoId)
-        useGameVideoStore.setState({ videos: [item, ...others] })
-        try {
-          const { saveLS } = await import('../lib/persistence')
-          saveLS('rlearn_v1_game_videos', [item, ...others])
-        } catch (e) { /* 忽略 */ }
+      if (!j.ok) throw new Error(j.error || '提交转写任务失败')
+      const taskId = j.task_id
+      const t0 = Date.now()
+      // 轮询最多 10 分钟；长视频下载+识别通常 1-3 分钟
+      while (Date.now() - t0 < 10 * 60 * 1000) {
+        await new Promise(res => setTimeout(res, 5000))
+        const s = await apiFetch('/api/transcribe-async/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task_id: taskId }),
+          timeout: 30000,
+        })
+        const sj = await s.json()
+        if (sj.status === 'done') {
+          if (!sj.segments || !sj.segments.length) { toast('未识别到俄语语音（视频可能没有音频轨，或内容不是俄语）'); return }
+          const sents = sj.segments.map((seg, i) => ({ id: i + 1, russian: (seg.text || '').trim(), chinese: '', start: seg.start, end: seg.end }))
+          setSentences(sents)
+          if (uploaded) {
+            const { useGameVideoStore } = await import('../store/gameVideoStore')
+            const item = { ...uploaded, sentences: sents }
+            const others = useGameVideoStore.getState().videos.filter(x => x.id !== videoId)
+            useGameVideoStore.setState({ videos: [item, ...others] })
+            try {
+              const { saveLS } = await import('../lib/persistence')
+              saveLS('rlearn_v1_game_videos', [item, ...others])
+            } catch (e) { /* 忽略 */ }
+          }
+          toast('已生成 ' + sents.length + ' 句字幕，可开始学习')
+          return
+        }
+        if (sj.status === 'error') throw new Error(sj.error || '转写失败')
       }
-      toast('已生成 ' + sents.length + ' 句字幕，可开始学习')
+      throw new Error('转写超过 10 分钟未完成，请稍后重试或换更短的视频')
     } catch (e) {
       toast('转写失败：' + (e.message || ''))
     }
