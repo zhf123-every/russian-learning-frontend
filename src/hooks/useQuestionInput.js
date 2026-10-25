@@ -241,6 +241,9 @@ export function useQuestionInput({
       let partIdx = 0; // 用户输入词消费指针
       let position = 0;
       newWords.forEach((word) => {
+        // 纯标点槽（fixed 且 text 为标点）：不占输入位置（输入框字符串不含标点），
+        // 否则 start/end 偏移会导致点击任意词槽都错位到第一个词
+        const isPunctSlot = word.fixed && /^[.,!?;:…'"()\[\]{}\-–—]+$/.test((word.text || "").trim());
         if (word.fixed) {
           // 用户输入的下一个词若与该人名匹配（忽略大小写/标点），消费掉它，防止错位
           const nextInput = parts[partIdx] || "";
@@ -258,8 +261,8 @@ export function useQuestionInput({
           word.userInput = input;
         }
         word.start = position;
-        word.end = position + word.userInput.length;
-        position += word.userInput.length + 1;
+        word.end = isPunctSlot ? position : position + word.userInput.length;
+        if (!isPunctSlot) position += word.userInput.length + 1;
         // 根据光标位置判断当前激活词（fixed 词不激活，光标应落在非 fixed 词上）
         if (cursorPos !== undefined && cursorPos >= word.start && cursorPos <= word.end && !word.fixed) {
           word.isActive = true;
