@@ -644,12 +644,11 @@ export default function VideoStudy() {
       const cloudVids = cloudList.filter(v => v.kind !== 'course')
       const cloudCrs = cloudList.filter(v => v.kind === 'course')
       const localVids = useGameVideoStore.getState().videos
-      const localCrs = useCourseStore.getState().courses
+      const localVidsArr = Array.isArray(localVids) ? localVids : []
       const seenV = new Set()
-      const mergedVideos = [...localVids, ...cloudVids].filter(v => { if (seenV.has(v.id)) return false; seenV.add(v.id); return true })
-      const seenC = new Set()
-      const mergedCourses = [...localCrs, ...cloudCrs].filter(c => { if (seenC.has(c.id)) return false; seenC.add(c.id); return true })
-      const mergedAll = [...mergedVideos, ...mergedCourses]
+      const mergedVideos = [...localVidsArr, ...cloudVids].filter(v => { if (seenV.has(v.id)) return false; seenV.add(v.id); return true })
+      // 课程列表云端原样保留（本机课程 store 不含课程数据，不参与合并）
+      const mergedAll = [...mergedVideos, ...cloudCrs]
       const authBody = useAdminStore.getState().authBody
       const sr = await apiFetch('/api/videos/sync', {
         method: 'POST',
