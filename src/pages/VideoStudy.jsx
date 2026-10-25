@@ -13,6 +13,7 @@ import { resolvePlayUrl } from '../lib/playUrl'
 import { analyzeSentence, pronunciationScore } from '../lib/ai'
 import { useGameVideoStore } from '../store/gameVideoStore'
 import { useCourseStore } from '../store/courseStore'
+import { useAdminStore } from '../store/adminStore'
 import { useSquareStore } from '../store/squareStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { apiFetch } from '../lib/api'
@@ -634,6 +635,34 @@ export default function VideoStudy() {
     }
     setSubsModalOpen(false)
     toast('已用粘贴的字幕替换（' + sents.length + ' 句），可开始学习')
+    // 同步云端名单（管理员登录态）：让所有设备/访客都能看到新字幕。
+    // 合并时本机条目优先（videoUrl 为 b2:// 原始形式，写回云端可避免残留签名直链）。
+    try {
+      const cr = await apiFetch('/api/videos/list', { timeout: 90000 })
+      const cj = await cr.json()
+      const cloudList = (cj.ok && Array.isArray(cj.videos)) ? cj.videos : []
+      const cloudVids = cloudList.filter(v => v.kind !== 'course')
+      const cloudCrs = cloudList.filter(v => v.kind === 'course')
+      const localVids = useGameVideoStore.getState().videos
+      const localCrs = useCourseStore.getState().courses
+      const seenV = new Set()
+      const mergedVideos = [...localVids, ...cloudVids].filter(v => { if (seenV.has(v.id)) return false; seenV.add(v.id); return true })
+      const seenC = new Set()
+      const mergedCourses = [...localCrs, ...cloudCrs].filter(c => { if (seenC.has(c.id)) return false; seenC.add(c.id); return true })
+      const mergedAll = [...mergedVideos, ...mergedCourses]
+      const authBody = useAdminStore.getState().authBody
+      const sr = await apiFetch('/api/videos/sync', {
+        method: 'POST',
+        timeout: 180000,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(authBody({ videos: mergedAll })),
+      })
+      const sj = await sr.json()
+      if (sj.ok) toast('✓ 字幕已同步云端，所有设备可见')
+      else toast('字幕已替换到本机；云端同步失败：' + (sj.error || '请稍后重试'))
+    } catch (e) {
+      toast('字幕已替换到本机；云端同步失败（' + (e.message || '网络异常') + '），稍后可重新粘贴一次即会重试同步')
+    }
   }
 
   // 手柄弹窗选模式 → 切 step（并重置页面状态）
