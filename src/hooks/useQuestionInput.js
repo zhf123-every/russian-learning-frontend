@@ -562,7 +562,13 @@ export function useQuestionInput({
     // 「忽略大小写」设置：开→小写归一；关→严格大小写
     const stripPunctLocal = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, '');
     const norm = (s) => (ignoreCase ? s.toLowerCase() : s);
-    const userWords = inputValue.trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm).filter(Boolean);
+    // 词源：优先用词槽（逐词输入模式，词槽就是用户实际填的内容，避免 inputValue 同步竞态漏掉最后一个词导致误判全红）；
+    // 无词槽（整体输入模式）时才回退 inputValue。
+    const hasSlots = Array.isArray(userInputWords) && userInputWords.some(w => !w.fixed);
+    const srcWords = hasSlots
+      ? userInputWords.filter(w => !w.fixed).map(w => (w.userInput || '').trim()).filter(Boolean)
+      : inputValue.trim().split(/\s+/).filter(Boolean);
+    const userWords = srcWords.map(stripPunctLocal).map(norm).filter(Boolean);
     const allAnswerWords = (answerText || "").trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm).filter(Boolean);
     // 已给人名/专有名词：从标准答案和用户输入中都排除（用户多打了人名也不误判）
     const fixedSet = new Set(
