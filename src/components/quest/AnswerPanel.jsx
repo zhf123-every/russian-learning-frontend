@@ -360,8 +360,8 @@ export default function AnswerPanel({
                         <div
                           className="word-card"
                           style={isGroup
-                            ? { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}33` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
-                            : { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}33` : "var(--qs-border, #E5E7EB)" }}
+                            ? { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}80` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
+                            : { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}80` : "var(--qs-border, #E5E7EB)" }}
                         >
                           {gLabel && <span style={{ ...styles.roleTag, background: gBorder || "#9CA3AF" }}>{gLabel}</span>}
                           {g.items.map(({ w, i }, j) => {
@@ -525,7 +525,7 @@ const styles = {
     minHeight: 120, // 统一卡片高度：单词+释义两行，短卡片
     justifyContent: "flex-start",
     border: "1px solid var(--qs-border, #E5E7EB)",
-    borderRadius: 12,
+    borderRadius: 20,
     background: "var(--qs-surface2, #fff)",
   },
   roleTag: {
