@@ -285,17 +285,12 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
       setUploadPct(100)
       setUploadOk(true)
       toast('视频已上传云端，封面已自动提取')
-      // 是否需要转码：只有 mp4 可能是 HEVC/H.265（浏览器有声音无画面）；webm/mov/m4v 等浏览器原生支持，无需转码。
-      // 避免对 webm 等格式白触发转码请求（免费后端转码慢且可能超时）。
-      const ext = (file.name.split('.').pop() || '').toLowerCase()
-      const needsTranscode = ext === 'mp4' || ext === 'm4v'
+      // 所有上传视频都提交后台转码成 H.264（浏览器通吃）：
+      // - mp4 可能是 HEVC/H.265（有声音无画面）
+      // - webm 可能是 AV1（YouTube 下载的 webm 常见，很多浏览器解不了）
+      // 转码异步进行，期间允许先投稿（用原始地址），完成时自动更新为兼容地址。
       if (!videoIdRef.current) videoIdRef.current = initial?.id || 'game_video_' + Date.now()
-      if (needsTranscode) {
-        startAutoTranscode(pj.objectUrl, videoIdRef.current)
-      } else {
-        setTranscodeMsg('✓ 视频为浏览器原生支持格式（' + ext + '），无需转码，可直接投稿')
-        toast('✓ 视频为浏览器原生支持格式，可直接投稿')
-      }
+      startAutoTranscode(pj.objectUrl, videoIdRef.current)
     } catch (e) {
       setUploadOk(false)
       toast('上传异常：' + (e.message || '请重试'))
@@ -332,7 +327,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
   // 若期间用户已投稿（localStorage 有同 id 条目），完成时自动更新本地条目，播放页直接可用新地址。
   const startAutoTranscode = async (url, vidId) => {
     setTranscoding(true)
-    setTranscodeMsg('正在后台转码为浏览器兼容格式（约 1-3 分钟），转码完成前暂不能投稿…')
+    setTranscodeMsg('正在后台转码为浏览器兼容格式（约 1-3 分钟）…转码期间也可直接投稿，完成时自动更新地址')
     try {
       let j
       const submitTranscode = async () => {
@@ -402,10 +397,7 @@ export default function ContributeModal({ onClose, onSubmit, onSubmitted, initia
   })
 
   const handleSubmit = async () => {
-    if (transcoding) {
-      toast('视频正在后台转码为浏览器兼容格式（约 1-3 分钟），转码完成后即可投稿')
-      return
-    }
+    // 转码进行中也允许投稿：先以原始地址发布（b2://），转码完成时自动更新为兼容地址（H.264）。
     if (!form.title || !form.videoUrl) {
       toast('请填写标题并上传视频')
       return
