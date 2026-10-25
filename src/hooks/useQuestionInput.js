@@ -43,14 +43,14 @@ const stripPunct = (s) =>
   s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, "");
 
 // 拼接词槽为输入框字符串：纯标点槽（fixed 且 text 为标点）不参与，
-// 避免句尾标点漏进输入框导致输入位置/判题混乱（标点仅在词槽渲染区显示）
+// 避免句尾标点漏进输入框导致输入位置/判题混乱（标点仅在词槽渲染区显示）。
+// 注意：每个词槽（含空词槽）之间保留 1 个空格占位、不压缩不 trim——
+// 与 syncFromInput 的 position 计算完全一致，否则光标定位会错位到第一个词。
 const joinInputWords = (words) =>
   (words || [])
     .filter((w) => !(w.fixed && /^[.,!?;:…'"()\[\]{}\-–—]+$/.test((w.text || "").trim())))
     .map((w) => w.userInput || "")
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
+    .join(" ");
 
 function createWord(text, id) {
   return {
@@ -826,18 +826,42 @@ export function useQuestionInput({
 
   // ==========================================================
   // 点击词槽：直接激活该词并定位光标
-  // 不依赖隐藏输入框的光标换算（输入框与词槽布局宽度不一致时点击会错位到第一个词）
+  // 光标位置按「每个词槽 1 空格占位、标点槽过滤」的规则动态计算，
+  // 不依赖可能过期的 word.start/end（初始未输入时 start/end 全是 0，
+  // 依赖它们会导致点击任意词槽都定位到第一个词）
   // ==========================================================
   const handleSlotClick = useCallback((word) => {
     if (!word || word.fixed) return;
-    setUserInputWords((prevWords) =>
-      prevWords.map((w) => ({ ...w, isActive: w.id === word.id }))
-    );
+    let targetPos = 0;
+    setUserInputWords((prevWords) => {
+      // 先同步输入框（含空词槽的空格占位，保证光标能落到目标词位置）
+      const val = joinInputWords(prevWords);
+      setInputValue(val);
+      // 动态计算目标词在输入框字符串中的起始位置
+      let pos = 0;
+      for (const w of prevWords) {
+        if (w.id === word.id) break;
+        if (w.fixed && /^[.,!?;:…'"()\[\]{}\-–—]+$/.test((w.text || "").trim())) continue;
+        pos += (w.userInput || "").length + 1;
+      }
+      targetPos = pos;
+      const target = prevWords.find((w) => w.id === word.id);
+      if (target) {
+        target.start = pos;
+        target.end = pos + (target.userInput || "").length;
+      }
+      return prevWords.map((w) => ({ ...w, isActive: w.id === word.id }));
+    });
     if (inputRef.current) {
       inputRef.current.focus();
-      inputRef.current.setSelectionRange(word.start, word.end);
+      // focus 后下一帧再设选区，确保浏览器认可光标位置
+      requestAnimationFrame(() => {
+        if (inputRef.current) {
+          inputRef.current.setSelectionRange(targetPos, targetPos + (word.userInput || "").length);
+        }
+      });
     }
-    setCursorPosition(word.start);
+    setCursorPosition(targetPos);
   }, [inputRef, setCursorPosition]);
 
   // ==========================================================
