@@ -24,8 +24,8 @@ const ERROR_COLORS = {
   conjugation_error: "#5B7B9A", // 蓝色（变位错误）
 };
 
-// 判断是否为纯标点符号（不生成下划线）
-const isPunctuation = (text) => /^[.,!?;:…'"()\[\]{}\-–—\s]+$/.test(text || "");
+// 判断是否为纯标点符号（不生成下划线；半角/全角标点都算）
+const isPunctuation = (text) => /^[.,!?;:…'"()\[\]{}\-–—，。！？；：、\s]+$/.test(text || "");
 
 // 按单词长度估算下划线宽度（ch 相对当前字号，自动适配桌面/移动端）
 const slotWidthFor = (text) => {

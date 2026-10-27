@@ -149,6 +149,12 @@ function adaptBuildSteps(data) {
 
 // 本地投稿课程：lesson.sentences（AI 渐进例句）→ 答题引擎 sequence/unit 结构
 // 学习流程 = 逐词推进：出一个单词 → 打字拼写该词 → 紧接着打该词相关的渐进句（每词 2-3 句，短→中→长）
+// 全角标点 → 半角（逗号/句号/问号/感叹号/分号/冒号）：数据里即使上传全角逗号，
+// 词槽拆分、词卡标注、判题也统一按半角处理，保证「每个词一条下划线、逗号不占槽」
+const normalizePunct = (s) => String(s || "").replace(/[，。！？；：]/g, (m) => (
+  { "，": ",", "。": ".", "！": "!", "？": "?", "；": ";", "：": ":" }[m] || m
+));
+
 // 生词少的课每词多配几句凑够渐进梯度；词表缺失时退回「全部句子渐进」
 function adaptLocalLesson(lesson) {
   // 优先：后台固定的滚雪球步骤（scaffoldingPaths）→ 直接按步骤出题（不再现切 chunking）
@@ -159,8 +165,11 @@ function adaptLocalLesson(lesson) {
 
   const buildUnit = (ru, zh, idx, extra) => {
     // 阿拉伯数字 → 俄语数词（55 → пятьдесят пять）：词槽/判题/TTS 统一用俄语形式
-    const ruText = ruNumbersInText(String(ru || "").trim());
-    const tokens = ruText.split(/\s+/).filter(Boolean);
+    const ruText = ruNumbersInText(normalizePunct(String(ru || "").trim()));
+    // 词槽 = 纯俄语词（去首尾标点，半角/全角都拆掉）；标点由输入组件/词卡单独显示，不占词槽
+    const tokens = ruText.split(/\s+/).filter(Boolean)
+      .map((t) => t.replace(/^[\s.,!?;:…—–，。？！；：'"()\[\]{}-]+|[\s.,!?;:…—–，。？！；：'"()\[\]{}-]+$/g, ""))
+      .filter(Boolean);
     const mean = Array.isArray(extra?.meaning) ? extra.meaning : null;
     const meanOk = mean && mean.length === tokens.length;
     const ws = tokens.map((w, i) => ({
@@ -173,7 +182,7 @@ function adaptLocalLesson(lesson) {
       sequenceId: "local",
       sequenceOrder: idx + 1,
       russian: ruText,
-      stressMarked: tokens.join(" "),
+      stressMarked: ruText,
       chinese: (extra?.fullZh || zh) || "",
       action: "", grammarNote: "", newElement: "",
       // Excel 上传的句子成分（逐词角色序列，数量与词数对齐时生效）/ 语法标签

@@ -625,7 +625,11 @@ export function warmUpIndex() {
  */
 export function annotateWords(sentence) {
   const idx = buildIndex();
-  const tokens = (sentence || "").split(/\s+/).filter(Boolean).filter((t) => !/^[—–-]+$/.test(t));
+  // 词卡按纯俄语词标注：token 去首尾标点（半角/全角），逗号/句号由 AnswerPanel 的 punct 单独显示
+  const tokens = (sentence || "").split(/\s+/).filter(Boolean)
+    .filter((t) => !/^[—–-]+$/.test(t))
+    .map((t) => t.replace(/^[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+|[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+$/g, ""))
+    .filter(Boolean);
 
   // 兜底查询：FUNCTION_WORDS + VERB_FORMS（dict-full pos 为空/"default" 时也走这里补全）
   const lookupFallback = (n) => {

@@ -38,9 +38,9 @@ function isWord(text) {
   return WORD_REGEX.test(text);
 }
 
-// 去首尾标点（用于判题归一与 fixed 词匹配，避免 "друг." != "друг" 误判）
+// 去首尾标点（用于判题归一与 fixed 词匹配，避免 "друг." != "друг" 误判；半角/全角标点都算）
 const stripPunct = (s) =>
-  s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, "");
+  s.replace(/^[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+|[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+$/g, "");
 
 // 拼接词槽为输入框字符串：纯标点槽（fixed 且 text 为标点）不参与，
 // 避免句尾标点漏进输入框导致输入位置/判题混乱（标点仅在词槽渲染区显示）。
@@ -48,7 +48,7 @@ const stripPunct = (s) =>
 // 与 syncFromInput 的 position 计算完全一致，否则光标定位会错位到第一个词。
 const joinInputWords = (words) =>
   (words || [])
-    .filter((w) => !(w.fixed && /^[.,!?;:…'"()\[\]{}\-–—]+$/.test((w.text || "").trim())))
+    .filter((w) => !(w.fixed && /^[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+$/.test((w.text || "").trim())))
     .map((w) => w.userInput || "")
     .join(" ");
 
@@ -177,10 +177,11 @@ export function useQuestionInput({
     let prevEndsSentence = false; // 前一个 token 以句末标点（.!?…）结尾 → 当前大写词是新句首，不算名字
     tokens.forEach((text) => {
       // 词尾标点拆为独立槽位（答题区直接显示标点）："знаю," → 词"знаю" + 标点","；"метро." → 词"метро" + 标点"."
+      // 半角/全角标点都拆（数据里即使上传全角逗号，逗号也独立显示、不占词槽）
       // 标点槽 fixed=true：直接显示、无下划线、不参与输入/判题
       let wordText = String(text || "");
       let tailPunct = "";
-      const tm = String(text || "").match(/^(.*?)([.,!?;:…—–]+)$/);
+      const tm = String(text || "").match(/^(.*?)([.,!?;:…—–，。！？；：、]+)$/);
       if (tm && tm[1]) { wordText = tm[1]; tailPunct = tm[2]; }
       const isWordTok = isWord(wordText);
       if (isWordTok) {
@@ -540,7 +541,7 @@ export function useQuestionInput({
    */
   const markIncorrectFromErrors = useCallback((errors) => {
     setUserInputWords((prevWords) => {
-      const stripPunctLocal = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, '');
+      const stripPunctLocal = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+|[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+$/g, '');
       const norm = (s) => (ignoreCase ? s.toLowerCase() : s);
       const ans = (answerText || "").trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm);
       const newWords = prevWords.map((w) => ({ ...w, incorrect: false }));
