@@ -494,14 +494,16 @@ export default function QuestPractice() {
     };
     const names = [];
     const ordinary = [];
+    // 普通词反证白名单：只有"句中大写必非人名"的明确词性才列入（动词/形容词/副词/前置词/代词/连词/语气词/感叹词）；
+    // 名词类（noun/сущ/имя/n 等，含被词典误标为普通名词/имя 的专有人名，如 "Антона"）
+    // 一律不列入反证，交给输入层"非句首+首字母大写"启发式判定为人名（fixed 直接显示、不占词槽）；
+    // 地名/机构仍由输入层 isPlaceStem 黑名单排除。
+    const NON_NAME_POS = /^(v|verb|动词|adj|adjj|adjective|形容词|adv|adverb|副词|prep|preposition|предлог|前置词|pron|pronoun|местоим|代词|conj|conjunction|союз|连词|part|particle|частиц|语气词|intj|interjection|междом|感叹词)$/i;
     ws.forEach((w) => {
       const key = w.lemma || w.word || "";
       if (!key) return;
       if (w.pos && isNamePos(w.pos)) names.push(key);
-      // 名词（含被词典误标为普通名词的专有名词/人名，如 "Антона" → noun）不列入"普通词反证"，
-      // 交给输入层的首字母大写启发式判定为人名（fixed 直接显示、不占词槽）；
-      // 地名/机构仍由输入层 isPlaceStem 黑名单排除。只把动词/形容词/副词等"句中大写必非人名"的词性列入反证。
-      else if (w.pos && !isNamePos(w.pos) && !/noun|сущ|имя сущ|名词/i.test(String(w.pos || ""))) ordinary.push(key);
+      else if (w.pos && !isNamePos(w.pos) && NON_NAME_POS.test(String(w.pos || "").trim())) ordinary.push(key);
     });
     return { nameWords: names, ordinaryWords: ordinary };
   }, [currentStatement?.words]);
