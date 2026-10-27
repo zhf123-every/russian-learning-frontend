@@ -1521,6 +1521,15 @@ export default function QuestPractice() {
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.russian}</span>
             </div>
           )}
+          {/* 句子切块渐进题：明确告知当前输入的是第几个分块（避免「整句中文 vs 单块词槽」看着不匹配） */}
+          {currentStatement?.chunkN > 1 && (
+            <div style={styles.chunkHint}>
+              <span style={styles.chunkBadge}>本句分 {currentStatement.chunkN} 块</span>
+              <span style={styles.chunkDesc}>
+                当前输入第 {currentStatement.chunkStepIndex + 1} 块 · {currentStatement.chunkIsCumulative ? '连同前面已输入的内容一起打' : '先输入这一块'}
+              </span>
+            </div>
+          )}
           <div style={styles.hintText}>{currentStatement?.chinese || currentStatement?.russian}</div>
           {showAnswer && currentStatement?.stressMarked && (
             <div style={styles.answerReveal}>
@@ -1767,6 +1776,27 @@ const styles = {
     fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     color: "var(--qs-text, #18181B)",
     lineHeight: 1.3,
+  },
+  chunkHint: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    flexWrap: "wrap",
+    marginBottom: 10,
+  },
+  chunkBadge: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#7C3AED",
+    background: "rgba(124,58,237,0.10)",
+    padding: "3px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(124,58,237,0.25)",
+  },
+  chunkDesc: {
+    fontSize: 13,
+    color: "var(--qs-sub, #A1A1AA)",
   },
   grammarNote: {
     marginTop: 10,
