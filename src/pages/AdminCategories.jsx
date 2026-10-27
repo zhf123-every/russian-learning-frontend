@@ -18,6 +18,9 @@ export default function AdminCategories() {
   const [fName, setFName] = useState('')
   const [fSub, setFSub] = useState('')
   const [fSort, setFSort] = useState('0')
+  // 子分类标签内联编辑
+  const [editingId, setEditingId] = useState('')
+  const [editSub, setEditSub] = useState('')
 
   const flash = useCallback((text, type = 'info') => {
     setMsg(text)
@@ -104,6 +107,26 @@ export default function AdminCategories() {
     else flash(j.error || '删除失败', 'error')
   }
 
+  // 子分类标签内联编辑：单击标签文本进入编辑，保存后立即生效（商城/课程表单下次加载即用新标签）
+  const startEdit = (row) => {
+    setEditingId(row.id)
+    setEditSub(row.sub_name || '全部')
+  }
+
+  const saveEdit = async (row) => {
+    const sub = editSub.trim()
+    if (!sub) { flash('子分类名称不能为空', 'error'); return }
+    if (sub === (row.sub_name || '全部')) { setEditingId(''); return }
+    setBusy(row.id)
+    const j = await act('/api/admin/categories/save', {
+      id: row.id, name: row.name, sub_name: sub, sort_order: row.sort_order,
+      is_active: row.is_active === 1 ? 1 : 0,
+    })
+    setBusy('')
+    if (j.ok) { setEditingId(''); flash(`已修改为「${sub}」，前端商城将自动生效`); load() }
+    else flash(j.error || '保存失败', 'error')
+  }
+
   // 按主分类分组（保持 sort_order 顺序）
   const groups = []
   const seen = new Set()
@@ -171,11 +194,33 @@ export default function AdminCategories() {
                         r.is_active === 1 ? 'border-gray-300 bg-base-100 text-gray-700' : 'border-dashed border-gray-200 bg-gray-50 text-gray-400 line-through'
                       }`}
                     >
-                      {r.sub_name || '全部'}
-                      <button className="text-gray-400 hover:text-primary cursor-pointer" title="启用/停用" disabled={busy === r.id} onClick={() => toggleActive(r)}>
-                        {r.is_active === 1 ? '✓' : '○'}
-                      </button>
-                      <button className="text-gray-300 hover:text-error cursor-pointer" title="删除" disabled={busy === r.id} onClick={() => delRow(r)}>✕</button>
+                      {editingId === r.id ? (
+                        <>
+                          <input
+                            autoFocus
+                            className="input input-xs input-bordered w-32"
+                            value={editSub}
+                            onChange={e => setEditSub(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') saveEdit(r); if (e.key === 'Escape') setEditingId('') }}
+                          />
+                          <button className="text-green-600 hover:text-green-500 cursor-pointer font-bold" title="保存修改（Enter）" disabled={busy === r.id} onClick={() => saveEdit(r)}>存</button>
+                          <button className="text-gray-400 hover:text-gray-500 cursor-pointer" title="取消（Esc）" onClick={() => setEditingId('')}>✕</button>
+                        </>
+                      ) : (
+                        <>
+                          <span
+                            className="cursor-pointer hover:text-primary"
+                            title="点击直接修改标签"
+                            onClick={() => startEdit(r)}
+                          >
+                            {r.sub_name || '全部'}
+                          </span>
+                          <button className="text-gray-400 hover:text-primary cursor-pointer" title="启用/停用" disabled={busy === r.id} onClick={() => toggleActive(r)}>
+                            {r.is_active === 1 ? '✓' : '○'}
+                          </button>
+                          <button className="text-gray-300 hover:text-error cursor-pointer" title="删除" disabled={busy === r.id} onClick={() => delRow(r)}>✕</button>
+                        </>
+                      )}
                     </span>
                   ))}
                 </div>
