@@ -591,10 +591,21 @@ export default function AdminDashboard() {
     if (i >= 0) {
       const updated = { ...list[i], units: next, lessons: next.length || list[i].lessons, updatedAt: Date.now() }
       list[i] = updated
-      saveCourses(list)
+      const ok = saveCourses(list)
       setActive(updated)
       refresh()
       saveCourseVersion(updated, '课时内容保存') // 版本快照（内容未变则不重复存）
+      if (!ok) flash('⚠️ 保存课时内容失败：本地存储空间不足，请先「导出课程数据」备份', 'error')
+    } else {
+      // —— 修复：云端独有课程（不在本地课程库，如「基础俄语学习」）挂内容后同样持久化到本地 ——
+      // 之前这里静默跳过：内容只留在内存 state，返回课时列表/重进课程后即丢失（表现为"挂不上内容"）。
+      // 并入本地后，saveUnit 的云端同步（syncToCloud 读本地已发布课程）也会自动带上本课并覆盖云端旧版。
+      const updated = { ...active, units: next, lessons: next.length || active.lessons, updatedAt: Date.now(), cloudSynced: true }
+      const ok = saveCourses([...list, updated])
+      setActive(updated)
+      refresh()
+      saveCourseVersion(updated, '课时内容保存')
+      if (!ok) flash('⚠️ 保存课时内容失败：本地存储空间不足，请先「导出课程数据」备份', 'error')
     }
   }
 
@@ -838,7 +849,12 @@ export default function AdminDashboard() {
   })
   const applyImportedSentences = async () => {
     if (!importPreview || !importPreview.rows.length || !activeUnit) return
-    patchUnit({ sentences: importPreview.rows })
+    // —— 修复：导入例句后立即持久化（替换本课时句子并写回本地课程库），不再依赖用户手动点「保存课时内容」——
+    // 之前仅 patchUnit 更新内存，返回课时列表/重进课程后内容丢失（表现为"挂不上内容"）。
+    const nextUnit = { ...activeUnit, sentences: importPreview.rows }
+    setActiveUnit(nextUnit)
+    const nextUnits = units.map(u => (u.id === activeUnit.id ? nextUnit : u))
+    persistUnits(nextUnits)
     const noZh = importPreview.rows.filter(s => !s.zh).length
     // 自动保存原始文件（后台上传课程的唯一入口落库；以后可下载修改后重传覆盖）
     const file = importFile
@@ -854,7 +870,7 @@ export default function AdminDashboard() {
         console.warn('[source-file] 云端自动保存失败（不影响本课使用）：', e && e.message)
       }
     }
-    flash(`✅ 已导入 ${importPreview.rows.length} 句（顺序=文件行顺序）` + (importPreview.skipped ? `，跳过 ${importPreview.skipped} 个空行` : '') + (noZh ? `，${noZh} 句缺中文可逐句「编」补齐` : '') + (importPreview.synMatched ? `，${importPreview.synMatched} 句带句子成分标注` : (importPreview.synMismatch ? `，${importPreview.synMismatch} 句成分与词数不符已忽略` : '')) + (importPreview.rows.filter(s => s.fullZh).length ? `，${importPreview.rows.filter(s => s.fullZh).length} 句带完整翻译` : '') + (savedCloud ? `，原始 Excel 已自动保存` : '，点「💾 保存课时内容」生效'))
+    flash(`✅ 已导入 ${importPreview.rows.length} 句（顺序=文件行顺序）并已自动保存到本课` + (importPreview.skipped ? `，跳过 ${importPreview.skipped} 个空行` : '') + (noZh ? `，${noZh} 句缺中文可逐句「编」补齐` : '') + (importPreview.synMatched ? `，${importPreview.synMatched} 句带句子成分标注` : (importPreview.synMismatch ? `，${importPreview.synMismatch} 句成分与词数不符已忽略` : '')) + (importPreview.rows.filter(s => s.fullZh).length ? `，${importPreview.rows.filter(s => s.fullZh).length} 句带完整翻译` : '') + (savedCloud ? `，原始 Excel 已自动保存` : '') + (active.status && active.status !== 'draft' ? '；已发布课程请点「同步到云端」让访客端生效' : ''))
     setImportFile(null)
     setImportPreview(null)
   }
