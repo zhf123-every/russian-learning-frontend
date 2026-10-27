@@ -440,12 +440,35 @@ export function ensureDictZh() {
   });
 }
 
-/** 中文释义查询链：词形直查 → 原形查询（БКРС 含变形词，先直查词形再查原形） */
+/** БКРС（dict-zh）词条清洗：只保留第一个义项的中文，去词性标记/拼音/义项序号/残留标点。
+ *  dict-zh 词条格式示例："м, преподавательница ж教员 jiàoyuán, 教师 jiàoshī"
+ *  → 去开头词性标记 → 取第一个逗号前义项 → 去拼音 → "教员" */
+function firstMeaning(t) {
+  if (!t) return t;
+  let s = String(t);
+  // 1) 去开头词性/性标记（西里尔字母 + 符号，直到第一个非西里尔字符为止）
+  s = s.replace(/^[\u0400-\u04FF\u0301\s,，.。;；:：/\\()[\]{}<>+\-=*#@]+/g, "");
+  // 2) 取第一个义项：逗号/顿号/分号/竖线/换行（БКРС 义项以逗号分隔）
+  s = s.split(/[,，、;；\n|]/)[0];
+  // 3) 去数字/罗马数字义项序号（"1. 献给"、"I. 教师"）
+  s = s.replace(/^(?:[IVX]{1,4}|[①②③④⑤⑥⑦⑧⑨⑩]|\d{1,2})[\.\、)）]?\s*/g, "");
+  // 4) 去拼音（拉丁字母，含带声调/变音符号的扩展拉丁区）
+  s = s.replace(/[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]+/g, "");
+  // 5) 去残留西里尔字母（防止词性标记混在释义中）
+  s = s.replace(/[\u0400-\u04FF]+/g, "");
+  // 6) 压缩空白 + 去首尾标点
+  s = s.replace(/\s+/g, " ").trim();
+  s = s.replace(/^[\s,，.。;；:：、\-—–]+|[\s,，.。;；:：、\-—–]+$/g, "").trim();
+  return s;
+}
+
+/** 中文释义查询链：词形直查 → 原形查询（БКРС 含变形词，先直查词形再查原形）；
+ *  返回统一清洗后的单一核心义项（去词性标记/拼音/多余义项），词卡框与词卡直接显示 */
 export function zhOf(form, lemma) {
   const D = (typeof window !== "undefined" && window.RU_DICT_ZH) || {};
   const n = normForm(form);
   const l = normForm(lemma);
-  return D[n] || (l && l !== n ? D[l] : "") || "";
+  return firstMeaning(D[n] || (l && l !== n ? D[l] : "") || "");
 }
 
 /** 懒加载 dict-full.js（25MB，仅首次答对时加载一次） */
