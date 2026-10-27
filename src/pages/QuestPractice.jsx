@@ -184,13 +184,21 @@ function adaptLocalLesson(lesson) {
       // Excel 上传的逐词释义（数量对齐时生效，词卡优先显示；未填回退词典）
       chinese: meanOk ? mean[i] || "" : "",
     }));
+    // 整句中文字段：数据预处理好的正确译文（extra.fullZh 优先 / zh），前端直接展示
+    // 单词题修正：仅 1 个词槽（ru 是单个词）但 zh 误填了整句翻译（如 "Нет" → "不，这不是妈妈"）
+    // 时，取第一个逗号/句号/分号前的部分作为该词释义（"不"），避免单词题题面误显整句；
+    // 多词整句题保持整句翻译不变。
+    let unitZh = (extra?.fullZh || zh) || "";
+    if (tokens.length === 1 && /[，,。.；;]/.test(unitZh)) {
+      unitZh = unitZh.split(/[，,。.；;]/)[0].trim();
+    }
     return {
       id: `local_${idx + 1}`,
       sequenceId: "local",
       sequenceOrder: idx + 1,
       russian: ruText,
       stressMarked: ruText,
-      chinese: (extra?.fullZh || zh) || "",
+      chinese: unitZh,
       action: "", grammarNote: "", newElement: "",
       // Excel 上传的句子成分（逐词角色序列，数量与词数对齐时生效）/ 语法标签
       syntactic: Array.isArray(extra?.syntactic) ? extra.syntactic : null,
@@ -490,7 +498,10 @@ export default function QuestPractice() {
       const key = w.lemma || w.word || "";
       if (!key) return;
       if (w.pos && isNamePos(w.pos)) names.push(key);
-      else if (w.pos && !isNamePos(w.pos)) ordinary.push(key);
+      // 名词（含被词典误标为普通名词的专有名词/人名，如 "Антона" → noun）不列入"普通词反证"，
+      // 交给输入层的首字母大写启发式判定为人名（fixed 直接显示、不占词槽）；
+      // 地名/机构仍由输入层 isPlaceStem 黑名单排除。只把动词/形容词/副词等"句中大写必非人名"的词性列入反证。
+      else if (w.pos && !isNamePos(w.pos) && !/noun|сущ|имя сущ|名词/i.test(String(w.pos || ""))) ordinary.push(key);
     });
     return { nameWords: names, ordinaryWords: ordinary };
   }, [currentStatement?.words]);
