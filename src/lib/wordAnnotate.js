@@ -441,7 +441,7 @@ export function ensureDictZh() {
 }
 
 /** 中文释义查询链：词形直查 → 原形查询（БКРС 含变形词，先直查词形再查原形） */
-function zhOf(form, lemma) {
+export function zhOf(form, lemma) {
   const D = (typeof window !== "undefined" && window.RU_DICT_ZH) || {};
   const n = normForm(form);
   const l = normForm(lemma);

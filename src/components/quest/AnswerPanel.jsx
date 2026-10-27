@@ -20,7 +20,7 @@
 
 import { useEffect, useCallback, useState, useRef, useMemo, Fragment } from "react";
 import { getPosLabel, getPosColor, buildGrammarLabel } from "../../constants/posColors";
-import { annotateWords, ensureDictFull } from "../../lib/wordAnnotate";
+import { annotateWords, ensureDictFull, ensureDictZh, zhOf } from "../../lib/wordAnnotate";
 import { inferRoles, roleKeyFromZh } from "../../lib/roleRules";
 import { getCachedAnnotation } from "../../lib/annotateCache";
 import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQuestSettings";
@@ -411,7 +411,22 @@ export default function AnswerPanel({
                               <Fragment key={i}>
                                 <div
                                   style={cellStyle}
-                                  onClick={() => setDetailWord({ w, example: statement.russian })}
+                                  onClick={() => {
+                                    setDetailWord({ w, example: statement.russian })
+                                    // 词卡释义补全：课程逐词数据与简版词典都没有释义时（如 преподаватель），
+                                    // 懒加载 БКРС 词典（dict-zh.js）查中文并即时刷新词卡，避免词卡只显示成分/词性没有释义
+                                    if (!(w.chinese || w.zh || w.meaning || w.translation)) {
+                                      ensureDictZh().then((ok) => {
+                                        if (!ok) return
+                                        const form = w.form || w.stress_marked || w.lemma || w.ru || w.word || ''
+                                        const lemma = w.lemma || w.ru || w.word || form || ''
+                                        const zh = zhOf(form, lemma)
+                                        if (zh && String(zh).trim()) {
+                                          setDetailWord((prev) => (prev ? { ...prev, w: { ...prev.w, chinese: zh } } : prev))
+                                        }
+                                      })
+                                    }
+                                  }}
                                   title="点击查看单词并加入生词本"
                                 >
                                   {/* 重音符（灰色小字，带重音） */}
