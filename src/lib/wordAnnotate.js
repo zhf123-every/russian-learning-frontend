@@ -630,7 +630,8 @@ export function annotateWords(sentence) {
     .replace(/[，。！？；：]/g, (m) => (
       { "，": ",", "。": ".", "！": "!", "？": "?", "；": ";", "：": ":" }[m] || m
     ))
-    .replace(/[\u00a0\u3000\u2009\u200b\u200c\u200d\t\r\n\f\v\u2028\u2029\u202f\u205f\ufeff]+/g, " ");
+    .replace(/[\u00ad\u200b-\u200f\u2060-\u2064\u206a-\u206f\ufeff]+/g, "")
+    .replace(/[\u00a0\u3000\u2009\u2028\u2029\u202f\u205f\t\r\n\f\v]+/g, " ");
   // 词卡按纯俄语词标注：token 去首尾标点（半角/全角），逗号/句号由 AnswerPanel 的 punct 单独显示
   const tokens = srcSentence.split(/\s+/).filter(Boolean)
     .filter((t) => !/^[—–-]+$/.test(t))
