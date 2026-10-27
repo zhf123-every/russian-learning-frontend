@@ -268,10 +268,17 @@ export function expandUnitToChunkSteps(unit, zhIdx) {
 
   const makeStep = (k, targetRu, isNew, isFinal) => {
     const tokens = String(targetRu).trim().split(/\s+/).filter(Boolean);
+    // 单词题修正：仅 1 个词且中文误填了整句翻译（如 "Нет" → "不，这不是妈妈"）时，
+    // 取第一个逗号/句号/分号前的部分作为该词释义（"不"），避免单词题题面/词卡误显整句
+    const zhForWord = (z) => {
+      const base = String(z || "").trim();
+      if (tokens.length === 1 && /[，,。.；;]/.test(base)) return base.split(/[，,。.；;]/)[0].trim();
+      return base;
+    };
     const words = tokens.map((w, i) => ({
       order: i, form: w, lemma: w, pos: "", posColor: "", grammarLabel: "", roleLabel: "",
       // 块级中文（该块/单词题的题面与词卡释义用）：无块中文时回退整句
-      chinese: zhList[k] || fullZh,
+      chinese: zhForWord(zhList[k] || fullZh),
     }));
     return {
       ...unit,

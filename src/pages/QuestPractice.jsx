@@ -1479,10 +1479,15 @@ export default function QuestPractice() {
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.russian}</span>
             </div>
           )}
-          {/* 中文释义：整句一题显示整句翻译；单词题（仅 1 个词槽）显示该词释义，避免"输入单词却显示整句" */}
+          {/* 中文释义：整句一题显示整句翻译；单词题（仅 1 个词槽）显示该词释义，避免"输入单词却显示整句"。
+              数据层若仍误填整句（"Нет" → "不，这不是妈妈"），显示层取第一个逗号/句号/分号前的词义 */}
           <div style={styles.hintText}>
             {currentStatement && currentStatement.words && currentStatement.words.length === 1
-              ? (currentStatement.words[0]?.chinese || currentStatement?.chinese || currentStatement?.russian || "")
+              ? (() => {
+                  const zh1 = currentStatement.words[0]?.chinese || currentStatement?.chinese || "";
+                  const zhShort = /[，,。.；;]/.test(zh1) ? zh1.split(/[，,。.；;]/)[0].trim() : zh1;
+                  return zhShort || currentStatement?.russian || "";
+                })()
               : (currentStatement?.chinese || currentStatement?.russian || "")}
           </div>
           {showAnswer && currentStatement?.stressMarked && (
