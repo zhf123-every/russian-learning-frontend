@@ -1225,10 +1225,12 @@ export default function QuestPractice() {
   const practiceSentence = (s) => {
     const ru = s?.ru || '';
     if (!ru) return;
+    // 列表中的句子可能带全角标点，与规范化后的 russian（半角）比较前统一转半角
+    const target = normalizePunct(ru).trim();
     for (let i = 0; i < sequences.length; i++) {
       const units = sequences[i]?.units || [];
       for (let j = 0; j < units.length; j++) {
-        if (units[j]?.russian === ru) {
+        if (normalizePunct(units[j]?.russian || '').trim() === target) {
           setCurrentSequenceIndex(i);
           setCurrentUnitIndex(j);
           setShowLearning(false);

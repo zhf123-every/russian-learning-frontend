@@ -233,7 +233,10 @@ export default function AnswerPanel({
     let raw = statement?.words || [];
     // 兜底：如果 words 为空，用 russian 自动 split 并调词典补全（听写页/本地数据无逐词标注时）
     if ((!raw || raw.length === 0) && statement?.russian) {
-      const tokens = String(statement.russian).split(/\s+/).filter(Boolean)
+      const norm = String(statement.russian).replace(/[，。！？；：]/g, (m) => (
+        { "，": ",", "。": ".", "！": "!", "？": "?", "；": ";", "：": ":" }[m] || m
+      ));
+      const tokens = norm.split(/\s+/).filter(Boolean)
         .map((t) => t.replace(/^[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+|[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+$/g, ""))
         .filter(Boolean);
       raw = tokens.map((t) => ({ ru: t, chinese: statement.chinese || "" }));

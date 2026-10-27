@@ -34,6 +34,12 @@ export const MODES = {
 // 俄语字母也视为单词字符（句乐部只判断英数，俄语版需要加上西里尔字母）
 const WORD_REGEX = /[a-zA-Z0-9а-яА-ЯёЁ]/;
 
+// 全角标点 → 半角（逗号/句号/问号/感叹号/分号/冒号）：
+// 数据里即使上传全角逗号（"Нет，это"），也先转半角，词槽拆分/判题才能把逗号独立出来
+const normalizePunct = (s) => String(s || "").replace(/[，。！？；：]/g, (m) => (
+  { "，": ",", "。": ".", "！": "!", "？": "?", "；": ";", "：": ":" }[m] || m
+));
+
 function isWord(text) {
   return WORD_REGEX.test(text);
 }
@@ -128,6 +134,8 @@ export function useQuestionInput({
   const [mode, setMode] = useState(MODES.INPUT);
   const [inputValue, setInputValue] = useState("");
   const [userInputWords, setUserInputWords] = useState([]);
+  // 标准答案统一规范化（全角标点→半角）：词槽拆分、判题、错误标注全部基于它
+  const normAnswer = useMemo(() => normalizePunct(String(answerText || "")), [answerText]);
   const [isJudging, setIsJudging] = useState(false); // 判题中状态，用于立即隐藏输入框
 
   // 当前正在修正的词 id（Fix_Input 模式下）
@@ -167,12 +175,12 @@ export function useQuestionInput({
   // 初始化：根据标准答案拆分单词，判定自动填充（fixed）
   // ==========================================================
   useEffect(() => {
-    if (!answerText) return;
+    if (!normAnswer) return;
     const words = [];
     let id = 0;
-    const tokens = String(answerText).split(" ");
+    const tokens = normAnswer.split(" ");
     // 诊断日志：打印 answerText 和 tokens，排查"Анна?重复"的问题
-    console.log("[useQuestionInput] answerText:", JSON.stringify(answerText));
+    console.log("[useQuestionInput] answerText:", JSON.stringify(normAnswer));
     console.log("[useQuestionInput] tokens:", tokens);
     let prevEndsSentence = false; // 前一个 token 以句末标点（.!?…）结尾 → 当前大写词是新句首，不算名字
     tokens.forEach((text) => {
@@ -244,7 +252,7 @@ export function useQuestionInput({
       newWords.forEach((word) => {
         // 纯标点槽（fixed 且 text 为标点）：不占输入位置（输入框字符串不含标点），
         // 否则 start/end 偏移会导致点击任意词槽都错位到第一个词
-        const isPunctSlot = word.fixed && /^[.,!?;:…'"()\[\]{}\-–—]+$/.test((word.text || "").trim());
+        const isPunctSlot = word.fixed && /^[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+$/.test((word.text || "").trim());
         if (word.fixed) {
           // 用户输入的下一个词若与该人名匹配（忽略大小写/标点），消费掉它，防止错位
           const nextInput = parts[partIdx] || "";
@@ -543,7 +551,7 @@ export function useQuestionInput({
     setUserInputWords((prevWords) => {
       const stripPunctLocal = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+|[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+$/g, '');
       const norm = (s) => (ignoreCase ? s.toLowerCase() : s);
-      const ans = (answerText || "").trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm);
+      const ans = normAnswer.trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm);
       const newWords = prevWords.map((w) => ({ ...w, incorrect: false }));
       (errors || []).forEach((err) => {
         if (err.wordIndex >= 0 && err.wordIndex < newWords.length) {
@@ -583,7 +591,7 @@ export function useQuestionInput({
       ? userInputWords.filter(w => !w.fixed).map(w => (w.userInput || '').trim()).filter(Boolean)
       : inputValue.trim().split(/\s+/).filter(Boolean);
     const userWords = srcWords.map(stripPunctLocal).map(norm).filter(Boolean);
-    const allAnswerWords = (answerText || "").trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm).filter(Boolean);
+    const allAnswerWords = normAnswer.trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm).filter(Boolean);
     // 已给人名/专有名词：从标准答案和用户输入中都排除（用户多打了人名也不误判）
     const fixedSet = new Set(
       userInputWords.filter(w => w.fixed).map(w => norm(stripPunctLocal(w.text)))

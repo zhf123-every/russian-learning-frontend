@@ -625,8 +625,12 @@ export function warmUpIndex() {
  */
 export function annotateWords(sentence) {
   const idx = buildIndex();
+  // 全角标点先转半角（"Нет，это" → "Нет, это"），否则逗号在词中间无法从词中拆出
+  const srcSentence = String(sentence || "").replace(/[，。！？；：]/g, (m) => (
+    { "，": ",", "。": ".", "！": "!", "？": "?", "；": ";", "：": ":" }[m] || m
+  ));
   // 词卡按纯俄语词标注：token 去首尾标点（半角/全角），逗号/句号由 AnswerPanel 的 punct 单独显示
-  const tokens = (sentence || "").split(/\s+/).filter(Boolean)
+  const tokens = srcSentence.split(/\s+/).filter(Boolean)
     .filter((t) => !/^[—–-]+$/.test(t))
     .map((t) => t.replace(/^[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+|[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+$/g, ""))
     .filter(Boolean);

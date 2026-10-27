@@ -199,7 +199,11 @@ export function inferRoles(sentence, dictWords) {
   // 破折号占位：annotateWords 会过滤独立破折号 token，导致 words 与原句 tokens 错位（分句标点判断漂移）。
   // 这里按原句把破折号以占位词插回（pos:"dash"），保证分句/模板/标点判断与真实词序对齐；
   // 全部规则跑完后在返回前移除占位（破折号显示由 AnswerPanel 的 punct 另行处理）。
-  const toks = String(sentence || "").split(/\s+/).filter(Boolean)
+  // 全角标点先转半角（"Нет，это" → "Нет, это"），保证与 annotateWords 的逐词对齐
+  const srcSentence = String(sentence || "").replace(/[，。！？；：]/g, (m) => (
+    { "，": ",", "。": ".", "！": "!", "？": "?", "；": ";", "：": ":" }[m] || m
+  ));
+  const toks = srcSentence.split(/\s+/).filter(Boolean)
     .map((t) => t.replace(/^[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+|[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+$/g, ""));
   const words = [];
   let wi = 0;
