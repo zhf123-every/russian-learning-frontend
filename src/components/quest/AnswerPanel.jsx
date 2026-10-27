@@ -233,9 +233,11 @@ export default function AnswerPanel({
     let raw = statement?.words || [];
     // 兜底：如果 words 为空，用 russian 自动 split 并调词典补全（听写页/本地数据无逐词标注时）
     if ((!raw || raw.length === 0) && statement?.russian) {
-      const norm = String(statement.russian).replace(/[，。！？；：]/g, (m) => (
-        { "，": ",", "。": ".", "！": "!", "？": "?", "；": ";", "：": ":" }[m] || m
-      ));
+      const norm = String(statement.russian)
+        .replace(/[，。！？；：]/g, (m) => (
+          { "，": ",", "。": ".", "！": "!", "？": "?", "；": ";", "：": ":" }[m] || m
+        ))
+        .replace(/[\u00a0\u3000\u2009\u200b\u200c\u200d\t\r\n\f\v\u2028\u2029\u202f\u205f\ufeff]+/g, " ");
       const tokens = norm.split(/\s+/).filter(Boolean)
         .map((t) => t.replace(/^[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+|[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+$/g, ""))
         .filter(Boolean);
