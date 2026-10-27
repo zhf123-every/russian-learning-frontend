@@ -36,9 +36,12 @@ const WORD_REGEX = /[a-zA-Z0-9а-яА-ЯёЁ]/;
 
 // 全角标点 → 半角（逗号/句号/问号/感叹号/分号/冒号）：
 // 数据里即使上传全角逗号（"Нет，это"），也先转半角，词槽拆分/判题才能把逗号独立出来
-const normalizePunct = (s) => String(s || "").replace(/[，。！？；：]/g, (m) => (
-  { "，": ",", "。": ".", "！": "!", "？": "?", "；": ";", "：": ":" }[m] || m
-));
+// 同时把不换行空格/全角空格/制表符等统一成普通空格，防止 split(" ") 拆不动导致词粘连（"не мама" 合成一个词槽）
+const normalizePunct = (s) => String(s || "")
+  .replace(/[，。！？；：]/g, (m) => (
+    { "，": ",", "。": ".", "！": "!", "？": "?", "；": ";", "：": ":" }[m] || m
+  ))
+  .replace(/[\u00a0\u3000\u2009\u200b\t\r\n]+/g, " ");
 
 function isWord(text) {
   return WORD_REGEX.test(text);
@@ -178,7 +181,7 @@ export function useQuestionInput({
     if (!normAnswer) return;
     const words = [];
     let id = 0;
-    const tokens = normAnswer.split(" ");
+    const tokens = normAnswer.split(/\s+/).filter(Boolean);
     // 诊断日志：打印 answerText 和 tokens，排查"Анна?重复"的问题
     console.log("[useQuestionInput] answerText:", JSON.stringify(normAnswer));
     console.log("[useQuestionInput] tokens:", tokens);
@@ -246,7 +249,7 @@ export function useQuestionInput({
   const syncFromInput = useCallback((value, cursorPos) => {
     setUserInputWords((prevWords) => {
       const newWords = prevWords.map((w) => ({ ...w, isActive: false }));
-      const parts = value.split(" ");
+      const parts = value.split(/\s+/).filter(Boolean);
       let partIdx = 0; // 用户输入词消费指针
       let position = 0;
       newWords.forEach((word) => {
