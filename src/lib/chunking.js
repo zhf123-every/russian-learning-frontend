@@ -270,6 +270,8 @@ export function expandUnitToChunkSteps(unit, zhIdx) {
     const tokens = String(targetRu).trim().split(/\s+/).filter(Boolean);
     const words = tokens.map((w, i) => ({
       order: i, form: w, lemma: w, pos: "", posColor: "", grammarLabel: "", roleLabel: "",
+      // 块级中文（该块/单词题的题面与词卡释义用）：无块中文时回退整句
+      chinese: zhList[k] || fullZh,
     }));
     return {
       ...unit,

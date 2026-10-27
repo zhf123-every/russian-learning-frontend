@@ -1468,7 +1468,12 @@ export default function QuestPractice() {
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.russian}</span>
             </div>
           )}
-          <div style={styles.hintText}>{currentStatement?.chinese || currentStatement?.russian}</div>
+          {/* 中文释义：整句一题显示整句翻译；单词题（仅 1 个词槽）显示该词释义，避免"输入单词却显示整句" */}
+          <div style={styles.hintText}>
+            {currentStatement && currentStatement.words && currentStatement.words.length === 1
+              ? (currentStatement.words[0]?.chinese || currentStatement?.chinese || currentStatement?.russian || "")
+              : (currentStatement?.chinese || currentStatement?.russian || "")}
+          </div>
           {showAnswer && currentStatement?.stressMarked && (
             <div style={styles.answerReveal}>
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.stressMarked}</span>
