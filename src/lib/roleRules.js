@@ -194,6 +194,33 @@ function applyDashPattern(clause) {
   return true;
 }
 
+// 模板5：疑问代词 + esto 疑问句（"Кто это?" / "Что это?"，esto 在分句末尾无名词表语）
+// → esto=主语（指示代词），与 Esto 模板（"Это X" → Esto=主语）体系一致，避免 "Кто это?" 中 esto 落到"待确认"无标签
+function applyEstoQuestionPattern(clause) {
+  const n = clause.length;
+  if (n < 2) return false;
+  if (clause.some((w) => w.pos === "verb")) return false;
+  // 跳过句首连接词（а/но）找疑问代词
+  let qi = -1;
+  for (let i = 0; i < n; i++) {
+    if (["кто", "что"].includes(lemmaOf2(clause[i]))) { qi = i; break; }
+  }
+  if (qi < 0) return false;
+  // esto 词：在疑问代词之后、且后面已无实词（仅剩标点/破折号）
+  for (let i = qi + 1; i < n; i++) {
+    const w = clause[i];
+    if (w.syntacticRole) continue;
+    if (ESTE_WORDS.has(lemmaOf2(w))) {
+      const afterReal = clause.slice(i + 1).filter((x) => x.pos !== "dash" && !/^[,.;:!?…，。！？；：]$/.test(String(x.form || "")));
+      if (afterReal.length === 0) {
+        w.syntacticRole = "subject"; w.roleLabel = "主语";
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function inferRoles(sentence, dictWords) {
   const src = (dictWords || []).map((w) => ({ ...w }));
   // 破折号占位：annotateWords 会过滤独立破折号 token，导致 words 与原句 tokens 错位（分句标点判断漂移）。
@@ -236,6 +263,7 @@ export function inferRoles(sentence, dictWords) {
   clauses.forEach((clause) => { applyEsteMiddlePattern(clause); });
   clauses.forEach((clause) => { applyLocativePattern(clause); });
   clauses.forEach((clause) => { applyDashPattern(clause); });
+  clauses.forEach((clause) => { applyEstoQuestionPattern(clause); });
 
   // 1) 谓语：动词（系动词亦谓语）；动词后紧跟的第二个动词（不定式）→ 补语（"Я люблю читать"）
   for (let i = 0; i < n; i++) {
