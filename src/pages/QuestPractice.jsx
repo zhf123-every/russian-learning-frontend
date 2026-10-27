@@ -156,7 +156,6 @@ function adaptLocalLesson(lesson) {
     return scaffoldingToSequences(lesson.scaffoldingPaths, lesson.title || "本课");
   }
   const sentences = Array.isArray(lesson.sentences) ? lesson.sentences.filter(x => x && x.ru) : [];
-  const words = Array.isArray(lesson.words) ? lesson.words.filter(w => w && w.ru) : [];
 
   const buildUnit = (ru, zh, idx, extra) => {
     // 阿拉伯数字 → 俄语数词（55 → пятьдесят пять）：词槽/判题/TTS 统一用俄语形式
@@ -185,82 +184,12 @@ function adaptLocalLesson(lesson) {
     };
   };
 
-  // 无词表：退回「全部句子渐进」（一句话一题）
-  if (!words.length) {
-    const units = sentences.map((st, idx) => buildUnit(st.ru, st.zh, idx, st));
-    return [{
-      id: "local", name: lesson.title || "本课", familyName: lesson.title || "本课",
-      units, totalUnits: units.length, fullSentence: "",
-    }];
-  }
-
-  // 词 ↔ 句子匹配：句子分词后 token 与词相同、或以词开头（覆盖 дома→дом 等词形变化）
-  const normTok = (t) => String(t).toLowerCase().replace(/[.,!?;:«»"']/g, "");
-  const matchedByWord = words.map(w => {
-    const wl = String(w.ru).toLowerCase();
-    const idxs = [];
-    sentences.forEach((s, si) => {
-      const toks = String(s.ru).toLowerCase().split(/\s+/).map(normTok).filter(Boolean);
-      const hit = wl.length >= 3
-        ? toks.some(t => t === wl || t.startsWith(wl) || wl.startsWith(t))
-        : toks.some(t => t === wl); // 短词（я/ты/в/на/и/а）精确匹配，避免抢走长句
-      if (hit) idxs.push(si);
-    });
-    return { w, idxs }; // idxs 按渐进顺序
-  });
-
-  const units = [];
-  const assigned = new Set();
-  let uid = 0;
-  const MAX_PER_WORD = 3;
-  const MIN_PER_WORD = 2;
-
-  // 第一轮：每词 拼写题 + 2~3 句（短、中、长梯度）
-  for (const { w, idxs } of matchedByWord) {
-    uid += 1;
-    units.push({ ...buildUnit(w.ru, w.zh, uid - 1), spellWord: true, spellTotal: words.length });
-    const avail = idxs.filter(i => !assigned.has(i));
-    if (!avail.length) continue;
-    const pick = [];
-    if (avail[0] !== undefined) pick.push(avail[0]);               // 最短（渐进首位）
-    if (avail.length > 1) pick.push(avail[avail.length - 1]);      // 最长（渐进末位）
-    if (avail.length > 2 && pick.length < MAX_PER_WORD) {
-      const mid = avail[Math.floor(avail.length / 2)];
-      if (!pick.includes(mid)) pick.push(mid);                      // 中段
-    }
-    for (const si of pick) {
-      if (!assigned.has(si)) {
-        assigned.add(si);
-        uid += 1;
-        units.push(buildUnit(sentences[si].ru, sentences[si].zh, uid - 1, sentences[si]));
-      }
-    }
-  }
-
-  // 第二、三轮：未分配的句子按渐进顺序继续补（生词少的课多配、梯度更满）
-  let leftovers = sentences.map((_, i) => i).filter(i => !assigned.has(i));
-  let pass = 0;
-  while (leftovers.length && pass < 3) {
-    pass += 1;
-    for (const { w } of matchedByWord) {
-      if (!leftovers.length) break;
-      const myCount = units.filter(u => u.words.length === 1 && !u.spellWord && u.russian === w.ru).length;
-      if (myCount >= MAX_PER_WORD + 1) continue;
-      const si = leftovers[0];
-      assigned.add(si);
-      leftovers.shift();
-      uid += 1;
-      units.push(buildUnit(sentences[si].ru, sentences[si].zh, uid - 1, sentences[si]));
-    }
-  }
-
+  // 用户上传的课程：按 Excel 上传顺序一句话一题（整句原文出题，整句中文提示），
+  // 不按词表重排、不插入拼写题、不切块 —— 上传是什么就是什么
+  const units = sentences.map((st, idx) => buildUnit(st.ru, st.zh, idx, st));
   return [{
-    id: "local",
-    name: lesson.title || "本课",
-    familyName: lesson.title || "本课",
-    units,
-    totalUnits: units.length,
-    fullSentence: "",
+    id: "local", name: lesson.title || "本课", familyName: lesson.title || "本课",
+    units, totalUnits: units.length, fullSentence: "",
   }];
 }
 
@@ -719,8 +648,8 @@ export default function QuestPractice() {
               if (hasPaths) {
                 seqs = seqsFromPaths(pre.scaffoldingPaths, pre.title || "本课", diffKeyRef.current);
               } else {
-                // 课时有 sentences（Excel 上传即用）：直接按表格顺序展开，不读后端旧 segments（覆盖不全会丢句）
-                seqs = expandSequencesWithChunks(adapted, pre?.words);
+                // 课时有 sentences（Excel 上传即用）：按表格顺序一句一题（整句原文），不切块、不读后端旧 segments
+                seqs = adapted;
               }
               setSequences(applyDiff(seqs)); setCurrentSequenceIndex(0); setCurrentUnitIndex(0);
               setLoading(false);
@@ -749,8 +678,8 @@ export default function QuestPractice() {
               window.__unitKnowledge = window.__unitKnowledge || {};
               window.__unitKnowledge[effectiveCourseId] = (stored && stored.knowledge) || {};
               setUnitMeta({ title: stored.title || stored.name || "本课", description: stored.description || "" });
-              // 课时有 sentences：直接按表格顺序展开（上传即用），不读后端旧 segments
-              const seqs = expandSequencesWithChunks(adapted, stored?.words);
+              // 课时有 sentences：按表格顺序一句一题（整句原文），不切块（上传即用），不读后端旧 segments
+              const seqs = adapted;
               setSequences(applyDiff(seqs));
               setCurrentSequenceIndex(0);
               setCurrentUnitIndex(0);
@@ -778,8 +707,8 @@ export default function QuestPractice() {
                     setLocalLesson(u)
                     setIsLocalMode(true)
                     setUnitMeta({ title: u.title || u.name || "本课", description: u.description || "" })
-                    // 课时有 sentences：直接按表格顺序展开（上传即用），不读后端旧 segments
-                    const seqs = expandSequencesWithChunks(adapted, u?.words)
+                    // 课时有 sentences：按表格顺序一句一题（整句原文），不切块（上传即用），不读后端旧 segments
+                    const seqs = adapted
                     setSequences(applyDiff(seqs))
                     setCurrentSequenceIndex(0)
                     setCurrentUnitIndex(0)
@@ -1521,15 +1450,6 @@ export default function QuestPractice() {
               答案：<span style={{ fontFamily: '"PT Serif", Georgia, serif' }}>{currentStatement.russian}</span>
             </div>
           )}
-          {/* 句子切块渐进题：明确告知当前输入的是第几个分块（避免「整句中文 vs 单块词槽」看着不匹配） */}
-          {currentStatement?.chunkN > 1 && (
-            <div style={styles.chunkHint}>
-              <span style={styles.chunkBadge}>本句分 {currentStatement.chunkN} 块</span>
-              <span style={styles.chunkDesc}>
-                当前输入第 {currentStatement.chunkStepIndex + 1} 块 · {currentStatement.chunkIsCumulative ? '连同前面已输入的内容一起打' : '先输入这一块'}
-              </span>
-            </div>
-          )}
           <div style={styles.hintText}>{currentStatement?.chinese || currentStatement?.russian}</div>
           {showAnswer && currentStatement?.stressMarked && (
             <div style={styles.answerReveal}>
@@ -1776,27 +1696,6 @@ const styles = {
     fontFamily: '"Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     color: "var(--qs-text, #18181B)",
     lineHeight: 1.3,
-  },
-  chunkHint: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    flexWrap: "wrap",
-    marginBottom: 10,
-  },
-  chunkBadge: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: "#7C3AED",
-    background: "rgba(124,58,237,0.10)",
-    padding: "3px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(124,58,237,0.25)",
-  },
-  chunkDesc: {
-    fontSize: 13,
-    color: "var(--qs-sub, #A1A1AA)",
   },
   grammarNote: {
     marginTop: 10,
