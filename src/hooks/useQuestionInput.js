@@ -217,6 +217,11 @@ export function useQuestionInput({
         const PRONOUNS = new Set(["она", "он", "оно", "они", "мы", "вы", "я", "ты", "кто", "что", "где", "когда", "куда", "почему", "зачем", "как"]);
         const isPronoun = PRONOUNS.has(lower);
         const heuristicName = !isPlace && !isPronoun && !isFirstRealWord && !prevEndsSentence && /^[А-ЯЁ]/.test(clean);
+        // knownOrdinary（词典标为普通词性）反证保留：全大写教学数据（"КТО ЭТО?" 的 ЭТО 是
+        // 指示代词）须正常输入，不能被首字母大写启发式误判为人名直接显示。
+        // 名词类（含被词典误标为普通名词的人名 Антона）由调用页在 ordinaryWords 传参时
+        // 排除在反证名单之外（白名单只含动词/形容词/副词/前置词/代词/连词/语气词/感叹词），
+        // 因此人名仍能命中启发式 fixed 直接显示、不占词槽。
         w.fixed = (dictName && !isPlace) || (!knownOrdinary && heuristicName);
         if (w.fixed) w.userInput = wordText; // 预设为正确文本
         words.push(w);
