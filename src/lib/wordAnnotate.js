@@ -631,7 +631,9 @@ export function annotateWords(sentence) {
       { "，": ",", "。": ".", "！": "!", "？": "?", "；": ";", "：": ":" }[m] || m
     ))
     .replace(/[\u00ad\u200b-\u200f\u2060-\u2064\u206a-\u206f\ufeff]+/g, "")
-    .replace(/[\u00a0\u3000\u2009\u2028\u2029\u202f\u205f\t\r\n\f\v]+/g, " ");
+    .replace(/[\u00a0\u3000\u2009\u2028\u2029\u202f\u205f\t\r\n\f\v]+/g, " ")
+    // 词中标点补空格："Нет，это"（全角逗号转半角后无空格）→ "Нет, это"，逗号独立成标点槽
+    .replace(/([\u0410-\u044f\u0401\u0451a-zA-Z])([,.;:!?…])(?=[\u0410-\u044f\u0401\u0451a-zA-Z])/g, "$1$2 ");
   // 词卡按纯俄语词标注：token 去首尾标点（半角/全角），逗号/句号由 AnswerPanel 的 punct 单独显示
   const tokens = srcSentence.split(/\s+/).filter(Boolean)
     .filter((t) => !/^[—–-]+$/.test(t))
