@@ -43,6 +43,9 @@ function writeAll(all) {
     localStorage.setItem(VERSION_KEY, JSON.stringify(all))
     return true
   } catch (e) {
+    // 修复：快照写满 localStorage 时不能再拖着课程保存一起失败。
+    // 版本快照只是「回滚」用的冗余数据，课程本体在 rb_admin_courses 里——直接清空快照释放空间，保数据优先。
+    try { localStorage.removeItem(VERSION_KEY) } catch (e2) { /* 忽略 */ }
     return false
   }
 }

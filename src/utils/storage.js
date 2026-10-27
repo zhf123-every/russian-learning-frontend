@@ -39,22 +39,14 @@ export function saveCourses(list) {
       console.warn('[storage] 本地存储已满，已自动将 dataURL 封面降级为占位图后保存成功')
       return true
     } catch (e2) {
-      // 自愈：课程历史版本快照（rlearn_v1_course_versions）曾无体积上限，可能积压数 MB 撑爆配额。
-      // 尝试裁剪到每门课仅保留最新 1 版后再保存一次；仍失败才返回 false。
+      // 自愈：课程历史版本快照（rlearn_v1_course_versions）每版≈该课全部课时，9 门课可积压数 MB 撑爆配额。
+      // 原先「每门课保留 1 版」仍可能不够（9 门=9 份全量）；改为直接清空版本快照腾出最大空间，
+      // 版本快照只是回滚冗余，课程本体保存在 rb_admin_courses，清空不影响课程数据。
       try {
         const VER_KEY = 'rlearn_v1_course_versions'
-        const raw = localStorage.getItem(VER_KEY)
-        if (raw) {
-          const o = JSON.parse(raw)
-          let changed = false
-          for (const cid of Object.keys(o || {})) {
-            const l = o[cid]
-            if (Array.isArray(l) && l.length > 1) { o[cid] = l.slice(-1); changed = true }
-          }
-          if (changed) localStorage.setItem(VER_KEY, JSON.stringify(o))
-        }
+        localStorage.removeItem(VER_KEY)
         localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned))
-        console.warn('[storage] 本地存储已满，已自动裁剪课程历史版本后保存成功')
+        console.warn('[storage] 本地存储已满，已自动清空课程历史版本后保存成功')
         return true
       } catch (e3) {
         const sizeKB = Math.round((JSON.stringify(cleaned).length || 0) / 1024)
