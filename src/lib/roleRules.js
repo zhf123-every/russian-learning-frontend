@@ -195,7 +195,8 @@ function applyDashPattern(clause) {
 }
 
 // 模板5：疑问代词 + esto 疑问句（"Кто это?" / "Что это?"，esto 在分句末尾无名词表语）
-// → esto=主语（指示代词），与 Esto 模板（"Это X" → Esto=主语）体系一致，避免 "Кто это?" 中 esto 落到"待确认"无标签
+// → esto=主语（指示代词）、疑问代词=表语，与 Esto 模板（"Это X" → Esto=主语）体系一致；
+//   同时避免 "Кто это?" 中 esto 落到"待确认"无标签、也避免 2 号规则因 esto 已标主语而跳过疑问代词
 function applyEstoQuestionPattern(clause) {
   const n = clause.length;
   if (n < 2) return false;
@@ -214,6 +215,11 @@ function applyEstoQuestionPattern(clause) {
       const afterReal = clause.slice(i + 1).filter((x) => x.pos !== "dash" && !/^[,.;:!?…，。！？；：]$/.test(String(x.form || "")));
       if (afterReal.length === 0) {
         w.syntacticRole = "subject"; w.roleLabel = "主语";
+        // 疑问代词作表语（"Кто это?" → кто 表语、это 主语），保证疑问代词也有句子成分标签
+        const qw = clause[qi];
+        if (qw && !qw.syntacticRole) {
+          qw.syntacticRole = "predicative"; qw.roleLabel = "表语";
+        }
         return true;
       }
     }
