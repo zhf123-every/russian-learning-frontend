@@ -190,7 +190,6 @@ export function useQuestionInput({
     // 诊断日志：打印 answerText 和 tokens，排查"Анна?重复"的问题
     console.log("[useQuestionInput] answerText:", JSON.stringify(normAnswer));
     console.log("[useQuestionInput] tokens:", JSON.stringify(tokens));
-    console.log("[useQuestionInput] codes:", JSON.stringify([...normAnswer].map((c) => c.charCodeAt(0))));
     let prevEndsSentence = false; // 前一个 token 以句末标点（.!?…）结尾 → 当前大写词是新句首，不算名字
     tokens.forEach((text) => {
       // 词尾标点拆为独立槽位（答题区直接显示标点）："знаю," → 词"знаю" + 标点","；"метро." → 词"метро" + 标点"."
