@@ -440,6 +440,13 @@ export function ensureDictZh() {
   });
 }
 
+/** 释义优选表：词典（БКРС）第一义项与现代常用译法不一致时，用推荐译名覆盖。
+ *  例如 преподаватель 在词典里第一义项是"教员"（旧式称呼），现代俄语教材常用"教师"。
+ *  可随时追加更多词条（按原形 lemma 匹配，变形词自动命中）。 */
+const ZH_PREFER = {
+  "преподаватель": "教师",
+};
+
 /** БКРС（dict-zh）词条清洗：只保留第一个义项的中文，去词性标记/拼音/义项序号/残留标点。
  *  dict-zh 词条格式示例："м, преподавательница ж教员 jiàoyuán, 教师 jiàoshī"
  *  → 去开头词性标记 → 取第一个逗号前义项 → 去拼音 → "教员" */
@@ -468,6 +475,9 @@ export function zhOf(form, lemma) {
   const D = (typeof window !== "undefined" && window.RU_DICT_ZH) || {};
   const n = normForm(form);
   const l = normForm(lemma);
+  // 释义优选：词典第一义项与现代常用译法不一致时优先用推荐译名（如 преподаватель → 教师）
+  const prefer = ZH_PREFER[l] || ZH_PREFER[n];
+  if (prefer) return prefer;
   return firstMeaning(D[n] || (l && l !== n ? D[l] : "") || "");
 }
 
