@@ -226,30 +226,9 @@ export default function AnswerPanel({
     return () => { alive = false };
   }, [statement?.words, statement?.russian]);
 
-  // 词卡框释义直接显示：简版词典没有收录的词（如 преподаватель）懒加载 БКРС 词典（dict-zh.js）补中文，
-  // 补全后整句词卡框直接展示释义，不依赖用户点击词卡；dict-zh 未就绪时先加载一次（7.9MB，一次性）
+  // 词卡框释义补全补丁表：由下方 useEffect 懒加载 БКРС 词典（dict-zh.js）后写入，
+  // 渲染时 chinese 优先走课程数据，缺释义时用补丁表（必须定义在 words useMemo 之后，避免 TDZ）
   const [zhPatch, setZhPatch] = useState({});
-  useEffect(() => {
-    if (!words || !words.length) return;
-    const missing = words.filter((w) => !(w.chinese || w.zh || w.meaning || w.translation) && (w.lemma || w.ru || w.word || w.form));
-    if (!missing.length) return;
-    let alive = true;
-    ensureDictZh().then((ok) => {
-      if (!ok || !alive) return;
-      const patch = {};
-      for (const w of missing) {
-        const form = w.form || w.stress_marked || w.lemma || w.ru || w.word || '';
-        const lemma = w.lemma || w.ru || w.word || form || '';
-        const zh = zhOf(form, lemma);
-        if (zh && String(zh).trim()) {
-          const key = w.lemma || w.ru || w.word || form;
-          patch[key] = String(zh).split(/[;；\n|]/)[0].trim();
-        }
-      }
-      if (Object.keys(patch).length) setZhPatch((p) => ({ ...p, ...patch }));
-    });
-    return () => { alive = false };
-  }, [words]);
 
   // 本地即时标注：词典（重音/词性/性数格）+ 形态规则引擎（句子成分）整句同步推断
   // 引擎优先：无论课程数据带没带标注，都以 词典标注+规则引擎 的整句结果为准（课程数据仅作词典未命中回退），
@@ -310,6 +289,31 @@ export default function AnswerPanel({
     }
     return raw;
   }, [statement?.words, statement?.russian, dictReady]);
+
+  // 词卡框释义直接显示：简版词典没有收录的词（如 преподаватель）懒加载 БКРС 词典（dict-zh.js）补中文，
+  // 补全后整句词卡框直接展示释义，不依赖用户点击词卡；dict-zh 未就绪时先加载一次（7.9MB，一次性）
+  // 注意：必须放在 words useMemo 之后（useEffect 依赖数组 [words] 渲染时求值，前置引用会 TDZ 报错）
+  useEffect(() => {
+    if (!words || !words.length) return;
+    const missing = words.filter((w) => !(w.chinese || w.zh || w.meaning || w.translation) && (w.lemma || w.ru || w.word || w.form));
+    if (!missing.length) return;
+    let alive = true;
+    ensureDictZh().then((ok) => {
+      if (!ok || !alive) return;
+      const patch = {};
+      for (const w of missing) {
+        const form = w.form || w.stress_marked || w.lemma || w.ru || w.word || '';
+        const lemma = w.lemma || w.ru || w.word || form || '';
+        const zh = zhOf(form, lemma);
+        if (zh && String(zh).trim()) {
+          const key = w.lemma || w.ru || w.word || form;
+          patch[key] = String(zh).split(/[;；\n|]/)[0].trim();
+        }
+      }
+      if (Object.keys(patch).length) setZhPatch((p) => ({ ...p, ...patch }));
+    });
+    return () => { alive = false };
+  }, [words]);
 
   // 原句标点对齐：第 i 个词后是否跟标点（逗号/句号/感叹号…），词卡之间原样显示。
   // 破折号例外：不粘连前词（避免 "?—" 挤在词卡右侧），改为显示在下一个词卡左侧（"? — Я" 俄语排版）
