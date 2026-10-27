@@ -226,6 +226,31 @@ export default function AnswerPanel({
     return () => { alive = false };
   }, [statement?.words, statement?.russian]);
 
+  // 词卡框释义直接显示：简版词典没有收录的词（如 преподаватель）懒加载 БКРС 词典（dict-zh.js）补中文，
+  // 补全后整句词卡框直接展示释义，不依赖用户点击词卡；dict-zh 未就绪时先加载一次（7.9MB，一次性）
+  const [zhPatch, setZhPatch] = useState({});
+  useEffect(() => {
+    if (!words || !words.length) return;
+    const missing = words.filter((w) => !(w.chinese || w.zh || w.meaning || w.translation) && (w.lemma || w.ru || w.word || w.form));
+    if (!missing.length) return;
+    let alive = true;
+    ensureDictZh().then((ok) => {
+      if (!ok || !alive) return;
+      const patch = {};
+      for (const w of missing) {
+        const form = w.form || w.stress_marked || w.lemma || w.ru || w.word || '';
+        const lemma = w.lemma || w.ru || w.word || form || '';
+        const zh = zhOf(form, lemma);
+        if (zh && String(zh).trim()) {
+          const key = w.lemma || w.ru || w.word || form;
+          patch[key] = String(zh).split(/[;；\n|]/)[0].trim();
+        }
+      }
+      if (Object.keys(patch).length) setZhPatch((p) => ({ ...p, ...patch }));
+    });
+    return () => { alive = false };
+  }, [words]);
+
   // 本地即时标注：词典（重音/词性/性数格）+ 形态规则引擎（句子成分）整句同步推断
   // 引擎优先：无论课程数据带没带标注，都以 词典标注+规则引擎 的整句结果为准（课程数据仅作词典未命中回退），
   // 杜绝课程数据里残留的错误词性/错误成分原样显示
@@ -388,7 +413,7 @@ export default function AnswerPanel({
                             const grammarLabel = w.grammarLabel || buildGrammarLabel(w);
                             // 释义清洗：优先用课程上传的逐词中文；词典兜底时只留第一个义项核心中文，
                             // 去掉 разг./в знач./со словами 等俄语语法标注、多余义项、拉丁/西里尔字母
-                            const rawChinese = w.chinese || w.zh || w.meaning || w.translation || "";
+                            const rawChinese = w.chinese || w.zh || w.meaning || w.translation || zhPatch[w.lemma || w.ru || w.word || w.form] || "";
                             const chinese = (() => {
                               let t = String(rawChinese || "").trim();
                               if (!t) return "";
