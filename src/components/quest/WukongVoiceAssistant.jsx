@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { callAI, ttsUrl } from '../../lib/ai'
 import { apiFetch } from '../../lib/api'
 import { toast } from '../../lib/toast'
