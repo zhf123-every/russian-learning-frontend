@@ -196,6 +196,9 @@ export default function AnswerPanel({
   // 空格 / Enter 快捷键 → 下一题
   useEffect(() => {
     const handleKey = (e) => {
+      // 弹窗/输入框内打字（AI对话弹窗等）：不触发"空格/Enter 下一题"，避免打字时跳题
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
       if (e.code === "Space" || e.code === "Enter" || e.code === "NumpadEnter") {
         e.preventDefault();
         onNext?.();
