@@ -1694,7 +1694,7 @@ const styles = {
     borderRadius: 8,
     border: "none",
     background: "transparent",
-    color: "var(--qs-text)",
+    color: "#ffffff",
     fontSize: 18,
     cursor: "pointer",
     display: "flex",
