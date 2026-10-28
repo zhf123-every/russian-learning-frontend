@@ -617,32 +617,23 @@ export default function QuestDictation() {
               setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
               // 直接用本地 sentences，每个 sentence 的 words 保留完整标注
               const items = pre.sentences.map((s, i) => {
-                // 中文字段即逐词释义（用户上传约定：空格/分隔符隔开的逐词翻译），按分隔拆开逐词填卡
-                const sZhParts = String(s.chinese || s.zh || "").split(/[、,，;；/|→\s]+/).map((x) => x.trim()).filter(Boolean);
-                const sTokens = String(s.russian || s.ru || "").split(/\s+/).filter(Boolean);
-                const sZhOk = sZhParts.length === sTokens.length;
-                // s.words 为空或不对齐时，用 russian 分词兜底构建 words（避免 AnswerPanel 把整句中文赋给每个词卡）
-                const srcWords = (Array.isArray(s.words) && s.words.length === sTokens.length)
-                  ? s.words
-                  : sTokens.map((tok) => ({ ru: tok, form: tok, lemma: tok }));
+                // 与中译俄 adaptLocalLesson.buildUnit 完全一致：
+                // 逐词释义只用 meaning（释义列分词数组，对齐才生效）；整句翻译优先 fullZh
+                const sTokens = String(s.ru || s.russian || "").split(/\s+/).filter(Boolean);
+                const mean = Array.isArray(s.meaning) ? s.meaning : null;
+                const meanOk = mean && mean.length === sTokens.length;
+                const unitZh = (s.fullZh || s.zh || "") + "";
                 return {
                 id: `local_${i}`,
-                russian: s.russian || s.ru || "",
-                // 整句翻译优先"释义"列（fullZh，用户上传约定：释义=完整中文翻译），其次中文列
-                chinese: s.fullZh || s.chinese || s.zh || "",
+                russian: s.ru || s.russian || "",
+                chinese: unitZh,
                 syntactic: Array.isArray(s.syntactic) ? s.syntactic : null,
-                words: srcWords.map((w, k) => ({
-                  ru: w.form || w.lemma || w.ru || "",
-                  form: w.form || w.lemma || "",
-                  lemma: w.lemma || "",
-                  pos: w.pos || "",
-                  gender: w.gender || "",
-                  number: w.number || "",
-                  grammarCase: w.grammarCase || w.grammaticalCase || "",
-                  syntacticRole: w.syntacticRole || w.syntactic_role || "",
-                  // 逐词释义：中文列分词对齐时优先用户上传的逐词释义（不被词级整句污染）；不对齐时回退释义列分词/词级/词典
-                  zh: (sZhOk ? sZhParts[k] : "") || (Array.isArray(s.meaning) ? (s.meaning[k] || "") : "") || w.chinese || w.zh || "",
-                  chinese: (sZhOk ? sZhParts[k] : "") || (Array.isArray(s.meaning) ? (s.meaning[k] || "") : "") || w.chinese || w.zh || "",
+                words: sTokens.map((w, k) => ({
+                  order: k, form: w, lemma: w, pos: "", posColor: "", grammarLabel: "",
+                  // 与中译俄一致：meaning 对齐才填，否则留空走词典补全；不用 s.words（避免词级整句污染）
+                  roleLabel: "",
+                  zh: meanOk ? (mean[k] || "") : "",
+                  chinese: meanOk ? (mean[k] || "") : "",
                 })),
                 audio_url: "",
                 chunks: [],
@@ -677,14 +668,15 @@ export default function QuestDictation() {
               return {
                 id: `local_${i + 1}`,
                 russian: st.ru || "",
-                // 整句翻译优先"释义"列（fullZh），其次中文列
+                // 整句翻译优先"释义"列（fullZh），与中译俄 unitZh 一致
                 chinese: st.fullZh || st.zh || "",
                 syntactic: Array.isArray(st.syntactic) ? st.syntactic : null,
-                // 逐词释义：优先 st.meaning 数组；否则把中文字段（逐词释义）按分隔拆开逐词填卡
-                words: stToks.map((tok, j) => ({
-                  order: j, ru: tok,
-                  chinese: (Array.isArray(st.meaning) ? (st.meaning[j] || "") : "") || (stZhOk ? stZhParts[j] : ""),
-                })),
+                // 与中译俄一致：逐词释义只用 meaning（释义列分词数组，对齐才生效），不用中文列分词回退
+                words: stToks.map((tok, j) => {
+                  const mMean = Array.isArray(st.meaning) ? st.meaning : null;
+                  const mOk = mMean && mMean.length === stToks.length;
+                  return { order: j, ru: tok, form: tok, lemma: tok, chinese: mOk ? (mMean[j] || "") : "", zh: mOk ? (mMean[j] || "") : "" };
+                }),
               };
             });
             if (!cancelled) {
