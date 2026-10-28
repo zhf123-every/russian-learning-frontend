@@ -468,12 +468,6 @@ export default function AnswerPanel({
                                   <div style={{ ...styles.underline, background: effColor }} />
                                   {/* 中文释义（直接用课程上传的中文） */}
                                   {uiCfg.showWordTrans !== false && chinese && <div style={styles.chinese}>{chinese}</div>}
-                                  {/* 词性标签（名/动/形…：词性色小字，与下划线同色系；空时隐藏） */}
-                                  {posLabel && (
-                                    <div style={{ fontSize: 11, color: effColor, marginTop: 3, letterSpacing: 0.5, fontWeight: 600, opacity: 0.9 }}>
-                                      {posLabel}
-                                    </div>
-                                  )}
                                 </div>
                               </Fragment>
                             );
