@@ -1222,7 +1222,7 @@ export default function QuestPractice() {
       // 手机端：尝试请求全屏，失败则提示旋转屏幕
       document.documentElement.requestFullscreen()
         .catch(() => {
-          toast("手机端请旋转屏幕横屏学习效果更佳", "info")
+          alert("手机端请旋转屏幕横屏学习效果更佳")
         });
     }
   };
