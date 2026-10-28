@@ -198,7 +198,7 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
   const [difficulty, setDifficulty] = useState(initialDifficulty)
   const [customTypes, setCustomTypes] = useState(['句子', '语块', '组合语块', '短语单词'])
   const diff = DIFFICULTIES.find((d) => d.key === difficulty) || DIFFICULTIES[0]
-  const handlePick = (m) => { if (m.ready) setActiveKey(m.key) }
+  const handlePick = (m) => { if (m.ready) { setActiveKey(m.key); if (isMobile) setMobileView('detail') } }
   const toggleCustom = (t) => setCustomTypes((prev) => (prev.includes(t) ? (prev.length > 1 ? prev.filter((x) => x !== t) : prev) : [...prev, t]))
   const effectiveTypes = diff.custom ? customTypes : diff.types
   // 手机端适配
@@ -208,6 +208,8 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
   }, [])
+  // 手机端两步导航：list=选模式列表, detail=模式详情
+  const [mobileView, setMobileView] = useState('list')
 
   return (
     <div
@@ -222,8 +224,8 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ===== 左栏：页眉 + 模式列表（对标句乐部：页眉标题 + 卡片式按钮竖列） ===== */}
-        <div className="flex flex-col overflow-y-auto custom-scrollbar" style={isMobile ? { width: '100%', flexShrink: 0, borderRight: 'none', borderBottom: '1px solid var(--qs-border)', background: 'var(--qs-surface, #ffffff)' } : { width: 288, flexShrink: 0, borderRight: '1px solid var(--qs-border)', background: 'var(--qs-surface, #ffffff)' }}>
+        {/* ===== 左栏：页眉 + 模式列表（手机上：list 视图时显示，detail 视图时隐藏） ===== */}
+        <div className="flex flex-col overflow-y-auto custom-scrollbar" style={isMobile ? (mobileView === 'list' ? { width: '100%', flexShrink: 0, borderRight: 'none', borderBottom: 'none', background: 'var(--qs-surface, #ffffff)' } : { display: 'none' }) : { width: 288, flexShrink: 0, borderRight: '1px solid var(--qs-border)', background: 'var(--qs-surface, #ffffff)' }}>
           <div className="p-5 pb-3">
             <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--qs-text)' }}>选择练习模式</h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--qs-sub)' }}>Select Practice Mode</p>
@@ -263,8 +265,14 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
           </div>
         </div>
 
-        {/* ===== 右栏：hero 横幅 + 内容区 + 底部按钮（对标句乐部） ===== */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--qs-surface, #ffffff)' }}>
+        {/* ===== 右栏：hero 横幅 + 内容区 + 底部按钮（手机上：detail 视图时显示，list 视图时隐藏） ===== */}
+        <div style={isMobile ? (mobileView === 'detail' ? { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--qs-surface, #ffffff)' } : { display: 'none' }) : { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--qs-surface, #ffffff)' }}>
+          {/* 手机上：返回按钮 */}
+          {isMobile && (
+            <button onClick={() => setMobileView('list')} style={{ padding: '10px 16px', background: 'none', border: 'none', color: 'var(--qs-active)', fontSize: 14, cursor: 'pointer', textAlign: 'left' }}>
+              ← 返回
+            </button>
+          )}
           {/* hero 横幅：模式图背景 + 渐变遮罩 + 标题/标签 */}
           <div className="relative h-44 md:h-48 w-full flex-shrink-0 overflow-hidden">
             <div className="absolute inset-0 z-10 pointer-events-none" style={{ background: 'linear-gradient(to top, color-mix(in srgb, var(--qs-surface, #fff) 95%, transparent), color-mix(in srgb, var(--qs-surface, #fff) 35%, transparent) 55%, transparent)' }}></div>
