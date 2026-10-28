@@ -331,6 +331,20 @@ export function inferRoles(sentence, dictWords) {
     }
   });
 
+  // 4.15) 时间名词状语：分句内（前或后）有谓语动词的时间名词（带/不带限定词）→ 时间状语
+  //       "Он звонит каждый день" → день=状语（每天）；"Иван каждый день покупает газеты" → день=状语（动词在后）
+  //       必须位于表语规则之前：否则 "Иван каждый день…" 中 день 会被"主语后名词→表语"误判
+  const TIME_NOUNS = new Set(["день", "утро", "вечер", "ночь", "неделя", "месяц", "год", "час", "минута", "секунда", "раз", "время"]);
+  words.forEach((w, i) => {
+    if (w.syntacticRole) return;
+    if (w.pos === "noun" && TIME_NOUNS.has(lemmaOf(w)) && !isPrepAfter(i)) {
+      const inClause = clauses.find((c) => c.includes(w));
+      if (!inClause) return;
+      const hasPred = inClause.some((cw) => cw.syntacticRole === "predicate" || cw.syntacticRole === "complement");
+      if (hasPred) { w.syntacticRole = "adverbial"; w.roleLabel = "状语"; }
+    }
+  });
+
   // 3) 表语：系动词之后的名词/代词/形容词；无动词时主语后的形容词/名词（"Это дом." → дом 表语）
   words.forEach((w, i) => {
     if (w.syntacticRole) return;
@@ -362,20 +376,6 @@ export function inferRoles(sentence, dictWords) {
     const nxt = i + 1 < words.length ? words[i + 1] : null;
     if ((w.pos === "pronoun" || w.pos === "numeral") && nxt && nxt.pos === "noun" && !isPrepAfter(i)) {
       w.syntacticRole = "attribute"; w.roleLabel = "定语";
-    }
-  });
-
-  // 4.15) 时间名词状语：谓语动词之后、无介词且不在介词后的时间名词（带/不带限定词）
-  //       "Он звонит каждый день" → день=时间状语（每天）；"Мы работаем весь день" 同理
-  const TIME_NOUNS = new Set(["день", "утро", "вечер", "ночь", "неделя", "месяц", "год", "час", "минута", "секунда", "раз", "время"]);
-  words.forEach((w, i) => {
-    if (w.syntacticRole) return;
-    if (w.pos === "noun" && TIME_NOUNS.has(lemmaOf(w)) && !isPrepAfter(i)) {
-      let hasPred = false;
-      for (let j = i - 1; j >= 0; j--) {
-        if (words[j].syntacticRole === "predicate" || words[j].syntacticRole === "complement") { hasPred = true; break; }
-      }
-      if (hasPred) { w.syntacticRole = "adverbial"; w.roleLabel = "状语"; }
     }
   });
 
