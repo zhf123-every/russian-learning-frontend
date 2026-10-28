@@ -341,7 +341,14 @@ export function inferRoles(sentence, dictWords) {
       const inClause = clauses.find((c) => c.includes(w));
       if (!inClause) return;
       const hasPred = inClause.some((cw) => cw.syntacticRole === "predicate" || cw.syntacticRole === "complement");
-      if (hasPred) { w.syntacticRole = "adverbial"; w.roleLabel = "状语"; }
+      if (hasPred) {
+        w.syntacticRole = "adverbial"; w.roleLabel = "状语";
+        // "каждый день"（每天）/ "весь день"（整天）固定短语：时间名词前的限定代词同判状语，与时间名词连成一个成分
+        const prev = i > 0 ? words[i - 1] : null;
+        if (prev && prev.pos === "pronoun" && !prev.syntacticRole) {
+          prev.syntacticRole = "adverbial"; prev.roleLabel = "状语";
+        }
+      }
     }
   });
 
