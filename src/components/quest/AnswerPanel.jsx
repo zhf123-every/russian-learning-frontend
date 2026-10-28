@@ -130,6 +130,13 @@ export default function AnswerPanel({
   // 完整词典（dict-full.js，25MB 懒加载）就绪标记：就绪后强制重跑整句标注，
   // 保证变位动词（знаю→знать）等只有完整词典才有的词形也能拿到词性/颜色/成分
   const [dictReady, setDictReady] = useState(false);
+  // 手机端适配：屏宽 < 640px 时缩小词卡/字号/间距
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // ---- 俄语发音（Yandex 真人发音）----
   const audioRef = useRef(null);
@@ -365,10 +372,10 @@ export default function AnswerPanel({
         }
       `}</style>
 
-      <div style={{ ...styles.card, animation: "answer-fadeIn 0.4s ease" }}>
+      <div style={{ ...styles.card, ...(isMobile ? { padding: "20px 8px 16px" } : {}), animation: "answer-fadeIn 0.4s ease" }}>
         {/* 单词卡片行 */}
         {words.length > 0 ? (
-          <div style={styles.cardsRow}>
+          <div style={{ ...styles.cardsRow, ...(isMobile ? { gap: 10, marginBottom: 20, padding: "0 4px" } : {}) }}>
             {(() => {
               // 相邻且句法角色相同（非 default/待确认）的词 → 合并为一个外框（词内部各自保留下划线/释义/语法，不再各自画边框）
               const posVisMap0 = uiCfg.posVis || {};
@@ -402,10 +409,10 @@ export default function AnswerPanel({
                         <div
                           className="word-card"
                           style={isGroup
-                            ? { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}59` : "var(--qs-border, #E5E7EB)", padding: "20px 6px 14px", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
-                            : { ...styles.wordCard, borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}59` : "var(--qs-border, #E5E7EB)" }}
+                            ? { ...styles.wordCard, ...(isMobile ? { padding: "12px 4px 10px", minWidth: 70, minHeight: 90 } : {}), borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}59` : "var(--qs-border, #E5E7EB)", display: "flex", flexDirection: "row", alignItems: "stretch", gap: 0 }
+                            : { ...styles.wordCard, ...(isMobile ? { padding: "12px 8px 10px", minWidth: 72, minHeight: 90 } : {}), borderWidth: gBorder ? "1px" : "1px", borderColor: gBorder ? `${gBorder}59` : "var(--qs-border, #E5E7EB)" }}
                         >
-                          {gLabel && <span style={{ ...styles.roleTag, background: gBorder || "#9CA3AF" }}>{gLabel}</span>}
+                          {gLabel && <span style={{ ...styles.roleTag, ...(isMobile ? { fontSize: 9, padding: "1px 6px", top: -8 } : {}), background: gBorder || "#9CA3AF" }}>{gLabel}</span>}
                           {g.items.map(({ w, i }, j) => {
                             // 颜色：下划线用词性色，边框/标签用句法角色色（两套颜色分离）
                             const customPosColor = posColorOf(uiCfg, w.pos);
@@ -435,7 +442,8 @@ export default function AnswerPanel({
                             })();
                             const cellStyle = {
                               display: "flex", flexDirection: "column", alignItems: "center",
-                              padding: "0 14px", minWidth: 100, minHeight: 120, justifyContent: "flex-start",
+                              ...(isMobile ? { padding: "0 6px", minWidth: 64, minHeight: 88 } : { padding: "0 14px", minWidth: 100, minHeight: 120 }),
+                              justifyContent: "flex-start",
                               cursor: "pointer",
                               borderRight: (isGroup && j < g.items.length - 1) ? ("1px dashed " + (gBorder ? `${gBorder}80` : "var(--qs-border, #E5E7EB)")) : "none",
                             };
@@ -464,7 +472,7 @@ export default function AnswerPanel({
                                   {/* 重音符（灰色小字，带重音） */}
                                   <div style={styles.phonetic}>{displayWord}</div>
                                   {/* 大字单词 */}
-                                  <div className="word-card-bigword" style={{ ...styles.bigWord, color: "var(--qs-text, #1F2937)" }}>
+                                  <div className="word-card-bigword" style={{ ...styles.bigWord, ...(isMobile ? { fontSize: "1.5rem", marginBottom: 4 } : {}), color: "var(--qs-text, #1F2937)" }}>
                                     {plainWord}
                                   </div>
                                   {/* 彩色下划线（词性色） */}
@@ -494,7 +502,7 @@ export default function AnswerPanel({
 
         {/* 整句中文释义 + 复制图标 */}
         {statement.chinese && (
-          <div style={styles.sentenceChinese}>
+          <div style={{ ...styles.sentenceChinese, ...(isMobile ? { fontSize: "0.95rem", marginBottom: 16 } : {}) }}>
             <span>{statement.chinese}</span>
             <span
               style={styles.copyIcon}
