@@ -22,6 +22,7 @@ function rowToUnit(row, sequenceId, seqIdx, order, sentenceNo, diffLabel) {
   const russian = cleanText(row.ru);
   const tokens = russian.split(/\s+/).filter(Boolean);
   const zh = cleanText(row.zh);
+  const fullZh = cleanText(row.fullZh); // 释义列=完整中文翻译，整句翻译优先展示
   // 中文字段即逐词释义（用户上传约定：空格/分隔符隔开），按分隔拆开逐词填卡；数量不对齐则留空走词典回退
   const zhParts = String(zh || "").split(/[、,，;；/|→\s]+/).map((x) => x.trim()).filter(Boolean);
   const zhOk = zhParts.length === tokens.length;
@@ -43,7 +44,7 @@ function rowToUnit(row, sequenceId, seqIdx, order, sentenceNo, diffLabel) {
     sequenceOrder: order,
     russian,
     stressMarked: russian,
-    chinese: zh,
+    chinese: fullZh || zh, // 整句翻译优先"释义"列（fullZh），其次中文列
     audioUrl: "",
     action: "",
     grammarNote: "",

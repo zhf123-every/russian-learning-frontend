@@ -623,7 +623,8 @@ export default function QuestDictation() {
                 return {
                 id: `local_${i}`,
                 russian: s.russian || s.ru || "",
-                chinese: s.chinese || s.zh || "",
+                // 整句翻译优先"释义"列（fullZh，用户上传约定：释义=完整中文翻译），其次中文列
+                chinese: s.fullZh || s.chinese || s.zh || "",
                 syntactic: Array.isArray(s.syntactic) ? s.syntactic : null,
                 words: (s.words || []).map((w, k) => ({
                   ru: w.form || w.lemma || w.ru || "",
@@ -671,7 +672,8 @@ export default function QuestDictation() {
               return {
                 id: `local_${i + 1}`,
                 russian: st.ru || "",
-                chinese: st.zh || "",
+                // 整句翻译优先"释义"列（fullZh），其次中文列
+                chinese: st.fullZh || st.zh || "",
                 syntactic: Array.isArray(st.syntactic) ? st.syntactic : null,
                 // 逐词释义：优先 st.meaning 数组；否则把中文字段（逐词释义）按分隔拆开逐词填卡
                 words: stToks.map((tok, j) => ({
