@@ -22,11 +22,14 @@ function rowToUnit(row, sequenceId, seqIdx, order, sentenceNo, diffLabel) {
   const russian = cleanText(row.ru);
   const tokens = russian.split(/\s+/).filter(Boolean);
   const zh = cleanText(row.zh);
+  // 中文字段即逐词释义（用户上传约定：空格/分隔符隔开），按分隔拆开逐词填卡；数量不对齐则留空走词典回退
+  const zhParts = String(zh || "").split(/[、,，;；/|→\s]+/).map((x) => x.trim()).filter(Boolean);
+  const zhOk = zhParts.length === tokens.length;
   const words = tokens.map((w, i) => ({
     order: i,
     form: w,
     lemma: w,
-    translation: "", // 词卡释义不填整句（避免每个词卡都显示整句）；留空由词卡渲染层走词典回退（与中译俄一致）
+    translation: zhOk ? zhParts[i] : "", // 逐词释义（不对齐走词典回退）
     pos: "",
     posColor: "",
     grammarLabel: "",
@@ -132,10 +135,13 @@ export function slotTablesToItems(items) {
       for (const r of rows) {
         const ru = cleanText(r.ru);
         if (!ru) continue;
-        for (const tok of ru.split(/\s+/).filter(Boolean)) {
-          // 字段对齐 AnswerPanel：form/lemma/chinese（中译俄格式）；释义不填整句，留空走词典回退
-          fullWords.push({ order: fullWords.length, form: tok, lemma: tok, pos: "", chinese: "" });
-        }
+        const toks = ru.split(/\s+/).filter(Boolean);
+        const zps = String(cleanText(r.zh) || "").split(/[、,，;；/|→\s]+/).map((x) => x.trim()).filter(Boolean);
+        const zOk = zps.length === toks.length;
+        toks.forEach((tok, k) => {
+          // 字段对齐 AnswerPanel：form/lemma/chinese（中译俄格式）；释义按"中文字段=逐词释义"分隔填卡
+          fullWords.push({ order: fullWords.length, form: tok, lemma: tok, pos: "", chinese: zOk ? zps[k] : "" });
+        });
       }
       for (const row of rows) {
         const russian = cleanText(row.ru);
@@ -144,11 +150,13 @@ export function slotTablesToItems(items) {
         const isFull = cleanText(row.cardType) === "完整句";
         if (!isFull) continue;
         const tokens = russian.split(/\s+/).filter(Boolean);
+        const zps = String(cleanText(row.zh) || "").split(/[、,，;；/|→\s]+/).map((x) => x.trim()).filter(Boolean);
+        const zOk = zps.length === tokens.length;
         out.push({
           id: `slot_${cleanText(it.sentence_hash) || sentenceNo}_${diffKey}_${row.seq || 0}`,
           russian,
           chinese: cleanText(row.zh),
-          words: tokens.map((w) => ({ ru: w })),
+          words: tokens.map((w, i) => ({ ru: w, zh: zOk ? zps[i] : "" })),
           // 整句信息（答对后 AnswerPanel 显示整句词卡）
           fullRussian,
           fullChinese,

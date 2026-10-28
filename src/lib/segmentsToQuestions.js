@@ -207,11 +207,13 @@ export function segmentsToItems(items, wordsMap) {
       const segments = [...it.segments].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       const russian = ruNumbersInText(segments.map((s) => cleanText(s.text)).filter(Boolean).join(" "));
       const zhText = cleanText(it.translation);
-      // 整句中文字段只作为句子级 chinese（AnswerPanel 整句翻译/复制用），
-      // 词卡逐词释义不填整句（避免每个词卡都显示整句）——词级有 chinese 用之，否则留空由词卡渲染层走词典回退（与中译俄一致）
+      // 中文字段即逐词释义（用户上传约定：空格/分隔符隔开的逐词翻译），按分隔拆开逐词填卡；
+      // 数量对齐词数时生效，不对齐则留空由词卡渲染层走词典回退（与中译俄一致）
+      const zhParts = String(zhText || "").split(/[、,，;；/|→\s]+/).map((x) => x.trim()).filter(Boolean);
       let words;
       if (Array.isArray(it.words) && it.words.length) {
-        words = it.words.map((w) => ({
+        const zhOk = zhParts.length === it.words.length;
+        words = it.words.map((w, i) => ({
           ru: w.form || w.lemma || "",
           form: w.form || w.lemma || "",
           lemma: w.lemma || "",
@@ -220,12 +222,13 @@ export function segmentsToItems(items, wordsMap) {
           number: w.number || "",
           grammarCase: w.grammarCase || "",
           syntacticRole: w.syntacticRole || "",
-          zh: w.chinese || w.zh || "",
-          chinese: w.chinese || w.zh || "",
+          zh: w.chinese || w.zh || (zhOk ? zhParts[i] : ""),
+          chinese: w.chinese || w.zh || (zhOk ? zhParts[i] : ""),
         }));
       } else if (wordsMap && wordsMap[zhText]) {
         // 从 statements 接口拿的 words，按中文匹配补全
-        words = wordsMap[zhText].map((w) => ({
+        const zhOk = zhParts.length === wordsMap[zhText].length;
+        words = wordsMap[zhText].map((w, i) => ({
           ru: w.form || w.lemma || "",
           form: w.form || w.lemma || "",
           lemma: w.lemma || "",
@@ -234,12 +237,13 @@ export function segmentsToItems(items, wordsMap) {
           number: w.number || "",
           grammarCase: w.grammaticalCase || "",
           syntacticRole: w.syntacticRole || "",
-          zh: w.chinese || w.zh || "",
-          chinese: w.chinese || w.zh || "",
+          zh: w.chinese || w.zh || (zhOk ? zhParts[i] : ""),
+          chinese: w.chinese || w.zh || (zhOk ? zhParts[i] : ""),
         }));
       } else {
         const tokens = russian.split(/\s+/).filter(Boolean);
-        words = tokens.map((w) => ({ ru: w }));
+        const zhOk = zhParts.length === tokens.length;
+        words = tokens.map((w, i) => ({ ru: w, zh: zhOk ? zhParts[i] : "", chinese: zhOk ? zhParts[i] : "" }));
       }
       const chunks = segments.map((s) => ({ ru: cleanText(s.text), zh: cleanText(s.chinese) })).filter((c) => c.ru);
       out.push({

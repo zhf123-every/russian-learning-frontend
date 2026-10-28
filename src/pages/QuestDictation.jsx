@@ -616,12 +616,16 @@ export default function QuestDictation() {
               window.__unitKnowledge[effectiveCourseId] = (pre && pre.knowledge) || {};
               setUnitMeta({ title: pre.title || pre.name || "本课", description: pre.description || "" });
               // 直接用本地 sentences，每个 sentence 的 words 保留完整标注
-              const items = pre.sentences.map((s, i) => ({
+              const items = pre.sentences.map((s, i) => {
+                // 中文字段即逐词释义（用户上传约定：空格/分隔符隔开的逐词翻译），按分隔拆开逐词填卡
+                const sZhParts = String(s.chinese || s.zh || "").split(/[、,，;；/|→\s]+/).map((x) => x.trim()).filter(Boolean);
+                const sZhOk = sZhParts.length === (s.words || []).length;
+                return {
                 id: `local_${i}`,
                 russian: s.russian || s.ru || "",
                 chinese: s.chinese || s.zh || "",
                 syntactic: Array.isArray(s.syntactic) ? s.syntactic : null,
-                words: (s.words || []).map((w, i) => ({
+                words: (s.words || []).map((w, k) => ({
                   ru: w.form || w.lemma || w.ru || "",
                   form: w.form || w.lemma || "",
                   lemma: w.lemma || "",
@@ -630,13 +634,14 @@ export default function QuestDictation() {
                   number: w.number || "",
                   grammarCase: w.grammarCase || w.grammaticalCase || "",
                   syntacticRole: w.syntacticRole || w.syntactic_role || "",
-                  // 逐词释义：优先词级 chinese；其次 Excel「释义」字段按空格分隔的逐词项（数量对齐时生效）；都没有则留空走词典回退
-                  zh: w.chinese || w.zh || (Array.isArray(s.meaning) ? (s.meaning[i] || "") : ""),
-                  chinese: w.chinese || w.zh || (Array.isArray(s.meaning) ? (s.meaning[i] || "") : ""),
+                  // 逐词释义：优先词级 chinese；其次 s.meaning 逐词项；再其次 s.chinese 按分隔拆开；都没有则留空走词典回退
+                  zh: w.chinese || w.zh || (Array.isArray(s.meaning) ? (s.meaning[k] || "") : (sZhOk ? sZhParts[k] : "")),
+                  chinese: w.chinese || w.zh || (Array.isArray(s.meaning) ? (s.meaning[k] || "") : (sZhOk ? sZhParts[k] : "")),
                 })),
                 audio_url: "",
                 chunks: [],
-              }));
+              };
+              });
               setStatements(applyDiffItems(items));
               setLoading(false);
             }
@@ -659,13 +664,22 @@ export default function QuestDictation() {
             return;
           }
           if (Array.isArray(pre.sentences) && pre.sentences.length) {
-            const items = pre.sentences.filter(x => x && x.ru).map((st, i) => ({
-              id: `local_${i + 1}`,
-              russian: st.ru || "",
-              chinese: st.zh || "",
-              syntactic: Array.isArray(st.syntactic) ? st.syntactic : null,
-              words: (Array.isArray(st.meaning) ? st.meaning : []).map((c, j) => ({ order: j, chinese: c || "" })),
-            }));
+            const items = pre.sentences.filter(x => x && x.ru).map((st, i) => {
+              const stToks = String(st.ru || "").split(/\s+/).filter(Boolean);
+              const stZhParts = String(st.zh || "").split(/[、,，;；/|→\s]+/).map((x) => x.trim()).filter(Boolean);
+              const stZhOk = stZhParts.length === stToks.length;
+              return {
+                id: `local_${i + 1}`,
+                russian: st.ru || "",
+                chinese: st.zh || "",
+                syntactic: Array.isArray(st.syntactic) ? st.syntactic : null,
+                // 逐词释义：优先 st.meaning 数组；否则把中文字段（逐词释义）按分隔拆开逐词填卡
+                words: stToks.map((tok, j) => ({
+                  order: j, ru: tok,
+                  chinese: (Array.isArray(st.meaning) ? (st.meaning[j] || "") : "") || (stZhOk ? stZhParts[j] : ""),
+                })),
+              };
+            });
             if (!cancelled) {
               setLocalLesson(pre); setIsLocalMode(true);
               const stmts = expandStatements(items, pre.words);
