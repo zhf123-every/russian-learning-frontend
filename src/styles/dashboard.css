@@ -211,6 +211,16 @@ html[data-theme="dark"]{
   .db-ability{grid-template-columns:1fr;gap:12px;padding:14px}
   .db-card .pad{padding:14px}
   .db-streak{font-size:12px;padding:5px 10px}
+
+  /* ===== 手机端通用元素适配 ===== */
+  .db-btn{padding:10px 14px;font-size:13.5px}
+  .db-btn-primary{width:100%;justify-content:center}
+  .db-btn-ghost{width:100%;justify-content:center}
+  .db-card{border-radius:14px}
+  .db-sec-title{font-size:14px}
+  .db-sec-cap{font-size:11px}
+  input, textarea, select{font-size:16px !important;border-radius:10px}
+  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
 }
 
 /* ============ 通用元素 ============ */
