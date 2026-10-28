@@ -715,6 +715,15 @@ export function annotateWords(sentence) {
     const n = normForm(w);
     const w_global = w; // 供 lookupFallback 使用
 
+    // 阿拉伯数字（"5 часов" 等）→ 数词
+    if (/^\d+$/.test(w_global)) {
+      return {
+        form: w_global, lemma: w_global, pos: "numeral",
+        posColor: getPosColor("numeral"),
+        chinese: w_global, roleLabel: "",
+      };
+    }
+
     // FUNCTION_WORDS 优先：人工维护的高频虚词表（介词/连词/语气词/疑问副词）比 dict-full 更准确
     // 如 где 被 dict-full 标为代词，但实际是疑问副词 → 用 FUNCTION_WORDS 覆盖
     const fw = FUNCTION_WORDS[n];
