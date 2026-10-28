@@ -8,6 +8,7 @@ import { resolveSkin } from '../../lib/petSkins'
 import Wukong3D from './Wukong3D'
 import { playGlobalAudio, stopGlobalAudio, preloadGlobalAudio } from '../../utils/audioService'
 import { getCachedTtsUrl } from '../../utils/ttsPreloadShared'
+import { CASE_LIST, CASE_RULES, matchCaseRules } from '../../lib/grammarRules'
 
 // 悟空语音对话助手：中译俄答题页的 AI 口语对话教练。
 // - 预加载阶段（Preloader）已按本课内容生成对话引导包（dialogue prop），答题结束后自动打开并语音引导；
@@ -85,6 +86,8 @@ export default function WukongVoiceAssistant({
 }) {
   const [open, setOpen] = useState(false)
   const [dismissed, setDismissed] = useState(false) // 用户手动关闭过 → 答题结束不再被 autoOpen 强制弹开（可手动再开）
+  const [showGrammar, setShowGrammar] = useState(false) // 语法规则面板
+  const [grammarKey, setGrammarKey] = useState(null)     // 当前选看的格（null=跟随本课匹配）
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -95,6 +98,14 @@ export default function WukongVoiceAssistant({
   const scrollRef = useRef(null)
   const { listening, transcribing, setTranscribing, start, stop } = useVoiceRecorder()
   const historyRef = useRef([])
+
+  // 本课语法点匹配：按课时标题 + 对话主题关键词（如"第3格/三格/与格/дательный"）命中 → 弹窗语法面板默认展示该格
+  const matchedCase = useMemo(
+    () => matchCaseRules((lessonContext && lessonContext.title) || "", (dialogue && dialogue.topic) || ""),
+    [lessonContext, dialogue]
+  )
+  const activeGrammarKey = grammarKey || (matchedCase && matchedCase.key) || null
+  const activeGrammar = activeGrammarKey ? (CASE_RULES[activeGrammarKey] || null) : null
 
   const { ui } = useQuestSettings()
   const skinCfg = resolveSkin(ui.petSkin)
@@ -443,7 +454,26 @@ ${ru || '（无）'}
 
             {/* 引导区：文字模式=预设解题问题；语音模式=本课话题引导问句（点按即发出） */}
             <div style={{ padding: '14px 18px 8px' }}>
-              {voiceMode ? (
+              {/* 本课语法规则预设：常驻入口，点击展开变格表+讲解+注意（匹配到本课语法点时按钮直接显示格名） */}
+              <button
+                onClick={() => { setShowGrammar(true) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
+                  borderRadius: 12, padding: '9px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  border: '1px solid var(--qs-active, #7C3AED)', background: 'color-mix(in srgb, var(--qs-active, #7C3AED) 10%, var(--qs-surface2, #fafafa))',
+                  color: 'var(--qs-active, #7C3AED)', marginBottom: 10, transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--qs-active, #7C3AED) 16%, var(--qs-surface2, #fafafa))' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--qs-active, #7C3AED) 10%, var(--qs-surface2, #fafafa))' }}
+              >
+                <span style={{ fontSize: 15, flexShrink: 0 }}>📖</span>
+                <span style={{ flex: 1, lineHeight: 1.5 }}>
+                  本课语法规则
+                  {matchedCase ? ` · ${matchedCase.zh}（${matchedCase.name}）` : ''}
+                </span>
+                <span style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }}>点击查看 ▸</span>
+              </button>
+              {!showGrammar && (voiceMode ? (
                 <>
                   {dialogue && dialogue.greeting_zh && (
                     <div style={{ fontSize: 13, color: 'var(--qs-sub, #6b7280)', lineHeight: 1.7, marginBottom: 10, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
@@ -504,9 +534,99 @@ ${ru || '（无）'}
                     ))}
                   </div>
                 </>
-              )}
+              ))}
             </div>
 
+            {/* 语法规则面板：本课语法点变格表 + 知识点讲解 + 注意要点（目录可切换任意格） */}
+            {showGrammar ? (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '12px 18px 14px', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4 }}>
+                      {activeGrammar ? `${activeGrammar.zh}（${activeGrammar.name}）` : '选择要查看的格'}
+                    </div>
+                    {activeGrammar && (
+                      <div style={{ fontSize: 12, color: 'var(--qs-sub, #6b7280)', marginTop: 2 }}>
+                        {activeGrammar.ru} · 回答 {activeGrammar.q}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowGrammar(false)}
+                    style={{
+                      flexShrink: 0, borderRadius: 999, border: '1px solid var(--qs-border, #e5e7eb)', background: 'var(--qs-surface2, #f3f4f6)',
+                      color: 'var(--qs-text, #555)', cursor: 'pointer', padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                    }}
+                  >返回对话</button>
+                </div>
+
+                {/* 六格目录：本课命中格默认高亮；未命中可点选 */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {CASE_LIST.map((c) => (
+                    <button
+                      key={c.key} onClick={() => setGrammarKey(c.key)}
+                      style={{
+                        borderRadius: 999, padding: '6px 12px', fontSize: 12.5, cursor: 'pointer', transition: 'all 0.15s ease',
+                        border: activeGrammarKey === c.key ? '1.5px solid var(--qs-active, #7C3AED)' : '1px solid var(--qs-border, #e5e7eb)',
+                        background: activeGrammarKey === c.key ? 'color-mix(in srgb, var(--qs-active, #7C3AED) 12%, var(--qs-surface2, #fafafa))' : 'var(--qs-surface2, #fafafa)',
+                        color: activeGrammarKey === c.key ? 'var(--qs-active, #7C3AED)' : 'var(--qs-text, #111)',
+                        fontWeight: activeGrammarKey === c.key ? 700 : 400,
+                      }}
+                    >
+                      {c.zh} {c.name}
+                    </button>
+                  ))}
+                </div>
+
+                {activeGrammar ? (
+                  <>
+                    {/* 名词词尾变化表 */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--qs-border, #e5e7eb)' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--qs-surface2, #f1f1f4)', color: 'var(--qs-sub, #555)' }}>
+                          <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700 }}>名词</th>
+                          <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700 }}>单数词尾</th>
+                          <th style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 700 }}>复数词尾</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeGrammar.noun.map((r, i) => (
+                          <tr key={r.row} style={{ borderTop: '1px solid var(--qs-border, #eee)' }}>
+                            <td style={{ padding: '7px 10px', fontWeight: 600 }}>{r.row}</td>
+                            <td style={{ padding: '7px 10px' }}>{r.sing}</td>
+                            <td style={{ padding: '7px 10px' }}>{r.plur}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {/* 形容词/代词词尾简表 */}
+                    <div style={{ fontSize: 12.5, lineHeight: 1.7, color: 'var(--qs-text, #111)', background: 'color-mix(in srgb, var(--qs-active, #7C3AED) 7%, var(--qs-surface2, #f7f7f9))', borderRadius: 12, padding: '10px 13px' }}>
+                      <span style={{ fontWeight: 700 }}>形容词 / 代词：</span>{activeGrammar.adj}
+                    </div>
+
+                    {/* 知识点讲解 */}
+                    <div style={{ fontSize: 13, lineHeight: 1.8, color: 'var(--qs-text, #111)', background: 'var(--qs-surface2, #f7f7f9)', borderRadius: 12, padding: '12px 14px' }}>
+                      {activeGrammar.explain}
+                    </div>
+
+                    {/* 注意要点 */}
+                    <div style={{ fontSize: 13, lineHeight: 1.7, borderRadius: 12, padding: '12px 14px', background: 'color-mix(in srgb, #F59E0B 8%, var(--qs-surface2, #f7f7f9))', border: '1px solid color-mix(in srgb, #F59E0B 30%, transparent)' }}>
+                      <div style={{ fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>⚠️</span><span>注意要点</span>
+                      </div>
+                      {activeGrammar.tips.map((t, i) => (
+                        <div key={i} style={{ fontSize: 12.5, lineHeight: 1.75, marginBottom: 4, paddingLeft: 4 }}>• {t}</div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 13, color: 'var(--qs-sub, #6b7280)', textAlign: 'center', padding: '18px 8px', lineHeight: 1.8 }}>
+                    本课未识别到具体语法格，请点击上方格按钮查看你想复习的变化规则表。
+                  </div>
+                )}
+              </div>
+            ) : (
             {/* 对话区 */}
             <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '6px 18px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {messages.length === 0 && !loading && !transcribing && (
@@ -536,6 +656,7 @@ ${ru || '（无）'}
                 </div>
               )}
             </div>
+            )}
 
             {/* 输入区：按住说话（主）+ 文字输入（兜底） */}
             <div style={{ padding: '12px 16px', borderTop: '1px solid var(--qs-border, #eee)', display: 'flex', gap: 8, alignItems: 'center' }}>
