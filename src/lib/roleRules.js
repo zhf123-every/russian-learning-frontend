@@ -372,7 +372,7 @@ export function inferRoles(sentence, dictWords) {
       const hasSubjectBefore = inClause && inClause.slice(0, i).some((cw) => cw.syntacticRole === "subject");
       const verbBefore = inClause && inClause.slice(0, i).some((cw) => cw.pos === "verb");
       if (hasSubjectBefore && !verbBefore &&
-          (w.pos === "adjective" || (w.pos === "noun" && w.grammarCase === "nom"))) {
+          (w.pos === "adjective" || (w.pos === "noun" && (w.grammarCase === "nom" || !w.grammarCase)))) {
         w.syntacticRole = "predicative"; w.roleLabel = "表语";
       }
     }
