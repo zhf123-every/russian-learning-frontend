@@ -1,6 +1,6 @@
 // 练习模式弹窗（左右分栏样式：左模式列表 / 右详情+核心特性+开始按钮）
 // 两套清单：课程类（中译俄/听写/听力[灰]/口语评测/阅读）、视频类（整体盲听/逐段盲听/精听/跟读/口语测评）
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 // ============ 两套模式清单 ============
 // ready=false 的项整项灰化，点不动，右下角标“即将上线”
@@ -201,6 +201,13 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
   const handlePick = (m) => { if (m.ready) setActiveKey(m.key) }
   const toggleCustom = (t) => setCustomTypes((prev) => (prev.includes(t) ? (prev.length > 1 ? prev.filter((x) => x !== t) : prev) : [...prev, t]))
   const effectiveTypes = diff.custom ? customTypes : diff.types
+  // 手机端适配
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640)
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 640)
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
 
   return (
     <div
@@ -211,12 +218,12 @@ export default function ModePickerModal({ title = '本课', modes = COURSE_MODES
         className="modal-pop"
         style={{
           width: 'min(920px, 96vw)', maxHeight: '92vh', background: 'var(--qs-surface, #ffffff)', borderRadius: 18,
-          display: 'flex', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+          display: 'flex', flexDirection: isMobile ? 'column' : 'row', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ===== 左栏：页眉 + 模式列表（对标句乐部：页眉标题 + 卡片式按钮竖列） ===== */}
-        <div className="flex flex-col overflow-y-auto custom-scrollbar" style={{ width: 288, flexShrink: 0, borderRight: '1px solid var(--qs-border)', background: 'var(--qs-surface, #ffffff)' }}>
+        <div className="flex flex-col overflow-y-auto custom-scrollbar" style={isMobile ? { width: '100%', flexShrink: 0, borderRight: 'none', borderBottom: '1px solid var(--qs-border)', background: 'var(--qs-surface, #ffffff)' } : { width: 288, flexShrink: 0, borderRight: '1px solid var(--qs-border)', background: 'var(--qs-surface, #ffffff)' }}>
           <div className="p-5 pb-3">
             <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--qs-text)' }}>选择练习模式</h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--qs-sub)' }}>Select Practice Mode</p>
