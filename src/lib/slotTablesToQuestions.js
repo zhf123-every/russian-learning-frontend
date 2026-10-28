@@ -26,7 +26,7 @@ function rowToUnit(row, sequenceId, seqIdx, order, sentenceNo, diffLabel) {
     order: i,
     form: w,
     lemma: w,
-    translation: zh, // 行级中文（积木=该块中文，完整句=整句中文）
+    translation: "", // 词卡释义不填整句（避免每个词卡都显示整句）；留空由词卡渲染层走词典回退（与中译俄一致）
     pos: "",
     posColor: "",
     grammarLabel: "",
@@ -133,8 +133,8 @@ export function slotTablesToItems(items) {
         const ru = cleanText(r.ru);
         if (!ru) continue;
         for (const tok of ru.split(/\s+/).filter(Boolean)) {
-          // 字段对齐 AnswerPanel：form/lemma/chinese（中译俄格式）
-          fullWords.push({ order: fullWords.length, form: tok, lemma: tok, pos: "", chinese: cleanText(r.zh) });
+          // 字段对齐 AnswerPanel：form/lemma/chinese（中译俄格式）；释义不填整句，留空走词典回退
+          fullWords.push({ order: fullWords.length, form: tok, lemma: tok, pos: "", chinese: "" });
         }
       }
       for (const row of rows) {
@@ -148,7 +148,7 @@ export function slotTablesToItems(items) {
           id: `slot_${cleanText(it.sentence_hash) || sentenceNo}_${diffKey}_${row.seq || 0}`,
           russian,
           chinese: cleanText(row.zh),
-          words: tokens.map((w) => ({ ru: w, zh: cleanText(row.zh) })),
+          words: tokens.map((w) => ({ ru: w })),
           // 整句信息（答对后 AnswerPanel 显示整句词卡）
           fullRussian,
           fullChinese,

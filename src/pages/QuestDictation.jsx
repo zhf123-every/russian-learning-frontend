@@ -621,7 +621,7 @@ export default function QuestDictation() {
                 russian: s.russian || s.ru || "",
                 chinese: s.chinese || s.zh || "",
                 syntactic: Array.isArray(s.syntactic) ? s.syntactic : null,
-                words: (s.words || []).map((w) => ({
+                words: (s.words || []).map((w, i) => ({
                   ru: w.form || w.lemma || w.ru || "",
                   form: w.form || w.lemma || "",
                   lemma: w.lemma || "",
@@ -630,8 +630,9 @@ export default function QuestDictation() {
                   number: w.number || "",
                   grammarCase: w.grammarCase || w.grammaticalCase || "",
                   syntacticRole: w.syntacticRole || w.syntactic_role || "",
-                  zh: s.chinese || s.zh || "",
-                  chinese: s.chinese || s.zh || "",
+                  // 逐词释义：优先词级 chinese；其次 Excel「释义」字段按空格分隔的逐词项（数量对齐时生效）；都没有则留空走词典回退
+                  zh: w.chinese || w.zh || (Array.isArray(s.meaning) ? (s.meaning[i] || "") : ""),
+                  chinese: w.chinese || w.zh || (Array.isArray(s.meaning) ? (s.meaning[i] || "") : ""),
                 })),
                 audio_url: "",
                 chunks: [],

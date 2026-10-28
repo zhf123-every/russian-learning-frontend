@@ -207,7 +207,8 @@ export function segmentsToItems(items, wordsMap) {
       const segments = [...it.segments].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       const russian = ruNumbersInText(segments.map((s) => cleanText(s.text)).filter(Boolean).join(" "));
       const zhText = cleanText(it.translation);
-      // 优先用后端 quest_words 表返回的逐词标注；其次用传入的 wordsMap（前端调 statements 接口拿的）；最后简单 split 兜底
+      // 整句中文字段只作为句子级 chinese（AnswerPanel 整句翻译/复制用），
+      // 词卡逐词释义不填整句（避免每个词卡都显示整句）——词级有 chinese 用之，否则留空由词卡渲染层走词典回退（与中译俄一致）
       let words;
       if (Array.isArray(it.words) && it.words.length) {
         words = it.words.map((w) => ({
@@ -219,8 +220,8 @@ export function segmentsToItems(items, wordsMap) {
           number: w.number || "",
           grammarCase: w.grammarCase || "",
           syntacticRole: w.syntacticRole || "",
-          zh: zhText,
-          chinese: zhText,
+          zh: w.chinese || w.zh || "",
+          chinese: w.chinese || w.zh || "",
         }));
       } else if (wordsMap && wordsMap[zhText]) {
         // 从 statements 接口拿的 words，按中文匹配补全
@@ -233,12 +234,12 @@ export function segmentsToItems(items, wordsMap) {
           number: w.number || "",
           grammarCase: w.grammaticalCase || "",
           syntacticRole: w.syntacticRole || "",
-          zh: zhText,
-          chinese: zhText,
+          zh: w.chinese || w.zh || "",
+          chinese: w.chinese || w.zh || "",
         }));
       } else {
         const tokens = russian.split(/\s+/).filter(Boolean);
-        words = tokens.map((w) => ({ ru: w, zh: zhText, chinese: zhText }));
+        words = tokens.map((w) => ({ ru: w }));
       }
       const chunks = segments.map((s) => ({ ru: cleanText(s.text), zh: cleanText(s.chinese) })).filter((c) => c.ru);
       out.push({
