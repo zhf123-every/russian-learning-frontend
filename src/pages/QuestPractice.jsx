@@ -1217,13 +1217,17 @@ export default function QuestPractice() {
   };
 
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); }
-    else {
-      // 手机端：尝试请求全屏，失败则提示旋转屏幕
-      document.documentElement.requestFullscreen()
-        .catch(() => {
-          alert("手机端请旋转屏幕横屏学习效果更佳")
-        });
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      // 尝试请求全屏（Android Chrome 支持，iOS Safari 不支持）
+      const el = document.documentElement;
+      if (el.requestFullscreen) {
+        el.requestFullscreen().catch(() => {});
+      } else if (el.webkitRequestFullscreen) {
+        // iOS Safari 兼容写法
+        el.webkitRequestFullscreen();
+      }
     }
   };
 
