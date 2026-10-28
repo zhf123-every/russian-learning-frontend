@@ -711,7 +711,7 @@ export function annotateWords(sentence) {
     return null;
   };
 
-  return tokens.map((w) => {
+  return tokens.map((w, i) => {
     const n = normForm(w);
     const w_global = w; // 供 lookupFallback 使用
 
@@ -820,6 +820,16 @@ export function annotateWords(sentence) {
         roleLabel: "",
         person: vf.person,
         tense: "present",
+      };
+    }
+    // 兜底：句中大写开头（非句首）→ 专有名词（人名/地名等变格形式，如 "у Виктора"），
+    // 保证词性/成分可判；句首大写多为普通名词（走词典），不在此兜底
+    if (i > 0 && /^[А-ЯЁA-Z]/.test(w_global)) {
+      return {
+        form: cleanToken(w), lemma: n, pos: "noun",
+        posColor: getPosColor("noun"),
+        chinese: cleanZhText(zhOf(n, n)) || "",
+        roleLabel: "",
       };
     }
     return { form: cleanToken(w), lemma: n, pos: "", posColor: "", chinese: cleanZhText(zhOf(n, n)) || "", roleLabel: "" };
