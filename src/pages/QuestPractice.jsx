@@ -1217,22 +1217,18 @@ export default function QuestPractice() {
   };
 
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) {
-      alert("退出全屏");
-      document.exitFullscreen().catch(() => {});
-    } else {
-      alert("请求全屏...");
-      const el = document.documentElement;
-      if (el.requestFullscreen) {
-        el.requestFullscreen()
-          .then(() => alert("全屏成功!"))
-          .catch((e) => alert("全屏失败: " + e.name + " - " + e.message));
-      } else if (el.webkitRequestFullscreen) {
-        el.webkitRequestFullscreen();
-        alert("用 webkit 方式请求全屏");
-      } else {
-        alert("浏览器不支持全屏 API");
-      }
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      return;
+    }
+    const el = document.documentElement;
+    // 检查所有可能的全屏 API
+    const apiNames = ['requestFullscreen', 'webkitRequestFullscreen', 'webkitRequestFullScreen', 'mozRequestFullScreen', 'msRequestFullscreen'];
+    const available = apiNames.find(name => typeof el[name] === 'function');
+    alert("可用的全屏API: " + (available || "无"));
+    if (available) {
+      el[available]();
     }
   };
 
