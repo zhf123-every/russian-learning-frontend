@@ -150,8 +150,21 @@ export function useQuestionInput({
   const currentEditWordIdRef = useRef(null);
 
   // 名字词/普通词集合（小写比对；用 join 键做依赖，标注完成更新后触发重算）
+  // 常用俄语人名硬编码兜底：词典标注未命中"人名/proper"或人名位于句首（启发式排除句首大写）时，
+  // 仍直接显示不占词槽——如 "Анна долго переводила статью." 中 Анна 是句首，必须靠名单命中。
+  // 注意：不收录 "ли"（李 vs 语气词 ли 同形——语气词必须可输入，Ли 靠非句首大写启发式判定）。
+  const COMMON_NAMES = new Set([
+    "анна", "антон", "иван", "ольга", "мария", "наташа", "настя", "пётр", "петя",
+    "сергей", "андрей", "алексей", "александр", "михаил", "дмитрий", "елена",
+    "екатерина", "катя", "татьяна", "ирина", "нина", "вера", "людмила", "борис",
+    "павел", "виктор", "никита", "максим", "кирилл",
+  ]);
   const nameSet = useMemo(
-    () => new Set((nameWords || []).map((w) => String(w || "").trim().toLowerCase())),
+    () => {
+      const s = new Set((nameWords || []).map((w) => String(w || "").trim().toLowerCase()));
+      COMMON_NAMES.forEach((n) => s.add(n));
+      return s;
+    },
     [nameWords]
   );
   const ordinarySet = useMemo(
