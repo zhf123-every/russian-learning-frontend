@@ -1218,7 +1218,13 @@ export default function QuestPractice() {
 
   const toggleFullscreen = () => {
     if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); }
-    else { document.documentElement.requestFullscreen().catch(() => {}); }
+    else {
+      // 手机端：尝试请求全屏，失败则提示旋转屏幕
+      document.documentElement.requestFullscreen()
+        .catch(() => {
+          toast("手机端请旋转屏幕横屏学习效果更佳", "info")
+        });
+    }
   };
 
   const handleModeStart = (mode, difficulty, customTypes) => {
