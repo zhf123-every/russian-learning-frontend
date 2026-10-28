@@ -316,6 +316,20 @@ export default function QuestPractice() {
     return list
   }, [sequences])
 
+  // 本课全部词卡标注（含格标注），供悟空语法规则匹配统计（预加载掌握本课语法）
+  const lessonWords = useMemo(() => {
+    const out = []
+    for (const sq of sequences) {
+      for (const u of (sq && sq.units) || []) {
+        const ws = (u && Array.isArray(u.words)) ? u.words : []
+        for (const w of ws) {
+          if (w && (w.grammarCase || w.grammaticalCase || w.grammar_case || w.lemma || w.form)) out.push(w)
+        }
+      }
+    }
+    return out
+  }, [sequences])
+
   // ---- 计时器 ----
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef(null);
@@ -1588,7 +1602,7 @@ export default function QuestPractice() {
       <WukongVoiceAssistant
         statement={currentStatement}
         modeLabel={aiModeLabel}
-        lessonContext={{ title: (localLesson && localLesson.title) || (studyCourseId || ''), sentences: lessonSentences }}
+        lessonContext={{ title: (localLesson && localLesson.title) || (studyCourseId || ''), sentences: lessonSentences, words: lessonWords }}
         dialogue={lessonDialogue}
         autoOpen={showSummary}
         wrongStreak={wrongStreak}

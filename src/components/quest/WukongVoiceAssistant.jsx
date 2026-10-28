@@ -8,7 +8,7 @@ import { resolveSkin } from '../../lib/petSkins'
 import Wukong3D from './Wukong3D'
 import { playGlobalAudio, stopGlobalAudio, preloadGlobalAudio } from '../../utils/audioService'
 import { getCachedTtsUrl } from '../../utils/ttsPreloadShared'
-import { CASE_LIST, CASE_RULES, matchCaseRules } from '../../lib/grammarRules'
+import { CASE_LIST, CASE_RULES, matchCaseRules, caseKeyFromText } from '../../lib/grammarRules'
 
 // 悟空语音对话助手：中译俄答题页的 AI 口语对话教练。
 // - 预加载阶段（Preloader）已按本课内容生成对话引导包（dialogue prop），答题结束后自动打开并语音引导；
@@ -27,7 +27,10 @@ const PRESET_QUESTIONS = [
   '请解释这道题在考什么，以及我应该如何理解正确答案。',
   '请拆一下这句话的语法结构，重点说明主干、修饰关系和词序。',
   '请讲解这道题里的重点单词和短语，说明它们在上下文里的意思。',
+  '请讲解本课的核心语法规则：列出本课的变格/变位规则表，讲解知识点，并提醒需要注意的要点。',
 ]
+// 语法规则预设的索引（点击直接打开语法规则面板，而非走普通 AI 问答）
+const GRAMMAR_PRESET_INDEX = PRESET_QUESTIONS.length - 1
 const TEXT_INTRO = '有关于当前练习的问题？随时问我！'
 
 // 对话引导预设问题（无预生成引导包时的兜底）
@@ -99,11 +102,37 @@ export default function WukongVoiceAssistant({
   const { listening, transcribing, setTranscribing, start, stop } = useVoiceRecorder()
   const historyRef = useRef([])
 
-  // 本课语法点匹配：按课时标题 + 对话主题关键词（如"第3格/三格/与格/дательный"）命中 → 弹窗语法面板默认展示该格
-  const matchedCase = useMemo(
-    () => matchCaseRules((lessonContext && lessonContext.title) || "", (dialogue && dialogue.topic) || ""),
-    [lessonContext, dialogue]
-  )
+  // 本课语法点匹配：① 标题 + 对话主题关键词（如"第3格/三格/与格/дательный"）→ 命中即展示该格；
+  // ② 预加载掌握本课语法：未命中时统计本课词卡标注（grammarCase/语法笔记）中出现最多的格 → 精确输出本课语法
+  const matchedCase = useMemo(() => {
+    let hit = matchCaseRules((lessonContext && lessonContext.title) || "", (dialogue && dialogue.topic) || "");
+    if (hit) return hit;
+    const freq = {};
+    const countKey = (k) => { if (k) freq[k] = (freq[k] || 0) + 1 };
+    // ① 本课全部词卡标注（含 grammarCase）
+    const allWords = (lessonContext && Array.isArray(lessonContext.words)) ? lessonContext.words : [];
+    for (const w of allWords) {
+      const g = (w && (w.grammarCase || w.grammaticalCase || w.grammar_case || "")) || "";
+      countKey(caseKeyFromText(g));
+    }
+    // ② 句子级（若带 words / 语法笔记）
+    const sents = (lessonContext && Array.isArray(lessonContext.sentences)) ? lessonContext.sentences : [];
+    for (const s of sents) {
+      if (typeof s === 'string') continue;
+      const note = (s && (s.grammarNote || s.grammar_note || s.note || "")) || "";
+      countKey(caseKeyFromText(note));
+      const ws = (s && Array.isArray(s.words)) ? s.words : [];
+      for (const w of ws) {
+        const g = (w && (w.grammarCase || w.grammaticalCase || w.grammar_case || "")) || "";
+        countKey(caseKeyFromText(g));
+      }
+    }
+    let bestKey = null, bestN = 0;
+    for (const k in freq) {
+      if (freq[k] > bestN) { bestN = freq[k]; bestKey = k; }
+    }
+    return bestKey ? (CASE_RULES[bestKey] || null) : null;
+  }, [lessonContext, dialogue])
   const activeGrammarKey = grammarKey || (matchedCase && matchedCase.key) || null
   const activeGrammar = activeGrammarKey ? (CASE_RULES[activeGrammarKey] || null) : null
 
@@ -454,25 +483,6 @@ ${ru || '（无）'}
 
             {/* 引导区：文字模式=预设解题问题；语音模式=本课话题引导问句（点按即发出） */}
             <div style={{ padding: '14px 18px 8px' }}>
-              {/* 本课语法规则预设：常驻入口，点击展开变格表+讲解+注意（匹配到本课语法点时按钮直接显示格名） */}
-              <button
-                onClick={() => { setShowGrammar(true) }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
-                  borderRadius: 12, padding: '9px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  border: '1px solid var(--qs-active, #7C3AED)', background: 'color-mix(in srgb, var(--qs-active, #7C3AED) 10%, var(--qs-surface2, #fafafa))',
-                  color: 'var(--qs-active, #7C3AED)', marginBottom: 10, transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--qs-active, #7C3AED) 16%, var(--qs-surface2, #fafafa))' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--qs-active, #7C3AED) 10%, var(--qs-surface2, #fafafa))' }}
-              >
-                <span style={{ fontSize: 15, flexShrink: 0 }}>📖</span>
-                <span style={{ flex: 1, lineHeight: 1.5 }}>
-                  本课语法规则
-                  {matchedCase ? ` · ${matchedCase.zh}（${matchedCase.name}）` : ''}
-                </span>
-                <span style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }}>点击查看 ▸</span>
-              </button>
               {!showGrammar && (voiceMode ? (
                 <>
                   {dialogue && dialogue.greeting_zh && (
@@ -518,9 +528,9 @@ ${ru || '（无）'}
                 <>
                   <div style={{ fontSize: 12.5, color: 'var(--qs-sub, #6b7280)', marginBottom: 8 }}>{TEXT_INTRO}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left' }}>
-                    {PRESET_QUESTIONS.map((q) => (
+                    {PRESET_QUESTIONS.map((q, qi) => (
                       <button
-                        key={q} onClick={() => ask(q)} disabled={loading}
+                        key={q} onClick={() => (qi === GRAMMAR_PRESET_INDEX ? setShowGrammar(true) : ask(q))} disabled={loading}
                         style={{
                           textAlign: 'left', borderRadius: 12, padding: '9px 12px', fontSize: 13, lineHeight: 1.55, cursor: 'pointer',
                           border: '1px solid var(--qs-border, #e5e7eb)', background: 'var(--qs-surface2, #fafafa)',

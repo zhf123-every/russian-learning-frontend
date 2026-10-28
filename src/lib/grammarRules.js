@@ -128,14 +128,9 @@ const KEYWORDS = [
   ["第6格", "六格", "前置格", "предложный", "предложн", "prepositional", "6 格", "6格"],
 ];
 
-/**
- * 匹配本课语法点。
- * @param {string} unitTitle 本课/课时标题
- * @param {string} extra 附加文本（对话主题、句子语法笔记等）
- * @returns {object|null} 命中的格规则（CASE_RULES[key]），未命中返回 null
- */
-export function matchCaseRules(unitTitle = "", extra = "") {
-  const text = String(unitTitle || "").toLowerCase() + " " + String(extra || "").toLowerCase();
+// 从任意文本识别命中的格 key（用于标题/对话主题/词卡格标注/语法笔记）；未命中返回 null
+export function caseKeyFromText(text) {
+  const t = String(text || "").toLowerCase();
   const order = [
     ["nominative", "nominative"], ["genitive", "genitive"], ["dative", "dative"],
     ["accusative", "accusative"], ["instrumental", "instrumental"], ["prepositional", "prepositional"],
@@ -143,10 +138,21 @@ export function matchCaseRules(unitTitle = "", extra = "") {
   for (const [key, _] of order) {
     const kws = KEYWORDS.find((row) => row[row.length - 1] === key) || [];
     for (const kw of kws) {
-      if (text.includes(kw.toLowerCase())) return CASE_RULES[key];
+      if (t.includes(kw.toLowerCase())) return key;
     }
   }
   return null;
+}
+
+/**
+ * 匹配本课语法点。
+ * @param {string} unitTitle 本课/课时标题
+ * @param {string} extra 附加文本（对话主题、句子语法笔记等）
+ * @returns {object|null} 命中的格规则（CASE_RULES[key]），未命中返回 null
+ */
+export function matchCaseRules(unitTitle = "", extra = "") {
+  const key = caseKeyFromText(String(unitTitle || "") + " " + String(extra || ""));
+  return key ? CASE_RULES[key] : null;
 }
 
 // 整句语法笔记里高频提示词 → 可能涉及多个格；只用于展示辅助标签，不做强匹配
