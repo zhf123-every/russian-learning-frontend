@@ -640,9 +640,9 @@ export default function QuestDictation() {
                   number: w.number || "",
                   grammarCase: w.grammarCase || w.grammaticalCase || "",
                   syntacticRole: w.syntacticRole || w.syntactic_role || "",
-                  // 逐词释义：优先词级 chinese；其次 s.meaning 逐词项；再其次 s.chinese 按分隔拆开；都没有则留空走词典回退
-                  zh: w.chinese || w.zh || (Array.isArray(s.meaning) ? (s.meaning[k] || "") : (sZhOk ? sZhParts[k] : "")),
-                  chinese: w.chinese || w.zh || (Array.isArray(s.meaning) ? (s.meaning[k] || "") : (sZhOk ? sZhParts[k] : "")),
+                  // 逐词释义：中文列分词对齐时优先用户上传的逐词释义（不被词级整句污染）；不对齐时回退释义列分词/词级/词典
+                  zh: (sZhOk ? sZhParts[k] : "") || (Array.isArray(s.meaning) ? (s.meaning[k] || "") : "") || w.chinese || w.zh || "",
+                  chinese: (sZhOk ? sZhParts[k] : "") || (Array.isArray(s.meaning) ? (s.meaning[k] || "") : "") || w.chinese || w.zh || "",
                 })),
                 audio_url: "",
                 chunks: [],
