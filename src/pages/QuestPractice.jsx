@@ -1217,15 +1217,21 @@ export default function QuestPractice() {
   };
 
   const toggleFullscreen = () => {
-    alert("全屏按钮被点击了"); // 测试
     if (document.fullscreenElement) {
+      alert("退出全屏");
       document.exitFullscreen().catch(() => {});
     } else {
+      alert("请求全屏...");
       const el = document.documentElement;
       if (el.requestFullscreen) {
-        el.requestFullscreen().catch((e) => alert("全屏失败: " + e.message));
+        el.requestFullscreen()
+          .then(() => alert("全屏成功!"))
+          .catch((e) => alert("全屏失败: " + e.name + " - " + e.message));
       } else if (el.webkitRequestFullscreen) {
         el.webkitRequestFullscreen();
+        alert("用 webkit 方式请求全屏");
+      } else {
+        alert("浏览器不支持全屏 API");
       }
     }
   };
