@@ -118,6 +118,13 @@ const FUNCTION_WORDS = {
   "ли": { pos: "particle", zh: "是否/呢" },
   "же": { pos: "particle", zh: "就/倒是" },
   "только": { pos: "particle", zh: "只/仅" },
+  // 无人称谓语副词（категория состояния）："Как жаль!" 真遗憾——词典常缺失，人工补词保证词性
+  "жаль": { pos: "adverb", zh: "遗憾/可惜" },
+  "надо": { pos: "adverb", zh: "需要" },
+  "можно": { pos: "adverb", zh: "可以" },
+  "нужно": { pos: "adverb", zh: "需要" },
+  "нельзя": { pos: "adverb", zh: "不可以" },
+  "пора": { pos: "adverb", zh: "该…了" },
   "уже": { pos: "adverb", zh: "已经" },
   "ещё": { pos: "adverb", zh: "还/再" },
   "очень": { pos: "adverb", zh: "很/非常" },

@@ -407,6 +407,13 @@ export function inferRoles(sentence, dictWords) {
     if (w.pos === "adjective") { w.syntacticRole = "attribute"; w.roleLabel = "定语"; }
   });
 
+  // 5.5) 无人称谓语副词（категория состояния）："Как жаль!" 真遗憾 → жаль 是无人称句谓语，不是状语
+  const PREDICATIVE_ADVERBS = new Set(["жаль", "надо", "можно", "нужно", "нельзя", "пора", "стыдно", "грустно", "весело", "холодно", "тепло", "поздно", "рано", "лень", "охота"]);
+  words.forEach((w) => {
+    if (w.syntacticRole) return;
+    if (PREDICATIVE_ADVERBS.has(lemmaOf(w))) { w.syntacticRole = "predicative"; w.roleLabel = "谓语"; }
+  });
+
   // 6) 状语：副词；介词短语成分（介词后的名词/代词/数词——俄语介词不支配主格，介词后一律状语成分）
   words.forEach((w, i) => {
     if (w.syntacticRole) return;
