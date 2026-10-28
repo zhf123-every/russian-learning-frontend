@@ -141,8 +141,8 @@ export function slotTablesToItems(items) {
         const zps = String(cleanText(r.zh) || "").split(/[、,，;；/|→\s]+/).map((x) => x.trim()).filter(Boolean);
         const zOk = zps.length === toks.length;
         toks.forEach((tok, k) => {
-          // 字段对齐 AnswerPanel：form/lemma/chinese（中译俄格式）；释义按"中文字段=逐词释义"分隔填卡
-          fullWords.push({ order: fullWords.length, form: tok, lemma: tok, pos: "", chinese: zOk ? zps[k] : "" });
+          // 词卡释义留空走词典补全（与中译俄一致，避免表格行 zh 列整句污染词卡）
+          fullWords.push({ order: fullWords.length, form: tok, lemma: tok, pos: "", chinese: "" });
         });
       }
       for (const row of rows) {
