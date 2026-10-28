@@ -112,6 +112,8 @@ const FUNCTION_WORDS = {
   "не": { pos: "negation", zh: "不/不是" },
   "нет": { pos: "negation", zh: "不/没有" },
   "неправда": { pos: "negation", zh: "不对" },
+  // давай + 动词 = 祈使建议语气词（"Давай пойдём!" 我们去吧），优先于 давать 命令式"给"
+  "давай": { pos: "particle", zh: "来吧/让我们" },
   "разве": { pos: "particle", zh: "难道" },
   "ли": { pos: "particle", zh: "是否/呢" },
   "же": { pos: "particle", zh: "就/倒是" },
