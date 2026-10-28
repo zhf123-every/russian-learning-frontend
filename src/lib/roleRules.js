@@ -310,6 +310,13 @@ export function inferRoles(sentence, dictWords) {
     }
   });
 
+  // 2.1) 数量短语主语：数词 + 后随名词（"Два часа" 两点 → часа 同为数量主语；"пять книг" 同理）
+  words.forEach((w, i) => {
+    if (w.pos !== "numeral") return;
+    const nw = words[i + 1];
+    if (nw && isNounish(nw) && !nw.syntacticRole) { nw.syntacticRole = "subject"; nw.roleLabel = "主语"; }
+  });
+
   // 2.5) 疑问副词引导的无动词从句：где/куда/откуда/когда/почему/как/зачем + 名词（非介词后）→ 名词=主语
   //      "Я знаю, где метро" → метро=主语；chunking 丢弃中文逗号后同型 "Я знаю где метро" 同样命中；
   //      "Куда ты идёшь?" 中 ты 是代词不触发；"где работает Анна" 中 Анна 前是动词不触发
