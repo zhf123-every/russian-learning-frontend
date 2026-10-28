@@ -197,6 +197,20 @@ html[data-theme="dark"]{
   .db-tabbar a.active{color:var(--db-brand);font-weight:600}
   .db-tabbar .db-tab.soon{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--db-text-3);padding:4px 0;opacity:.55;cursor:not-allowed}
   .db-tabbar .db-tab.soon .tic{font-size:19px;line-height:1}
+
+  /* ===== 手机端内容区适配 ===== */
+  .db-container{padding:14px 12px 24px}
+  .db-hello{flex-direction:column;gap:10px;margin-bottom:14px}
+  .db-hello h3{font-size:18px}
+  .db-grid{grid-template-columns:1fr;gap:12px}
+  .db-col-side{position:static;top:auto}
+  .db-continue{padding:14px 16px;gap:12px;flex-wrap:wrap}
+  .db-continue .ck{width:44px;height:44px;font-size:24px;border-radius:12px}
+  .db-continue .lesson{font-size:15px}
+  .db-continue .go{padding:8px 12px;font-size:12.5px}
+  .db-ability{grid-template-columns:1fr;gap:12px;padding:14px}
+  .db-card .pad{padding:14px}
+  .db-streak{font-size:12px;padding:5px 10px}
 }
 
 /* ============ 通用元素 ============ */
