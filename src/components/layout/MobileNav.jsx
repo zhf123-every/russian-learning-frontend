@@ -37,7 +37,11 @@ export default function MobileNav() {
         {TABBAR.map((t) => (
           t.soon ? (
             <span key={t.to} className="db-tab soon" title="即将上线">
-              <span className="tic">{t.icon}</span>
+              <span className="tic">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
+                  <path d={t.icon} />
+                </svg>
+              </span>
               {t.label}
             </span>
           ) : (
@@ -47,7 +51,11 @@ export default function MobileNav() {
               end={t.end}
               className={cur === t.to ? 'active' : ''}
             >
-              <span className="tic">{t.icon}</span>
+              <span className="tic">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
+                  <path d={t.icon} />
+                </svg>
+              </span>
               {t.label}
             </NavLink>
           )
