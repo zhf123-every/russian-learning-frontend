@@ -131,7 +131,8 @@ export function slotTablesToItems(items) {
       const rows = [...it.rows].sort((a, b) => (a.seq || 0) - (b.seq || 0));
       // 预聚合整句所有词（AnswerPanel 答对后显示整句词卡，与中译俄一致）
       const fullRussian = cleanText(it.sentence) || rows[rows.length - 1]?.ru || "";
-      const fullChinese = cleanText(rows[rows.length - 1]?.zh) || "";
+      // 整句翻译优先"释义"列（fullZh），其次中文列
+      const fullChinese = cleanText(rows[rows.length - 1]?.fullZh) || cleanText(rows[rows.length - 1]?.zh) || "";
       const fullWords = [];
       for (const r of rows) {
         const ru = cleanText(r.ru);
@@ -156,7 +157,8 @@ export function slotTablesToItems(items) {
         out.push({
           id: `slot_${cleanText(it.sentence_hash) || sentenceNo}_${diffKey}_${row.seq || 0}`,
           russian,
-          chinese: cleanText(row.zh),
+          // 整句翻译优先"释义"列（fullZh），其次中文列
+          chinese: cleanText(row.fullZh) || cleanText(row.zh),
           words: tokens.map((w, i) => ({ ru: w, zh: zOk ? zps[i] : "" })),
           // 整句信息（答对后 AnswerPanel 显示整句词卡）
           fullRussian,

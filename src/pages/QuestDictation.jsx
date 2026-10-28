@@ -619,14 +619,19 @@ export default function QuestDictation() {
               const items = pre.sentences.map((s, i) => {
                 // 中文字段即逐词释义（用户上传约定：空格/分隔符隔开的逐词翻译），按分隔拆开逐词填卡
                 const sZhParts = String(s.chinese || s.zh || "").split(/[、,，;；/|→\s]+/).map((x) => x.trim()).filter(Boolean);
-                const sZhOk = sZhParts.length === (s.words || []).length;
+                const sTokens = String(s.russian || s.ru || "").split(/\s+/).filter(Boolean);
+                const sZhOk = sZhParts.length === sTokens.length;
+                // s.words 为空或不对齐时，用 russian 分词兜底构建 words（避免 AnswerPanel 把整句中文赋给每个词卡）
+                const srcWords = (Array.isArray(s.words) && s.words.length === sTokens.length)
+                  ? s.words
+                  : sTokens.map((tok) => ({ ru: tok, form: tok, lemma: tok }));
                 return {
                 id: `local_${i}`,
                 russian: s.russian || s.ru || "",
                 // 整句翻译优先"释义"列（fullZh，用户上传约定：释义=完整中文翻译），其次中文列
                 chinese: s.fullZh || s.chinese || s.zh || "",
                 syntactic: Array.isArray(s.syntactic) ? s.syntactic : null,
-                words: (s.words || []).map((w, k) => ({
+                words: srcWords.map((w, k) => ({
                   ru: w.form || w.lemma || w.ru || "",
                   form: w.form || w.lemma || "",
                   lemma: w.lemma || "",
