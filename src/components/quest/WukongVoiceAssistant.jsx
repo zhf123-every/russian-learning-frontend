@@ -84,6 +84,7 @@ export default function WukongVoiceAssistant({
   statement, modeLabel = '练习', lessonContext = null, dialogue = null, autoOpen = false, wrongStreak = 0,
 }) {
   const [open, setOpen] = useState(false)
+  const [dismissed, setDismissed] = useState(false) // 用户手动关闭过 → 答题结束不再被 autoOpen 强制弹开（可手动再开）
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -254,10 +255,10 @@ ${ru || '（无）'}
 
   // 答题结束后自动打开 + 语音引导（只引导一次；平时手动打开为文字问答模式）
   useEffect(() => {
-    if (!autoOpen || open || guided) return
+    if (!autoOpen || open || guided || dismissed) return
     setVoiceMode(true)
     setOpen(true)
-  }, [autoOpen, open, guided])
+  }, [autoOpen, open, guided, dismissed])
 
   // 连续答错主动求助（答题过程中的文字求助，与设置「宠物」面板 petHelp + petHint 联动）
   useEffect(() => {
@@ -431,7 +432,7 @@ ${ru || '（无）'}
                 </div>
               </div>
               <button
-                onClick={() => setOpen(false)}
+                onClick={() => { setOpen(false); setDismissed(true) }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onPointerMove={(e) => e.stopPropagation()}
                 onPointerUp={(e) => e.stopPropagation()}
