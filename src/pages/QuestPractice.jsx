@@ -1220,15 +1220,17 @@ export default function QuestPractice() {
     if (document.fullscreenElement || document.webkitFullscreenElement) {
       if (document.exitFullscreen) document.exitFullscreen();
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-      return;
-    }
-    const el = document.documentElement;
-    // 检查所有可能的全屏 API
-    const apiNames = ['requestFullscreen', 'webkitRequestFullscreen', 'webkitRequestFullScreen', 'mozRequestFullScreen', 'msRequestFullscreen'];
-    const available = apiNames.find(name => typeof el[name] === 'function');
-    alert("可用的全屏API: " + (available || "无"));
-    if (available) {
-      el[available]();
+      document.body.classList.remove('css-fullscreen');
+    } else {
+      const el = document.documentElement;
+      const apiNames = ['requestFullscreen', 'webkitRequestFullscreen', 'webkitRequestFullScreen'];
+      const available = apiNames.find(name => typeof el[name] === 'function');
+      if (available) {
+        el[available]();
+      } else {
+        // 浏览器不支持全屏 API → CSS 模拟全屏
+        document.body.classList.add('css-fullscreen');
+      }
     }
   };
 
