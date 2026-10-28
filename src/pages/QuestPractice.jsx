@@ -222,6 +222,14 @@ export default function QuestPractice() {
   const { courseId } = useParams();
   const effectiveCourseId = courseId || DEFAULT_UNIT_ID;
 
+  // 手机端适配
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   // ---- 课程数据（按 sequence 分组）----
   const [sequences, setSequences] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1365,9 +1373,9 @@ export default function QuestPractice() {
       )}
 
       {/* 顶部工具栏（对标句乐部：左退出+标题，右图标组） */}
-      <div style={styles.toolbar}>
-        <div style={styles.toolbarLeft}>
-          <button style={styles.iconBtn} onClick={() => setShowExit(true)} title="退出游戏" aria-label="退出游戏">
+      <div style={{ ...styles.toolbar, padding: isMobile ? "8px 10px" : styles.toolbar.padding }}>
+        <div style={{ ...styles.toolbarLeft, gap: isMobile ? 6 : styles.toolbarLeft.gap }}>
+          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={() => setShowExit(true)} title="退出游戏" aria-label="退出游戏">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M17 9L20 12L17 15" />
               <path d="M5 5H19" />
@@ -1379,17 +1387,17 @@ export default function QuestPractice() {
             （{sentenceNo}/{sentenceTotal}）
           </div>
         </div>
-        <div style={styles.toolbarRight}>
-          <button style={styles.iconBtn} onClick={() => setShowSettings(true)} title="设置"><Icon name="gear" /></button>
-          <button style={{ ...styles.iconBtn, color: showAnswerMode ? "#7C3AED" : undefined }} onClick={() => setShowAnswerMode((v) => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}><Icon name="bookOpen" color={showAnswerMode ? "#7C3AED" : undefined} /></button>
-          <button style={styles.iconBtn} onClick={openLearning} title="查看课程学习内容（Ctrl+1）"><Icon name="notebook" /></button>
-          <button style={styles.iconBtn} onClick={openTree} title="句子树"><Icon name="tree" /></button>
-          <button style={styles.iconBtn} onClick={() => setShowModePicker(true)} title="切换游戏模式"><Icon name="gamepad" /></button>
-          <button style={styles.iconBtn} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}><Icon name="shuffle" color={shuffled ? "#7C3AED" : undefined} /></button>
-          <button style={styles.iconBtn} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? <Icon name="play" /> : <Icon name="pause" />}</button>
-          <button style={styles.iconBtn} onClick={handleResetProgress} title="重置当前课程进度"><Icon name="rotateCcw" /></button>
-          <button style={styles.iconBtn} onClick={openReport} title="报告错误"><Icon name="alert" /></button>
-          <button style={styles.iconBtn} onClick={toggleFullscreen} title="全屏"><Icon name="maximize" /></button>
+        <div style={{ ...styles.toolbarRight, gap: isMobile ? 5 : styles.toolbarRight.gap }}>
+          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={() => setShowSettings(true)} title="设置"><Icon name="gear" /></button>
+          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height, color: showAnswerMode ? "#7C3AED" : undefined }} onClick={() => setShowAnswerMode((v) => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}><Icon name="bookOpen" color={showAnswerMode ? "#7C3AED" : undefined} /></button>
+          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={openLearning} title="查看课程学习内容（Ctrl+1）"><Icon name="notebook" /></button>
+          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={openTree} title="句子树"><Icon name="tree" /></button>
+          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={() => setShowModePicker(true)} title="切换游戏模式"><Icon name="gamepad" /></button>
+          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}><Icon name="shuffle" color={shuffled ? "#7C3AED" : undefined} /></button>
+          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? <Icon name="play" /> : <Icon name="pause" />}</button>
+          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={handleResetProgress} title="重置当前课程进度"><Icon name="rotateCcw" /></button>
+          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={openReport} title="报告错误"><Icon name="alert" /></button>
+          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={toggleFullscreen} title="全屏"><Icon name="maximize" /></button>
         </div>
       </div>
 
@@ -1655,28 +1663,28 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "12px 24px",
+    padding: isMobile ? "8px 12px" : "12px 24px",
     background: "var(--qs-surface)",
     borderBottom: "1px solid #E5E7EB",
   },
   toolbarLeft: {
     display: "flex",
     alignItems: "center",
-    gap: 12,
+    gap: isMobile ? 8 : 12,
   },
   toolbarRight: {
     display: "flex",
     alignItems: "center",
-    gap: 12,
+    gap: isMobile ? 6 : 12,
   },
   iconBtn: {
-    width: 36,
-    height: 36,
+    width: isMobile ? 28 : 36,
+    height: isMobile ? 28 : 36,
     borderRadius: 8,
     border: "none",
     background: "transparent",
     color: "var(--qs-text)",
-    fontSize: 18,
+    fontSize: isMobile ? 14 : 18,
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
