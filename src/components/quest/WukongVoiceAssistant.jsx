@@ -627,7 +627,6 @@ ${ru || '（无）'}
                 )}
               </div>
             ) : (
-            {/* 对话区 */}
             <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '6px 18px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {messages.length === 0 && !loading && !transcribing && (
                 <div style={{ fontSize: 12.5, color: 'var(--qs-sub, #9ca3af)', textAlign: 'center', paddingTop: 18, lineHeight: 1.8 }}>
