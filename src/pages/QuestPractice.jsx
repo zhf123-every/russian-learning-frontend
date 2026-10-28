@@ -1391,13 +1391,18 @@ export default function QuestPractice() {
           <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={() => setShowSettings(true)} title="设置"><Icon name="gear" /></button>
           <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height, color: showAnswerMode ? "#7C3AED" : undefined }} onClick={() => setShowAnswerMode((v) => !v)} title={showAnswerMode ? "关闭看答案模式" : "开启看答案模式"}><Icon name="bookOpen" color={showAnswerMode ? "#7C3AED" : undefined} /></button>
           <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={openLearning} title="查看课程学习内容（Ctrl+1）"><Icon name="notebook" /></button>
-          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={openTree} title="句子树"><Icon name="tree" /></button>
           <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={() => setShowModePicker(true)} title="切换游戏模式"><Icon name="gamepad" /></button>
-          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}><Icon name="shuffle" color={shuffled ? "#7C3AED" : undefined} /></button>
-          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? <Icon name="play" /> : <Icon name="pause" />}</button>
-          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={handleResetProgress} title="重置当前课程进度"><Icon name="rotateCcw" /></button>
-          <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={openReport} title="报告错误"><Icon name="alert" /></button>
           <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={toggleFullscreen} title="全屏"><Icon name="maximize" /></button>
+          {/* 手机上隐藏的次要按钮 */}
+          {!isMobile && (
+            <>
+              <button style={styles.iconBtn} onClick={openTree} title="句子树"><Icon name="tree" /></button>
+              <button style={styles.iconBtn} onClick={toggleShuffle} title={shuffled ? "恢复正序" : "乱序模式"}><Icon name="shuffle" color={shuffled ? "#7C3AED" : undefined} /></button>
+              <button style={styles.iconBtn} onClick={togglePause} title={isPaused ? "继续播放" : "暂停"}>{isPaused ? <Icon name="play" /> : <Icon name="pause" />}</button>
+              <button style={styles.iconBtn} onClick={handleResetProgress} title="重置当前课程进度"><Icon name="rotateCcw" /></button>
+              <button style={styles.iconBtn} onClick={openReport} title="报告错误"><Icon name="alert" /></button>
+            </>
+          )}
         </div>
       </div>
 
