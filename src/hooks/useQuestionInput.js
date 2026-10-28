@@ -222,10 +222,12 @@ export function useQuestionInput({
         // 名词类（含被词典误标为普通名词的人名 Антона）由调用页在 ordinaryWords 传参时
         // 排除在反证名单之外（白名单只含动词/形容词/副词/前置词/代词/连词/语气词/感叹词），
         // 因此人名仍能命中启发式 fixed 直接显示、不占词槽。
-        // 修复：专有名词/人名不再自动填充（fixed）——用户需手动输入人名（如 Антона），
-        // 空格提交/跳词槽后词槽保持待输入状态，不自动出现答案文本（标点槽仍直接显示）。
-        w.fixed = false;
-        if (w.fixed) w.userInput = wordText; // 预设为正确文本（当前无 fixed 词，保留分支以备扩展）
+        // 专有名词/人名（如 Антона）：直接显示答案、不占输入词槽（无需用户输入），
+        // 空格跳槽时由下方 INPUT+Space 分支跳过 fixed 词；地名/代词/句首大写不误判。
+        w.fixed = (dictName && !isPlace) || (!knownOrdinary && heuristicName);
+        // 人名/专有名词：userInput 保持空串——不进入输入框文本（词槽渲染区用 word.text 直接显示），
+        // 空格跳槽后输入框只显示用户输入的部分，不会"自动出现人名"
+        if (w.fixed) w.userInput = "";
         words.push(w);
       }
       // 独立标点槽：直接显示（如逗号/句号/破折号），无下划线、不参与输入
@@ -278,7 +280,7 @@ export function useQuestionInput({
           ) {
             partIdx++;
           }
-          word.userInput = word.text; // 已给人名：始终显示标准答案
+          word.userInput = ""; // 人名/专有名词不进入输入框文本（词槽渲染区用 word.text 显示），输入框以 1 个空格占位对齐光标
         } else {
           const input = parts[partIdx] || "";
           partIdx++;
