@@ -1379,7 +1379,7 @@ export default function QuestPractice() {
       )}
 
       {/* 顶部工具栏（对标句乐部：左退出+标题，右图标组） */}
-      <div style={{ ...styles.toolbar, flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 6 : 0, padding: isMobile ? "8px 10px" : styles.toolbar.padding }}>
+      <div style={{ ...styles.toolbar, padding: isMobile ? "8px 10px" : styles.toolbar.padding }}>
         <div style={{ ...styles.toolbarLeft, gap: isMobile ? 6 : styles.toolbarLeft.gap }}>
           <button style={{ ...styles.iconBtn, width: isMobile ? 28 : styles.iconBtn.width, height: isMobile ? 28 : styles.iconBtn.height }} onClick={() => setShowExit(true)} title="退出游戏" aria-label="退出游戏">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
