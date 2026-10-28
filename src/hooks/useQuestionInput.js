@@ -222,8 +222,10 @@ export function useQuestionInput({
         // 名词类（含被词典误标为普通名词的人名 Антона）由调用页在 ordinaryWords 传参时
         // 排除在反证名单之外（白名单只含动词/形容词/副词/前置词/代词/连词/语气词/感叹词），
         // 因此人名仍能命中启发式 fixed 直接显示、不占词槽。
-        w.fixed = (dictName && !isPlace) || (!knownOrdinary && heuristicName);
-        if (w.fixed) w.userInput = wordText; // 预设为正确文本
+        // 修复：专有名词/人名不再自动填充（fixed）——用户需手动输入人名（如 Антона），
+        // 空格提交/跳词槽后词槽保持待输入状态，不自动出现答案文本（标点槽仍直接显示）。
+        w.fixed = false;
+        if (w.fixed) w.userInput = wordText; // 预设为正确文本（当前无 fixed 词，保留分支以备扩展）
         words.push(w);
       }
       // 独立标点槽：直接显示（如逗号/句号/破折号），无下划线、不参与输入
