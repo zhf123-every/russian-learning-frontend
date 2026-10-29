@@ -832,7 +832,7 @@ export function annotateWords(sentence) {
         roleLabel: "",
       };
     }
-    // 兜底：高频动词变位表
+    // 兜底：高频动词变位表（dict-full 未命中时也查）
     const vf = VERB_FORMS[n];
     if (vf) {
       return {
@@ -842,6 +842,19 @@ export function annotateWords(sentence) {
         roleLabel: "",
         person: vf.person,
         tense: "present",
+      };
+    }
+    // 兜底：高频虚词表（dict-full 未命中时也查）
+    const fw2 = FUNCTION_WORDS[n];
+    if (fw2) {
+      return {
+        form: cleanToken(w), lemma: n, pos: fw2.pos,
+        posColor: getPosColor(fw2.pos),
+        gender: fw2.gender || "",
+        grammarCase: fw2.grammarCase || "",
+        number: fw2.number || "",
+        chinese: cleanZhText(fw2.zh) || "",
+        roleLabel: "",
       };
     }
     // 兜底：句中大写开头（非句首）→ 专有名词（人名/地名等变格形式，如 "у Виктора"），
