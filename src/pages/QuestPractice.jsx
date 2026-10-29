@@ -422,7 +422,19 @@ export default function QuestPractice() {
 
   // ---- 当前题目计算（双层索引）----
   const currentSequence = sequences[currentSequenceIndex];
-  const currentStatement = currentSequence?.units?.[currentUnitIndex];
+  let currentStatement = currentSequence?.units?.[currentUnitIndex];
+
+  // 去重：句子后缀重复时（如 "..., на которой я живу., на которой я живу."）去掉后半段
+  if (currentStatement?.russian) {
+    const ru = currentStatement.russian.trim();
+    // 检测：句子后一半是否与前一半的后缀重复
+    const half = Math.floor(ru.length / 2);
+    const firstHalf = ru.slice(0, half).replace(/[.,!?…\s]+$/, "");
+    const secondHalf = ru.slice(half).replace(/^[.,!?…\s]+/, "");
+    if (firstHalf && secondHalf && firstHalf.endsWith(secondHalf)) {
+      currentStatement = { ...currentStatement, russian: firstHalf + "." };
+    }
+  }
 
   // ---- 顶部句子进度：当前句子序号 / 该难度总句子数（跨序列累计）----
   const sentenceTotal = sequences.reduce((s, sq) => s + ((sq && sq.units) ? sq.units.length : 0), 0);
