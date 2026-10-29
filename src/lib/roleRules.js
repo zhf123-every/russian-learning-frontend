@@ -312,9 +312,16 @@ export function inferRoles(sentence, dictWords) {
 
   // 2.1) 数量短语主语：数词 + 后随名词（"Два часа" 两点 → 数词与名词同为数量主语；"пять книг" 同理）
   //      变格数词（двух часов 等）在 2.0/2 中因非主格未命中主语——这里按数量短语把数词一并判主语
+  //      修复：向前回溯检查"是否在介词短语里"——介词后的数词短语（в одна тысяча девятьсот）不标主语
   words.forEach((w, i) => {
     if (w.pos !== "numeral") return;
-    if (isPrepAfter(i)) return; // 介词后数词（в пять часов）→ 介词短语状语规则处理，不判主语
+    // 向前回溯：前面有介词（可能隔了数词/形容词）→ 介词短语状语，不判主语
+    let inPrepPhrase = false;
+    for (let j = i - 1; j >= 0; j--) {
+      if (words[j].pos === "preposition") { inPrepPhrase = true; break; }
+      if (words[j].pos === "verb" || words[j].pos === "conjunction") break; // 动词/连词后就不是介词短语了
+    }
+    if (inPrepPhrase) return;
     const nw = words[i + 1];
     if (nw && isNounish(nw) && !nw.syntacticRole) { nw.syntacticRole = "subject"; nw.roleLabel = "主语"; }
     if (!w.syntacticRole) { w.syntacticRole = "subject"; w.roleLabel = "主语"; }
