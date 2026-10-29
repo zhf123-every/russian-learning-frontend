@@ -267,6 +267,11 @@ const FUNCTION_WORDS = {
   "тысяча": { pos: "numeral", zh: "千" },
   "девятьсот": { pos: "numeral", zh: "九百" },
   "восемьдесят": { pos: "numeral", zh: "八十" },
+  // ---- 代词 ----
+  "мной": { pos: "pronoun", zh: "我（第五格）" },
+  "мне": { pos: "pronoun", zh: "我（第三格）" },
+  "меня": { pos: "pronoun", zh: "我（第二格）" },
+  "меня́": { pos: "pronoun", zh: "我（第二格）" },
 };
 
 // 高频动词现在时变位补充表（dict-full.js 未就绪/加载失败时的兜底）
@@ -275,7 +280,8 @@ const VERB_FORMS = {
   "знаю": { lemma: "знать", person: 1, zh: "知道" }, "знаешь": { lemma: "знать", person: 2, zh: "知道" }, "знает": { lemma: "знать", person: 3, zh: "知道" }, "знаем": { lemma: "знать", person: 1, zh: "知道" }, "знаете": { lemma: "знать", person: 2, zh: "知道" }, "знают": { lemma: "знать", person: 3, zh: "知道" },
   // 动词原形（不定式）
   "заниматься": { lemma: "заниматься", person: 0, zh: "学习、从事、忙于" },
-  "мечтать": { lemma: "мечтать", person: 0, zh: "梦想、幻想" },  "говорю": { lemma: "говорить", person: 1, zh: "说" }, "говоришь": { lemma: "говорить", person: 2, zh: "说" }, "говорит": { lemma: "говорить", person: 3, zh: "说" }, "говорим": { lemma: "говорить", person: 1, zh: "说" }, "говорите": { lemma: "говорить", person: 2, zh: "说" }, "говорят": { lemma: "говорить", person: 3, zh: "说" },
+  "мечтать": { lemma: "мечтать", person: 0, zh: "梦想、幻想" },
+  "познакомьтесь": { lemma: "познакомиться", person: 2, zh: "认识一下" },  "говорю": { lemma: "говорить", person: 1, zh: "说" }, "говоришь": { lemma: "говорить", person: 2, zh: "说" }, "говорит": { lemma: "говорить", person: 3, zh: "说" }, "говорим": { lemma: "говорить", person: 1, zh: "说" }, "говорите": { lemma: "говорить", person: 2, zh: "说" }, "говорят": { lemma: "говорить", person: 3, zh: "说" },
   "люблю": { lemma: "любить", person: 1, zh: "爱" }, "любишь": { lemma: "любить", person: 2, zh: "爱" }, "любит": { lemma: "любить", person: 3, zh: "爱" }, "любим": { lemma: "любить", person: 1, zh: "爱" }, "любите": { lemma: "любить", person: 2, zh: "爱" }, "любят": { lemma: "любить", person: 3, zh: "爱" },
   "хочу": { lemma: "хотеть", person: 1, zh: "想要" }, "хочешь": { lemma: "хотеть", person: 2, zh: "想要" }, "хочет": { lemma: "хотеть", person: 3, zh: "想要" }, "хотим": { lemma: "хотеть", person: 1, zh: "想要" }, "хотите": { lemma: "хотеть", person: 2, zh: "想要" }, "хотят": { lemma: "хотеть", person: 3, zh: "想要" },
   "могу": { lemma: "мочь", person: 1, zh: "能够" }, "можешь": { lemma: "мочь", person: 2, zh: "能够" }, "может": { lemma: "мочь", person: 3, zh: "能够" }, "можем": { lemma: "мочь", person: 1, zh: "能够" }, "можете": { lemma: "мочь", person: 2, zh: "能够" }, "могут": { lemma: "мочь", person: 3, zh: "能够" },
