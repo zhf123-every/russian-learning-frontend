@@ -28,6 +28,7 @@ import { UI_DEFAULT, posColorOf, posStyleOf, BG_STYLE } from "../../hooks/useQue
 import { playGlobalAudio, stopGlobalAudio } from "../../utils/audioService";
 import { speakText } from "../../lib/tts";
 import { useSettingsStore } from "../../store/settingsStore";
+import ShortcutTips from "./ShortcutTips";
 import WordDetailCard from "./WordDetailCard";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 // 内存缓存：音色::text -> audio_url，避免重复请求（切换音色后自动命中新 key，旧缓存作废）
@@ -536,6 +537,15 @@ export default function AnswerPanel({
             onClose={() => setDetailWord(null)}
           />
         )}
+
+        {/* 底部快捷键提示栏 */}
+        <ShortcutTips
+          mode="answer"
+          onNext={onNext}
+          onRetry={onRetry}
+          enterText="下一题"
+          showAnswerText="再来一次"
+        />
 
       </div>
     </div>
