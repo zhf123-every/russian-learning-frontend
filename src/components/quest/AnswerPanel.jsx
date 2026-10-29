@@ -428,7 +428,14 @@ export default function AnswerPanel({
                             const grammarLabel = w.grammarLabel || buildGrammarLabel(w);
                             // 释义清洗：优先用课程上传的逐词中文；词典兜底时只留第一个义项核心中文，
                             // 去掉 разг./в знач./со словами 等俄语语法标注、多余义项、拉丁/西里尔字母
-                            const rawChinese = w.chinese || w.zh || w.meaning || w.translation || zhPatch[w.lemma || w.ru || w.word || w.form] || "";
+                            // 如果课程"中文"字段是整句释义（包含逗号/句号/较长文本）→ 忽略，走词典兜底
+                            let rawChinese = w.chinese || w.zh || w.meaning || w.translation || zhPatch[w.lemma || w.ru || w.word || w.form] || "";
+                            // 检测：整句释义特征（包含中文标点、长度 > 10 字符、或包含句子结构词）
+                            const isFullSentence = /[，。；！？、]/.test(rawChinese) || rawChinese.length > 15;
+                            if (isFullSentence) {
+                              // 整句释义 → 忽略，用词典兜底
+                              rawChinese = zhPatch[w.lemma || w.ru || w.word || w.form] || "";
+                            }
                             const chinese = (() => {
                               let t = String(rawChinese || "").trim();
                               if (!t) return "";
