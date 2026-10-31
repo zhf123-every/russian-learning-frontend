@@ -253,6 +253,14 @@ const FUNCTION_WORDS = {
   "москва": { pos: "noun", zh: "莫斯科", gender: "feminine", number: "singular" },
   "москве": { pos: "noun", zh: "莫斯科", gender: "feminine", number: "singular", grammarCase: "prepositional" },
   "москву": { pos: "noun", zh: "莫斯科", gender: "feminine", number: "singular", grammarCase: "accusative" },
+  // ---- 同形词纠正（dict-full 命中的是专有名词/其它义项，课程里实际是常用词变格形式）----
+  // сахара：词典里只有"撒哈拉"（专有名词），但常用语境是 сахар（糖）的第二格
+  "сахара": { pos: "noun", zh: "糖（二格）", gender: "masculine", number: "singular", grammarCase: "genitive" },
+  "сахар": { pos: "noun", zh: "糖", gender: "masculine", number: "singular" },
+  "сахару": { pos: "noun", zh: "糖（三格）", gender: "masculine", number: "singular", grammarCase: "dative" },
+  "сахаром": { pos: "noun", zh: "糖（五格）", gender: "masculine", number: "singular", grammarCase: "instrumental" },
+  // мира：词典里"和平"常盖过"世界（мир）的二格"，课程语境多为"世界"
+  "мира": { pos: "noun", zh: "世界（二格）", gender: "masculine", number: "singular", grammarCase: "genitive" },
   // ---- 数词 ----
   "одна": { pos: "numeral", zh: "一个（阴性）" },
   "один": { pos: "numeral", zh: "一个（阳性）" },
