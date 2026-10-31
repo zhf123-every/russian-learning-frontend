@@ -781,9 +781,41 @@ export function annotateWords(sentence) {
     return null;
   };
 
+  // ---- 同形词按语境消歧：стоит/стоят（стоить 值钱 / стоять 站立，三单形式完全相同）----
+  // 价格语境（сколько/рубль/деньги/дорого/дешёво/цена/доллар…）→ 值（钱）；否则 → 站立
+  const isPriceContext = /сколько|рубл|денег|деньг|дорог|дёшев|дешев|цен[аеуыё]|копе|доллар|евро|юан|бакс|стоимост|бесплатн|скидк/i.test(srcSentence);
+  const STOYAT_FORMS = {
+    "стоит": { price: "值（钱）", stand: "站立" },
+    "стоят": { price: "值（钱）", stand: "站立" },
+    "стоил": { price: "值（钱）", stand: "站立过" },
+    "стоила": { price: "值（钱）", stand: "站立过" },
+    "стоило": { price: "值（钱）", stand: "站立过" },
+    "стоили": { price: "值（钱）", stand: "站立过" },
+    "стоишь": { price: "值（钱）", stand: "站立" },
+    "стою": { price: "值（钱）", stand: "站立" },
+    "стоим": { price: "值（钱）", stand: "站立" },
+    "стоите": { price: "值（钱）", stand: "站立" },
+  };
+
   return tokens.map((w, i) => {
     const n = normForm(w);
     const w_global = w; // 供 lookupFallback 使用
+
+    // 同形词 стоит/стоять：按全句语境决定释义与词元
+    const stoyat = STOYAT_FORMS[n];
+    if (stoyat) {
+      return {
+        form: cleanToken(w),
+        lemma: isPriceContext ? "стоить" : "стоять",
+        pos: "verb",
+        posColor: getPosColor("verb"),
+        chinese: isPriceContext ? stoyat.price : stoyat.stand,
+        roleLabel: "",
+        person: 0,
+        tense: "present",
+        homonym: true, // 同形词按语境消歧结果，渲染时优先于课程固定释义
+      };
+    }
 
     // 阿拉伯数字（"5 часов" 等）→ 数词
     if (/^\d+$/.test(w_global)) {

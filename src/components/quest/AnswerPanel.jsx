@@ -285,7 +285,8 @@ export default function AnswerPanel({
             posColor: enginePos ? rw.posColor : (finalPos ? getPosColor(finalPos) : ""),
             form: rw.form || w.form || w.lemma || w.ru || w.word || "",
             lemma: rw.lemma || w.lemma || w.ru || w.word || "",
-            chinese: w.chinese || w.zh || w.meaning || w.translation || rw.chinese || "",
+            // 同形词（стоит 值/站立 等）按语境消歧的引擎释义优先；其余词课程逐词释义优先
+            chinese: (rw.homonym && rw.chinese) ? rw.chinese : (w.chinese || w.zh || w.meaning || w.translation || rw.chinese || ""),
             gender: rw.gender || w.gender || "",
             grammarCase: rw.grammarCase || w.grammarCase || "",
             number: rw.number || w.number || "",
