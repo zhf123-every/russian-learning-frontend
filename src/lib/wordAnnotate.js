@@ -797,9 +797,36 @@ export function annotateWords(sentence) {
     "стоите": { price: "值（钱）", stand: "站立" },
   };
 
+  // ---- 同形词：парка（па́рка 派克大衣 / парк 的二格"公园"）----
+  // 前邻词是要求二格的前置词（из/до/около/у/нет…）→ 公园（парк 二格）；否则 → 派克大衣
+  const GENITIVE_TRIGGERS = new Set([
+    "из", "от", "до", "с", "со", "без", "около", "у", "для", "кроме", "мимо", "после",
+    "вокруг", "против", "ради", "вместо", "среди", "возле", "подле", "близ", "вдоль",
+    "вне", "нет", "два", "три", "четыре", "тридцать", "много", "мало", "немного",
+  ]);
+
   return tokens.map((w, i) => {
     const n = normForm(w);
     const w_global = w; // 供 lookupFallback 使用
+
+    // 同形词 парка：按前邻词消歧
+    if (n === "парка") {
+      const prevN = i > 0 ? normForm(tokens[i - 1]) : "";
+      if (GENITIVE_TRIGGERS.has(prevN)) {
+        return {
+          form: cleanToken(w), lemma: "парк", pos: "noun",
+          posColor: getPosColor("noun"),
+          gender: "masculine", grammarCase: "genitive", number: "singular",
+          chinese: "公园（二格）", roleLabel: "", homonym: true,
+        };
+      }
+      return {
+        form: cleanToken(w), lemma: "парка", pos: "noun",
+        posColor: getPosColor("noun"),
+        gender: "feminine", grammarCase: "nominative", number: "singular",
+        chinese: "派克大衣", roleLabel: "", homonym: true,
+      };
+    }
 
     // 同形词 стоит/стоять：按全句语境决定释义与词元
     const stoyat = STOYAT_FORMS[n];
