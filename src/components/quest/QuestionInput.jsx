@@ -25,7 +25,7 @@ const ERROR_COLORS = {
 };
 
 // 判断是否为纯标点符号（不生成下划线；半角/全角标点都算）
-const isPunctuation = (text) => /^[.,!?;:…'"()\[\]{}\-–—，。！？；：、\s]+$/.test(text || "");
+const isPunctuation = (text) => /^[.,!?;:…'"()\[\]{}\-–—«»“”‘’，。！？；：、\s]+$/.test(text || "");
 
 // 按单词长度估算下划线宽度（ch 相对当前字号，自动适配桌面/移动端）
 const slotWidthFor = (text) => {

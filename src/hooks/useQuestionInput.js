@@ -53,8 +53,21 @@ function isWord(text) {
 }
 
 // 去首尾标点（用于判题归一与 fixed 词匹配，避免 "друг." != "друг" 误判；半角/全角标点都算）
-const stripPunct = (s) =>
-  s.replace(/^[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+|[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+$/g, "");
+// 含俄文引号 «»、弯引号 “”‘’，否则 «У / телефона». 归一化后与标准答案不等，输入正确仍判错
+export const stripPunct = (s) =>
+  String(s || "").replace(/^[.,!?;:…'"()\[\]{}\-–—«»“”‘’，。！？；：、]+|[.,!?;:…'"()\[\]{}\-–—«»“”‘’，。！？；：、]+$/g, "");
+
+// 把一个空格切出的词元拆成「首标点 + 核心词 + 尾标点」，
+// 用于把黏在词上的冒号/引号剥离成固定标点槽位，避免标点挤占输入槽造成错位
+export function splitTokenPunct(text) {
+  const str = String(text || "");
+  const leadM = str.match(/^[«“\"'(\[«]+/);
+  const trailM = str.match(/[»”\"')\].,!?;:…—–\-]+$/);
+  const lead = leadM ? leadM[0] : "";
+  const trail = trailM ? trailM[0] : "";
+  const core = trail ? str.slice(lead.length, str.length - trail.length) : str.slice(lead.length);
+  return { lead, core, trail };
+}
 
 // 拼接词槽为输入框字符串：纯标点槽（fixed 且 text 为标点）不参与，
 // 避免句尾标点漏进输入框导致输入位置/判题混乱（标点仅在词槽渲染区显示）。
@@ -62,7 +75,7 @@ const stripPunct = (s) =>
 // 与 syncFromInput 的 position 计算完全一致，否则光标定位会错位到第一个词。
 const joinInputWords = (words) =>
   (words || [])
-    .filter((w) => !(w.fixed && /^[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+$/.test((w.text || "").trim())))
+    .filter((w) => !(w.fixed && /^[.,!?;:…'"()\[\]{}\-–—«»“”‘’，。！？；：、]+$/.test((w.text || "").trim())))
     .map((w) => w.userInput || "")
     .join(" ");
 
@@ -208,11 +221,18 @@ export function useQuestionInput({
       // 词尾标点拆为独立槽位（答题区直接显示标点）："знаю," → 词"знаю" + 标点","；"метро." → 词"метро" + 标点"."
       // 半角/全角标点都拆（数据里即使上传全角逗号，逗号也独立显示、不占词槽）
       // 标点槽 fixed=true：直接显示、无下划线、不参与输入/判题
-      let wordText = String(text || "");
-      let tailPunct = "";
-      const tm = String(text || "").match(/^(.*?)([.,!?;:…—–，。！？；：、]+)$/);
-      if (tm && tm[1]) { wordText = tm[1]; tailPunct = tm[2]; }
+      // 首尾标点分别拆为独立槽位："знаю," → 词"знаю" + 标点","；"«У" → 标点"«" + 词"У"；"телефона»." → 词"телефона" + 标点»."
+      const { lead, core, trail } = splitTokenPunct(text);
+      const wordText = core;
+      const tailPunct = trail;
       const isWordTok = isWord(wordText);
+      // 首标点（如 «）作为固定标点槽，排在词槽之前，不占输入位
+      if (lead) {
+        const lp = createWord(lead, id++);
+        lp.fixed = true;
+        lp.userInput = lead;
+        words.push(lp);
+      }
       if (isWordTok) {
         const w = createWord(wordText, id++);
         // 三层判定：
@@ -282,7 +302,7 @@ export function useQuestionInput({
       newWords.forEach((word) => {
         // 纯标点槽（fixed 且 text 为标点）：不占输入位置（输入框字符串不含标点），
         // 否则 start/end 偏移会导致点击任意词槽都错位到第一个词
-        const isPunctSlot = word.fixed && /^[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+$/.test((word.text || "").trim());
+        const isPunctSlot = word.fixed && /^[.,!?;:…'"()\[\]{}\-–—«»“”‘’，。！？；：、]+$/.test((word.text || "").trim());
         if (word.fixed) {
           // 用户输入的下一个词若与该人名匹配（忽略大小写/标点），消费掉它，防止错位
           const nextInput = parts[partIdx] || "";
@@ -579,15 +599,14 @@ export function useQuestionInput({
    */
   const markIncorrectFromErrors = useCallback((errors) => {
     setUserInputWords((prevWords) => {
-      const stripPunctLocal = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+|[.,!?;:…'"()\[\]{}\-–—，。！？；：、]+$/g, '');
       const norm = (s) => (ignoreCase ? s.toLowerCase() : s);
-      const ans = normAnswer.trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm);
+      const ans = normAnswer.trim().split(/\s+/).filter(Boolean).map(stripPunct).map(norm);
       const newWords = prevWords.map((w) => ({ ...w, incorrect: false }));
       (errors || []).forEach((err) => {
         if (err.wordIndex >= 0 && err.wordIndex < newWords.length) {
           const w = newWords[err.wordIndex];
           if (w.fixed) return;
-          const uw = norm(stripPunctLocal(w.userInput));
+          const uw = norm(stripPunct(w.userInput));
           const aw = ans[err.wordIndex];
           if (ignoreCase && uw && aw && uw === aw) return;
           w.incorrect = true;
@@ -612,7 +631,6 @@ export function useQuestionInput({
     // ===== 前端快速判题：词序比对（忽略语序），瞬间出结果 =====
     // 去掉词首尾的标点符号，避免 "друг." != "друг" 的误判
     // 「忽略大小写」设置：开→小写归一；关→严格大小写
-    const stripPunctLocal = (s) => s.replace(/^[.,!?;:…'"()\[\]{}\-–—]+|[.,!?;:…'"()\[\]{}\-–—]+$/g, '');
     const norm = (s) => (ignoreCase ? s.toLowerCase() : s);
     // 词源：优先用词槽（逐词输入模式，词槽就是用户实际填的内容，避免 inputValue 同步竞态漏掉最后一个词导致误判全红）；
     // 无词槽（整体输入模式）时才回退 inputValue。
@@ -620,11 +638,11 @@ export function useQuestionInput({
     const srcWords = hasSlots
       ? userInputWords.filter(w => !w.fixed).map(w => (w.userInput || '').trim()).filter(Boolean)
       : inputValue.trim().split(/\s+/).filter(Boolean);
-    const userWords = srcWords.map(stripPunctLocal).map(norm).filter(Boolean);
-    const allAnswerWords = normAnswer.trim().split(/\s+/).filter(Boolean).map(stripPunctLocal).map(norm).filter(Boolean);
+    const userWords = srcWords.map(stripPunct).map(norm).filter(Boolean);
+    const allAnswerWords = normAnswer.trim().split(/\s+/).filter(Boolean).map(stripPunct).map(norm).filter(Boolean);
     // 已给人名/专有名词：从标准答案和用户输入中都排除（用户多打了人名也不误判）
     const fixedSet = new Set(
-      userInputWords.filter(w => w.fixed).map(w => norm(stripPunctLocal(w.text)))
+      userInputWords.filter(w => w.fixed).map(w => norm(stripPunct(w.text)))
     );
     const answerWords = allAnswerWords.filter(w => !fixedSet.has(w));
     const userWordsFiltered = userWords.filter(w => !fixedSet.has(w));

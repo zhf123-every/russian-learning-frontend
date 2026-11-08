@@ -70,6 +70,22 @@ function applyEstePattern(clause) {
     if (ESTE_WORDS.has(lemmaOf2(clause[i]))) { firstEsto = i; break }
   }
   if (firstEsto < 0) return false
+  // вот 呈示句：вот=语气词，其后紧跟的名词=主语（不按 это/то 的"主语+表语"判断句处理）
+  if (lemmaOf2(clause[firstEsto]) === "вот") {
+    clause[firstEsto].syntacticRole = "particle"; clause[firstEsto].roleLabel = "语气词"
+    let subj = -1
+    for (let i = firstEsto + 1; i < n; i++) {
+      if (isNounish2(clause[i]) && !isPrepAfter2(i, clause)) { subj = i; break }
+    }
+    if (subj < 0) return false
+    clause[subj].syntacticRole = "subject"; clause[subj].roleLabel = "主语"
+    for (let i = firstEsto + 1; i < subj; i++) {
+      const w = clause[i]
+      if (w.syntacticRole) continue
+      if (w.pos === "adjective" || (w.pos === "pronoun" && POSSESSIVE.has(lemmaOf2(w)))) { w.syntacticRole = "attribute"; w.roleLabel = "定语" }
+    }
+    return true
+  }
   // esto 之后最后一个"不在介词后"的名词/代词/数词 → 表语
   let lastIdx = -1
   for (let i = n - 1; i > firstEsto; i--) {
@@ -242,7 +258,7 @@ export function inferRoles(sentence, dictWords) {
     // 词中标点补空格："Нет，это"（全角逗号转半角后无空格）→ "Нет, это"，逗号独立成标点槽
     .replace(/([\u0410-\u044f\u0401\u0451a-zA-Z])([,.;:!?…])(?=[\u0410-\u044f\u0401\u0451a-zA-Z])/g, "$1$2 ");
   const toks = srcSentence.split(/\s+/).filter(Boolean)
-    .map((t) => t.replace(/^[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+|[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+$/g, ""));
+    .map((t) => t.replace(/^[\s.,!?;:…—–«»“”‘’，。！？；：、'"()\[\]{}-]+|[\s.,!?;:…—–«»“”‘’，。！？；：、'"()\[\]{}-]+$/g, ""));
   const words = [];
   let wi = 0;
   toks.forEach((t) => {
@@ -292,7 +308,9 @@ export function inferRoles(sentence, dictWords) {
     for (let i = 0; i < clause.length; i++) {
       const w = clause[i];
       if (w.syntacticRole) continue;
-      if (PERSONAL_NOM.has(lemmaOf(w)) && !(i > 0 && clause[i - 1].pos === "preposition")) {
+      if (isVerb(w)) continue; // 动词（含不定式）不可能是主语
+      if (PERSONAL_NOM.has(lemmaOf(w)) && !(i > 0 && clause[i - 1].pos === "preposition") &&
+          (w.grammarCase === "nom" || !w.grammarCase)) {
         w.syntacticRole = "subject"; w.roleLabel = "主语";
         break;
       }
@@ -303,6 +321,7 @@ export function inferRoles(sentence, dictWords) {
     for (let i = 0; i < clause.length; i++) {
       const w = clause[i];
       if (w.syntacticRole) continue;
+      if (isVerb(w)) continue; // 动词（含不定式）不可能是主语
       if (isNounish(w) && !(i > 0 && clause[i - 1].pos === "preposition") && (w.grammarCase === "nom" || !w.grammarCase)) {
         w.syntacticRole = "subject"; w.roleLabel = "主语";
         break;
@@ -315,13 +334,16 @@ export function inferRoles(sentence, dictWords) {
   //      修复：向前回溯检查"是否在介词短语里"——介词后的数词短语（в одна тысяча девятьсот）不标主语
   words.forEach((w, i) => {
     if (w.pos !== "numeral") return;
-    // 向前回溯：前面有介词（可能隔了数词/形容词）→ 介词短语状语，不判主语
+    // 向前回溯：前面有介词（可能隔了数词/形容词）→ 介词短语状语，不判主语；
+    // 前面有谓语动词 → 数量短语是宾语（"Он купил несколько книг"），也不判主语
     let inPrepPhrase = false;
+    let verbBefore = false;
     for (let j = i - 1; j >= 0; j--) {
       if (words[j].pos === "preposition") { inPrepPhrase = true; break; }
-      if (words[j].pos === "verb" || words[j].pos === "conjunction") break; // 动词/连词后就不是介词短语了
+      if (words[j].pos === "verb") { verbBefore = true; break; } // 动词/连词后就不是介词短语了
+      if (words[j].pos === "conjunction") break;
     }
-    if (inPrepPhrase) return;
+    if (inPrepPhrase || verbBefore) return;
     const nw = words[i + 1];
     if (nw && isNounish(nw) && !nw.syntacticRole) { nw.syntacticRole = "subject"; nw.roleLabel = "主语"; }
     if (!w.syntacticRole) { w.syntacticRole = "subject"; w.roleLabel = "主语"; }
@@ -376,8 +398,9 @@ export function inferRoles(sentence, dictWords) {
     // 系动词句的表语由 COPULA 规则独立处理）。
     if (i > 0) {
       const inClause = clauses.find((c) => c.includes(w));
-      const hasSubjectBefore = inClause && inClause.slice(0, i).some((cw) => cw.syntacticRole === "subject");
-      const verbBefore = inClause && inClause.slice(0, i).some((cw) => cw.pos === "verb");
+      const localIdx = inClause ? inClause.indexOf(w) : -1;
+      const hasSubjectBefore = inClause && inClause.slice(0, localIdx).some((cw) => cw.syntacticRole === "subject");
+      const verbBefore = inClause && inClause.slice(0, localIdx).some((cw) => cw.pos === "verb");
       if (hasSubjectBefore && !verbBefore &&
           (w.pos === "adjective" || (w.pos === "noun" && (w.grammarCase === "nom" || !w.grammarCase)))) {
         w.syntacticRole = "predicative"; w.roleLabel = "表语";
@@ -423,6 +446,12 @@ export function inferRoles(sentence, dictWords) {
         }
       }
     }
+  });
+
+  // 4.8) 定语从句关联词 который/которое/которого… → 定语（从句关联词），先于普通形容词/表语规则标注
+  words.forEach((w) => {
+    if (w.syntacticRole) return;
+    if (lemmaOf(w).startsWith("котор")) { w.syntacticRole = "attribute"; w.roleLabel = "定语"; }
   });
 
   // 5) 定语：形容词

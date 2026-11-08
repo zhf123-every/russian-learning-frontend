@@ -333,11 +333,11 @@ export default function AnswerPanel({
     const map = {};
     const dashMap = {};
     const FULL2 = { "，": ",", "。": ".", "？": "?", "！": "!", "；": ";", "：": ":" };
-    const toks = (String(statement?.russian || "").match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?|[.,!?;:…—–，。？！；：]/g) || [])
+    const toks = (String(statement?.russian || "").match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)?|[.,!?;:…—–«»“”‘’，。？！；：]/g) || [])
       .map((t) => FULL2[t] || t);
     let wi = 0;
     toks.forEach((t) => {
-      if (/[.,!?;:…—–]/.test(t)) {
+      if (/[.,!?;:…—–«»“”‘’]/.test(t)) {
         if (t === "—" || t === "–") {
           dashMap[wi] = (dashMap[wi] || "") + t;
         } else if (wi > 0) {

@@ -109,6 +109,10 @@ const FUNCTION_WORDS = {
   "тебе": { pos: "pronoun", zh: "你（与格）", number: "singular", grammarCase: "dative" },
   "нас": { pos: "pronoun", zh: "我们（属格）", number: "plural", grammarCase: "genitive" },
   "вас": { pos: "pronoun", zh: "你们（属格）", number: "plural", grammarCase: "genitive" },
+  "него": { pos: "pronoun", zh: "他/它（属格）", gender: "masculine", number: "singular", grammarCase: "genitive" },
+  "ему": { pos: "pronoun", zh: "他/它（与格）", gender: "masculine", number: "singular", grammarCase: "dative" },
+  "несколько": { pos: "numeral", zh: "几个", number: "plural" },
+  "интересно": { pos: "adverb", zh: "感兴趣/有趣" },
   "не": { pos: "negation", zh: "不/不是" },
   "нет": { pos: "negation", zh: "不/没有" },
   "неправда": { pos: "negation", zh: "不对" },
@@ -359,7 +363,6 @@ const VERB_FORMS = {
   "отдыхаю": { lemma: "отдыхать", person: 1, zh: "休息" }, "отдыхает": { lemma: "отдыхать", person: 3, zh: "休息" }, "отдыхают": { lemma: "отдыхать", person: 3, zh: "休息" },
   "гуляю": { lemma: "гулять", person: 1, zh: "散步" }, "гуляет": { lemma: "гулять", person: 3, zh: "散步" }, "гуляют": { lemma: "гулять", person: 3, zh: "散步" },
   "звоню": { lemma: "звонить", person: 1, zh: "打电话" }, "звонит": { lemma: "звонить", person: 3, zh: "打电话" }, "звонят": { lemma: "звонить", person: 3, zh: "打电话" },
-  "письмо": { lemma: "писать", person: 1, zh: "写" },
   "плаваю": { lemma: "плавать", person: 1, zh: "游泳" }, "плавает": { lemma: "плавать", person: 3, zh: "游泳" }, "плавают": { lemma: "плавать", person: 3, zh: "游泳" },
   "катаюсь": { lemma: "кататься", person: 1, zh: "滑冰/骑车" }, "катается": { lemma: "кататься", person: 3, zh: "滑冰/骑车" }, "катаются": { lemma: "кататься", person: 3, zh: "滑冰/骑车" },
   "рисую": { lemma: "рисовать", person: 1, zh: "画画" }, "рисует": { lemma: "рисовать", person: 3, zh: "画画" }, "рисуют": { lemma: "рисовать", person: 3, zh: "画画" },
@@ -634,6 +637,17 @@ function cleanZhText(t) {
     .trim();
 }
 
+// 词典一格常写成逗号双变体（"му'зыкой, му'зыкою"），整串当一个词形索引会导致裸形式查不到，按逗号拆成多个变体
+function splitVariants(form) {
+  return String(form || "").split(/,\s*/).map((v) => v.trim()).filter(Boolean);
+}
+
+// 词典只有名词同形词条、缺动词词条的高频不定式：优先于索引命中返回动词标注
+// 如 помочь 在 dict-full 仅有名词词条（по'мочь 帮助，主/宾同形），无动词词条 → 在此兜底
+const INFINITIVE_VERBS = {
+  "помочь": { lemma: "помочь", zh: "帮助" },
+};
+
 function buildIndex() {
   if (formIndex) return formIndex;
   const D0 = window.RU_DICT_FULL || {};
@@ -649,13 +663,13 @@ function buildIndex() {
       const zh = (RU_DICT[lemma] && RU_DICT[lemma].z) || ""; // 变形词回填中文释义（简版词典）
       ["sg", "pl"].forEach((num, ni) => {
         (f[num] || []).forEach((form, ci) => {
-          if (form) setIdx(idx, form, {
+          splitVariants(form).forEach((v) => setIdx(idx, v, {
             lemma, pos: "noun", gender,
             caseCode: CASE_CODES[ci] || "",
             number: ni === 0 ? "singular" : "plural",
-            stressed: toStress(form),
+            stressed: toStress(v),
             chinese: zh,
-          });
+          }));
         });
       });
     } else if (e.p === "a") {
@@ -664,33 +678,40 @@ function buildIndex() {
         const gender = ki === 0 ? "masculine" : ki === 1 ? "feminine" : ki === 2 ? "neuter" : "";
         const number = ki === 3 ? "plural" : "singular";
         (f[key] || []).forEach((form, ci) => {
-          if (form) setIdx(idx, form, {
+          splitVariants(form).forEach((v) => setIdx(idx, v, {
             lemma, pos: "adjective", gender,
             caseCode: CASE_CODES[ci] || "",
             number,
-            stressed: toStress(form),
+            stressed: toStress(v),
             chinese: zh,
-          });
+          }));
         });
       });
     } else if (e.p === "v") {
       const zh = (RU_DICT[lemma] && RU_DICT[lemma].z) || "";
+      // 动词不定式原形入索引：f.pres/f.past 只收录变位形式，原形（如 получить）直接查索引会落空
+      // 注意 f.imp 存的是命令式（получи'），不是不定式；不定式原形就是词条 s 字段（e.s || lemma）
+      const inf = e.s || lemma;
+      if (inf) setIdx(idx, inf, {
+        lemma, pos: "verb", tense: "infinitive",
+        stressed: toStress(inf), chinese: zh,
+      });
       (f.pres || []).forEach((form, pi) => {
-        if (form) setIdx(idx, form, {
+        splitVariants(form).forEach((v) => setIdx(idx, v, {
           lemma, pos: "verb",
           person: pi + 1, tense: "present",
-          stressed: toStress(form),
+          stressed: toStress(v),
           chinese: zh,
-        });
+        }));
       });
       (f.past || []).forEach((form, ki) => {
-        if (form) setIdx(idx, form, {
+        splitVariants(form).forEach((v) => setIdx(idx, v, {
           lemma, pos: "verb", tense: "past",
           gender: ki === 0 ? "masculine" : ki === 1 ? "feminine" : ki === 2 ? "neuter" : "",
           number: ki === 3 ? "plural" : "singular",
-          stressed: toStress(form),
+          stressed: toStress(v),
           chinese: zh,
-        });
+        }));
       });
     } else {
       // p === "o"：其它词（代词/副词/数词等），先入原形，稍后用简版词典细化词性
@@ -750,10 +771,10 @@ export function annotateWords(sentence) {
     .replace(/[\u00a0\u3000\u2009\u2028\u2029\u202f\u205f\t\r\n\f\v]+/g, " ")
     // 词中标点补空格："Нет，это"（全角逗号转半角后无空格）→ "Нет, это"，逗号独立成标点槽
     .replace(/([\u0410-\u044f\u0401\u0451a-zA-Z])([,.;:!?…])(?=[\u0410-\u044f\u0401\u0451a-zA-Z])/g, "$1$2 ");
-  // 词卡按纯俄语词标注：token 去首尾标点（半角/全角），逗号/句号由 AnswerPanel 的 punct 单独显示
+  // 词卡按纯俄语词标注：token 去首尾标点（半角/全角/俄文引号«»/弯引号），逗号/句号由 AnswerPanel 的 punct 单独显示
   const tokens = srcSentence.split(/\s+/).filter(Boolean)
     .filter((t) => !/^[—–-]+$/.test(t))
-    .map((t) => t.replace(/^[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+|[\s.,!?;:…—–，。！？；：、'"()\[\]{}-]+$/g, ""))
+    .map((t) => t.replace(/^[\s.,!?;:…—–«»“”‘’，。！？；：、'"()\[\]{}-]+|[\s.,!?;:…—–«»“”‘’，。！？；：、'"()\[\]{}-]+$/g, ""))
     .filter(Boolean);
 
   // 兜底查询：FUNCTION_WORDS + VERB_FORMS（dict-full pos 为空/"default" 时也走这里补全）
@@ -865,6 +886,17 @@ export function annotateWords(sentence) {
         number: fw.number || "",
         chinese: cleanZhText(fw.zh) || "",
         roleLabel: "",
+      };
+    }
+
+    // 缺动词词条的高频不定式（помочь 等）：优先于索引里的名词同形词条返回动词
+    const iv = INFINITIVE_VERBS[n];
+    if (iv) {
+      return {
+        form: cleanToken(w), lemma: iv.lemma, pos: "verb",
+        posColor: getPosColor("verb"),
+        chinese: cleanZhText(iv.zh) || "",
+        roleLabel: "", tense: "infinitive",
       };
     }
 
