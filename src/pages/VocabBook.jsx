@@ -4,7 +4,8 @@
 // 页眉：筛选 / 导出(9种模板) / 选择 / 开始练习 —— 全部真实交互
 // 设计：简约大气有质感 —— 无渐变装饰，细边框 + 柔和阴影 + 单一强调色，跟随全局主题
 import { useState, useMemo, useEffect } from 'react'
-import { getVocabWords, removeVocabWord, incrementVocabPractice } from '../lib/vocabBook'
+import { useNavigate } from 'react-router-dom'
+import { getVocabWords, removeVocabWord } from '../lib/vocabBook'
 import { usePageHeader } from '../components/layout/PageHeaderContext'
 import { speak } from '../lib/tts'
 import { toast } from '../lib/toast'
@@ -119,11 +120,11 @@ export default function VocabBook() {
   const [exportCourse, setExportCourse] = useState('all')
   const [exportTime, setExportTime] = useState('all')
   const [showStart, setShowStart] = useState(false)
-  const [practice, setPractice] = useState(null)
   const [practiceMode, setPracticeMode] = useState('cn2ru')
   const [practiceOrder, setPracticeOrder] = useState('list')
   const [practiceCount, setPracticeCount] = useState(0)
   const [practiceAll, setPracticeAll] = useState(true)
+  const navigate = useNavigate()
 
   const refresh = () => setList(getVocabWords())
   const total = list.length
@@ -188,46 +189,22 @@ export default function VocabBook() {
     else exportPNG(exportTarget, tpl, exportWithExample)
   }
 
-  // ---- 开始练习 ----
+  // ---- 开始练习：跳转全屏答题页（/vocab-practice），题目为选中生词 ----
   const startPractice = (words) => {
     if (!words.length) { toast('没有可练习的生词'); return }
     let arr = [...words]
     if (practiceOrder === 'random') arr = arr.sort(() => Math.random() - 0.5)
     if (!practiceAll && practiceCount > 0) arr = arr.slice(0, practiceCount)
-    setPractice({ mode: practiceMode, words: arr, i: 0, input: '', result: null, showAns: false, done: false, correct: 0 })
+    if (!arr.length) { toast('没有可练习的生词'); return }
+    const keys = arr.map(w => encodeURIComponent(w.key)).join(',')
+    const q = new URLSearchParams({ mode: practiceMode, order: practiceOrder, keys }).toString()
     setShowStart(false); setSelecting(false)
-  }
-
-  const p = practice
-  const checkAnswer = () => {
-    if (!p || p.showAns || !p.input) return
-    const cur = p.words[p.i]
-    const ok = norm(p.input) === norm(cur.word)
-    incrementVocabPractice(cur.key)
-    setPractice({ ...p, result: ok ? 'correct' : 'wrong', showAns: true, correct: p.correct + (ok ? 1 : 0) })
-    refresh()
-  }
-  const revealAnswer = () => {
-    if (!p || p.showAns) return
-    incrementVocabPractice(p.words[p.i].key)
-    setPractice({ ...p, showAns: true, result: 'reveal' })
-    refresh()
-  }
-  const practiceNext = () => {
-    if (!p) return
-    if (p.i + 1 >= p.words.length) setPractice({ ...p, done: true })
-    else setPractice({ ...p, i: p.i + 1, input: '', result: null, showAns: false })
-  }
-  const practicePrev = () => {
-    if (!p) return
-    setPractice({ ...p, i: Math.max(0, p.i - 1), input: '', result: null, showAns: false })
+    navigate(`/vocab-practice?${q}`)
   }
 
   // ---- 页眉工具栏 hooks：必须在任何条件 return 之前调用（React Hooks 规则）----
   const { setHeaderRight } = usePageHeader()
   useEffect(() => {
-    // 练习会话页清空页眉工具栏；列表页渲染 筛选/导出/选择/开始练习
-    if (p) { setHeaderRight(null); return }
     setHeaderRight(
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         {selecting ? (
@@ -252,7 +229,7 @@ export default function VocabBook() {
     )
     return () => setHeaderRight(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [p, total, selecting, selected.size, setHeaderRight, setShowFilter, setExportCourse, setExportTime, setShowExport, setSelecting, setShowStart, selectAll, clearSelect])
+  }, [total, selecting, selected.size, setHeaderRight, setShowFilter, setExportCourse, setExportTime, setShowExport, setSelecting, setShowStart, selectAll, clearSelect])
 
   // ---- 卡片 ----
   const card = (w) => (
@@ -306,101 +283,6 @@ export default function VocabBook() {
       </div>
     </div>
   )
-
-  // ================= 练习会话 =================
-  if (p) {
-    const cur = p.words[p.i]
-    const promptLabel = MODES.find(m => m.id === p.mode)
-    return (
-      <div className="mx-auto max-w-xl p-6">
-        <div className="mb-5 flex items-center gap-3">
-          <button onClick={() => setPractice(null)} className={ghost}>← 返回生词本</button>
-          <div className="flex-1" />
-          {!p.done && <div className="text-sm font-semibold text-violet-600 dark:text-violet-400">{p.i + 1} / {p.words.length}</div>}
-        </div>
-        {!p.done && (
-          <div className="mb-5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
-            <div className="h-full bg-violet-600 transition-all duration-300" style={{ width: `${((p.i + (p.showAns ? 1 : 0)) / p.words.length) * 100}%` }} />
-          </div>
-        )}
-
-        {p.done ? (
-          <div className="rounded-2xl border border-gray-200 bg-white px-8 py-14 text-center shadow-sm dark:border-white/10 dark:bg-[#151519]">
-            <div className="text-5xl">🎉</div>
-            <h3 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">练习完成！</h3>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">共练习 {p.words.length} 个生词 · 答对 {p.correct} 个</p>
-            <button onClick={() => setPractice(null)} className={`${primary} mt-6 px-8`}>返回生词本</button>
-          </div>
-        ) : (
-          <>
-            <div className="mb-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <span>{promptLabel?.icon}</span>
-              <span>{promptLabel?.label} · {promptLabel?.desc}</span>
-            </div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-white/10 dark:bg-[#151519]">
-              {p.mode === 'cn2ru' && (
-                <div className="min-h-[72px] text-xl font-medium leading-relaxed text-gray-800 dark:text-gray-100">{cur.chinese || cur.word}</div>
-              )}
-              {p.mode === 'dict' && (
-                <div className="min-h-[72px]">
-                  <button onClick={() => speak(cur.word, { rate: 0.8 })} className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-violet-600 text-2xl text-white shadow-md transition-transform hover:scale-105" title="播放发音">▶</button>
-                </div>
-              )}
-              {(p.mode === 'listen' || p.mode === 'speak') && (
-                <div className="min-h-[72px]">
-                  <div className="font-['PT_Serif',Georgia,serif] text-4xl font-bold text-gray-900 dark:text-white">{cur.word}</div>
-                  <button onClick={() => speak(cur.word, { rate: 0.8 })} className={`${ghost} mt-4`}>🔊 播放发音</button>
-                </div>
-              )}
-
-              {(p.mode === 'cn2ru' || p.mode === 'dict') && (
-                <div className="mt-6">
-                  <input
-                    value={p.input}
-                    onChange={e => setPractice({ ...p, input: e.target.value })}
-                    onKeyDown={e => { if (e.key === 'Enter') { p.showAns ? practiceNext() : checkAnswer() } }}
-                    autoFocus
-                    placeholder="输入俄语…"
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-center text-lg text-gray-900 outline-none transition-colors focus:border-violet-400 focus:bg-white dark:border-white/10 dark:bg-white/5 dark:text-white"
-                  />
-                </div>
-              )}
-
-              {p.showAns ? (
-                <div className="mt-5">
-                  <div className={`text-base font-semibold ${p.result === 'correct' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {p.result === 'correct' ? '✓ 答对了！' : p.result === 'wrong' ? '✗ 再想想' : ''}
-                  </div>
-                  <div className="mt-2">
-                    <span className="font-['PT_Serif',Georgia,serif] text-lg font-bold text-gray-900 dark:text-white">{cur.word}</span>
-                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">{cur.chinese}</span>
-                  </div>
-                </div>
-              ) : (p.mode === 'listen' || p.mode === 'speak') && (
-                <button onClick={revealAnswer} className={`${ghost} mt-6`}>显示答案</button>
-              )}
-
-              <div className="mt-6 flex items-center justify-center gap-3">
-                {p.showAns ? (
-                  <button onClick={practiceNext} className={`${primary} px-10`}>{p.i + 1 >= p.words.length ? '完成 ✓' : '下一个 →'}</button>
-                ) : (p.mode === 'cn2ru' || p.mode === 'dict') && (
-                  <>
-                    <button onClick={checkAnswer} disabled={!p.input.trim()} className={`${primary} px-8 disabled:cursor-not-allowed disabled:opacity-40`}>检查</button>
-                    <button onClick={revealAnswer} className={ghost}>直接看答案</button>
-                  </>
-                )}
-              </div>
-            </div>
-            {p.i > 0 && (
-              <div className="mt-4 text-center">
-                <button onClick={practicePrev} className="cursor-pointer text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">← 上一个</button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    )
-  }
 
   // ================= 主页面 =================
   return (
