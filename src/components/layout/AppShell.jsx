@@ -4,6 +4,8 @@ import SideNav from './SideNav'
 import MobileNav from './MobileNav'
 import TopBar from './TopBar'
 import { PageHeaderCtx } from './PageHeaderContext'
+import { useAdminStore } from '../../store/adminStore'
+import { pullUserData, touchUserDataSync } from '../../lib/userDataSync'
 
 // 路由 → 页眉标题（跟随导航栏）
 const TITLES = {
@@ -54,6 +56,18 @@ export default function AppShell() {
     const handler = () => setCollapsed((v) => !v)
     window.addEventListener('app:toggle-sidebar', handler)
     return () => window.removeEventListener('app:toggle-sidebar', handler)
+  }, [])
+
+  // 已登录：启动时拉取云端整包合并（有更新则刷新页面载入新数据）；每 15s 防抖上报本地变更
+  useEffect(() => {
+    if (!useAdminStore.getState().token) return
+    let cancelled = false
+    pullUserData().then(({ changed }) => {
+      if (cancelled) return
+      if (changed) setTimeout(() => location.reload(), 300)
+    })
+    const iv = setInterval(() => touchUserDataSync(), 15000)
+    return () => { cancelled = true; clearInterval(iv) }
   }, [])
   return (
     <div className={'app-shell' + (collapsed ? ' shell-collapsed' : '')}>

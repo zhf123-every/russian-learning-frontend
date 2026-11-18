@@ -13,6 +13,11 @@ import {
   priceLabel,
   typeLabel,
 } from "../lib/courseAccess";
+import { useAdminStore } from "../store/adminStore";
+import { flushUserData, pullUserData } from "../lib/userDataSync";
+import AuthSyncModal from "../components/AuthSyncModal";
+
+const ROLE_LABEL = { admin: "管理员", editor: "编辑", viewer: "只读", learner: "学习者" };
 
 const API_BASE =
   import.meta.env.VITE_API_BASE || "https://russian-learning-jetq.onrender.com";
@@ -48,6 +53,34 @@ export default function MyCoursesHub() {
   const [error, setError] = useState("");
   const [courses, setCourses] = useState([]);
   const [purchased, setPurchased] = useState({});
+
+  const token = useAdminStore((s) => s.token);
+  const user = useAdminStore((s) => s.user);
+  const logout = useAdminStore((s) => s.logout);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
+  const loggedIn = !!(token && user && user.id);
+
+  const doSync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    setSyncMsg("");
+    const { changed } = await pullUserData();
+    if (changed) {
+      setSyncMsg("已拉取到新数据，正在刷新…");
+      setTimeout(() => location.reload(), 400);
+      return;
+    }
+    flushUserData();
+    setSyncMsg("已把本机数据同步到云端");
+    setSyncing(false);
+  };
+
+  const doLogout = () => {
+    logout();
+    setSyncMsg("已退出登录，本机数据仍保留在这台设备上");
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,6 +149,80 @@ export default function MyCoursesHub() {
             继续学习、查看已购课程与学习进度
           </div>
         </div>
+
+        {/* 账号与云端同步卡片 */}
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid #E9E0D8",
+            borderRadius: 18,
+            padding: "18px 20px",
+            marginBottom: 26,
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            flexWrap: "wrap",
+            boxShadow: "0 2px 12px rgba(26,26,30,.05)",
+          }}
+        >
+          <div
+            style={{
+              width: 44, height: 44, borderRadius: 14, flex: "0 0 auto",
+              background: "linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(18% 0.0249 284.3))",
+              color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
+            }}
+          >
+            ☁️
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            {loggedIn ? (
+              <>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#1F1B2E" }}>
+                  {user.nickname || user.username}
+                  <span style={{ fontSize: 11, color: "oklch(18% 0.0249 284.3)", background: "oklch(95% 0.0081 61.42)", padding: "2px 9px", borderRadius: 999, marginLeft: 8 }}>
+                    {ROLE_LABEL[user.role] || "学习者"}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12.5, color: "#9A90B0", marginTop: 3 }}>
+                  已登录，进度与生词本自动同步到云端{syncMsg ? ` · ${syncMsg}` : ""}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#1F1B2E" }}>登录后同步进度到云端</div>
+                <div style={{ fontSize: 12.5, color: "#9A90B0", marginTop: 3 }}>
+                  手机、电脑登录同一账号，进度、生词本、错题本自动保持一致
+                </div>
+              </>
+            )}
+          </div>
+          {loggedIn ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button
+                onClick={doSync}
+                disabled={syncing}
+                style={{ padding: "9px 20px", border: "none", borderRadius: 20, cursor: syncing ? "not-allowed" : "pointer", background: "linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(18% 0.0249 284.3))", color: "#fff", fontWeight: 700, fontSize: 13.5, opacity: syncing ? 0.6 : 1 }}
+              >
+                {syncing ? "同步中…" : "立即同步"}
+              </button>
+              <button
+                onClick={doLogout}
+                style={{ padding: "9px 16px", border: "1px solid #E9E0D8", borderRadius: 20, background: "#fff", color: "#7A6A60", fontWeight: 600, fontSize: 13.5, cursor: "pointer" }}
+              >
+                退出登录
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAuthOpen(true)}
+              style={{ padding: "10px 24px", border: "none", borderRadius: 22, cursor: "pointer", background: "linear-gradient(135deg,oklch(23.27% 0.0249 284.3),oklch(18% 0.0249 284.3))", color: "#fff", fontWeight: 700, fontSize: 14, boxShadow: "0 6px 16px rgba(26,26,30,.25)" }}
+            >
+              登录 / 注册
+            </button>
+          )}
+        </div>
+
+        <AuthSyncModal open={authOpen} onClose={() => setAuthOpen(false)} />
 
         {loading ? (
           <div style={{ textAlign: "center", padding: "80px 20px", color: "#9CA3AF" }}>
